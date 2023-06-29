@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package valrpc;
+
+option go_package = "github.com/babylonchain/btc-validator/valrpc";
+
+service BtcValidators {
+    rpc CreateValidator (CreateValidatorRequest)
+        returns (CreateValidatorResponse);
+
+    rpc ImportValidator (ImportValidatorRequest)
+        returns (ImportValidatorResponse);
+
+    rpc RegisterValidator (RegisterValidatorRequest)
+        returns (RegisterValidatorResponse);
+}
+
+// TODO: add request and response messages
+
+message CreateValidatorRequest {
+}
+
+message CreateValidatorResponse {
+}
+
+message ImportValidatorRequest {
+}
+
+message ImportValidatorResponse {
+}
+
+message RegisterValidatorRequest {
+}
+
+message RegisterValidatorResponse {
+}
