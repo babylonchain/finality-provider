@@ -19,8 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	BtcValidators_CreateValidator_FullMethodName   = "/valrpc.BtcValidators/CreateValidator"
-	BtcValidators_ImportValidator_FullMethodName   = "/valrpc.BtcValidators/ImportValidator"
 	BtcValidators_RegisterValidator_FullMethodName = "/valrpc.BtcValidators/RegisterValidator"
 )
 
@@ -28,8 +26,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BtcValidatorsClient interface {
-	CreateValidator(ctx context.Context, in *CreateValidatorRequest, opts ...grpc.CallOption) (*CreateValidatorResponse, error)
-	ImportValidator(ctx context.Context, in *ImportValidatorRequest, opts ...grpc.CallOption) (*ImportValidatorResponse, error)
 	RegisterValidator(ctx context.Context, in *RegisterValidatorRequest, opts ...grpc.CallOption) (*RegisterValidatorResponse, error)
 }
 
@@ -39,24 +35,6 @@ type btcValidatorsClient struct {
 
 func NewBtcValidatorsClient(cc grpc.ClientConnInterface) BtcValidatorsClient {
 	return &btcValidatorsClient{cc}
-}
-
-func (c *btcValidatorsClient) CreateValidator(ctx context.Context, in *CreateValidatorRequest, opts ...grpc.CallOption) (*CreateValidatorResponse, error) {
-	out := new(CreateValidatorResponse)
-	err := c.cc.Invoke(ctx, BtcValidators_CreateValidator_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *btcValidatorsClient) ImportValidator(ctx context.Context, in *ImportValidatorRequest, opts ...grpc.CallOption) (*ImportValidatorResponse, error) {
-	out := new(ImportValidatorResponse)
-	err := c.cc.Invoke(ctx, BtcValidators_ImportValidator_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *btcValidatorsClient) RegisterValidator(ctx context.Context, in *RegisterValidatorRequest, opts ...grpc.CallOption) (*RegisterValidatorResponse, error) {
@@ -72,8 +50,6 @@ func (c *btcValidatorsClient) RegisterValidator(ctx context.Context, in *Registe
 // All implementations must embed UnimplementedBtcValidatorsServer
 // for forward compatibility
 type BtcValidatorsServer interface {
-	CreateValidator(context.Context, *CreateValidatorRequest) (*CreateValidatorResponse, error)
-	ImportValidator(context.Context, *ImportValidatorRequest) (*ImportValidatorResponse, error)
 	RegisterValidator(context.Context, *RegisterValidatorRequest) (*RegisterValidatorResponse, error)
 	mustEmbedUnimplementedBtcValidatorsServer()
 }
@@ -82,12 +58,6 @@ type BtcValidatorsServer interface {
 type UnimplementedBtcValidatorsServer struct {
 }
 
-func (UnimplementedBtcValidatorsServer) CreateValidator(context.Context, *CreateValidatorRequest) (*CreateValidatorResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateValidator not implemented")
-}
-func (UnimplementedBtcValidatorsServer) ImportValidator(context.Context, *ImportValidatorRequest) (*ImportValidatorResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ImportValidator not implemented")
-}
 func (UnimplementedBtcValidatorsServer) RegisterValidator(context.Context, *RegisterValidatorRequest) (*RegisterValidatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterValidator not implemented")
 }
@@ -102,42 +72,6 @@ type UnsafeBtcValidatorsServer interface {
 
 func RegisterBtcValidatorsServer(s grpc.ServiceRegistrar, srv BtcValidatorsServer) {
 	s.RegisterService(&BtcValidators_ServiceDesc, srv)
-}
-
-func _BtcValidators_CreateValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateValidatorRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BtcValidatorsServer).CreateValidator(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: BtcValidators_CreateValidator_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BtcValidatorsServer).CreateValidator(ctx, req.(*CreateValidatorRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _BtcValidators_ImportValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ImportValidatorRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BtcValidatorsServer).ImportValidator(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: BtcValidators_ImportValidator_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BtcValidatorsServer).ImportValidator(ctx, req.(*ImportValidatorRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _BtcValidators_RegisterValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -165,14 +99,6 @@ var BtcValidators_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "valrpc.BtcValidators",
 	HandlerType: (*BtcValidatorsServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "CreateValidator",
-			Handler:    _BtcValidators_CreateValidator_Handler,
-		},
-		{
-			MethodName: "ImportValidator",
-			Handler:    _BtcValidators_ImportValidator_Handler,
-		},
 		{
 			MethodName: "RegisterValidator",
 			Handler:    _BtcValidators_RegisterValidator_Handler,

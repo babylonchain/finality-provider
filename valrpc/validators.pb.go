@@ -20,168 +20,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type CreateValidatorRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *CreateValidatorRequest) Reset() {
-	*x = CreateValidatorRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_validators_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *CreateValidatorRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateValidatorRequest) ProtoMessage() {}
-
-func (x *CreateValidatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_validators_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateValidatorRequest.ProtoReflect.Descriptor instead.
-func (*CreateValidatorRequest) Descriptor() ([]byte, []int) {
-	return file_validators_proto_rawDescGZIP(), []int{0}
-}
-
-type CreateValidatorResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *CreateValidatorResponse) Reset() {
-	*x = CreateValidatorResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_validators_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *CreateValidatorResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateValidatorResponse) ProtoMessage() {}
-
-func (x *CreateValidatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_validators_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateValidatorResponse.ProtoReflect.Descriptor instead.
-func (*CreateValidatorResponse) Descriptor() ([]byte, []int) {
-	return file_validators_proto_rawDescGZIP(), []int{1}
-}
-
-type ImportValidatorRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *ImportValidatorRequest) Reset() {
-	*x = ImportValidatorRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_validators_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ImportValidatorRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ImportValidatorRequest) ProtoMessage() {}
-
-func (x *ImportValidatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_validators_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ImportValidatorRequest.ProtoReflect.Descriptor instead.
-func (*ImportValidatorRequest) Descriptor() ([]byte, []int) {
-	return file_validators_proto_rawDescGZIP(), []int{2}
-}
-
-type ImportValidatorResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *ImportValidatorResponse) Reset() {
-	*x = ImportValidatorResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_validators_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ImportValidatorResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ImportValidatorResponse) ProtoMessage() {}
-
-func (x *ImportValidatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_validators_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ImportValidatorResponse.ProtoReflect.Descriptor instead.
-func (*ImportValidatorResponse) Descriptor() ([]byte, []int) {
-	return file_validators_proto_rawDescGZIP(), []int{3}
-}
-
 type RegisterValidatorRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	// bech32 encoded address of the registering validator
+	BabylonAddr string `protobuf:"bytes,1,opt,name=babylon_addr,json=babylonAddr,proto3" json:"babylon_addr,omitempty"`
 }
 
 func (x *RegisterValidatorRequest) Reset() {
 	*x = RegisterValidatorRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_validators_proto_msgTypes[4]
+		mi := &file_validators_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -194,7 +45,7 @@ func (x *RegisterValidatorRequest) String() string {
 func (*RegisterValidatorRequest) ProtoMessage() {}
 
 func (x *RegisterValidatorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_validators_proto_msgTypes[4]
+	mi := &file_validators_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -207,19 +58,29 @@ func (x *RegisterValidatorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterValidatorRequest.ProtoReflect.Descriptor instead.
 func (*RegisterValidatorRequest) Descriptor() ([]byte, []int) {
-	return file_validators_proto_rawDescGZIP(), []int{4}
+	return file_validators_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RegisterValidatorRequest) GetBabylonAddr() string {
+	if x != nil {
+		return x.BabylonAddr
+	}
+	return ""
 }
 
 type RegisterValidatorResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	// hash of the successful Babylon registration transaction
+	TxHash []byte `protobuf:"bytes,1,opt,name=tx_hash,json=txHash,proto3" json:"tx_hash,omitempty"`
 }
 
 func (x *RegisterValidatorResponse) Reset() {
 	*x = RegisterValidatorResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_validators_proto_msgTypes[5]
+		mi := &file_validators_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -232,7 +93,7 @@ func (x *RegisterValidatorResponse) String() string {
 func (*RegisterValidatorResponse) ProtoMessage() {}
 
 func (x *RegisterValidatorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_validators_proto_msgTypes[5]
+	mi := &file_validators_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -245,45 +106,39 @@ func (x *RegisterValidatorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterValidatorResponse.ProtoReflect.Descriptor instead.
 func (*RegisterValidatorResponse) Descriptor() ([]byte, []int) {
-	return file_validators_proto_rawDescGZIP(), []int{5}
+	return file_validators_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RegisterValidatorResponse) GetTxHash() []byte {
+	if x != nil {
+		return x.TxHash
+	}
+	return nil
 }
 
 var File_validators_proto protoreflect.FileDescriptor
 
 var file_validators_proto_rawDesc = []byte{
 	0x0a, 0x10, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x73, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x12, 0x06, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x22, 0x18, 0x0a, 0x16, 0x43, 0x72,
-	0x65, 0x61, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x22, 0x19, 0x0a, 0x17, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x56, 0x61,
-	0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x18, 0x0a, 0x16, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74,
-	0x6f, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x19, 0x0a, 0x17, 0x49, 0x6d, 0x70,
-	0x6f, 0x72, 0x74, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1a, 0x0a, 0x18, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72,
-	0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x22, 0x1b, 0x0a, 0x19, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69,
-	0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0x91, 0x02,
-	0x0a, 0x0d, 0x42, 0x74, 0x63, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x73, 0x12,
-	0x52, 0x0a, 0x0f, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74,
-	0x6f, 0x72, 0x12, 0x1e, 0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x72, 0x65, 0x61,
-	0x74, 0x65, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x72, 0x65, 0x61,
-	0x74, 0x65, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x52, 0x0a, 0x0f, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x56, 0x61, 0x6c,
-	0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x1e, 0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e,
-	0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e,
-	0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x58, 0x0a, 0x11, 0x52, 0x65, 0x67, 0x69, 0x73,
-	0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x20, 0x2e, 0x76,
-	0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61,
-	0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21,
-	0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72,
-	0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x42, 0x2e, 0x5a, 0x2c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x62, 0x61, 0x62, 0x79, 0x6c, 0x6f, 0x6e, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x2f, 0x62, 0x74, 0x63,
-	0x2d, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x2f, 0x76, 0x61, 0x6c, 0x72, 0x70,
-	0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x6f, 0x12, 0x06, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x22, 0x3d, 0x0a, 0x18, 0x52, 0x65,
+	0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x62, 0x61, 0x62, 0x79, 0x6c, 0x6f,
+	0x6e, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x62, 0x61,
+	0x62, 0x79, 0x6c, 0x6f, 0x6e, 0x41, 0x64, 0x64, 0x72, 0x22, 0x34, 0x0a, 0x19, 0x52, 0x65, 0x67,
+	0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x78, 0x5f, 0x68, 0x61, 0x73,
+	0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x74, 0x78, 0x48, 0x61, 0x73, 0x68, 0x32,
+	0x69, 0x0a, 0x0d, 0x42, 0x74, 0x63, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72, 0x73,
+	0x12, 0x58, 0x0a, 0x11, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69,
+	0x64, 0x61, 0x74, 0x6f, 0x72, 0x12, 0x20, 0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x2e, 0x52,
+	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74, 0x6f, 0x72,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63,
+	0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x69, 0x64, 0x61, 0x74,
+	0x6f, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x2e, 0x5a, 0x2c, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x62, 0x61, 0x62, 0x79, 0x6c, 0x6f, 0x6e,
+	0x63, 0x68, 0x61, 0x69, 0x6e, 0x2f, 0x62, 0x74, 0x63, 0x2d, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x61,
+	0x74, 0x6f, 0x72, 0x2f, 0x76, 0x61, 0x6c, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -298,24 +153,16 @@ func file_validators_proto_rawDescGZIP() []byte {
 	return file_validators_proto_rawDescData
 }
 
-var file_validators_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_validators_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_validators_proto_goTypes = []interface{}{
-	(*CreateValidatorRequest)(nil),    // 0: valrpc.CreateValidatorRequest
-	(*CreateValidatorResponse)(nil),   // 1: valrpc.CreateValidatorResponse
-	(*ImportValidatorRequest)(nil),    // 2: valrpc.ImportValidatorRequest
-	(*ImportValidatorResponse)(nil),   // 3: valrpc.ImportValidatorResponse
-	(*RegisterValidatorRequest)(nil),  // 4: valrpc.RegisterValidatorRequest
-	(*RegisterValidatorResponse)(nil), // 5: valrpc.RegisterValidatorResponse
+	(*RegisterValidatorRequest)(nil),  // 0: valrpc.RegisterValidatorRequest
+	(*RegisterValidatorResponse)(nil), // 1: valrpc.RegisterValidatorResponse
 }
 var file_validators_proto_depIdxs = []int32{
-	0, // 0: valrpc.BtcValidators.CreateValidator:input_type -> valrpc.CreateValidatorRequest
-	2, // 1: valrpc.BtcValidators.ImportValidator:input_type -> valrpc.ImportValidatorRequest
-	4, // 2: valrpc.BtcValidators.RegisterValidator:input_type -> valrpc.RegisterValidatorRequest
-	1, // 3: valrpc.BtcValidators.CreateValidator:output_type -> valrpc.CreateValidatorResponse
-	3, // 4: valrpc.BtcValidators.ImportValidator:output_type -> valrpc.ImportValidatorResponse
-	5, // 5: valrpc.BtcValidators.RegisterValidator:output_type -> valrpc.RegisterValidatorResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	0, // 0: valrpc.BtcValidators.RegisterValidator:input_type -> valrpc.RegisterValidatorRequest
+	1, // 1: valrpc.BtcValidators.RegisterValidator:output_type -> valrpc.RegisterValidatorResponse
+	1, // [1:2] is the sub-list for method output_type
+	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -328,54 +175,6 @@ func file_validators_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_validators_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateValidatorRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_validators_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateValidatorResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_validators_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ImportValidatorRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_validators_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ImportValidatorResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_validators_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisterValidatorRequest); i {
 			case 0:
 				return &v.state
@@ -387,7 +186,7 @@ func file_validators_proto_init() {
 				return nil
 			}
 		}
-		file_validators_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+		file_validators_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisterValidatorResponse); i {
 			case 0:
 				return &v.state
@@ -406,7 +205,7 @@ func file_validators_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_validators_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
