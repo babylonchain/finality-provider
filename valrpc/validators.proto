@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package valrpc;
+
+option go_package = "github.com/babylonchain/btc-validator/valrpc";
+
+service BtcValidators {
+    rpc RegisterValidator (RegisterValidatorRequest)
+        returns (RegisterValidatorResponse);
+}
+
+message RegisterValidatorRequest {
+    // bech32 encoded address of the registering validator
+    string babylon_addr = 1;
+}
+
+message RegisterValidatorResponse {
+    // hash of the successful Babylon registration transaction
+    bytes tx_hash = 1;
+}
