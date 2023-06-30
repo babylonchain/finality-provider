@@ -1,6 +1,13 @@
 package main
 
-import "github.com/urfave/cli"
+import (
+	"encoding/hex"
+	"fmt"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/urfave/cli"
+)
 
 var validatorsCommands = []cli.Command{
 	{
@@ -14,24 +21,51 @@ var validatorsCommands = []cli.Command{
 	},
 }
 
+const (
+	secretFlag = "seed"
+)
+
 var createValidator = cli.Command{
-	Name:      "create-validator",
+	Name:      "create-val",
 	ShortName: "cv",
-	Usage:     "create a BTC validator object using local BTC and Babylon keyrings",
-	Flags:     []cli.Flag{
-		// TODO: add flags
+	Usage:     "create a BTC val object using local BTC and Babylon keyrings",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  secretFlag,
+			Usage: "Use the given secret to generate the Babylon private key",
+		},
 	},
 	Action: createVal,
 }
 
 func createVal(ctx *cli.Context) error {
-	panic("implement me")
+	var (
+		bbnPrivKey *secp256k1.PrivKey
+		btcPrivKey *btcec.PrivateKey
+	)
+
+	if ctx.IsSet(secretFlag) {
+		secret, err := hex.DecodeString(ctx.String(secretFlag))
+		if err != nil {
+			return fmt.Errorf("failed to generate the Babylon private key: %w", err)
+		}
+		bbnPrivKey = secp256k1.GenPrivKeyFromSecret(secret)
+	}
+
+	bbnPrivKey = secp256k1.GenPrivKey()
+
+	btcPrivKey, err := btcec.NewPrivateKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate the BTC private key: %w", err)
+	}
+
+	return nil
 }
 
 var importValidator = cli.Command{
-	Name:      "import-validator",
+	Name:      "import-val",
 	ShortName: "iv",
-	Usage:     "import a BTC validator object with given BTC and Babylon addresses",
+	Usage:     "import a BTC val object with given BTC and Babylon addresses",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},
@@ -43,9 +77,9 @@ func importVal(ctx *cli.Context) error {
 }
 
 var registerValidator = cli.Command{
-	Name:      "register-validator",
+	Name:      "register-val",
 	ShortName: "rv",
-	Usage:     "register a existed BTC validator to Babylon",
+	Usage:     "register a existed BTC val to Babylon",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},

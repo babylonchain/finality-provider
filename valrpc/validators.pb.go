@@ -25,7 +25,7 @@ type RegisterValidatorRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// bech32 encoded address of the registering validator
+	// bech32 encoded address of the registering val
 	BabylonAddr string `protobuf:"bytes,1,opt,name=babylon_addr,json=babylonAddr,proto3" json:"babylon_addr,omitempty"`
 }
 
