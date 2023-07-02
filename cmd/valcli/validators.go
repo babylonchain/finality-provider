@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/urfave/cli"
+
+	"github.com/babylonchain/btc-validator/val"
 )
 
 var validatorsCommands = []cli.Command{
@@ -22,7 +23,8 @@ var validatorsCommands = []cli.Command{
 }
 
 const (
-	secretFlag = "seed"
+	bbnPrivKeyFlag = "babylon-priv-key"
+	btcPrivKeyFlag = "btc-priv-key"
 )
 
 var createValidator = cli.Command{
@@ -31,8 +33,12 @@ var createValidator = cli.Command{
 	Usage:     "create a BTC val object using local BTC and Babylon keyrings",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  secretFlag,
-			Usage: "Use the given secret to generate the Babylon private key",
+			Name:  bbnPrivKeyFlag,
+			Usage: "Use the given Babylon private key to generate the validator",
+		},
+		cli.StringFlag{
+			Name:  btcPrivKeyFlag,
+			Usage: "Use the given BTC private key to generate the validator",
 		},
 	},
 	Action: createVal,
@@ -40,24 +46,49 @@ var createValidator = cli.Command{
 
 func createVal(ctx *cli.Context) error {
 	var (
-		bbnPrivKey *secp256k1.PrivKey
+		bbnPrivKey *btcec.PrivateKey
+		bbnPubKey  *btcec.PublicKey
+
 		btcPrivKey *btcec.PrivateKey
+		btcPubKey  *btcec.PublicKey
+
+		err error
 	)
 
-	if ctx.IsSet(secretFlag) {
-		secret, err := hex.DecodeString(ctx.String(secretFlag))
+	if ctx.IsSet(bbnPrivKeyFlag) {
+		bbnPrivKeyBytes, err := hex.DecodeString(ctx.String(bbnPrivKeyFlag))
 		if err != nil {
-			return fmt.Errorf("failed to generate the Babylon private key: %w", err)
+			return fmt.Errorf("failed to decode the Babylon private key from the given bytes: %w", err)
 		}
-		bbnPrivKey = secp256k1.GenPrivKeyFromSecret(secret)
+		bbnPrivKey, bbnPubKey = btcec.PrivKeyFromBytes(bbnPrivKeyBytes)
+	} else {
+		bbnPrivKey, err = btcec.NewPrivateKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate Babylon private key: %w", err)
+		}
+		_, bbnPubKey = btcec.PrivKeyFromBytes(bbnPrivKey.Serialize())
 	}
 
-	bbnPrivKey = secp256k1.GenPrivKey()
-
-	btcPrivKey, err := btcec.NewPrivateKey()
-	if err != nil {
-		return fmt.Errorf("failed to generate the BTC private key: %w", err)
+	if ctx.IsSet(btcPrivKeyFlag) {
+		btcPrivKeyBytes, err := hex.DecodeString(ctx.String(btcPrivKeyFlag))
+		if err != nil {
+			return fmt.Errorf("failed to decode the Babylon private key from the given bytes: %w", err)
+		}
+		btcPrivKey, btcPubKey = btcec.PrivKeyFromBytes(btcPrivKeyBytes)
+	} else {
+		btcPrivKey, err = btcec.NewPrivateKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate Babylon private key: %w", err)
+		}
+		_, btcPubKey = btcec.PrivKeyFromBytes(btcPrivKey.Serialize())
 	}
+
+	validator := val.CreateValidator(bbnPubKey, btcPubKey)
+
+	// TODO: save the validator to db
+
+	fmt.Printf("A new BTC validator is created and stored in the database, Babylon public key: %x, BTC public key: %x",
+		validator.BabylonPk, validator.BtcPk)
 
 	return nil
 }

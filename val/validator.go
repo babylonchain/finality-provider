@@ -2,7 +2,16 @@ package val
 
 import (
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+
+	"github.com/babylonchain/btc-validator/valrpc"
 )
 
-func CreateValidator(pubkey *secp256k1.PubKey, key *btcec.PublicKey) *
+func CreateValidator(babylonPk *btcec.PublicKey, btcPk *btcec.PublicKey) *valrpc.Validator {
+	return &valrpc.Validator{
+		BabylonPk:            babylonPk.SerializeCompressed(),
+		BtcPk:                btcPk.SerializeCompressed(),
+		LastVotedBlockHeight: 0,
+		Status:               valrpc.ValidatorStatus_CREATED,
+		CommittedRandList:    nil,
+	}
+}
