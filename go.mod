@@ -3,7 +3,6 @@ module github.com/babylonchain/btc-validator
 go 1.20
 
 require (
-	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/cosmos/cosmos-sdk v0.47.3
 	github.com/urfave/cli v1.22.14
@@ -13,7 +12,6 @@ require (
 
 require (
 	cosmossdk.io/errors v1.0.0-beta.7 // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/cometbft/cometbft v0.37.1 // indirect
 	github.com/cosmos/gogoproto v1.4.10 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -21,7 +19,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/petermattis/goid v0.0.0-20230317030725-371a4b8eda08 // indirect

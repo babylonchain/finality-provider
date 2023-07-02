@@ -2,8 +2,7 @@ syntax = "proto3";
 
 package valrpc;
 
-import "gogoproto/gogo.proto";
-import "cosmos/crypto/secp256k1/keys.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 option go_package = "github.com/babylonchain/btc-val/valrpc";
 
