@@ -41,10 +41,6 @@ message SchnorrRandPair {
     bytes sec_rand = 2;
 }
 
-//    LastVotedBlockNumber - number
-//
-//    CommitedRandomness - List[(PublicRandomness, SecretRandomness)]
-
 // ValidatorStatus is the status of a BTC validator
 // a Validator object has 4 states:
 //  - Created - created and managed by validator client, not registered to
