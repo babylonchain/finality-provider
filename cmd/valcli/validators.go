@@ -66,7 +66,7 @@ func createVal(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to generate Babylon private key: %w", err)
 		}
-		_, bbnPubKey = btcec.PrivKeyFromBytes(bbnPrivKey.Serialize())
+		bbnPubKey = bbnPrivKey.PubKey()
 	}
 
 	if ctx.IsSet(btcPrivKeyFlag) {
@@ -80,7 +80,7 @@ func createVal(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to generate Babylon private key: %w", err)
 		}
-		_, btcPubKey = btcec.PrivKeyFromBytes(btcPrivKey.Serialize())
+		btcPubKey = btcPrivKey.PubKey()
 	}
 
 	validator := val.CreateValidator(bbnPubKey, btcPubKey)
