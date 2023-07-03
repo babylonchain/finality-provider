@@ -28,9 +28,9 @@ const (
 )
 
 var createValidator = cli.Command{
-	Name:      "create-val",
+	Name:      "create-validator",
 	ShortName: "cv",
-	Usage:     "create a BTC val object using local BTC and Babylon keyrings",
+	Usage:     "create a BTC validator object using local BTC and Babylon keyrings",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  bbnPrivKeyFlag,
@@ -94,9 +94,9 @@ func createVal(ctx *cli.Context) error {
 }
 
 var importValidator = cli.Command{
-	Name:      "import-val",
+	Name:      "import-validator",
 	ShortName: "iv",
-	Usage:     "import a BTC val object with given BTC and Babylon addresses",
+	Usage:     "import a BTC validator object with given BTC and Babylon addresses",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},
@@ -108,9 +108,9 @@ func importVal(ctx *cli.Context) error {
 }
 
 var registerValidator = cli.Command{
-	Name:      "register-val",
+	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "register a existed BTC val to Babylon",
+	Usage:     "register a existed BTC validator to Babylon",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},
