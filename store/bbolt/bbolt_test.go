@@ -1,8 +1,6 @@
 package bbolt_test
 
 import (
-	"bytes"
-	"encoding/gob"
 	"log"
 	"math/rand"
 	"os"
@@ -97,16 +95,6 @@ func cleanUp(store kvstore.Store, path string) {
 	if err != nil {
 		log.Printf("Error during cleaning up after a test (during removing the data directory): %v\n", err)
 	}
-}
-
-func encode(v interface{}) ([]byte, error) {
-	buffer := new(bytes.Buffer)
-	encoder := gob.NewEncoder(buffer)
-	err := encoder.Encode(v)
-	if err != nil {
-		return nil, err
-	}
-	return buffer.Bytes(), nil
 }
 
 func genRandomKVList(num int, r *rand.Rand) []*kvstore.KVPair {

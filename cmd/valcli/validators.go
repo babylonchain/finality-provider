@@ -47,10 +47,7 @@ var createValidator = cli.Command{
 func createVal(ctx *cli.Context) error {
 	var (
 		bbnPrivKey *btcec.PrivateKey
-		bbnPubKey  *btcec.PublicKey
-
 		btcPrivKey *btcec.PrivateKey
-		btcPubKey  *btcec.PublicKey
 
 		err error
 	)
@@ -60,13 +57,12 @@ func createVal(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to decode the Babylon private key from the given bytes: %w", err)
 		}
-		bbnPrivKey, bbnPubKey = btcec.PrivKeyFromBytes(bbnPrivKeyBytes)
+		bbnPrivKey, _ = btcec.PrivKeyFromBytes(bbnPrivKeyBytes)
 	} else {
 		bbnPrivKey, err = btcec.NewPrivateKey()
 		if err != nil {
 			return fmt.Errorf("failed to generate Babylon private key: %w", err)
 		}
-		bbnPubKey = bbnPrivKey.PubKey()
 	}
 
 	if ctx.IsSet(btcPrivKeyFlag) {
@@ -74,16 +70,15 @@ func createVal(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to decode the Babylon private key from the given bytes: %w", err)
 		}
-		btcPrivKey, btcPubKey = btcec.PrivKeyFromBytes(btcPrivKeyBytes)
+		btcPrivKey, _ = btcec.PrivKeyFromBytes(btcPrivKeyBytes)
 	} else {
 		btcPrivKey, err = btcec.NewPrivateKey()
 		if err != nil {
 			return fmt.Errorf("failed to generate Babylon private key: %w", err)
 		}
-		btcPubKey = btcPrivKey.PubKey()
 	}
 
-	validator := val.CreateValidator(bbnPubKey, btcPubKey)
+	validator := val.CreateValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
 
 	// TODO: save the validator to db
 
