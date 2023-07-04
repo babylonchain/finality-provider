@@ -1,15 +1,12 @@
 package bbolt_test
 
 import (
-	"log"
 	"math/rand"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	kvstore "github.com/babylonchain/btc-validator/store"
-	bolt "github.com/babylonchain/btc-validator/store/bbolt"
 	"github.com/babylonchain/btc-validator/testutil"
 )
 
@@ -18,8 +15,8 @@ func FuzzBboltStore(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
-		store, path := createStore(r, t)
-		defer cleanUp(store, path)
+		store, path := testutil.CreateStore(r, t)
+		defer testutil.CleanUp(store, path, t)
 
 		kvNum := r.Intn(10) + 1
 		kvList := genRandomKVList(kvNum, r)
@@ -70,31 +67,6 @@ func FuzzBboltStore(f *testing.F) {
 		require.False(t, exists)
 	})
 
-}
-
-func createStore(r *rand.Rand, t *testing.T) (kvstore.Store, string) {
-	bucketName := testutil.GenRandomHexStr(r, 10) + "-bbolt.db"
-	opt := bolt.Options{
-		BucketName: bucketName,
-		Path:       t.TempDir() + bucketName,
-	}
-	store, err := bolt.NewBboltStore(opt)
-	require.NoError(t, err)
-
-	return store, opt.Path
-}
-
-// cleanUp cleans up (deletes) the database file that has been created during a test.
-// If an error occurs the test is NOT marked as failed.
-func cleanUp(store kvstore.Store, path string) {
-	err := store.Close()
-	if err != nil {
-		log.Printf("Error during cleaning up after a test (during closing the store): %v\n", err)
-	}
-	err = os.RemoveAll(path)
-	if err != nil {
-		log.Printf("Error during cleaning up after a test (during removing the data directory): %v\n", err)
-	}
 }
 
 func genRandomKVList(num int, r *rand.Rand) []*kvstore.KVPair {

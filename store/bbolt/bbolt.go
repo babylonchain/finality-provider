@@ -7,6 +7,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 
 	"github.com/babylonchain/btc-validator/store"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 // BboltStore implements the Store interface
@@ -172,31 +173,24 @@ type Options struct {
 	Path string
 }
 
-// DefaultOptions is an Options object with default values.
-// BucketName: "default", Path: "bbolt.db", Codec: encoding.JSON
-var DefaultOptions = Options{
-	BucketName: "default",
-	Path:       "bbolt.db",
-}
-
 // NewBboltStore creates a new bbolt store.
 // Note: bbolt uses an exclusive write lock on the database file so it cannot be shared by multiple processes.
 // So when creating multiple clients you should always use a new database file (by setting a different Path in the options).
 //
 // You must call the Close() method on the store when you're done working with it.
-func NewBboltStore(options Options) (BboltStore, error) {
+func NewBboltStore(bucketName string, path string) (BboltStore, error) {
 	result := BboltStore{}
 
 	// Set default values
-	if options.BucketName == "" {
-		options.BucketName = DefaultOptions.BucketName
+	if bucketName == "" {
+		bucketName = valcfg.DefaultDBName
 	}
-	if options.Path == "" {
-		options.Path = DefaultOptions.Path
+	if path == "" {
+		path = valcfg.DefaultDBPath
 	}
 
 	// Open DB
-	db, err := bolt.Open(options.Path, 0600, nil)
+	db, err := bolt.Open(path, 0600, nil)
 	if err != nil {
 		return result, err
 	}
@@ -204,7 +198,7 @@ func NewBboltStore(options Options) (BboltStore, error) {
 	// Create a bucket if it doesn't exist yet.
 	// In bbolt key/value pairs are stored to and read from buckets.
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(options.BucketName))
+		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
 		if err != nil {
 			return err
 		}
@@ -215,7 +209,7 @@ func NewBboltStore(options Options) (BboltStore, error) {
 	}
 
 	result.db = db
-	result.bucketName = options.BucketName
+	result.bucketName = bucketName
 
 	return result, nil
 }

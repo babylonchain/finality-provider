@@ -5,6 +5,10 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+
+	"github.com/babylonchain/btc-validator/valrpc"
 )
 
 func GenRandomByteArray(r *rand.Rand, length uint64) []byte {
@@ -24,5 +28,12 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	var idx uint
 	for idx = 0; idx < num; idx++ {
 		f.Add(r.Int63())
+	}
+}
+
+func GenRandomValidator(r *rand.Rand) *valrpc.Validator {
+	return &valrpc.Validator{
+		BabylonPk: GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
+		BtcPk:     GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 	}
 }

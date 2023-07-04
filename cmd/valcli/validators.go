@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/val"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var validatorsCommands = []cli.Command{
@@ -17,7 +18,7 @@ var validatorsCommands = []cli.Command{
 		Usage:     "Control BTC validators.",
 		Category:  "Validators",
 		Subcommands: []cli.Command{
-			createValidator, importValidator, registerValidator,
+			createValidator, listValidators, importValidator, registerValidator,
 		},
 	},
 }
@@ -80,10 +81,55 @@ func createVal(ctx *cli.Context) error {
 
 	validator := val.CreateValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
 
-	// TODO: save the validator to db
+	dbcfg := &valcfg.DatabaseConfig{
+		DbType: ctx.GlobalString(dbTypeFlag),
+		Path:   ctx.GlobalString(dbPathFlag),
+		Name:   ctx.GlobalString(dbNameFlag),
+	}
+	s, err := openStore(dbcfg)
+	defer closeStore(s)
+	if err != nil {
+		return fmt.Errorf("failed to open the database: %w", err)
+	}
 
-	fmt.Printf("A new BTC validator is created and stored in the database, Babylon public key: %x, BTC public key: %x",
+	err = val.SaveValidator(s, validator)
+	if err != nil {
+		return fmt.Errorf("failed to save the created validator to the database: %w", err)
+	}
+
+	fmt.Printf("A new BTC validator is created and stored in the database!\n"+
+		"Babylon public key: %x\n"+
+		"BTC public key: %x\n",
 		validator.BabylonPk, validator.BtcPk)
+
+	return nil
+}
+
+var listValidators = cli.Command{
+	Name:      "list-validators",
+	ShortName: "ls",
+	Usage:     "list validators stored in the database",
+	Action:    lsVal,
+}
+
+func lsVal(ctx *cli.Context) error {
+	dbcfg := &valcfg.DatabaseConfig{
+		DbType: ctx.GlobalString(dbTypeFlag),
+		Path:   ctx.GlobalString(dbPathFlag),
+		Name:   ctx.GlobalString(dbNameFlag),
+	}
+	s, err := openStore(dbcfg)
+	defer closeStore(s)
+	if err != nil {
+		return fmt.Errorf("failed to open the database: %w", err)
+	}
+
+	valsList, err := val.ListValidators(s)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(valsList)
 
 	return nil
 }
