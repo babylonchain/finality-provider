@@ -156,16 +156,6 @@ func (s BboltStore) Close() error {
 	return s.db.Close()
 }
 
-// Options are the options for the bbolt store.
-type Options struct {
-	// Bucket name for storing the key-value pairs.
-	// Optional ("default" by default).
-	BucketName string
-	// Path of the DB file.
-	// Optional ("bbolt.db" by default).
-	Path string
-}
-
 // NewBboltStore creates a new bbolt store.
 // Note: bbolt uses an exclusive write lock on the database file so it cannot be shared by multiple processes.
 // So when creating multiple clients you should always use a new database file (by setting a different Path in the options).

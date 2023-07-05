@@ -66,6 +66,8 @@ func createVal(ctx *cli.Context) error {
 		return fmt.Errorf("failed to save the created validator to the database: %w", err)
 	}
 
+	// TODO: save private keys to a keyring
+
 	fmt.Printf("A new BTC validator is created and stored in the database!\n"+
 		"Babylon public key: %x\n"+
 		"BTC public key: %x\n",
