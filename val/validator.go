@@ -1,7 +1,6 @@
 package val
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -22,7 +21,7 @@ func CreateValidator(babylonPk *btcec.PublicKey, btcPk *btcec.PublicKey) *valrpc
 }
 
 func SaveValidator(s store.Store, val *valrpc.Validator) error {
-	k := hex.EncodeToString(val.BabylonPk)
+	k := val.BabylonPk
 	v, err := proto.Marshal(val)
 	if err != nil {
 		return fmt.Errorf("failed to marshal validator object: %w", err)
@@ -32,7 +31,7 @@ func SaveValidator(s store.Store, val *valrpc.Validator) error {
 }
 
 func ListValidators(s store.Store) ([]*valrpc.Validator, error) {
-	valsBytes, err := s.List("")
+	valsBytes, err := s.List(nil)
 	if err != nil {
 		return nil, err
 	}
