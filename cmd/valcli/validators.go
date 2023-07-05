@@ -47,7 +47,7 @@ func createVal(ctx *cli.Context) error {
 		return fmt.Errorf("failed to generate Babylon private key: %w", err)
 	}
 
-	validator := val.CreateValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
+	validator := val.NewValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
 
 	// TODO: save the validator to db
 
@@ -74,7 +74,7 @@ func importVal(ctx *cli.Context) error {
 var registerValidator = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "register a existed BTC validator to Babylon",
+	Usage:     "register a created BTC validator to Babylon",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},

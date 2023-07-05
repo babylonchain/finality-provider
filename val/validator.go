@@ -6,7 +6,7 @@ import (
 	"github.com/babylonchain/btc-validator/valrpc"
 )
 
-func CreateValidator(babylonPk *btcec.PublicKey, btcPk *btcec.PublicKey) *valrpc.Validator {
+func NewValidator(babylonPk *btcec.PublicKey, btcPk *btcec.PublicKey) *valrpc.Validator {
 	return &valrpc.Validator{
 		BabylonPk:            babylonPk.SerializeCompressed(),
 		BtcPk:                btcPk.SerializeCompressed(),
