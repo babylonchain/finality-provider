@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package valrpc;
 
-option go_package = "github.com/babylonchain/btc-validator/valrpc";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = "github.com/babylonchain/btc-val/valrpc";
 
 service BtcValidators {
     rpc RegisterValidator (RegisterValidatorRequest)
@@ -17,4 +19,52 @@ message RegisterValidatorRequest {
 message RegisterValidatorResponse {
     // hash of the successful Babylon registration transaction
     bytes tx_hash = 1;
+}
+
+message Validator {
+    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
+    bytes babylon_pk = 1;
+    // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
+    bytes btc_pk = 2;
+    // last_voted_block_height defines the height of the last voted Babylon
+    // block
+    uint64 last_voted_block_height = 3;
+    // status defines the current validator status
+    ValidatorStatus status = 4;
+    // committed_rand_list defines a list of Schnorr randomness pairs committed
+    // to Babylon
+    repeated SchnorrRandPair committed_rand_list = 5;
+}
+
+message SchnorrRandPair {
+    bytes pub_rand = 1;
+    bytes sec_rand = 2;
+}
+
+// ValidatorStatus is the status of a BTC validator
+// a Validator object has 4 states:
+//  - Created - created and managed by validator client, not registered to
+//  babylon yet
+//  - Registred - created and registered to Babylon, but not voting yet (No
+//  delegated stake)
+//  - Active - created and registered to Babylon with stake to vote
+//  - Inactive - created and registered to Babylon with no stake to vote.
+//  Validator was already active.
+// Valid State Transtions:
+//  - Created   -> Registred
+//  - Registred -> Active
+//  - Active    -> Inactive
+//  - Inactive  -> Active
+enum ValidatorStatus {
+    option (gogoproto.goproto_enum_prefix) = false;
+
+    // CREATED defines a validator that is awaiting registration
+    CREATED = 0 [(gogoproto.enumvalue_customname) = "Created"];
+    // REGISTERED defines a validator that has been registered to Babylon but
+    // has no delegated stake
+    REGISTERED = 1 [(gogoproto.enumvalue_customname) = "Registered"];
+    // ACTIVE defines a validator that is delegated to vote
+    ACTIVE = 2 [(gogoproto.enumvalue_customname) = "Active"];
+    // INACTIVE defines a validator whose delegations are reduced to zero
+    INACTIVE = 3 [(gogoproto.enumvalue_customname) = "Inactive"];
 }

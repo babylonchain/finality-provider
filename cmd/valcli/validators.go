@@ -1,6 +1,13 @@
 package main
 
-import "github.com/urfave/cli"
+import (
+	"fmt"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/urfave/cli"
+
+	"github.com/babylonchain/btc-validator/val"
+)
 
 var validatorsCommands = []cli.Command{
 	{
@@ -17,15 +24,37 @@ var validatorsCommands = []cli.Command{
 var createValidator = cli.Command{
 	Name:      "create-validator",
 	ShortName: "cv",
-	Usage:     "create a BTC validator object using local BTC and Babylon keyrings",
-	Flags:     []cli.Flag{
-		// TODO: add flags
-	},
-	Action: createVal,
+	Usage:     "create a BTC validator object and save it in database",
+	Flags:     []cli.Flag{},
+	Action:    createVal,
 }
 
 func createVal(ctx *cli.Context) error {
-	panic("implement me")
+	var (
+		bbnPrivKey *btcec.PrivateKey
+		btcPrivKey *btcec.PrivateKey
+
+		err error
+	)
+
+	bbnPrivKey, err = btcec.NewPrivateKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate Babylon private key: %w", err)
+	}
+
+	btcPrivKey, err = btcec.NewPrivateKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate Babylon private key: %w", err)
+	}
+
+	validator := val.NewValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
+
+	// TODO: save the validator to db
+
+	fmt.Printf("A new BTC validator is created and stored in the database, Babylon public key: %x, BTC public key: %x",
+		validator.BabylonPk, validator.BtcPk)
+
+	return nil
 }
 
 var importValidator = cli.Command{
@@ -45,7 +74,7 @@ func importVal(ctx *cli.Context) error {
 var registerValidator = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "register a BTC validator to Babylon",
+	Usage:     "register a created BTC validator to Babylon",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},
