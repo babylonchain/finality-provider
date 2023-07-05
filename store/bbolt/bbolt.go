@@ -18,15 +18,14 @@ type BboltStore struct {
 // Put stores the given value for the given key.
 // Values are automatically marshalled to JSON or gob.
 // The key must not be "" and the value must not be nil.
-func (s BboltStore) Put(k string, v []byte) error {
-	err := checkKeyAndValue(k, v)
-	if err != nil {
+func (s BboltStore) Put(k []byte, v []byte) error {
+	if err := checkKeyAndValue(k, v); err != nil {
 		return err
 	}
 
-	err = s.db.Update(func(tx *bolt.Tx) error {
+	err := s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		return b.Put([]byte(k), v)
+		return b.Put(k, v)
 	})
 	if err != nil {
 		return err
@@ -35,24 +34,22 @@ func (s BboltStore) Put(k string, v []byte) error {
 }
 
 // Get retrieves the stored value for the given key.
-func (s BboltStore) Get(k string) ([]byte, error) {
-	err := checkKey(k)
-	if err != nil {
+func (s BboltStore) Get(k []byte) ([]byte, error) {
+	if err := checkKey(k); err != nil {
 		return nil, err
 	}
 
 	var data []byte
-	err = s.db.View(func(tx *bolt.Tx) error {
+	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		data = b.Get([]byte(k))
+		data = b.Get(k)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	err = checkValue(data)
-	if err != nil {
+	if err := checkValue(data); err != nil {
 		return nil, err
 	}
 
@@ -60,16 +57,15 @@ func (s BboltStore) Get(k string) ([]byte, error) {
 }
 
 // Exists checks whether the given key exists in the store.
-func (s BboltStore) Exists(k string) (bool, error) {
-	err := checkKey(k)
-	if err != nil {
+func (s BboltStore) Exists(k []byte) (bool, error) {
+	if err := checkKey(k); err != nil {
 		return false, err
 	}
 
 	var data []byte
-	err = s.db.View(func(tx *bolt.Tx) error {
+	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		data = b.Get([]byte(k))
+		data = b.Get(k)
 		return checkValue(data)
 	})
 
@@ -80,8 +76,8 @@ func (s BboltStore) Exists(k string) (bool, error) {
 	return true, nil
 }
 
-func (s BboltStore) List(keyPrefix string) ([]*store.KVPair, error) {
-	if keyPrefix == "" {
+func (s BboltStore) List(keyPrefix []byte) ([]*store.KVPair, error) {
+	if len(keyPrefix) == 0 {
 		return s.listFromStart()
 	}
 
@@ -90,15 +86,14 @@ func (s BboltStore) List(keyPrefix string) ([]*store.KVPair, error) {
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
 		cursor := b.Cursor()
-		prefix := []byte(keyPrefix)
+		prefix := keyPrefix
 
 		for key, v := cursor.Seek(prefix); bytes.HasPrefix(key, prefix); key, v = cursor.Next() {
-			err := checkValue(v)
-			if err != nil {
+			if err := checkValue(v); err != nil {
 				return err
 			}
 			kvList = append(kvList, &store.KVPair{
-				Key:   string(key),
+				Key:   key,
 				Value: v,
 			})
 		}
@@ -123,12 +118,11 @@ func (s BboltStore) listFromStart() ([]*store.KVPair, error) {
 			if key == nil {
 				break
 			}
-			err := checkValue(v)
-			if err != nil {
+			if err := checkValue(v); err != nil {
 				return err
 			}
 			kvList = append(kvList, &store.KVPair{
-				Key:   string(key),
+				Key:   key,
 				Value: v,
 			})
 		}
@@ -144,15 +138,14 @@ func (s BboltStore) listFromStart() ([]*store.KVPair, error) {
 
 // Delete deletes the stored value for the given key.
 // Deleting a non-existing key-value pair does NOT lead to an error.
-func (s BboltStore) Delete(k string) error {
-	err := checkKey(k)
-	if err != nil {
+func (s BboltStore) Delete(k []byte) error {
+	if err := checkKey(k); err != nil {
 		return err
 	}
 
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
-		return b.Delete([]byte(k))
+		return b.Delete(k)
 	})
 }
 
@@ -221,9 +214,9 @@ func NewBboltStore(options Options) (BboltStore, error) {
 }
 
 // checkKey returns an error if k == ""
-func checkKey(k string) error {
-	if k == "" {
-		return errors.New("the key should not be an empty string")
+func checkKey(k []byte) error {
+	if len(k) == 0 {
+		return errors.New("the key should not be empty")
 	}
 	return nil
 }
@@ -237,7 +230,7 @@ func checkValue(v []byte) error {
 }
 
 // checkKeyAndValue returns an error if k == "" or if v == nil
-func checkKeyAndValue(k string, v []byte) error {
+func checkKeyAndValue(k []byte, v []byte) error {
 	if err := checkKey(k); err != nil {
 		return err
 	}

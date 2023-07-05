@@ -53,7 +53,7 @@ func FuzzBboltStore(f *testing.F) {
 		}
 
 		// List all the KV pairs
-		newKvList, err := store.List("")
+		newKvList, err := store.List(nil)
 		require.NoError(t, err)
 		require.Equal(t, kvNum, len(newKvList))
 		require.Equal(t, len(kvList), len(newKvList))
@@ -109,7 +109,7 @@ func genRandomKVList(num int, r *rand.Rand) []*kvstore.KVPair {
 }
 
 func genRandomKV(r *rand.Rand) *kvstore.KVPair {
-	k := testutil.GenRandomHexStr(r, 100)
+	k := testutil.GenRandomByteArray(r, 100)
 	v := testutil.GenRandomByteArray(r, 1000)
 	return &kvstore.KVPair{
 		Key:   k,
