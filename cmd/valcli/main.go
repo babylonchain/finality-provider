@@ -7,8 +7,6 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/btc-validator/store"
-	"github.com/babylonchain/btc-validator/store/bbolt"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -32,24 +30,6 @@ const (
 	dbPathFlag = "db-path"
 	dbNameFlag = "db-name"
 )
-
-// openStore returns a Store instance with the given db type, path and name
-// currently, we only support bbolt
-func openStore(dbcfg *valcfg.DatabaseConfig) (store.Store, error) {
-	switch dbcfg.DbType {
-	case "bbolt":
-		return bbolt.NewBboltStore(dbcfg.Name, dbcfg.Path)
-	default:
-		return nil, fmt.Errorf("unsupported database type")
-	}
-}
-
-func closeStore(s store.Store) {
-	err := s.Close()
-	if err != nil {
-		panic(err)
-	}
-}
 
 func main() {
 	app := cli.NewApp()

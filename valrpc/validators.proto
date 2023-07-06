@@ -7,8 +7,41 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 option go_package = "github.com/babylonchain/btc-val/valrpc";
 
 service BtcValidators {
+    // CreateValidator generates and saves a validator object
+    rpc CreateValidator (CreateValidatorRequest)
+        returns (CreateValidatorResponse);
+
+    // RegisterValidator sends a transactions to Babylon to register a BTC
+    // validator
     rpc RegisterValidator (RegisterValidatorRequest)
         returns (RegisterValidatorResponse);
+
+    // QueryValidator queries the validator
+    rpc QueryValidator (QueryValidatorRequest) returns (QueryValidatorResponse);
+    // QueryValidatorList queries a list of validators
+    rpc QueryValidatorList (QueryValidatorListRequest)
+        returns (QueryValidatorListResponse);
+}
+
+message DbOptions {
+    // db_type is the type of the DB to store the created validator
+    string db_type = 1;
+    // db_path is the path of the DB
+    string db_path = 2;
+    // db_name is the name of the DB bucket
+    string db_name = 3;
+}
+
+message CreateValidatorRequest {
+    // db_options is the options of the database
+    DbOptions db_options = 1;
+}
+
+message CreateValidatorResponse {
+    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
+    bytes babylon_pk = 1;
+    // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
+    bytes btc_pk = 2;
 }
 
 message RegisterValidatorRequest {
@@ -21,19 +54,41 @@ message RegisterValidatorResponse {
     bytes tx_hash = 1;
 }
 
+message QueryValidatorRequest {
+    // db_options is the options of the database
+    DbOptions db_options = 1;
+    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
+    // used as the identifier of the created validator
+    bytes babylon_pk = 2;
+}
+
+message QueryValidatorResponse {
+    Validator validator = 1;
+}
+
+message QueryValidatorListRequest {
+    // db_options is the options of the database
+    DbOptions db_options = 1;
+    // TODO add pagination in case the list gets large
+}
+
+message QueryValidatorListResponse {
+    repeated Validator validators = 1;
+    // TODO add pagination in case the list gets large
+}
+
 message Validator {
     // babylon_pk is the Babylon secp256k1 PK of this BTC validator
     bytes babylon_pk = 1;
     // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
     bytes btc_pk = 2;
-    // last_voted_block_height defines the height of the last voted Babylon
-    // block
-    uint64 last_voted_block_height = 3;
+    // last_voted_height defines the height of the last voted Babylon block
+    uint64 last_voted_height = 3;
+    // last_committed_height defines the height of the last Babylon block
+    // to which the validator committed a randomness pair
+    uint64 last_committed_height = 4;
     // status defines the current validator status
-    ValidatorStatus status = 4;
-    // committed_rand_list defines a list of Schnorr randomness pairs committed
-    // to Babylon
-    repeated SchnorrRandPair committed_rand_list = 5;
+    ValidatorStatus status = 5;
 }
 
 message SchnorrRandPair {
@@ -41,30 +96,41 @@ message SchnorrRandPair {
     bytes sec_rand = 2;
 }
 
+// CommittedRandPair defines the Schonorr randomness pair that has been
+// committed to Babylon stored in the DB as: babylon_pk + committed_height ->
+// pair
+message CommittedRandPair {
+    SchnorrRandPair pair = 1;
+}
+
 // ValidatorStatus is the status of a BTC validator
 // a Validator object has 4 states:
 //  - Created - created and managed by validator client, not registered to
 //  babylon yet
-//  - Registred - created and registered to Babylon, but not voting yet (No
+//  - Registered - created and registered to Babylon, but not voting yet (No
 //  delegated stake)
 //  - Active - created and registered to Babylon with stake to vote
 //  - Inactive - created and registered to Babylon with no stake to vote.
 //  Validator was already active.
-// Valid State Transtions:
-//  - Created   -> Registred
-//  - Registred -> Active
+// Valid State Transactions:
+//  - Created   -> Registered
+//  - Registered -> Active
 //  - Active    -> Inactive
 //  - Inactive  -> Active
 enum ValidatorStatus {
     option (gogoproto.goproto_enum_prefix) = false;
 
-    // CREATED defines a validator that is awaiting registration
-    CREATED = 0 [(gogoproto.enumvalue_customname) = "Created"];
-    // REGISTERED defines a validator that has been registered to Babylon but
-    // has no delegated stake
-    REGISTERED = 1 [(gogoproto.enumvalue_customname) = "Registered"];
-    // ACTIVE defines a validator that is delegated to vote
-    ACTIVE = 2 [(gogoproto.enumvalue_customname) = "Active"];
-    // INACTIVE defines a validator whose delegations are reduced to zero
-    INACTIVE = 3 [(gogoproto.enumvalue_customname) = "Inactive"];
+    // VALIDATOR_STATUS_CREATED defines a validator that is awaiting
+    // registration
+    VALIDATOR_STATUS_CREATED = 0 [(gogoproto.enumvalue_customname) = "Created"];
+    // VALIDATOR_STATUS_REGISTERED defines a validator that has been registered
+    // to Babylon but has no delegated stake
+    VALIDATOR_STATUS_REGISTERED = 1
+        [(gogoproto.enumvalue_customname) = "Registered"];
+    // VALIDATOR_STATUS_ACTIVE defines a validator that is delegated to vote
+    VALIDATOR_STATUS_ACTIVE = 2 [(gogoproto.enumvalue_customname) = "Active"];
+    // VALIDATOR_STATUS_INACTIVE defines a validator whose delegations are
+    // reduced to zero
+    VALIDATOR_STATUS_INACTIVE = 3
+        [(gogoproto.enumvalue_customname) = "Inactive"];
 }

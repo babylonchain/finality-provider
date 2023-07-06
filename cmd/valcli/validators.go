@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/val"
@@ -31,47 +30,21 @@ var createValidator = cli.Command{
 }
 
 func createVal(ctx *cli.Context) error {
-	var (
-		bbnPrivKey *btcec.PrivateKey
-		btcPrivKey *btcec.PrivateKey
-
-		err error
+	dbcfg, err := valcfg.NewDatabaseConfig(
+		ctx.GlobalString(dbTypeFlag),
+		ctx.GlobalString(dbPathFlag),
+		ctx.GlobalString(dbNameFlag),
 	)
-
-	bbnPrivKey, err = btcec.NewPrivateKey()
 	if err != nil {
-		return fmt.Errorf("failed to generate Babylon private key: %w", err)
+		return fmt.Errorf("invalid DB config: %w", err)
 	}
 
-	btcPrivKey, err = btcec.NewPrivateKey()
+	res, err := val.CreateValidator(val.NewCreateValidatorRequest(dbcfg))
 	if err != nil {
-		return fmt.Errorf("failed to generate Babylon private key: %w", err)
+		return err
 	}
 
-	validator := val.CreateValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
-
-	dbcfg := &valcfg.DatabaseConfig{
-		DbType: ctx.GlobalString(dbTypeFlag),
-		Path:   ctx.GlobalString(dbPathFlag),
-		Name:   ctx.GlobalString(dbNameFlag),
-	}
-	s, err := openStore(dbcfg)
-	defer closeStore(s)
-	if err != nil {
-		return fmt.Errorf("failed to open the database: %w", err)
-	}
-
-	err = val.SaveValidator(s, validator)
-	if err != nil {
-		return fmt.Errorf("failed to save the created validator to the database: %w", err)
-	}
-
-	// TODO: save private keys to a keyring
-
-	fmt.Printf("A new BTC validator is created and stored in the database!\n"+
-		"Babylon public key: %x\n"+
-		"BTC public key: %x\n",
-		validator.BabylonPk, validator.BtcPk)
+	printRespJSON(res)
 
 	return nil
 }
@@ -84,23 +57,21 @@ var listValidators = cli.Command{
 }
 
 func lsVal(ctx *cli.Context) error {
-	dbcfg := &valcfg.DatabaseConfig{
-		DbType: ctx.GlobalString(dbTypeFlag),
-		Path:   ctx.GlobalString(dbPathFlag),
-		Name:   ctx.GlobalString(dbNameFlag),
-	}
-	s, err := openStore(dbcfg)
-	defer closeStore(s)
+	dbcfg, err := valcfg.NewDatabaseConfig(
+		ctx.GlobalString(dbTypeFlag),
+		ctx.GlobalString(dbPathFlag),
+		ctx.GlobalString(dbNameFlag),
+	)
 	if err != nil {
-		return fmt.Errorf("failed to open the database: %w", err)
+		return fmt.Errorf("invalid DB config: %w", err)
 	}
 
-	valsList, err := val.ListValidators(s)
+	res, err := val.QueryValidatorList(val.NewQueryValidatorListRequest(dbcfg))
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(valsList)
+	printRespJSON(res)
 
 	return nil
 }

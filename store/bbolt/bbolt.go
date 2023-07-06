@@ -161,15 +161,15 @@ func (s BboltStore) Close() error {
 // So when creating multiple clients you should always use a new database file (by setting a different Path in the options).
 //
 // You must call the Close() method on the store when you're done working with it.
-func NewBboltStore(bucketName string, path string) (BboltStore, error) {
+func NewBboltStore(path string, bucketName string) (BboltStore, error) {
 	result := BboltStore{}
 
 	// Set default values
-	if bucketName == "" {
-		bucketName = valcfg.DefaultDBName
-	}
 	if path == "" {
 		path = valcfg.DefaultDBPath
+	}
+	if bucketName == "" {
+		bucketName = valcfg.DefaultDBName
 	}
 
 	// Open DB

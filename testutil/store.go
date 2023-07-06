@@ -14,7 +14,7 @@ import (
 func CreateStore(r *rand.Rand, t *testing.T) (kvstore.Store, string) {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
 	path := t.TempDir() + bucketName
-	store, err := bolt.NewBboltStore(bucketName, path)
+	store, err := bolt.NewBboltStore(path, bucketName)
 	require.NoError(t, err)
 
 	return store, path

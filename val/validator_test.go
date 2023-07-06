@@ -2,12 +2,13 @@ package val
 
 import (
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/testutil"
-	"github.com/babylonchain/btc-validator/valrpc"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 // FuzzValidators tests save and list validators properly
@@ -16,20 +17,27 @@ func FuzzValidators(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		s, path := testutil.CreateStore(r, t)
-		defer testutil.CleanUp(s, path, t)
-
-		valNum := r.Intn(10) + 1
-		valList := make([]*valrpc.Validator, valNum)
-		for i := 0; i < valNum; i++ {
-			valList[i] = testutil.GenRandomValidator(r)
-			err := SaveValidator(s, valList[i])
-			require.NoError(t, err)
-		}
-
-		valList2, err := ListValidators(s)
+		bucketName := testutil.GenRandomHexStr(r, 10) + "-bbolt.db"
+		path := t.TempDir() + bucketName
+		dbcfg, err := valcfg.NewDatabaseConfig(
+			"bbolt",
+			path,
+			bucketName,
+		)
 		require.NoError(t, err)
-		require.Equal(t, len(valList), len(valList2))
-	})
 
+		defer removeDbFile(path, t)
+
+		createValRes, err := CreateValidator(NewCreateValidatorRequest(dbcfg))
+		require.NoError(t, err)
+
+		queryRes, err := QueryValidatorList(NewQueryValidatorListRequest(dbcfg))
+		require.NoError(t, err)
+		require.Equal(t, createValRes.BabylonPk, queryRes.Validators[0].BabylonPk)
+	})
+}
+
+func removeDbFile(path string, t *testing.T) {
+	err := os.RemoveAll(path)
+	require.NoError(t, err)
 }
