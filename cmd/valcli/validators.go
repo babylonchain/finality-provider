@@ -122,7 +122,7 @@ func importVal(ctx *cli.Context) error {
 var registerValidator = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "register a existed BTC validator to Babylon",
+	Usage:     "register a created BTC validator to Babylon",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},
