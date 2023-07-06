@@ -56,10 +56,12 @@ func (vs *ValidatorStore) ListValidators() ([]*valrpc.Validator, error) {
 	return valsList, nil
 }
 
-func (vs *ValidatorStore) Close() {
+func (vs *ValidatorStore) Close() error {
 	if err := vs.s.Close(); err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 // openStore returns a Store instance with the given db type, path and name

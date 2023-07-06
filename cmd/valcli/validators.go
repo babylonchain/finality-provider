@@ -35,7 +35,9 @@ func createVal(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer vs.Close()
+	defer func() {
+		err = vs.Close()
+	}()
 
 	bbnPrivKey, btcPrivKey, err := val.GenerateValPrivKeys()
 	if err != nil {
@@ -54,7 +56,7 @@ func createVal(ctx *cli.Context) error {
 		BtcPk:     validator.BtcPk,
 	})
 
-	return nil
+	return err
 }
 
 var listValidators = cli.Command{
@@ -69,7 +71,9 @@ func lsVal(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer vs.Close()
+	defer func() {
+		err = vs.Close()
+	}()
 
 	valList, err := vs.ListValidators()
 	if err != nil {
