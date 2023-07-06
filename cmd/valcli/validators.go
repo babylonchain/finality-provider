@@ -7,6 +7,7 @@ import (
 
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
+	"github.com/babylonchain/btc-validator/valrpc"
 )
 
 var validatorsCommands = []cli.Command{
@@ -30,21 +31,28 @@ var createValidator = cli.Command{
 }
 
 func createVal(ctx *cli.Context) error {
-	dbcfg, err := valcfg.NewDatabaseConfig(
-		ctx.GlobalString(dbTypeFlag),
-		ctx.GlobalString(dbPathFlag),
-		ctx.GlobalString(dbNameFlag),
-	)
+	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
-		return fmt.Errorf("invalid DB config: %w", err)
+		return err
 	}
+	defer vs.Close()
 
-	res, err := val.CreateValidator(val.NewCreateValidatorRequest(dbcfg))
+	bbnPrivKey, btcPrivKey, err := val.GenerateValPrivKeys()
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(res)
+	// TODO secure private keys in a key string
+
+	validator := val.NewValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
+	if err := vs.SaveValidator(validator); err != nil {
+		return err
+	}
+
+	printRespJSON(&valrpc.CreateValidatorResponse{
+		BabylonPk: validator.BabylonPk,
+		BtcPk:     validator.BtcPk,
+	})
 
 	return nil
 }
@@ -57,21 +65,18 @@ var listValidators = cli.Command{
 }
 
 func lsVal(ctx *cli.Context) error {
-	dbcfg, err := valcfg.NewDatabaseConfig(
-		ctx.GlobalString(dbTypeFlag),
-		ctx.GlobalString(dbPathFlag),
-		ctx.GlobalString(dbNameFlag),
-	)
+	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
-		return fmt.Errorf("invalid DB config: %w", err)
+		return err
 	}
+	defer vs.Close()
 
-	res, err := val.QueryValidatorList(val.NewQueryValidatorListRequest(dbcfg))
+	valList, err := vs.ListValidators()
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(res)
+	printRespJSON(&valrpc.QueryValidatorListResponse{Validators: valList})
 
 	return nil
 }
@@ -102,4 +107,22 @@ var registerValidator = cli.Command{
 
 func registerVal(ctx *cli.Context) error {
 	panic("implement me")
+}
+
+func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
+	dbcfg, err := valcfg.NewDatabaseConfig(
+		ctx.GlobalString(dbTypeFlag),
+		ctx.GlobalString(dbPathFlag),
+		ctx.GlobalString(dbNameFlag),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB config: %w", err)
+	}
+
+	valStore, err := val.NewValidatorStore(dbcfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open the store: %w", err)
+	}
+
+	return valStore, nil
 }

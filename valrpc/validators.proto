@@ -23,18 +23,7 @@ service BtcValidators {
         returns (QueryValidatorListResponse);
 }
 
-message DbOptions {
-    // db_type is the type of the DB to store the created validator
-    string db_type = 1;
-    // db_path is the path of the DB
-    string db_path = 2;
-    // db_name is the name of the DB bucket
-    string db_name = 3;
-}
-
 message CreateValidatorRequest {
-    // db_options is the options of the database
-    DbOptions db_options = 1;
 }
 
 message CreateValidatorResponse {
@@ -55,11 +44,9 @@ message RegisterValidatorResponse {
 }
 
 message QueryValidatorRequest {
-    // db_options is the options of the database
-    DbOptions db_options = 1;
     // babylon_pk is the Babylon secp256k1 PK of this BTC validator
     // used as the identifier of the created validator
-    bytes babylon_pk = 2;
+    bytes babylon_pk = 1;
 }
 
 message QueryValidatorResponse {
@@ -67,8 +54,6 @@ message QueryValidatorResponse {
 }
 
 message QueryValidatorListRequest {
-    // db_options is the options of the database
-    DbOptions db_options = 1;
     // TODO add pagination in case the list gets large
 }
 

@@ -12,7 +12,7 @@ import (
 )
 
 // FuzzValidators tests save and list validators properly
-func FuzzValidators(f *testing.F) {
+func FuzzValidatorStore(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
@@ -26,14 +26,18 @@ func FuzzValidators(f *testing.F) {
 		)
 		require.NoError(t, err)
 
+		vs, err := NewValidatorStore(dbcfg)
+		require.NoError(t, err)
+
 		defer removeDbFile(path, t)
 
-		createValRes, err := CreateValidator(NewCreateValidatorRequest(dbcfg))
+		validator := testutil.GenRandomValidator(r)
+		err = vs.SaveValidator(validator)
 		require.NoError(t, err)
 
-		queryRes, err := QueryValidatorList(NewQueryValidatorListRequest(dbcfg))
+		valList, err := vs.ListValidators()
 		require.NoError(t, err)
-		require.Equal(t, createValRes.BabylonPk, queryRes.Validators[0].BabylonPk)
+		require.Equal(t, validator.BabylonPk, valList[0].BabylonPk)
 	})
 }
 
