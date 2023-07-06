@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/store"
-	"github.com/babylonchain/btc-validator/store/bbolt"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
 )
@@ -68,7 +67,7 @@ func (vs *ValidatorStore) Close() {
 func openStore(dbcfg *valcfg.DatabaseConfig) (store.Store, error) {
 	switch dbcfg.DbType {
 	case "bbolt":
-		return bbolt.NewBboltStore(dbcfg.Path, dbcfg.Name)
+		return store.NewBboltStore(dbcfg.Path, dbcfg.Name)
 	default:
 		return nil, fmt.Errorf("unsupported database type")
 	}

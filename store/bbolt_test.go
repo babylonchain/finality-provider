@@ -1,4 +1,4 @@
-package bbolt_test
+package store_test
 
 import (
 	"math/rand"

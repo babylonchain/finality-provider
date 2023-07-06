@@ -1,4 +1,4 @@
-package bbolt
+package store
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/babylonchain/btc-validator/store"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -77,12 +76,12 @@ func (s BboltStore) Exists(k []byte) (bool, error) {
 	return true, nil
 }
 
-func (s BboltStore) List(keyPrefix []byte) ([]*store.KVPair, error) {
+func (s BboltStore) List(keyPrefix []byte) ([]*KVPair, error) {
 	if len(keyPrefix) == 0 {
 		return s.listFromStart()
 	}
 
-	var kvList []*store.KVPair
+	var kvList []*KVPair
 
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
@@ -93,7 +92,7 @@ func (s BboltStore) List(keyPrefix []byte) ([]*store.KVPair, error) {
 			if err := checkValue(v); err != nil {
 				return err
 			}
-			kvList = append(kvList, &store.KVPair{
+			kvList = append(kvList, &KVPair{
 				Key:   key,
 				Value: v,
 			})
@@ -108,8 +107,8 @@ func (s BboltStore) List(keyPrefix []byte) ([]*store.KVPair, error) {
 	return kvList, nil
 }
 
-func (s BboltStore) listFromStart() ([]*store.KVPair, error) {
-	var kvList []*store.KVPair
+func (s BboltStore) listFromStart() ([]*KVPair, error) {
+	var kvList []*KVPair
 
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(s.bucketName))
@@ -122,7 +121,7 @@ func (s BboltStore) listFromStart() ([]*store.KVPair, error) {
 			if err := checkValue(v); err != nil {
 				return err
 			}
-			kvList = append(kvList, &store.KVPair{
+			kvList = append(kvList, &KVPair{
 				Key:   key,
 				Value: v,
 			})
