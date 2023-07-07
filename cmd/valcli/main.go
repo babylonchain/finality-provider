@@ -39,7 +39,7 @@ func main() {
 		cli.StringFlag{
 			Name:  dbTypeFlag,
 			Usage: "the type of the database",
-			Value: valcfg.DefaultDBType,
+			Value: valcfg.DefaultBackend,
 		},
 		cli.StringFlag{
 			Name:  dbPathFlag,
