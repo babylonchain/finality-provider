@@ -33,11 +33,14 @@ type rpcServer struct {
 }
 
 // newRPCServer creates a new RPC sever from the set of input dependencies.
-func newRPCServer(interceptor signal.Interceptor,
+func newRPCServer(
+	interceptor signal.Interceptor,
+	l *logrus.Logger,
 	cfg *valcfg.Config) (*rpcServer, error) {
 
 	return &rpcServer{
 		interceptor: interceptor,
+		logger:      l,
 		quit:        make(chan struct{}),
 		cfg:         cfg,
 	}, nil

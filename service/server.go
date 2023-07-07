@@ -51,7 +51,7 @@ func (s *Server) RunUntilShutdown() error {
 	}
 
 	defer func() {
-		s.logger.Info("Shutdown complete\n")
+		s.logger.Info("Shutdown complete")
 	}()
 
 	mkErr := func(format string, args ...interface{}) error {
@@ -137,7 +137,7 @@ func (s *Server) initialize() error {
 	// exported by the rpcServer.
 	var err error
 	s.rpcServer, err = newRPCServer(
-		s.interceptor, s.cfg,
+		s.interceptor, s.logger, s.cfg,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc server: %v", err)
