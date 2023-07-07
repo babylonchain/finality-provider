@@ -1,4 +1,4 @@
-package vald
+package main
 
 import (
 	"fmt"

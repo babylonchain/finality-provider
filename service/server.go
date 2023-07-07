@@ -20,8 +20,7 @@ import (
 // spinning up the RPC sever, the database, and any other components that the
 // Taproot Asset server needs to function.
 type Server struct {
-	started  int32
-	shutdown int32
+	started int32
 
 	cfg    *valcfg.Config
 	logger *logrus.Logger
@@ -31,7 +30,6 @@ type Server struct {
 	interceptor signal.Interceptor
 
 	quit chan struct{}
-	wg   sync.WaitGroup
 }
 
 // NewValidatorServer creates a new server with the given config.
@@ -90,6 +88,13 @@ func (s *Server) RunUntilShutdown() error {
 	err = s.rpcServer.RegisterWithGrpcServer(grpcServer)
 	if err != nil {
 		return mkErr("error registering gRPC server: %v", err)
+	}
+
+	// All the necessary components have been registered, so we can
+	// actually start listening for requests.
+	err = s.startGrpcListen(grpcServer, grpcListeners)
+	if err != nil {
+		return mkErr("error starting gRPC listener: %v", err)
 	}
 
 	defer func() {
@@ -153,6 +158,32 @@ func (s *Server) initialize() error {
 	shutdownFuncs["rpcServer"] = s.rpcServer.Stop
 
 	shutdownFuncs = nil
+
+	return nil
+}
+
+// startGrpcListen starts the GRPC server on the passed listeners.
+func (s *Server) startGrpcListen(grpcServer *grpc.Server, listeners []net.Listener) error {
+
+	// Use a WaitGroup so we can be sure the instructions on how to input the
+	// password is the last thing to be printed to the console.
+	var wg sync.WaitGroup
+
+	for _, lis := range listeners {
+		wg.Add(1)
+		go func(lis net.Listener) {
+			s.logger.Infof("RPC server listening on %s", lis.Addr())
+
+			// Close the ready chan to indicate we are listening.
+			defer lis.Close()
+
+			wg.Done()
+			_ = grpcServer.Serve(lis)
+		}(lis)
+	}
+
+	// Wait for gRPC servers to be up running.
+	wg.Wait()
 
 	return nil
 }
