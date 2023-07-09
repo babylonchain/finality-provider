@@ -35,9 +35,9 @@ const (
 )
 
 var (
-	//   C:\Users\<username>\AppData\Local\stakerd on Windows
-	//   ~/.stakerd on Linux
-	//   ~/Library/Application Support/vald on MacOS
+	//   C:\Users\<username>\AppData\Local\ on Windows
+	//   ~/.validatord on Linux
+	//   ~/Library/Application Support/Validatord on MacOS
 	DefaultValidatordDir = btcutil.AppDataDir("validatord", false)
 
 	DefaultConfigFile = filepath.Join(DefaultValidatordDir, defaultConfigFileName)

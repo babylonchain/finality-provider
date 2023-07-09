@@ -53,6 +53,7 @@ func main() {
 		},
 	}
 
+	app.Commands = append(app.Commands, daemonCommands...)
 	app.Commands = append(app.Commands, validatorsCommands...)
 
 	if err := app.Run(os.Args); err != nil {
