@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/codec"
+	sdktypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/go-bip39"
 	"github.com/urfave/cli"
@@ -15,6 +18,7 @@ import (
 )
 
 const (
+	keyringDirFlag     = "keyring-dir"
 	keyringBackendFlag = "keyring-backend"
 	keyNameFlag        = "key-name"
 
@@ -55,13 +59,20 @@ var createValidator = cli.Command{
 			Usage: "select keyring's backend (os|file|test)",
 			Value: defaultKeyringBackend,
 		},
+		cli.StringFlag{
+			Name:  keyringDirFlag,
+			Usage: "the directory where the keyring is stored",
+		},
 	},
 	Action: createVal,
 }
 
 func createVal(ctx *cli.Context) error {
-	// TODO add more sdk context fields
-	sdkCtx := client.Context{}
+	sdkCtx, err := createClientCtx(ctx)
+	if err != nil {
+		return err
+	}
+
 	kr, err := createKeyring(sdkCtx, ctx.String(keyringBackendFlag))
 	if err != nil {
 		return err
@@ -221,6 +232,22 @@ func createKey(name string, kr keyring.Keyring) (*btcec.PublicKey, error) {
 	}
 
 	return pk, nil
+}
+
+func createClientCtx(ctx *cli.Context) (client.Context, error) {
+	var err error
+
+	dir := ctx.String(keyringDirFlag)
+	if dir == "" {
+		dir, err = os.Getwd()
+		if err != nil {
+			return client.Context{}, err
+		}
+	}
+
+	return client.Context{}.
+		WithCodec(codec.NewProtoCodec(sdktypes.NewInterfaceRegistry())).
+		WithHomeDir(dir), nil
 }
 
 func keyExists(name string, kr keyring.Keyring) bool {

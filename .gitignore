@@ -6,6 +6,10 @@
 *.dylib
 *.db
 
+# Kerying
+.address
+.info
+
 # Test binary, built with `go test -c`
 *.test
 
