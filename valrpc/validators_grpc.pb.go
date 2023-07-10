@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
+	BtcValidators_GetInfo_FullMethodName            = "/valrpc.BtcValidators/GetInfo"
 	BtcValidators_CreateValidator_FullMethodName    = "/valrpc.BtcValidators/CreateValidator"
 	BtcValidators_RegisterValidator_FullMethodName  = "/valrpc.BtcValidators/RegisterValidator"
 	BtcValidators_QueryValidator_FullMethodName     = "/valrpc.BtcValidators/QueryValidator"
@@ -29,6 +30,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BtcValidatorsClient interface {
+	// GetInfo returns the information of the daemon
+	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error)
 	// CreateValidator generates and saves a validator object
 	CreateValidator(ctx context.Context, in *CreateValidatorRequest, opts ...grpc.CallOption) (*CreateValidatorResponse, error)
 	// RegisterValidator sends a transactions to Babylon to register a BTC
@@ -46,6 +49,15 @@ type btcValidatorsClient struct {
 
 func NewBtcValidatorsClient(cc grpc.ClientConnInterface) BtcValidatorsClient {
 	return &btcValidatorsClient{cc}
+}
+
+func (c *btcValidatorsClient) GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error) {
+	out := new(GetInfoResponse)
+	err := c.cc.Invoke(ctx, BtcValidators_GetInfo_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *btcValidatorsClient) CreateValidator(ctx context.Context, in *CreateValidatorRequest, opts ...grpc.CallOption) (*CreateValidatorResponse, error) {
@@ -88,6 +100,8 @@ func (c *btcValidatorsClient) QueryValidatorList(ctx context.Context, in *QueryV
 // All implementations must embed UnimplementedBtcValidatorsServer
 // for forward compatibility
 type BtcValidatorsServer interface {
+	// GetInfo returns the information of the daemon
+	GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error)
 	// CreateValidator generates and saves a validator object
 	CreateValidator(context.Context, *CreateValidatorRequest) (*CreateValidatorResponse, error)
 	// RegisterValidator sends a transactions to Babylon to register a BTC
@@ -104,6 +118,9 @@ type BtcValidatorsServer interface {
 type UnimplementedBtcValidatorsServer struct {
 }
 
+func (UnimplementedBtcValidatorsServer) GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
+}
 func (UnimplementedBtcValidatorsServer) CreateValidator(context.Context, *CreateValidatorRequest) (*CreateValidatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateValidator not implemented")
 }
@@ -127,6 +144,24 @@ type UnsafeBtcValidatorsServer interface {
 
 func RegisterBtcValidatorsServer(s grpc.ServiceRegistrar, srv BtcValidatorsServer) {
 	s.RegisterService(&BtcValidators_ServiceDesc, srv)
+}
+
+func _BtcValidators_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BtcValidatorsServer).GetInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BtcValidators_GetInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BtcValidatorsServer).GetInfo(ctx, req.(*GetInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _BtcValidators_CreateValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -208,6 +243,10 @@ var BtcValidators_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "valrpc.BtcValidators",
 	HandlerType: (*BtcValidatorsServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetInfo",
+			Handler:    _BtcValidators_GetInfo_Handler,
+		},
 		{
 			MethodName: "CreateValidator",
 			Handler:    _BtcValidators_CreateValidator_Handler,

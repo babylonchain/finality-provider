@@ -39,7 +39,7 @@ func main() {
 		cli.StringFlag{
 			Name:  dbTypeFlag,
 			Usage: "the type of the database",
-			Value: valcfg.DefaultDBType,
+			Value: valcfg.DefaultBackend,
 		},
 		cli.StringFlag{
 			Name:  dbPathFlag,
@@ -53,6 +53,7 @@ func main() {
 		},
 	}
 
+	app.Commands = append(app.Commands, daemonCommands...)
 	app.Commands = append(app.Commands, validatorsCommands...)
 
 	if err := app.Run(os.Args); err != nil {

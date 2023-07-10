@@ -67,7 +67,7 @@ func (vs *ValidatorStore) Close() error {
 // openStore returns a Store instance with the given db type, path and name
 // currently, we only support bbolt
 func openStore(dbcfg *valcfg.DatabaseConfig) (store.Store, error) {
-	switch dbcfg.DbType {
+	switch dbcfg.Backend {
 	case "bbolt":
 		return store.NewBboltStore(dbcfg.Path, dbcfg.Name)
 	default:

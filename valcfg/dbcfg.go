@@ -3,21 +3,21 @@ package valcfg
 import "fmt"
 
 const (
-	DefaultDBType = "bbolt"
-	DefaultDBPath = "bbolt.db"
-	DefaultDBName = "default"
+	DefaultBackend = "bbolt"
+	DefaultDBPath  = "bbolt.db"
+	DefaultDBName  = "default"
 )
 
 type DatabaseConfig struct {
-	DbType string
-	Path   string
-	Name   string
+	Backend string `long:"backend" description:"Possible database to choose as backend"`
+	Path    string `long:"path" description:"The path that stores the database file"`
+	Name    string `long:"path" description:"The name of the database"`
 }
 
-func NewDatabaseConfig(dbType string, path string, name string) (*DatabaseConfig, error) {
+func NewDatabaseConfig(backend string, path string, name string) (*DatabaseConfig, error) {
 	// TODO: add more supported DB types, currently we only support bbolt
-	if dbType != DefaultDBType {
-		return nil, fmt.Errorf("unsupported DB type")
+	if backend != DefaultBackend {
+		return nil, fmt.Errorf("unsupported DB backend")
 	}
 
 	if path == "" {
@@ -29,16 +29,16 @@ func NewDatabaseConfig(dbType string, path string, name string) (*DatabaseConfig
 	}
 
 	return &DatabaseConfig{
-		DbType: dbType,
-		Path:   path,
-		Name:   name,
+		Backend: backend,
+		Path:    path,
+		Name:    name,
 	}, nil
 }
 
 func DefaultDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
-		DbType: DefaultDBType,
-		Path:   DefaultDBPath,
-		Name:   DefaultDBName,
+		Backend: DefaultBackend,
+		Path:    DefaultDBPath,
+		Name:    DefaultDBName,
 	}
 }

@@ -7,6 +7,9 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 option go_package = "github.com/babylonchain/btc-val/valrpc";
 
 service BtcValidators {
+    // GetInfo returns the information of the daemon
+    rpc GetInfo (GetInfoRequest) returns (GetInfoResponse);
+
     // CreateValidator generates and saves a validator object
     rpc CreateValidator (CreateValidatorRequest)
         returns (CreateValidatorResponse);
@@ -21,6 +24,13 @@ service BtcValidators {
     // QueryValidatorList queries a list of validators
     rpc QueryValidatorList (QueryValidatorListRequest)
         returns (QueryValidatorListResponse);
+}
+
+message GetInfoRequest {
+}
+
+message GetInfoResponse {
+    string version = 1;
 }
 
 message CreateValidatorRequest {
