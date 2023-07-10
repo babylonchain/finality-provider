@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	chainIdFlag        = "chain-id"
 	keyringDirFlag     = "keyring-dir"
 	keyringBackendFlag = "keyring-backend"
 	keyNameFlag        = "key-name"
@@ -29,6 +30,7 @@ const (
 )
 
 var (
+	defaultChainID        = "test-chain"
 	defaultKeyringBackend = "test"
 )
 
@@ -49,6 +51,11 @@ var createValidator = cli.Command{
 	ShortName: "cv",
 	Usage:     "create a BTC validator object and save it in database",
 	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  chainIdFlag,
+			Usage: "the chainID of the Babylonchain",
+			Value: defaultChainID,
+		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
 			Usage:    "the unique name of the validator key",
@@ -195,7 +202,7 @@ func createKeyring(sdkCtx client.Context, keyringBackend string) (keyring.Keyrin
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
 
-	return client.NewKeyringFromBackend(sdkCtx, keyringBackend)
+	return keyring.New(sdkCtx.ChainID, keyringBackend, sdkCtx.KeyringDir, sdkCtx.Input, sdkCtx.Codec, sdkCtx.KeyringOptions...)
 }
 
 func createKey(name string, kr keyring.Keyring) (*btcec.PublicKey, error) {
@@ -246,6 +253,7 @@ func createClientCtx(ctx *cli.Context) (client.Context, error) {
 	}
 
 	return client.Context{}.
+		WithChainID(ctx.String(chainIdFlag)).
 		WithCodec(codec.NewProtoCodec(sdktypes.NewInterfaceRegistry())).
 		WithHomeDir(dir), nil
 }
