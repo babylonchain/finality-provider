@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/jessevdk/go-flags"
@@ -18,20 +17,12 @@ import (
 )
 
 const (
-	defaultDataDirname     = "data"
-	defaultTLSCertFilename = "tls.cert"
-	defaultTLSKeyFilename  = "tls.key"
-	defaultLogLevel        = "info"
-	defaultLogDirname      = "logs"
-	defaultLogFilename     = "validatord.log"
-	DefaultRPCPort         = 15812
-	// DefaultAutogenValidity is the default validity of a self-signed
-	// certificate. The value corresponds to 14 months
-	// (14 months * 30 days * 24 hours).
-	defaultTLSCertDuration = 14 * 30 * 24 * time.Hour
-	defaultConfigFileName  = "validatord.conf"
-	// DatabaseBackendBbolt is the name of the bbolt database backend
-	DatabaseBackendBbolt = "bbolt"
+	defaultDataDirname    = "data"
+	defaultLogLevel       = "info"
+	defaultLogDirname     = "logs"
+	defaultLogFilename    = "validatord.log"
+	DefaultRPCPort        = 15812
+	defaultConfigFileName = "validatord.conf"
 )
 
 var (

@@ -2,33 +2,24 @@ package babylonclient
 
 import (
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
 )
 
-type StakingParams struct {
-	// K-deep
-	ComfirmationTimeBlocks uint32
-	// W-deep
-	FinalizationTimeoutBlocks uint32
-
-	// Minimum amount of satoshis required for slashing transaction
-	MinSlashingTxFeeSat btcutil.Amount
-
+type ValidatorParams struct {
 	// Bitcoin public key of the current jury
 	JuryPk btcec.PublicKey
 }
 
 type BabylonClient interface {
-	Params() (*StakingParams, error)
+	Params() (*ValidatorParams, error)
 }
 
 type MockBabylonClient struct {
-	ClientParams *StakingParams
+	ClientParams *ValidatorParams
 }
 
 var _ BabylonClient = (*MockBabylonClient)(nil)
 
-func (m *MockBabylonClient) Params() (*StakingParams, error) {
+func (m *MockBabylonClient) Params() (*ValidatorParams, error) {
 	return m.ClientParams, nil
 }
 
@@ -40,11 +31,8 @@ func GetMockClient() *MockBabylonClient {
 	}
 
 	return &MockBabylonClient{
-		ClientParams: &StakingParams{
-			ComfirmationTimeBlocks:    2,
-			FinalizationTimeoutBlocks: 5,
-			MinSlashingTxFeeSat:       btcutil.Amount(1000),
-			JuryPk:                    *juryPk.PubKey(),
+		ClientParams: &ValidatorParams{
+			JuryPk: *juryPk.PubKey(),
 		},
 	}
 }
