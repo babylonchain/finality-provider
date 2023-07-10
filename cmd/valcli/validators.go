@@ -225,9 +225,5 @@ func createKey(name string, kr keyring.Keyring) (*btcec.PublicKey, error) {
 
 func keyExists(name string, kr keyring.Keyring) bool {
 	_, err := kr.Key(name)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
