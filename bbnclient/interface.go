@@ -2,21 +2,21 @@ package babylonclient
 
 import (
 	"github.com/babylonchain/babylon/types"
-
-	"github.com/babylonchain/btc-validator/valrpc"
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 )
 
 type BabylonClient interface {
-	// RegisterValidator registers a BTC validator to Babylon
+	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 	// it returns tx hash and error
-	RegisterValidator(validator *valrpc.Validator) ([]byte, error)
-	// CommitPubRandList commits a list of Schnorr public randomness to Babylon
+	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error)
+	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error
 	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []*types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error)
-	// SubmitJurySig submits the Jury signature to Babylon if the daemon runs in Jury mode
+	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
 	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error)
-	// SubmitFinalitySig submits the finality signature to Babylon
+	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, error)
 
 	// Note: the following queries are only for PoC
