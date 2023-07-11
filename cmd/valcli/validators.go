@@ -9,8 +9,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdktypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
 	"github.com/urfave/cli"
+
+	"github.com/babylonchain/babylon/types"
 
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -93,13 +96,13 @@ func createVal(ctx *cli.Context) error {
 	}
 
 	// create babylon keyring
-	babylonPubKey, err := createKey(bbnName, kr)
+	babylonPubKey, err := createBabylonKey(bbnName, kr)
 	if err != nil {
 		return err
 	}
 
 	// create BTC keyring
-	btcPubKey, err := createKey(btcName, kr)
+	btcPubKey, err := createBIP340PubKey(btcName, kr)
 	if err != nil {
 		return err
 	}
@@ -205,7 +208,7 @@ func createKeyring(sdkCtx client.Context, keyringBackend string) (keyring.Keyrin
 	return keyring.New(sdkCtx.ChainID, keyringBackend, sdkCtx.KeyringDir, sdkCtx.Input, sdkCtx.Codec, sdkCtx.KeyringOptions...)
 }
 
-func createKey(name string, kr keyring.Keyring) (*btcec.PublicKey, error) {
+func createBabylonKey(name string, kr keyring.Keyring) (*secp256k1.PubKey, error) {
 	keyringAlgos, _ := kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
@@ -228,17 +231,30 @@ func createKey(name string, kr keyring.Keyring) (*btcec.PublicKey, error) {
 		return nil, err
 	}
 
-	pkBytes, err := record.GetPubKey()
+	pubKey, err := record.GetPubKey()
 	if err != nil {
 		return nil, err
 	}
 
-	pk, err := btcec.ParsePubKey(pkBytes.Bytes())
+	switch v := pubKey.(type) {
+	case *secp256k1.PubKey:
+		return v, nil
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
+	}
+}
+
+func createBIP340PubKey(name string, kr keyring.Keyring) (*types.BIP340PubKey, error) {
+	sdkPubKey, err := createBabylonKey(name, kr)
 	if err != nil {
 		return nil, err
 	}
 
-	return pk, nil
+	btcPk, err := btcec.ParsePubKey(sdkPubKey.Key)
+	if err != nil {
+		return nil, err
+	}
+	return types.NewBIP340PubKeyFromBTCPK(btcPk), nil
 }
 
 func createClientCtx(ctx *cli.Context) (client.Context, error) {
