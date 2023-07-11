@@ -25,7 +25,7 @@ type BabylonClient interface {
 	// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
 	// it is only used when the program is running in Jury mode
 	// it returns a list of public keys used for delegations
-	QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, *types.BIP340PubKey, error)
+	QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, []*types.BIP340PubKey, error)
 	// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
 	QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
 }
