@@ -12,7 +12,7 @@ type BabylonClient interface {
 	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error
-	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []*types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error)
+	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error)
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
 	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error)
@@ -20,14 +20,12 @@ type BabylonClient interface {
 	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, error)
 
 	// Note: the following queries are only for PoC
-	// TODO is Babylon ready for such quereis?
-	// ShouldValidatorCommitPubRand asks Babylon if the validator's public randomness used out
-	// it also returns the start height
-	ShouldValidatorCommitPubRand(btcPubKey *types.BIP340PubKey) (bool, uint64, error)
-	// ShouldSubmitJurySig asks Babylon if the Jury should submit a Jury sig
+	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
+	QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error)
+	// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
 	// it is only used when the program is running in Jury mode
-	// it also returns the public key used in the delegation
-	ShouldSubmitJurySig(btcPubKey *types.BIP340PubKey) (bool, *types.BIP340PubKey, error)
-	// ShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
-	ShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
+	// it returns a list of public keys used for delegations
+	QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, *types.BIP340PubKey, error)
+	// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
+	QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
 }
