@@ -77,13 +77,15 @@ message Validator {
     bytes babylon_pk = 1;
     // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
     bytes btc_pk = 2;
+    // key_name is the identifier of the keyring
+    string key_name = 3;
     // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 3;
+    uint64 last_voted_height = 4;
     // last_committed_height defines the height of the last Babylon block
     // to which the validator committed a randomness pair
-    uint64 last_committed_height = 4;
+    uint64 last_committed_height = 5;
     // status defines the current validator status
-    ValidatorStatus status = 5;
+    ValidatorStatus status = 6;
 }
 
 message SchnorrRandPair {
