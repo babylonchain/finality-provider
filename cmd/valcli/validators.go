@@ -2,12 +2,28 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path"
 
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/urfave/cli"
 
+	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
+)
+
+const (
+	chainIdFlag        = "chain-id"
+	keyringDirFlag     = "keyring-dir"
+	keyringBackendFlag = "keyring-backend"
+	keyNameFlag        = "key-name"
+)
+
+var (
+	defaultChainID        = "test-chain"
+	defaultKeyringBackend = "test"
 )
 
 var validatorsCommands = []cli.Command{
@@ -26,11 +42,51 @@ var createValidator = cli.Command{
 	Name:      "create-validator",
 	ShortName: "cv",
 	Usage:     "create a BTC validator object and save it in database",
-	Flags:     []cli.Flag{},
-	Action:    createVal,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  chainIdFlag,
+			Usage: "the chainID of the Babylonchain",
+			Value: defaultChainID,
+		},
+		cli.StringFlag{
+			Name:     keyNameFlag,
+			Usage:    "the unique name of the validator key",
+			Required: true,
+		},
+		cli.StringFlag{
+			Name:  keyringBackendFlag,
+			Usage: "select keyring's backend (os|file|test)",
+			Value: defaultKeyringBackend,
+		},
+		cli.StringFlag{
+			Name:  keyringDirFlag,
+			Usage: "the directory where the keyring is stored",
+		},
+	},
+	Action: createVal,
 }
 
 func createVal(ctx *cli.Context) error {
+	sdkCtx, err := createClientCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	krController, err := val.NewKeyringController(
+		sdkCtx,
+		ctx.String(keyNameFlag),
+		ctx.String(keyringBackendFlag),
+	)
+	if err != nil {
+		return err
+	}
+
+	if krController.KeyNameTaken() {
+		return fmt.Errorf("the key name is taken")
+	}
+
+	validator, err := krController.CreateBTCValidator()
+
 	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
 		return err
@@ -39,14 +95,6 @@ func createVal(ctx *cli.Context) error {
 		err = vs.Close()
 	}()
 
-	bbnPrivKey, btcPrivKey, err := val.GenerateValPrivKeys()
-	if err != nil {
-		return err
-	}
-
-	// TODO secure private keys in a key string
-
-	validator := val.NewValidator(bbnPrivKey.PubKey(), btcPrivKey.PubKey())
 	if err := vs.SaveValidator(validator); err != nil {
 		return err
 	}
@@ -129,4 +177,23 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 	}
 
 	return valStore, nil
+}
+
+func createClientCtx(ctx *cli.Context) (client.Context, error) {
+	var err error
+	var homeDir string
+
+	dir := ctx.String(keyringDirFlag)
+	if dir == "" {
+		homeDir, err = os.UserHomeDir()
+		if err != nil {
+			return client.Context{}, err
+		}
+		dir = path.Join(homeDir, ".btc-validator")
+	}
+
+	return client.Context{}.
+		WithChainID(ctx.String(chainIdFlag)).
+		WithCodec(codec.MakeCodec()).
+		WithKeyringDir(dir), nil
 }
