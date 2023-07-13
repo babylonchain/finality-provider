@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cosmos/cosmos-sdk/client"
 
+	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/valrpc"
 )
 
@@ -36,4 +38,13 @@ func GenRandomValidator(r *rand.Rand) *valrpc.Validator {
 		BabylonPk: GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 		BtcPk:     GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 	}
+}
+
+func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {
+	chainID := "testchain-" + GenRandomHexStr(r, 4)
+	dir := t.TempDir()
+	return client.Context{}.
+		WithChainID(chainID).
+		WithCodec(codec.MakeCodec()).
+		WithKeyringDir(dir)
 }

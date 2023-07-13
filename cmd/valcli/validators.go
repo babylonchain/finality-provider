@@ -3,15 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdktypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/go-bip39"
 	"github.com/urfave/cli"
 
+	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
@@ -22,11 +19,6 @@ const (
 	keyringDirFlag     = "keyring-dir"
 	keyringBackendFlag = "keyring-backend"
 	keyNameFlag        = "key-name"
-
-	secp256k1Type       = "secp256k1"
-	btcPrefix           = "btc-"
-	babylonPrefix       = "bbn-"
-	mnemonicEntropySize = 256
 )
 
 var (
@@ -80,29 +72,20 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
-	kr, err := createKeyring(sdkCtx, ctx.String(keyringBackendFlag))
+	krController, err := val.NewKeyringController(
+		sdkCtx,
+		ctx.String(keyNameFlag),
+		ctx.String(keyringBackendFlag),
+	)
 	if err != nil {
 		return err
 	}
 
-	keyName := ctx.String(keyNameFlag)
-	bbnName := babylonPrefix + keyName
-	btcName := btcPrefix + keyName
-	if keyExists(bbnName, kr) || keyExists(btcName, kr) {
-		return fmt.Errorf("the key name is taken, please choose another one")
+	if krController.KeyNameTaken() {
+		return fmt.Errorf("the key name is taken")
 	}
 
-	// create babylon keyring
-	babylonPubKey, err := createKey(bbnName, kr)
-	if err != nil {
-		return err
-	}
-
-	// create BTC keyring
-	btcPubKey, err := createKey(btcName, kr)
-	if err != nil {
-		return err
-	}
+	validator, err := krController.CreateBTCValidator()
 
 	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
@@ -112,7 +95,6 @@ func createVal(ctx *cli.Context) error {
 		err = vs.Close()
 	}()
 
-	validator := val.NewValidator(babylonPubKey, btcPubKey)
 	if err := vs.SaveValidator(validator); err != nil {
 		return err
 	}
@@ -197,68 +179,21 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 	return valStore, nil
 }
 
-func createKeyring(sdkCtx client.Context, keyringBackend string) (keyring.Keyring, error) {
-	if keyringBackend == "" {
-		return nil, fmt.Errorf("the keyring backend should not be empty")
-	}
-
-	return keyring.New(sdkCtx.ChainID, keyringBackend, sdkCtx.KeyringDir, sdkCtx.Input, sdkCtx.Codec, sdkCtx.KeyringOptions...)
-}
-
-func createKey(name string, kr keyring.Keyring) (*btcec.PublicKey, error) {
-	keyringAlgos, _ := kr.SupportedAlgorithms()
-	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
-	if err != nil {
-		return nil, err
-	}
-
-	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
-	entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
-	if err != nil {
-		return nil, err
-	}
-
-	mnemonic, err := bip39.NewMnemonic(entropySeed)
-	if err != nil {
-		return nil, err
-	}
-
-	record, err := kr.NewAccount(name, mnemonic, "", "", algo)
-	if err != nil {
-		return nil, err
-	}
-
-	pkBytes, err := record.GetPubKey()
-	if err != nil {
-		return nil, err
-	}
-
-	pk, err := btcec.ParsePubKey(pkBytes.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
-	return pk, nil
-}
-
 func createClientCtx(ctx *cli.Context) (client.Context, error) {
 	var err error
+	var homeDir string
 
 	dir := ctx.String(keyringDirFlag)
 	if dir == "" {
-		dir, err = os.Getwd()
+		homeDir, err = os.UserHomeDir()
 		if err != nil {
 			return client.Context{}, err
 		}
+		dir = path.Join(homeDir, ".btc-validator")
 	}
 
 	return client.Context{}.
 		WithChainID(ctx.String(chainIdFlag)).
-		WithCodec(codec.NewProtoCodec(sdktypes.NewInterfaceRegistry())).
-		WithHomeDir(dir), nil
-}
-
-func keyExists(name string, kr keyring.Keyring) bool {
-	_, err := kr.Key(name)
-	return err == nil
+		WithCodec(codec.MakeCodec()).
+		WithKeyringDir(dir), nil
 }
