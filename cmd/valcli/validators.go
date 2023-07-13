@@ -86,6 +86,9 @@ func createVal(ctx *cli.Context) error {
 	}
 
 	validator, err := krController.CreateBTCValidator()
+	if err != nil {
+		return err
+	}
 
 	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {

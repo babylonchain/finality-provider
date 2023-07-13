@@ -40,6 +40,7 @@ func FuzzCreatePoP(f *testing.F) {
 		bbnPk := &secp256k1.PubKey{Key: validator.BabylonPk}
 
 		pop, err := kc.CreatePop()
+		require.NoError(t, err)
 		err = pop.Verify(bbnPk, btcPk)
 		require.NoError(t, err)
 	})

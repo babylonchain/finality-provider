@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/testutil/mocks"
 	"github.com/babylonchain/btc-validator/valcfg"
 
 	"github.com/sirupsen/logrus"
@@ -35,7 +36,7 @@ func NewValidatorAppFromConfig(
 	}
 
 	// TODO use real client
-	babylonClient := bbncli.GetMockClient()
+	babylonClient := &mocks.MockBabylonClient{}
 
 	if err != nil {
 		return nil, err
