@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/testutil"
@@ -18,25 +20,26 @@ func FuzzCreatePoP(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		keyName := testutil.GenRandomHexStr(r, 4)
-		// create keyring
-		kr, dir := testutil.GenKeyring(r, t)
+		sdkCtx := testutil.GenSdkContext(r, t)
 		defer func() {
-			err := os.RemoveAll(dir)
+			err := os.RemoveAll(sdkCtx.KeyringDir)
 			require.NoError(t, err)
 		}()
 
-		kc := val.NewKeyringController(keyName, kr)
+		kc, err := val.NewKeyringController(sdkCtx, keyName, "test")
+		require.NoError(t, err)
 		require.False(t, kc.KeyExists())
 
-		btcPk, err := kc.CreateBIP340PubKey()
+		validator, err := kc.CreateBTCValidator()
 		require.NoError(t, err)
+		require.True(t, kc.KeyExists() && kc.KeyNameTaken())
 
-		bbnPk, err := kc.CreateBabylonKey()
+		btcPk := new(types.BIP340PubKey)
+		err = btcPk.Unmarshal(validator.BtcPk)
 		require.NoError(t, err)
+		bbnPk := &secp256k1.PubKey{Key: validator.BabylonPk}
 
 		pop, err := kc.CreatePop()
-		require.NoError(t, err)
-
 		err = pop.Verify(bbnPk, btcPk)
 		require.NoError(t, err)
 	})

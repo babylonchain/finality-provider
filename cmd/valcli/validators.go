@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/codec"
@@ -72,33 +72,20 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
-	kr, err := createKeyring(sdkCtx, ctx.String(keyringBackendFlag))
+	krController, err := val.NewKeyringController(
+		sdkCtx,
+		ctx.String(keyNameFlag),
+		ctx.String(keyringBackendFlag),
+	)
 	if err != nil {
 		return err
 	}
 
-	krController := val.NewKeyringController(ctx.String(keyringDirFlag), kr)
-	if krController.KeyExists() {
+	if krController.KeyNameTaken() {
 		return fmt.Errorf("the key name is taken")
 	}
 
-	// create babylon keyring
-	babylonPubKey, err := krController.CreateBabylonKey()
-	if err != nil {
-		return err
-	}
-
-	// create BTC keyring
-	btcPubKey, err := krController.CreateBIP340PubKey()
-	if err != nil {
-		return err
-	}
-
-	// create proof of possession
-	pop, err := krController.CreatePop()
-	if err != nil {
-		return err
-	}
+	validator, err := krController.CreateBTCValidator()
 
 	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
@@ -108,7 +95,6 @@ func createVal(ctx *cli.Context) error {
 		err = vs.Close()
 	}()
 
-	validator := val.NewValidator(babylonPubKey, btcPubKey, krController.GetKeyName(), pop)
 	if err := vs.SaveValidator(validator); err != nil {
 		return err
 	}
@@ -193,27 +179,21 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 	return valStore, nil
 }
 
-func createKeyring(sdkCtx client.Context, keyringBackend string) (keyring.Keyring, error) {
-	if keyringBackend == "" {
-		return nil, fmt.Errorf("the keyring backend should not be empty")
-	}
-
-	return keyring.New(sdkCtx.ChainID, keyringBackend, sdkCtx.KeyringDir, sdkCtx.Input, sdkCtx.Codec, sdkCtx.KeyringOptions...)
-}
-
 func createClientCtx(ctx *cli.Context) (client.Context, error) {
 	var err error
+	var homeDir string
 
 	dir := ctx.String(keyringDirFlag)
 	if dir == "" {
-		dir, err = os.Getwd()
+		homeDir, err = os.UserHomeDir()
 		if err != nil {
 			return client.Context{}, err
 		}
+		dir = path.Join(homeDir, ".btc-validator")
 	}
 
 	return client.Context{}.
 		WithChainID(ctx.String(chainIdFlag)).
 		WithCodec(codec.MakeCodec()).
-		WithHomeDir(dir), nil
+		WithKeyringDir(dir), nil
 }

@@ -6,9 +6,12 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
+
+	"github.com/babylonchain/btc-validator/valrpc"
 )
 
 const (
@@ -29,15 +32,56 @@ func (kn KeyName) GetBtcKeyName() string {
 }
 
 type KeyringController struct {
-	name KeyName
 	kr   keyring.Keyring
+	name KeyName
 }
 
-func NewKeyringController(name string, kr keyring.Keyring) *KeyringController {
+func NewKeyringController(ctx client.Context, name string, keyringBackend string) (*KeyringController, error) {
+	if name == "" {
+		return nil, fmt.Errorf("the key name should not be empty")
+	}
+	if keyringBackend == "" {
+		return nil, fmt.Errorf("the keyring backend should not be empty")
+	}
+
+	kr, err := keyring.New(
+		ctx.ChainID,
+		keyringBackend,
+		ctx.KeyringDir,
+		ctx.Input,
+		ctx.Codec,
+		ctx.KeyringOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyring: %w", err)
+	}
+
 	return &KeyringController{
 		name: KeyName(name),
 		kr:   kr,
+	}, nil
+}
+
+// CreateBTCValidator creates a BTC validator object using the keyring
+func (kc *KeyringController) CreateBTCValidator() (*valrpc.Validator, error) {
+	// create babylon key pair stored in the keyring
+	babylonPubKey, err := kc.createBabylonKeyPair()
+	if err != nil {
+		return nil, err
 	}
+
+	// create BTC key pair stored in the keyring
+	btcPubKey, err := kc.createBIP340KeyPair()
+	if err != nil {
+		return nil, err
+	}
+
+	// create proof of possession
+	pop, err := kc.CreatePop()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewValidator(babylonPubKey, btcPubKey, kc.GetKeyName(), pop), nil
 }
 
 func (kc *KeyringController) GetKeyName() string {
@@ -45,6 +89,10 @@ func (kc *KeyringController) GetKeyName() string {
 }
 
 func (kc *KeyringController) KeyExists() bool {
+	return kc.keyExists(kc.name.GetBabylonKeyName()) && kc.keyExists(kc.name.GetBtcKeyName())
+}
+
+func (kc *KeyringController) KeyNameTaken() bool {
 	return kc.keyExists(kc.name.GetBabylonKeyName()) || kc.keyExists(kc.name.GetBtcKeyName())
 }
 
@@ -53,11 +101,13 @@ func (kc *KeyringController) keyExists(name string) bool {
 	return err == nil
 }
 
-func (kc *KeyringController) CreateBabylonKey() (*secp256k1.PubKey, error) {
+// createBabylonKeyPair creates a babylon key pair stored in the keyring
+func (kc *KeyringController) createBabylonKeyPair() (*secp256k1.PubKey, error) {
 	return kc.createKey(kc.name.GetBabylonKeyName())
 }
 
-func (kc *KeyringController) CreateBIP340PubKey() (*types.BIP340PubKey, error) {
+// createBIP340KeyPair creates a BIP340 key pair stored in the keyring
+func (kc *KeyringController) createBIP340KeyPair() (*types.BIP340PubKey, error) {
 	sdkPk, err := kc.createKey(kc.name.GetBtcKeyName())
 	if err != nil {
 		return nil, err
@@ -87,7 +137,10 @@ func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO use a better way to remind the user to keep it
+	fmt.Printf("Generated mnemonic for key %s is %s\n", name, mnemonic)
 
+	// TODO for now we leave bip39Passphrase and hdPath empty
 	record, err := kc.kr.NewAccount(name, mnemonic, "", "", algo)
 	if err != nil {
 		return nil, err
@@ -111,7 +164,7 @@ func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
 // this requires both keys created beforehand
 func (kc *KeyringController) CreatePop() (*bstypes.ProofOfPossession, error) {
 	if !kc.KeyExists() {
-		return nil, fmt.Errorf("the key does not exist")
+		return nil, fmt.Errorf("the keys do not exist")
 	}
 
 	bbnName := kc.name.GetBabylonKeyName()

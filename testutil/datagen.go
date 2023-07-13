@@ -8,8 +8,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/valrpc"
@@ -40,22 +38,6 @@ func GenRandomValidator(r *rand.Rand) *valrpc.Validator {
 		BabylonPk: GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 		BtcPk:     GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 	}
-}
-
-func GenKeyring(r *rand.Rand, t *testing.T) (keyring.Keyring, string) {
-	sdkCtx := GenSdkContext(r, t)
-	keyringBackend := "test"
-
-	kr, err := keyring.New(
-		sdkCtx.ChainID,
-		keyringBackend,
-		sdkCtx.KeyringDir,
-		sdkCtx.Input,
-		sdkCtx.Codec,
-		sdkCtx.KeyringOptions...)
-	require.NoError(t, err)
-
-	return kr, sdkCtx.KeyringDir
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {
