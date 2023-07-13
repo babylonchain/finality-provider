@@ -5,11 +5,10 @@ import (
 	"os"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdktypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/urfave/cli"
 
+	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
@@ -96,7 +95,7 @@ func createVal(ctx *cli.Context) error {
 	}
 
 	// create proof of possession
-	pop, err := krController.CreatePop(btcPubKey.MustMarshal())
+	pop, err := krController.CreatePop()
 	if err != nil {
 		return err
 	}
@@ -215,11 +214,6 @@ func createClientCtx(ctx *cli.Context) (client.Context, error) {
 
 	return client.Context{}.
 		WithChainID(ctx.String(chainIdFlag)).
-		WithCodec(codec.NewProtoCodec(sdktypes.NewInterfaceRegistry())).
+		WithCodec(codec.MakeCodec()).
 		WithHomeDir(dir), nil
-}
-
-func keyExists(name string, kr keyring.Keyring) bool {
-	_, err := kr.Key(name)
-	return err == nil
 }

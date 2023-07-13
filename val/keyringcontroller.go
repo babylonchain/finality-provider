@@ -6,7 +6,6 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
@@ -107,40 +106,48 @@ func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
 	}
 }
 
-func (kc *KeyringController) CreatePop(btcPkBytes []byte) (*bstypes.ProofOfPossession, error) {
+// CreatePop creates proof-of-possession of Babylon and BTC public keys
+// the input is the bytes of BTC public key used to sign
+// this requires both keys created beforehand
+func (kc *KeyringController) CreatePop() (*bstypes.ProofOfPossession, error) {
+	if !kc.KeyExists() {
+		return nil, fmt.Errorf("the key does not exist")
+	}
+
 	bbnName := kc.name.GetBabylonKeyName()
 	btcName := kc.name.GetBtcKeyName()
 
-	fmt.Printf("trying to sign %x with key name %s\n", btcPkBytes, bbnName)
-	bbnSig, _, err := kc.kr.Sign(bbnName, btcPkBytes)
+	// retrieve Babylon private key from keyring
+	bbnPrivKey, _, err := kc.getKey(bbnName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign with Babylon private key: %w", err)
+		return nil, err
 	}
 
-	k, err := kc.kr.Key(btcName)
+	// retrieve BTC private key from keyring
+	btcPrivKey, _, err := kc.getKey(btcName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get BTC key by name %s: %w", btcName, err)
+		return nil, err
+	}
+
+	sdkPrivKey := &secp256k1.PrivKey{Key: bbnPrivKey.Serialize()}
+	return bstypes.NewPoP(sdkPrivKey, btcPrivKey)
+}
+
+func (kc *KeyringController) getKey(name string) (*btcec.PrivateKey, *btcec.PublicKey, error) {
+	k, err := kc.kr.Key(name)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get private key by name %s: %w", name, err)
 	}
 
 	privKey := k.GetLocal().PrivKey.GetCachedValue()
 
 	var btcPrivKey *btcec.PrivateKey
+	var btcPubKey *btcec.PublicKey
 	switch v := privKey.(type) {
 	case *secp256k1.PrivKey:
-		btcPrivKey, _ = btcec.PrivKeyFromBytes(v.Key)
+		btcPrivKey, btcPubKey = btcec.PrivKeyFromBytes(v.Key)
+		return btcPrivKey, btcPubKey, nil
 	default:
-		return nil, fmt.Errorf("unsupported key type in keyring")
+		return nil, nil, fmt.Errorf("unsupported key type in keyring")
 	}
-
-	schnorrSig, err := schnorr.Sign(btcPrivKey, bbnSig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign with BTC private key: %w", err)
-	}
-
-	btcSig := types.NewBIP340SignatureFromBTCSig(schnorrSig)
-
-	return &bstypes.ProofOfPossession{
-		BabylonSig: bbnSig,
-		BtcSig:     &btcSig,
-	}, nil
 }
