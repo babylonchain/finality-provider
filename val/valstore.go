@@ -45,9 +45,6 @@ func (vs *ValidatorStore) GetValidator(pk []byte) (*valrpc.Validator, error) {
 
 	val := new(valrpc.Validator)
 	err = proto.Unmarshal(valsBytes, val)
-	if err != nil {
-		panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
-	}
 
 	return val, nil
 }

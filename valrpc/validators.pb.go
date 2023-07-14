@@ -557,11 +557,14 @@ type Validator struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// TODO: will use cosmos-sdk types to replace this
 	// babylon_pk is the Babylon secp256k1 PK of this BTC validator
 	BabylonPk []byte `protobuf:"bytes,1,opt,name=babylon_pk,json=babylonPk,proto3" json:"babylon_pk,omitempty"`
+	// TODO: will use btcstking types to replace this
 	// btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
 	BtcPk []byte `protobuf:"bytes,2,opt,name=btc_pk,json=btcPk,proto3" json:"btc_pk,omitempty"`
 	// pop is the proof of possession of babylon_pk and btc_pk
+	// TODO: will use btcstaking types to replace this
 	Pop *ProofOfPossession `protobuf:"bytes,3,opt,name=pop,proto3" json:"pop,omitempty"`
 	// key_name is the identifier of the keyring
 	KeyName string `protobuf:"bytes,4,opt,name=key_name,json=keyName,proto3" json:"key_name,omitempty"`

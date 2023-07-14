@@ -3,6 +3,7 @@ package testutil
 import (
 	"encoding/hex"
 	"math/rand"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *valrpc.Validator {
 
 func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	path := t.TempDir() + bucketName
+	path := filepath.Join(t.TempDir(), bucketName)
 	dbcfg, err := valcfg.NewDatabaseConfig(
 		"bbolt",
 		path,
