@@ -29,9 +29,12 @@ func FuzzValidatorStore(f *testing.F) {
 		vs, err := NewValidatorStore(dbcfg)
 		require.NoError(t, err)
 
-		defer removeDbFile(path, t)
+		defer func() {
+			err := os.RemoveAll(path)
+			require.NoError(t, err)
+		}()
 
-		validator := testutil.GenRandomValidator(r)
+		validator := testutil.GenRandomValidator(r, t)
 		err = vs.SaveValidator(validator)
 		require.NoError(t, err)
 
@@ -39,9 +42,4 @@ func FuzzValidatorStore(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, valList[0].BabylonPk)
 	})
-}
-
-func removeDbFile(path string, t *testing.T) {
-	err := os.RemoveAll(path)
-	require.NoError(t, err)
 }
