@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	bbncfg "github.com/babylonchain/rpc-client/config"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/lncfg"
@@ -48,12 +49,15 @@ type Config struct {
 
 	*DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
+	*bbncfg.BabylonConfig
+
 	*GRpcServerConfig
 
 	RpcListeners []net.Addr
 }
 
 func DefaultConfig() Config {
+	bbnCfg := bbncfg.DefaultBabylonConfig()
 	return Config{
 		ValidatordDir:  DefaultValidatordDir,
 		ConfigFile:     DefaultConfigFile,
@@ -61,6 +65,7 @@ func DefaultConfig() Config {
 		DebugLevel:     defaultLogLevel,
 		LogDir:         defaultLogDir,
 		DatabaseConfig: DefaultDatabaseConfig(),
+		BabylonConfig:  &bbnCfg,
 	}
 }
 
