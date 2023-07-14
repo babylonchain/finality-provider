@@ -156,7 +156,7 @@ var registerValidator = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
 	Usage:     "register a created BTC validator to Babylon, requiring the validator daemon running",
-	UsageText: "register-validator [Babylon address]",
+	UsageText: "register-validator [Babylon public key]",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  validatorDaemonAddressFlag,
