@@ -137,7 +137,7 @@ func (s *Server) initialize() error {
 	// exported by the rpcServer.
 	var err error
 	s.rpcServer, err = newRPCServer(
-		s.interceptor, s.logger, s.cfg,
+		s.interceptor, s.logger, s.cfg, s.valApp,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc server: %v", err)

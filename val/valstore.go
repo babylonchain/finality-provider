@@ -37,6 +37,21 @@ func (vs *ValidatorStore) SaveValidator(val *valrpc.Validator) error {
 	return nil
 }
 
+func (vs *ValidatorStore) GetValidator(pk []byte) (*valrpc.Validator, error) {
+	valsBytes, err := vs.s.Get(pk)
+	if err != nil {
+		return nil, err
+	}
+
+	val := new(valrpc.Validator)
+	err = proto.Unmarshal(valsBytes, val)
+	if err != nil {
+		panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
+	}
+
+	return val, nil
+}
+
 func (vs *ValidatorStore) ListValidators() ([]*valrpc.Validator, error) {
 	valsBytes, err := vs.s.List(nil)
 	if err != nil {

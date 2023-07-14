@@ -35,6 +35,7 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 
 func GenRandomValidator(r *rand.Rand) *valrpc.Validator {
 	return &valrpc.Validator{
+		KeyName:   GenRandomHexStr(r, 4),
 		BabylonPk: GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 		BtcPk:     GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
 	}
