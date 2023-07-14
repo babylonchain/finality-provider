@@ -3,13 +3,18 @@ package testutil
 import (
 	"encoding/hex"
 	"math/rand"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/babylonchain/babylon/testutil/datagen"
+	bbn "github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
 )
 
@@ -33,11 +38,44 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	}
 }
 
-func GenRandomValidator(r *rand.Rand) *valrpc.Validator {
+func GenRandomValidator(r *rand.Rand, t *testing.T) *valrpc.Validator {
+	// generate BTC key pair
+	btcSK, btcPK, err := datagen.GenRandomBTCKeyPair(r)
+	require.NoError(t, err)
+	bip340PK := bbn.NewBIP340PubKeyFromBTCPK(btcPK)
+
+	// generate Babylon key pair
+	babylonSK, babylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
+	require.NoError(t, err)
+
+	// generate and verify PoP, correct case
+	pop, err := types.NewPoP(babylonSK, btcSK)
+	require.NoError(t, err)
+	err = pop.Verify(babylonPK, bip340PK)
+	require.NoError(t, err)
+
 	return &valrpc.Validator{
-		BabylonPk: GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
-		BtcPk:     GenRandomByteArray(r, btcec.PubKeyBytesLenCompressed),
+		KeyName:   GenRandomHexStr(r, 4),
+		BabylonPk: babylonPK.Bytes(),
+		BtcPk:     bip340PK.MustMarshal(),
+		// TODO use btcstaking types directly to avoid conversion
+		Pop: &valrpc.ProofOfPossession{
+			BabylonSig: pop.BabylonSig,
+			BtcSig:     pop.BtcSig.MustMarshal(),
+		},
 	}
+}
+
+func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
+	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
+	path := filepath.Join(t.TempDir(), bucketName)
+	dbcfg, err := valcfg.NewDatabaseConfig(
+		"bbolt",
+		path,
+		bucketName,
+	)
+	require.NoError(t, err)
+	return dbcfg
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {

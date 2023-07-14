@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/stretchr/testify/require"
 
@@ -34,13 +35,19 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		require.True(t, kc.KeyExists() && kc.KeyNameTaken())
 
+		// TODO avoid conversion after btcstaking protos are introduced
 		btcPk := new(types.BIP340PubKey)
 		err = btcPk.Unmarshal(validator.BtcPk)
 		require.NoError(t, err)
 		bbnPk := &secp256k1.PubKey{Key: validator.BabylonPk}
-
-		pop, err := kc.CreatePop()
+		btcSig := new(types.BIP340Signature)
+		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
+		pop := &bstypes.ProofOfPossession{
+			BabylonSig: validator.Pop.BabylonSig,
+			BtcSig:     btcSig,
+		}
+
 		err = pop.Verify(bbnPk, btcPk)
 		require.NoError(t, err)
 	})

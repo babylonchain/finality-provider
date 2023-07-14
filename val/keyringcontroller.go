@@ -76,7 +76,7 @@ func (kc *KeyringController) CreateBTCValidator() (*valrpc.Validator, error) {
 	}
 
 	// create proof of possession
-	pop, err := kc.CreatePop()
+	pop, err := kc.createPop()
 	if err != nil {
 		return nil, err
 	}
@@ -159,10 +159,10 @@ func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
 	}
 }
 
-// CreatePop creates proof-of-possession of Babylon and BTC public keys
+// createPop creates proof-of-possession of Babylon and BTC public keys
 // the input is the bytes of BTC public key used to sign
 // this requires both keys created beforehand
-func (kc *KeyringController) CreatePop() (*bstypes.ProofOfPossession, error) {
+func (kc *KeyringController) createPop() (*bstypes.ProofOfPossession, error) {
 	if !kc.KeyExists() {
 		return nil, fmt.Errorf("the keys do not exist")
 	}

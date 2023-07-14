@@ -14,6 +14,11 @@ func NewValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyNam
 		KeyName:   keyName,
 		BabylonPk: babylonPk.Bytes(),
 		BtcPk:     btcPk.MustMarshal(),
-		Status:    valrpc.ValidatorStatus_VALIDATOR_STATUS_CREATED,
+		// TODO will use btcstaking types to avoid conversion
+		Pop: &valrpc.ProofOfPossession{
+			BabylonSig: pop.BabylonSig,
+			BtcSig:     pop.BtcSig.MustMarshal(),
+		},
+		Status: valrpc.ValidatorStatus_VALIDATOR_STATUS_CREATED,
 	}
 }
