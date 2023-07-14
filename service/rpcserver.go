@@ -24,8 +24,6 @@ type rpcServer struct {
 
 	interceptor signal.Interceptor
 
-	app *ValidatorApp
-
 	logger *logrus.Logger
 
 	cfg *valcfg.Config
@@ -38,16 +36,13 @@ type rpcServer struct {
 func newRPCServer(
 	interceptor signal.Interceptor,
 	l *logrus.Logger,
-	cfg *valcfg.Config,
-	v *ValidatorApp,
-) (*rpcServer, error) {
+	cfg *valcfg.Config) (*rpcServer, error) {
 
 	return &rpcServer{
 		interceptor: interceptor,
 		logger:      l,
 		quit:        make(chan struct{}),
 		cfg:         cfg,
-		app:         v,
 	}, nil
 }
 
@@ -103,13 +98,7 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *valrpc.CreateValid
 // RegisterValidator sends a transactions to Babylon to register a BTC validator
 func (r *rpcServer) RegisterValidator(ctx context.Context, req *valrpc.RegisterValidatorRequest) (
 	*valrpc.RegisterValidatorResponse, error) {
-
-	txHash, err := r.app.RegisterValidator(req.BabylonPk)
-	if err != nil {
-		return nil, err
-	}
-
-	return &valrpc.RegisterValidatorResponse{TxHash: txHash}, nil
+	panic("implement me")
 }
 
 // QueryValidator queries the information of the validator

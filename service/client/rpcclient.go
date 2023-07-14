@@ -38,13 +38,3 @@ func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*valrpc.GetIn
 
 	return res, nil
 }
-
-func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, bbnPkBytes []byte) (*valrpc.RegisterValidatorResponse, error) {
-	req := &valrpc.RegisterValidatorRequest{BabylonPk: bbnPkBytes}
-	res, err := c.client.RegisterValidator(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}

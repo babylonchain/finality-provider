@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
@@ -10,7 +9,6 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/codec"
-	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
@@ -155,35 +153,15 @@ func importVal(ctx *cli.Context) error {
 var registerValidator = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "register a created BTC validator to Babylon, requiring the validator daemon running",
-	UsageText: "register-validator [Babylon public key]",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  validatorDaemonAddressFlag,
-			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValidatorDaemonAddress,
-		},
+	Usage:     "register a created BTC validator to Babylon",
+	Flags:     []cli.Flag{
+		// TODO: add flags
 	},
 	Action: registerVal,
 }
 
 func registerVal(ctx *cli.Context) error {
-	pkBytes := []byte(ctx.Args().First())
-	daemonAddress := ctx.String(validatorDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
-	if err != nil {
-		return err
-	}
-	defer cleanUp()
-
-	res, err := rpcClient.RegisterValidator(context.Background(), pkBytes)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(res)
-
-	return nil
+	panic("implement me")
 }
 
 func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {

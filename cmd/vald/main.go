@@ -8,7 +8,6 @@ import (
 	"github.com/lightningnetwork/lnd/signal"
 
 	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/testutil/mocks"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -32,9 +31,7 @@ func main() {
 		// Help was requested, exit normally.
 		os.Exit(0)
 	}
-
-	// TODO: use real Babylon client
-	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger, &mocks.MockBabylonClient{})
+	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger)
 	if err != nil {
 		cfgLogger.Errorf("failed to create validator app: %v", err)
 		os.Exit(1)
