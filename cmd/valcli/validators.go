@@ -21,11 +21,14 @@ const (
 	keyringDirFlag     = "keyring-dir"
 	keyringBackendFlag = "keyring-backend"
 	keyNameFlag        = "key-name"
+	randNumFlag        = "rand-num"
+	babylonPkFlag      = "babylon-pk"
 )
 
 var (
 	defaultChainID        = "test-chain"
 	defaultKeyringBackend = "test"
+	defaultRandomNum      = 100
 )
 
 var validatorsCommands = []cli.Command{
@@ -168,6 +171,48 @@ var registerValidator = cli.Command{
 }
 
 func registerVal(ctx *cli.Context) error {
+	pkBytes := []byte(ctx.Args().First())
+	daemonAddress := ctx.String(validatorDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	res, err := rpcClient.RegisterValidator(context.Background(), pkBytes)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(res)
+
+	return nil
+}
+
+var commitRandomList = cli.Command{
+	Name:      "commit-random-list",
+	ShortName: "crl",
+	Usage:     "generate a list of Schnorr random pair and commit the public rand for BTC validator",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  validatorDaemonAddressFlag,
+			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValidatorDaemonAddress,
+		},
+		cli.Int64Flag{
+			Name:  randNumFlag,
+			Usage: "the number of public randomness you want to commit",
+			Value: int64(defaultRandomNum),
+		},
+		cli.StringFlag{
+			Name:  babylonPkFlag,
+			Usage: "the Babylon public key of a BTC validator",
+		},
+	},
+	Action: commitRand,
+}
+
+func commitRand(ctx *cli.Context) error {
 	pkBytes := []byte(ctx.Args().First())
 	daemonAddress := ctx.String(validatorDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
