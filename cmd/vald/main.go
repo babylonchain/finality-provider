@@ -7,8 +7,8 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/signal"
 
+	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/testutil/mocks"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -33,8 +33,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	// TODO: use real Babylon client
-	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger, &mocks.MockBabylonClient{})
+	bbnClient, err := babylonclient.NewBabylonController(cfg.BabylonConfig, cfgLogger)
+	if err != nil {
+		cfgLogger.Errorf("failed to create Babylon rpc client: %v", err)
+		os.Exit(1)
+	}
+
+	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger, bbnClient)
 	if err != nil {
 		cfgLogger.Errorf("failed to create validator app: %v", err)
 		os.Exit(1)
