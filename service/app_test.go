@@ -23,18 +23,11 @@ func FuzzRegisterValidator(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		// create validator app with mocked Babylon client
+		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
-		bucketName := testutil.GenRandomHexStr(r, 10) + "-bbolt.db"
-		path := t.TempDir() + bucketName
-		dbcfg, err := valcfg.NewDatabaseConfig(
-			"bbolt",
-			path,
-			bucketName,
-		)
-		cfg.DatabaseConfig = dbcfg
+		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		defer func() {
-			err := os.RemoveAll(path)
+			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
 		ctl := gomock.NewController(t)

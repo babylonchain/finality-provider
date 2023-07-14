@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/valrpc"
 )
 
@@ -62,6 +63,18 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *valrpc.Validator {
 			BtcSig:     pop.BtcSig.MustMarshal(),
 		},
 	}
+}
+
+func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
+	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
+	path := t.TempDir() + bucketName
+	dbcfg, err := valcfg.NewDatabaseConfig(
+		"bbolt",
+		path,
+		bucketName,
+	)
+	require.NoError(t, err)
+	return dbcfg
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {
