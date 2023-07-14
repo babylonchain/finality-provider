@@ -50,7 +50,6 @@ func NewBabylonController(
 	cfg *bbncfg.BabylonConfig,
 	logger *logrus.Logger,
 ) (*BabylonController, error) {
-
 	// create a Tendermint/Cosmos client for Babylon
 	cc, err := newLensClient(cfg.Unwrap())
 	if err != nil {

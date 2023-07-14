@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/babylonchain/rpc-client/config"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/signal"
 
@@ -33,7 +34,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	bbnClient, err := babylonclient.NewBabylonController(cfg.BabylonConfig, cfgLogger)
+	// TODO: use default babylon config for now
+	bbnCfg := config.DefaultBabylonConfig()
+	bbnClient, err := babylonclient.NewBabylonController(&bbnCfg, cfgLogger)
 	if err != nil {
 		cfgLogger.Errorf("failed to create Babylon rpc client: %v", err)
 		os.Exit(1)
