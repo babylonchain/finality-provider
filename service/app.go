@@ -84,6 +84,46 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	return app.bc.RegisterValidator(bbnPk, btcPk, pop)
 }
 
+func (app *ValidatorApp) CommitPubRandList(pkBytes []byte, num uint64) ([][]byte, error) {
+	if pkBytes != nil {
+
+	}
+}
+
+func (app *ValidatorApp) commitPubRandListForValidator(pkBytes []byte, num uint64) ([]byte, error) {
+	validator, err := app.vs.GetValidator(pkBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	startHeight := validator.LastCommittedHeight + 1
+	btcPk := new(types.BIP340PubKey)
+	err = btcPk.Unmarshal(validator.BtcPk)
+	if err != nil {
+		return nil, err
+	}
+
+	privRandList, pubRandList, err := GenerateRandPairList(num)
+	if err != nil {
+		return nil, err
+	}
+
+	txHash, err := app.bc.CommitPubRandList(btcPk, startHeight, pubRandList)
+	if err != nil {
+		return nil, err
+	}
+
+	validator.LastCommittedHeight = validator.LastCommittedHeight + num
+	err = app.vs.SaveValidator(validator)
+	if err != nil {
+		panic(fmt.Errorf("failed to save updated validator object: %w", err))
+	}
+
+	// TODO save committed list
+
+	return app.bc.CommitPubRandList(btcPk, startHeight, pubRandList)
+}
+
 func (app *ValidatorApp) Start() error {
 	var startErr error
 	app.startOnce.Do(func() {
@@ -109,4 +149,22 @@ func (app *ValidatorApp) Stop() error {
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {
 	panic("implement me")
+}
+
+func GenerateRandPairList(num uint64) ([]*secp256k1.PrivKey, []*types.SchnorrPubRand, error) {
+	privList := make([]*secp256k1.PrivKey, num)
+	pubList := make([]*types.SchnorrPubRand, num)
+
+	for i := 0; i < int(num); i++ {
+		privRand := secp256k1.GenPrivKey()
+		schnorrPubRand, err := types.NewSchnorrPubRand(privRand.PubKey().Bytes())
+		if err != nil {
+			return nil, nil, err
+		}
+
+		privList[i] = privRand
+		pubList[i] = schnorrPubRand
+	}
+
+	return privList, pubList, nil
 }

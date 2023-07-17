@@ -206,14 +206,13 @@ var commitRandomList = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  babylonPkFlag,
-			Usage: "the Babylon public key of a BTC validator",
+			Usage: "commit random list for a specific BTC validator",
 		},
 	},
 	Action: commitRand,
 }
 
 func commitRand(ctx *cli.Context) error {
-	pkBytes := []byte(ctx.Args().First())
 	daemonAddress := ctx.String(validatorDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
@@ -221,7 +220,12 @@ func commitRand(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.RegisterValidator(context.Background(), pkBytes)
+	var bbnPkBytes []byte
+	if ctx.String(babylonPkFlag) != "" {
+		bbnPkBytes = []byte(ctx.String(babylonPkFlag))
+	}
+	res, err := rpcClient.CommitPubRandList(context.Background(),
+		bbnPkBytes)
 	if err != nil {
 		return err
 	}

@@ -112,6 +112,18 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *valrpc.RegisterV
 	return &valrpc.RegisterValidatorResponse{TxHash: txHash}, nil
 }
 
+// CommitPubRandList commits a list of Schnorr public randomness for BTC validators
+func (r *rpcServer) CommitPubRandList(ctx context.Context, req *valrpc.CommitPubRandListRequest) (
+	*valrpc.CommitPubRandListResponse, error) {
+
+	txHashes, err := r.app.CommitPubRandList(req.BabylonPk, req.Num)
+	if err != nil {
+		return nil, err
+	}
+
+	return &valrpc.CommitPubRandListResponse{TxHashes: txHashes}, nil
+}
+
 // QueryValidator queries the information of the validator
 func (r *rpcServer) QueryValidator(ctx context.Context, req *valrpc.QueryValidatorRequest) (
 	*valrpc.QueryValidatorResponse, error) {
