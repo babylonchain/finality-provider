@@ -2,48 +2,21 @@ package babylonclient
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/babylonchain/rpc-client/client"
 	bbncfg "github.com/babylonchain/rpc-client/config"
-	"github.com/cosmos/cosmos-sdk/crypto/hd"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
-	lensclient "github.com/strangelove-ventures/lens/client"
 )
 
 var _ BabylonClient = &BabylonController{}
 
 type BabylonController struct {
-	cc     *lensclient.ChainClient
-	cfg    *bbncfg.BabylonConfig
-	logger *logrus.Logger
-}
-
-func newLensClient(ccc *lensclient.ChainClientConfig, kro ...keyring.Option) (*lensclient.ChainClient, error) {
-	// attach the supported algorithms to the keyring options
-	keyringOptions := []keyring.Option{}
-	keyringOptions = append(keyringOptions, func(options *keyring.Options) {
-		options.SupportedAlgos = keyring.SigningAlgoList{hd.Secp256k1}
-		options.SupportedAlgosLedger = keyring.SigningAlgoList{hd.Secp256k1}
-	})
-	keyringOptions = append(keyringOptions, kro...)
-
-	cc := &lensclient.ChainClient{
-		KeyringOptions: keyringOptions,
-		Config:         ccc,
-		Codec:          lensclient.MakeCodec(ccc.Modules, []string{}),
-	}
-	if err := cc.Init(); err != nil {
-		return nil, err
-	}
-
-	if _, err := cc.GetKeyAddress(); err != nil {
-		return nil, err
-	}
-
-	return cc, nil
+	rpcClient *client.Client
+	logger    *logrus.Logger
 }
 
 func NewBabylonController(
@@ -51,14 +24,13 @@ func NewBabylonController(
 	logger *logrus.Logger,
 ) (*BabylonController, error) {
 	// create a Tendermint/Cosmos client for Babylon
-	cc, err := newLensClient(cfg.Unwrap())
+	rpcClient, err := client.New(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create Babylon rpc client: %w", err)
 	}
 
 	return &BabylonController{
-		cc,
-		cfg,
+		rpcClient,
 		logger,
 	}, nil
 }
@@ -72,7 +44,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 		Pop:       pop,
 	}
 
-	res, err := bc.cc.SendMsg(context.Background(), registerMsg, "")
+	res, err := bc.rpcClient.SendMsg(context.Background(), registerMsg, "")
 	if err != nil {
 		return nil, err
 	}
