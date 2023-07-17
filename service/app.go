@@ -78,7 +78,7 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 
 	pop := &bstypes.ProofOfPossession{
 		BabylonSig: validator.Pop.BabylonSig,
-		BtcSig:     &btcSig,
+		BtcSig:     btcSig,
 	}
 
 	return app.bc.RegisterValidator(bbnPk, btcPk, pop)
