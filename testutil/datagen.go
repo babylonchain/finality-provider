@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/babylonchain/btc-validator/valrpc"
 )
 
 func GenRandomByteArray(r *rand.Rand, length uint64) []byte {
@@ -38,7 +38,7 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	}
 }
 
-func GenRandomValidator(r *rand.Rand, t *testing.T) *valrpc.Validator {
+func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.Validator {
 	// generate BTC key pair
 	btcSK, btcPK, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
@@ -54,12 +54,12 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *valrpc.Validator {
 	err = pop.Verify(babylonPK, bip340PK)
 	require.NoError(t, err)
 
-	return &valrpc.Validator{
+	return &proto.Validator{
 		KeyName:   GenRandomHexStr(r, 4),
 		BabylonPk: babylonPK.Bytes(),
 		BtcPk:     bip340PK.MustMarshal(),
 		// TODO use btcstaking types directly to avoid conversion
-		Pop: &valrpc.ProofOfPossession{
+		Pop: &proto.ProofOfPossession{
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig.MustMarshal(),
 		},

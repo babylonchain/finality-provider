@@ -3,11 +3,11 @@ package val
 import (
 	"fmt"
 
-	"google.golang.org/protobuf/proto"
+	gproto "google.golang.org/protobuf/proto"
 
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/store"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/babylonchain/btc-validator/valrpc"
 )
 
 type ValidatorStore struct {
@@ -23,9 +23,9 @@ func NewValidatorStore(dbcfg *valcfg.DatabaseConfig) (*ValidatorStore, error) {
 	return &ValidatorStore{s: s}, nil
 }
 
-func (vs *ValidatorStore) SaveValidator(val *valrpc.Validator) error {
+func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
 	k := val.BabylonPk
-	v, err := proto.Marshal(val)
+	v, err := gproto.Marshal(val)
 	if err != nil {
 		return fmt.Errorf("failed to marshal the created validator object: %w", err)
 	}
@@ -37,14 +37,14 @@ func (vs *ValidatorStore) SaveValidator(val *valrpc.Validator) error {
 	return nil
 }
 
-func (vs *ValidatorStore) GetValidator(pk []byte) (*valrpc.Validator, error) {
+func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {
 	valsBytes, err := vs.s.Get(pk)
 	if err != nil {
 		return nil, err
 	}
 
-	val := new(valrpc.Validator)
-	err = proto.Unmarshal(valsBytes, val)
+	val := new(proto.Validator)
+	err = gproto.Unmarshal(valsBytes, val)
 	if err != nil {
 		panic(fmt.Errorf("unable to unmarshal validator object: %w", err))
 	}
@@ -52,16 +52,16 @@ func (vs *ValidatorStore) GetValidator(pk []byte) (*valrpc.Validator, error) {
 	return val, nil
 }
 
-func (vs *ValidatorStore) ListValidators() ([]*valrpc.Validator, error) {
+func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
 	valsBytes, err := vs.s.List(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	valsList := make([]*valrpc.Validator, len(valsBytes))
+	valsList := make([]*proto.Validator, len(valsBytes))
 	for i := 0; i < len(valsBytes); i++ {
-		val := new(valrpc.Validator)
-		err := proto.Unmarshal(valsBytes[i].Value, val)
+		val := new(proto.Validator)
+		err := gproto.Unmarshal(valsBytes[i].Value, val)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
 		}

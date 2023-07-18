@@ -34,21 +34,21 @@ const (
 func main() {
 	app := cli.NewApp()
 	app.Name = "valcli"
-	app.Usage = "control plane for your BTC Validator Daemon (vald)"
+	app.Usage = "Control plane for the Bitcoin Validator Daemon (vald)."
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  dbTypeFlag,
-			Usage: "the type of the database",
+			Usage: "The type of the database",
 			Value: valcfg.DefaultBackend,
 		},
 		cli.StringFlag{
 			Name:  dbPathFlag,
-			Usage: "the path of the database file",
+			Usage: "The path of the database file",
 			Value: valcfg.DefaultDBPath,
 		},
 		cli.StringFlag{
 			Name:  dbNameFlag,
-			Usage: "the name of the database bucket",
+			Usage: "The name of the database bucket",
 			Value: valcfg.DefaultDBName,
 		},
 	}

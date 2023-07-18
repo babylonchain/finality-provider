@@ -3,11 +3,11 @@ package babylonclient
 import (
 	"context"
 	"fmt"
+	"github.com/babylonchain/btc-validator/valcfg"
 
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/babylonchain/rpc-client/client"
-	bbncfg "github.com/babylonchain/rpc-client/config"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 )
@@ -20,11 +20,17 @@ type BabylonController struct {
 }
 
 func NewBabylonController(
-	cfg *bbncfg.BabylonConfig,
+	cfg *valcfg.BBNConfig,
 	logger *logrus.Logger,
 ) (*BabylonController, error) {
+	babylonConfig := valcfg.BBNConfigToBabylonConfig(cfg)
+
+	// TODO should be validated earlier
+	if err := babylonConfig.Validate(); err != nil {
+		return nil, err
+	}
 	// create a Tendermint/Cosmos client for Babylon
-	rpcClient, err := client.New(cfg)
+	rpcClient, err := client.New(&babylonConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create Babylon rpc client: %w", err)
 	}

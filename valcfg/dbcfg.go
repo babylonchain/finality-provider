@@ -35,8 +35,8 @@ func NewDatabaseConfig(backend string, path string, name string) (*DatabaseConfi
 	}, nil
 }
 
-func DefaultDatabaseConfig() *DatabaseConfig {
-	return &DatabaseConfig{
+func DefaultDatabaseConfig() DatabaseConfig {
+	return DatabaseConfig{
 		Backend: DefaultBackend,
 		Path:    DefaultDBPath,
 		Name:    DefaultDBName,

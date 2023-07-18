@@ -14,7 +14,7 @@ var daemonCommands = []cli.Command{
 	{
 		Name:      "daemon",
 		ShortName: "dn",
-		Usage:     "More advanced commands which require validator daemon to be running",
+		Usage:     "More advanced commands which require validator daemon to be running.",
 		Category:  "Daemon commands",
 		Subcommands: []cli.Command{
 			getDaemonInfo,
@@ -33,11 +33,11 @@ var (
 var getDaemonInfo = cli.Command{
 	Name:      "get-info",
 	ShortName: "gi",
-	Usage:     "Get information of the running daemon",
+	Usage:     "Get information of the running daemon.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  validatorDaemonAddressFlag,
-			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
 			Value: defaultValidatorDaemonAddress,
 		},
 	},

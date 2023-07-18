@@ -9,8 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/babylonchain/btc-validator/valrpc"
 	"github.com/babylonchain/btc-validator/version"
 )
 
@@ -20,7 +20,7 @@ type rpcServer struct {
 	started  int32
 	shutdown int32
 
-	valrpc.UnimplementedBtcValidatorsServer
+	proto.UnimplementedBtcValidatorsServer
 
 	interceptor signal.Interceptor
 
@@ -82,44 +82,44 @@ func (r *rpcServer) Stop() error {
 // server.
 func (r *rpcServer) RegisterWithGrpcServer(grpcServer *grpc.Server) error {
 	// Register the main RPC server.
-	valrpc.RegisterBtcValidatorsServer(grpcServer, r)
+	proto.RegisterBtcValidatorsServer(grpcServer, r)
 	return nil
 }
 
 // GetInfo returns general information relating to the active daemon
-func (r *rpcServer) GetInfo(context.Context, *valrpc.GetInfoRequest) (*valrpc.GetInfoResponse, error) {
+func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetInfoResponse, error) {
 
-	return &valrpc.GetInfoResponse{
+	return &proto.GetInfoResponse{
 		Version: version.Version(),
 	}, nil
 }
 
 // CreateValidator generates a validator object and saves it in the database
-func (r *rpcServer) CreateValidator(ctx context.Context, req *valrpc.CreateValidatorRequest) (
-	*valrpc.CreateValidatorResponse, error) {
+func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValidatorRequest) (
+	*proto.CreateValidatorResponse, error) {
 	panic("implement me")
 }
 
 // RegisterValidator sends a transactions to Babylon to register a BTC validator
-func (r *rpcServer) RegisterValidator(ctx context.Context, req *valrpc.RegisterValidatorRequest) (
-	*valrpc.RegisterValidatorResponse, error) {
+func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterValidatorRequest) (
+	*proto.RegisterValidatorResponse, error) {
 
 	txHash, err := r.app.RegisterValidator(req.BabylonPk)
 	if err != nil {
 		return nil, err
 	}
 
-	return &valrpc.RegisterValidatorResponse{TxHash: txHash}, nil
+	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil
 }
 
 // QueryValidator queries the information of the validator
-func (r *rpcServer) QueryValidator(ctx context.Context, req *valrpc.QueryValidatorRequest) (
-	*valrpc.QueryValidatorResponse, error) {
+func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidatorRequest) (
+	*proto.QueryValidatorResponse, error) {
 	panic("implement me")
 }
 
 // QueryValidatorList queries the information of a list of validators
-func (r *rpcServer) QueryValidatorList(ctx context.Context, req *valrpc.QueryValidatorListRequest) (
-	*valrpc.QueryValidatorListResponse, error) {
+func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryValidatorListRequest) (
+	*proto.QueryValidatorListResponse, error) {
 	panic("implement me")
 }

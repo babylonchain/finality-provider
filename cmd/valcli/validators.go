@@ -3,17 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
-
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/proto"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/babylonchain/btc-validator/valrpc"
 )
 
 const (
@@ -21,9 +18,7 @@ const (
 	keyringDirFlag     = "keyring-dir"
 	keyringBackendFlag = "keyring-backend"
 	keyNameFlag        = "key-name"
-)
 
-var (
 	defaultChainID        = "test-chain"
 	defaultKeyringBackend = "test"
 )
@@ -32,7 +27,7 @@ var validatorsCommands = []cli.Command{
 	{
 		Name:      "validators",
 		ShortName: "vals",
-		Usage:     "Control BTC validators.",
+		Usage:     "Control Bitcoin validators.",
 		Category:  "Validators",
 		Subcommands: []cli.Command{
 			createValidator, listValidators, importValidator, registerValidator,
@@ -43,26 +38,26 @@ var validatorsCommands = []cli.Command{
 var createValidator = cli.Command{
 	Name:      "create-validator",
 	ShortName: "cv",
-	Usage:     "create a BTC validator object and save it in database",
+	Usage:     "Create a Bitcoin validator object and save it in database.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  chainIdFlag,
-			Usage: "the chainID of the Babylonchain",
+			Usage: "The chainID of the Babylonchain",
 			Value: defaultChainID,
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
-			Usage:    "the unique name of the validator key",
+			Usage:    "The unique name of the validator key",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:  keyringBackendFlag,
-			Usage: "select keyring's backend (os|file|test)",
+			Usage: "Select keyring's backend (os|file|test)",
 			Value: defaultKeyringBackend,
 		},
 		cli.StringFlag{
 			Name:  keyringDirFlag,
-			Usage: "the directory where the keyring is stored",
+			Usage: "The directory where the keyring is stored",
 		},
 	},
 	Action: createVal,
@@ -84,7 +79,7 @@ func createVal(ctx *cli.Context) error {
 	}
 
 	if krController.KeyNameTaken() {
-		return fmt.Errorf("the key name is taken")
+		return fmt.Errorf("the key name %s is taken", krController.GetKeyName())
 	}
 
 	validator, err := krController.CreateBTCValidator()
@@ -104,7 +99,7 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJSON(&valrpc.CreateValidatorResponse{
+	printRespJSON(&proto.CreateValidatorResponse{
 		BabylonPk: validator.BabylonPk,
 		BtcPk:     validator.BtcPk,
 	})
@@ -115,7 +110,7 @@ func createVal(ctx *cli.Context) error {
 var listValidators = cli.Command{
 	Name:      "list-validators",
 	ShortName: "ls",
-	Usage:     "list validators stored in the database",
+	Usage:     "List validators stored in the database.",
 	Action:    lsVal,
 }
 
@@ -133,7 +128,7 @@ func lsVal(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJSON(&valrpc.QueryValidatorListResponse{Validators: valList})
+	printRespJSON(&proto.QueryValidatorListResponse{Validators: valList})
 
 	return nil
 }
@@ -141,7 +136,7 @@ func lsVal(ctx *cli.Context) error {
 var importValidator = cli.Command{
 	Name:      "import-validator",
 	ShortName: "iv",
-	Usage:     "import a BTC validator object with given BTC and Babylon addresses",
+	Usage:     "Import a Bitcoin validator object with given Bitcoin and Babylon addresses.",
 	Flags:     []cli.Flag{
 		// TODO: add flags
 	},
@@ -155,12 +150,12 @@ func importVal(ctx *cli.Context) error {
 var registerValidator = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "register a created BTC validator to Babylon, requiring the validator daemon running",
+	Usage:     "Register a created Bitcoin validator to Babylon, requiring the validator daemon running.",
 	UsageText: "register-validator [Babylon public key]",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  validatorDaemonAddressFlag,
-			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
 			Value: defaultValidatorDaemonAddress,
 		},
 	},
@@ -205,16 +200,9 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 }
 
 func createClientCtx(ctx *cli.Context) (client.Context, error) {
-	var err error
-	var homeDir string
-
 	dir := ctx.String(keyringDirFlag)
 	if dir == "" {
-		homeDir, err = os.UserHomeDir()
-		if err != nil {
-			return client.Context{}, err
-		}
-		dir = path.Join(homeDir, ".btc-validator")
+		dir = valcfg.DefaultValidatordDir
 	}
 
 	return client.Context{}.
