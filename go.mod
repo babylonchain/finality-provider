@@ -14,7 +14,6 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/lightningnetwork/lnd v0.16.4-beta.rc1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/strangelove-ventures/lens v0.5.2-0.20230418174104-735a2a0195eb
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.14
 	go.etcd.io/bbolt v1.3.7
@@ -224,6 +223,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.15.0 // indirect
+	github.com/strangelove-ventures/lens v0.5.2-0.20230418174104-735a2a0195eb // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/supranational/blst v0.3.8 // indirect

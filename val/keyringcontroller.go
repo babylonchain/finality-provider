@@ -12,7 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
 
-	"github.com/babylonchain/btc-validator/valrpc"
+	"github.com/babylonchain/btc-validator/proto"
 )
 
 const (
@@ -73,7 +73,7 @@ func NewKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*KeyringC
 }
 
 // CreateBTCValidator creates a BTC validator object using the keyring
-func (kc *KeyringController) CreateBTCValidator() (*valrpc.Validator, error) {
+func (kc *KeyringController) CreateBTCValidator() (*proto.Validator, error) {
 	// create babylon key pair stored in the keyring
 	babylonPubKey, err := kc.createBabylonKeyPair()
 	if err != nil {

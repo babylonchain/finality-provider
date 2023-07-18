@@ -15,8 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/babylonchain/btc-validator/valrpc"
 
 	"github.com/babylonchain/btc-validator/val"
 )
@@ -40,7 +40,7 @@ func NewValidatorAppFromConfig(
 	bc bbncli.BabylonClient,
 ) (*ValidatorApp, error) {
 
-	kr, err := CreateKeyring(config.KeyringDir, config.ChainID, config.KeyringBackend)
+	kr, err := CreateKeyring(config.KeyringDir, config.BabylonConfig.ChainID, config.KeyringBackend)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
@@ -184,7 +184,7 @@ func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) (
 	for i := 0; i < int(num); i++ {
 		height := startHeight + uint64(i)
 		privRand := privRandList[i].Bytes()
-		randPair := &valrpc.SchnorrRandPair{
+		randPair := &proto.SchnorrRandPair{
 			SecRand: privRand[:],
 			PubRand: pubRandList[i].MustMarshal(),
 		}

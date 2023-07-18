@@ -7,11 +7,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/babylonchain/btc-validator/valrpc"
+	"github.com/babylonchain/btc-validator/proto"
 )
 
 type ValidatorServiceGRpcClient struct {
-	client valrpc.BtcValidatorsClient
+	client proto.BtcValidatorsClient
 }
 
 func NewValidatorServiceGRpcClient(remoteAddr string) (*ValidatorServiceGRpcClient, func(), error) {
@@ -25,12 +25,12 @@ func NewValidatorServiceGRpcClient(remoteAddr string) (*ValidatorServiceGRpcClie
 	}
 
 	return &ValidatorServiceGRpcClient{
-		client: valrpc.NewBtcValidatorsClient(conn),
+		client: proto.NewBtcValidatorsClient(conn),
 	}, cleanUp, nil
 }
 
-func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*valrpc.GetInfoResponse, error) {
-	req := &valrpc.GetInfoRequest{}
+func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*proto.GetInfoResponse, error) {
+	req := &proto.GetInfoRequest{}
 	res, err := c.client.GetInfo(ctx, req)
 	if err != nil {
 		return nil, err
@@ -39,8 +39,8 @@ func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*valrpc.GetIn
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, bbnPkBytes []byte) (*valrpc.RegisterValidatorResponse, error) {
-	req := &valrpc.RegisterValidatorRequest{BabylonPk: bbnPkBytes}
+func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, bbnPkBytes []byte) (*proto.RegisterValidatorResponse, error) {
+	req := &proto.RegisterValidatorRequest{BabylonPk: bbnPkBytes}
 	res, err := c.client.RegisterValidator(ctx, req)
 	if err != nil {
 		return nil, err
@@ -49,8 +49,8 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, bbnP
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CommitPubRandList(ctx context.Context, bbnPkBytes []byte) (*valrpc.CommitPubRandForValidatorResponse, error) {
-	req := &valrpc.CommitPubRandForValidatorRequest{BabylonPk: bbnPkBytes}
+func (c *ValidatorServiceGRpcClient) CommitPubRandList(ctx context.Context, bbnPkBytes []byte) (*proto.CommitPubRandForValidatorResponse, error) {
+	req := &proto.CommitPubRandForValidatorRequest{BabylonPk: bbnPkBytes}
 	res, err := c.client.CommitPubRandForValidator(ctx, req)
 	if err != nil {
 		return nil, err
