@@ -34,7 +34,7 @@ func DefaultBBNConfig() BBNConfig {
 		KeyringBackend: dc.KeyringBackend,
 		GasAdjustment:  dc.GasAdjustment,
 		GasPrices:      dc.GasPrices,
-		KeyDirectory:   DefaultValidatordDir,
+		KeyDirectory:   DefaultValdDir,
 		Debug:          dc.Debug,
 		Timeout:        dc.Timeout,
 		// Setting this to relatively low value, out currnet babylon client (lens) will

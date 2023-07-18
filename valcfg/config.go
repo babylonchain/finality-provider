@@ -20,9 +20,9 @@ const (
 	defaultDataDirname    = "data"
 	defaultLogLevel       = "info"
 	defaultLogDirname     = "logs"
-	defaultLogFilename    = "validatord.log"
+	defaultLogFilename    = "vald.log"
 	DefaultRPCPort        = 15812
-	defaultConfigFileName = "validatord.conf"
+	defaultConfigFileName = "vald.conf"
 	defaultKeyringBackend = "test"
 	defaultRandomNum      = 100
 	defaultRandomNumMax   = 1000
@@ -30,20 +30,20 @@ const (
 
 var (
 	//   C:\Users\<username>\AppData\Local\ on Windows
-	//   ~/.validatord on Linux
-	//   ~/Library/Application Support/Validatord on MacOS
-	DefaultValidatordDir = btcutil.AppDataDir("validatord", false)
+	//   ~/.vald on Linux
+	//   ~/Library/Application Support/Vald on MacOS
+	DefaultValdDir = btcutil.AppDataDir("vald", false)
 
-	DefaultConfigFile = filepath.Join(DefaultValidatordDir, defaultConfigFileName)
+	DefaultConfigFile = filepath.Join(DefaultValdDir, defaultConfigFileName)
 
-	defaultDataDir = filepath.Join(DefaultValidatordDir, defaultDataDirname)
-	defaultLogDir  = filepath.Join(DefaultValidatordDir, defaultLogDirname)
+	defaultDataDir = filepath.Join(DefaultValdDir, defaultDataDirname)
+	defaultLogDir  = filepath.Join(DefaultValdDir, defaultLogDirname)
 )
 
-// Config is the main config for the validatord cli command
+// Config is the main config for the vald cli command
 type Config struct {
 	DebugLevel     string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
-	ValidatordDir  string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
+	ValdDir        string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
 	ConfigFile     string `long:"configfile" description:"Path to configuration file"`
 	DataDir        string `long:"datadir" description:"The directory to store validator's data within"`
 	LogDir         string `long:"logdir" description:"Directory to log output."`
@@ -66,7 +66,7 @@ func DefaultConfig() Config {
 	bbnCfg := DefaultBBNConfig()
 	dbCfg := DefaultDatabaseConfig()
 	return Config{
-		ValidatordDir:  DefaultValidatordDir,
+		ValdDir:        DefaultValdDir,
 		ConfigFile:     DefaultConfigFile,
 		DataDir:        defaultDataDir,
 		DebugLevel:     defaultLogLevel,
@@ -116,10 +116,10 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	// we'll use the default config file path. However, if the user has
 	// modified their default dir, then we should assume they intend to use
 	// the config file within it.
-	configFileDir := CleanAndExpandPath(preCfg.ValidatordDir)
+	configFileDir := CleanAndExpandPath(preCfg.ValdDir)
 	configFilePath := CleanAndExpandPath(preCfg.ConfigFile)
 	switch {
-	case configFileDir != DefaultValidatordDir &&
+	case configFileDir != DefaultValdDir &&
 		configFilePath == DefaultConfigFile:
 
 		configFilePath = filepath.Join(
@@ -129,7 +129,7 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	// User did specify an explicit --configfile, so we check that it does
 	// exist under that path to avoid surprises.
 	case configFilePath != DefaultConfigFile:
-		if !fileExists(configFilePath) {
+		if !FileExists(configFilePath) {
 			return nil, nil, fmt.Errorf("specified config file does "+
 				"not exist in %s", configFilePath)
 		}
@@ -212,10 +212,10 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 func ValidateConfig(cfg Config) (*Config, error) {
 	// If the provided stakerd directory is not the default, we'll modify the
 	// path to all the files and directories that will live within it.
-	validatordDir := CleanAndExpandPath(cfg.ValidatordDir)
-	if validatordDir != DefaultValidatordDir {
-		cfg.DataDir = filepath.Join(validatordDir, defaultDataDirname)
-		cfg.LogDir = filepath.Join(validatordDir, defaultLogDirname)
+	valdDir := CleanAndExpandPath(cfg.ValdDir)
+	if valdDir != DefaultValdDir {
+		cfg.DataDir = filepath.Join(valdDir, defaultDataDirname)
+		cfg.LogDir = filepath.Join(valdDir, defaultLogDirname)
 	}
 
 	funcName := "ValidateConfig"
@@ -236,7 +236,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 				}
 			}
 
-			str := "Failed to create validatord directory '%s': %v"
+			str := "Failed to create vald directory '%s': %v"
 			return mkErr(str, dir, err)
 		}
 
@@ -251,11 +251,11 @@ func ValidateConfig(cfg Config) (*Config, error) {
 
 	// TODO: Validate node host and port
 
-	// Create the validatord directory and all other subdirectories if they
+	// Create the vald directory and all other subdirectories if they
 	// don't already exist. This makes sure that directory trees are also
-	// created for files that point to outside the validatord dir.
+	// created for files that point to outside the vald dir.
 	dirs := []string{
-		validatordDir, cfg.DataDir, cfg.LogDir,
+		valdDir, cfg.DataDir, cfg.LogDir,
 	}
 	for _, dir := range dirs {
 		if err := makeDirectory(dir); err != nil {
@@ -293,9 +293,9 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	return &cfg, nil
 }
 
-// fileExists reports whether the named file or directory exists.
+// FileExists reports whether the named file or directory exists.
 // This function is taken from https://github.com/btcsuite/btcd
-func fileExists(name string) bool {
+func FileExists(name string) bool {
 	if _, err := os.Stat(name); err != nil {
 		if os.IsNotExist(err) {
 			return false
