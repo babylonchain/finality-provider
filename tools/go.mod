@@ -1,4 +1,4 @@
-module github.com/babylonchain/vigilante/tools
+module github.com/babylonchain/btc-validator/tools
 
 go 1.20
 

@@ -57,7 +57,7 @@ test-e2e:
 proto-all: proto-gen
 
 proto-gen:
-	sh ./valrpc/protocgen.sh
+	./proto/scripts/protocgen.sh
 
 .PHONY: proto-gen
 

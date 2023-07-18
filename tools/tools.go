@@ -1,7 +1,7 @@
 //go:build tools
 // +build tools
 
-package vigilante
+package btcvalidator
 
 import (
 	_ "github.com/babylonchain/babylon/cmd/babylond"

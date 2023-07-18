@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	bbncfg "github.com/babylonchain/rpc-client/config"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/lncfg"
@@ -38,7 +37,7 @@ var (
 	defaultLogDir  = filepath.Join(DefaultValidatordDir, defaultLogDirname)
 )
 
-// Config is the main config for the tapd cli command
+// Config is the main config for the validatord cli command
 type Config struct {
 	DebugLevel    string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
 	ValidatordDir string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
@@ -47,24 +46,25 @@ type Config struct {
 	LogDir        string `long:"logdir" description:"Directory to log output."`
 	DumpCfg       bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
 
-	*DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
+	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
-	*bbncfg.BabylonConfig
+	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
-	*GRpcServerConfig
+	GRpcServerConfig *GRpcServerConfig
 
 	RpcListeners []net.Addr
 }
 
 func DefaultConfig() Config {
-	bbnCfg := bbncfg.DefaultBabylonConfig()
+	bbnCfg := DefaultBBNConfig()
+	dbCfg := DefaultDatabaseConfig()
 	return Config{
 		ValidatordDir:  DefaultValidatordDir,
 		ConfigFile:     DefaultConfigFile,
 		DataDir:        defaultDataDir,
 		DebugLevel:     defaultLogLevel,
 		LogDir:         defaultLogDir,
-		DatabaseConfig: DefaultDatabaseConfig(),
+		DatabaseConfig: &dbCfg,
 		BabylonConfig:  &bbnCfg,
 	}
 }
@@ -243,7 +243,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 
 	// Create the validatord directory and all other subdirectories if they
 	// don't already exist. This makes sure that directory trees are also
-	// created for files that point to outside the validatorddir.
+	// created for files that point to outside the validatord dir.
 	dirs := []string{
 		validatordDir, cfg.DataDir, cfg.LogDir,
 	}
