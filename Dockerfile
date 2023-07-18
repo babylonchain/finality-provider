@@ -45,13 +45,13 @@ RUN addgroup --gid 1138 -S btcvalidator && adduser --uid 1138 -S btcvalidator -G
 
 RUN apk add bash curl jq
 
-COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/validatord /bin/validatord
-COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/validatorcli /bin/validatorcli
+COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/vald /bin/vald
+COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/valcli /bin/valcli
 
 WORKDIR /home/btcvalidator
 RUN chown -R btcvalidator /home/btcvalidator
 USER btcvalidator
 
-ENTRYPOINT ["/bin/validatord"]
+ENTRYPOINT ["/bin/vald"]
 CMD []
 STOPSIGNAL SIGTERM
