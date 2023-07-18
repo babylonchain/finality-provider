@@ -73,12 +73,12 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		// cfg.KeyringDir = t.TempDir()
+		cfg.KeyringDir = t.TempDir()
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
-			// err = os.RemoveAll(cfg.KeyringDir)
-			// require.NoError(t, err)
+			err = os.RemoveAll(cfg.KeyringDir)
+			require.NoError(t, err)
 		}()
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
@@ -95,7 +95,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(validator.BabylonPk, 0, gomock.Any(), gomock.Any()).
 			Return(txHash, nil).AnyTimes()
-		txHashes, err := app.CommitPubRandList(validator.BabylonPk, 100)
+		txHashes, err := app.CommitPubRandForAll(100)
 		require.NoError(t, err)
 		require.Equal(t, txHash, txHashes[0])
 	})

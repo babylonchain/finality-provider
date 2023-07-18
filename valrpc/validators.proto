@@ -19,10 +19,15 @@ service BtcValidators {
     rpc RegisterValidator (RegisterValidatorRequest)
         returns (RegisterValidatorResponse);
 
-    // CommitPubRandList commits a list of Schnorr public randomness for BTC
-    // validators
-    rpc CommitPubRandList (CommitPubRandListRequest)
-        returns (CommitPubRandListResponse);
+    // CommitPubRandForValidator commits a list of Schnorr public randomness
+    // for a specific BTC validator
+    rpc CommitPubRandForValidator (CommitPubRandForValidatorRequest)
+        returns (CommitPubRandForValidatorResponse);
+
+    // CommitPubRandForAll commits Schnorr public randomness
+    // for all the managed BTC validators
+    rpc CommitPubRandForAll (CommitPubRandForAllRequest)
+        returns (CommitPubRandForAllResponse);
 
     // QueryValidator queries the validator
     rpc QueryValidator (QueryValidatorRequest) returns (QueryValidatorResponse);
@@ -58,14 +63,24 @@ message RegisterValidatorResponse {
     bytes tx_hash = 1;
 }
 
-message CommitPubRandListRequest {
+message CommitPubRandForValidatorRequest {
     // the Babylon public key of the BTC validator
     bytes babylon_pk = 1;
     // the number of Schorr randomness
     uint64 num = 2;
 }
 
-message CommitPubRandListResponse {
+message CommitPubRandForValidatorResponse {
+    // hash of the successful Babylon transaction
+    bytes tx_hash = 1;
+}
+
+message CommitPubRandForAllRequest {
+    // the number of Schorr randomness
+    uint64 num = 2;
+}
+
+message CommitPubRandForAllResponse {
     // hashes of the successful Babylon transaction
     repeated bytes tx_hashes = 1;
 }

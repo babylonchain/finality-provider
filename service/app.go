@@ -97,39 +97,31 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	return app.bc.RegisterValidator(bbnPk, btcPk, pop)
 }
 
-// CommitPubRandList generates a list of Schnorr rand pairs,
+// CommitPubRandForAll generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
 // Note: if pkBytes is nil, this function works for this validator.
 // Otherwise, it is for all the managed validators.
-func (app *ValidatorApp) CommitPubRandList(pkBytes []byte, num uint64) ([][]byte, error) {
+func (app *ValidatorApp) CommitPubRandForAll(num uint64) ([][]byte, error) {
 	var txHashes [][]byte
-	if pkBytes != nil {
-		txHash, err := app.commitPubRandListForValidator(pkBytes, num)
+	validators, err := app.vs.ListValidators()
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range validators {
+		txHash, err := app.CommitPubRandForValidator(v.BabylonPk, num)
 		if err != nil {
 			return nil, err
 		}
 		txHashes = append(txHashes, txHash)
-	} else {
-		validators, err := app.vs.ListValidators()
-		if err != nil {
-			return nil, err
-		}
-		for _, v := range validators {
-			txHash, err := app.commitPubRandListForValidator(v.BabylonPk, num)
-			if err != nil {
-				return nil, err
-			}
-			txHashes = append(txHashes, txHash)
-		}
 	}
 
 	return txHashes, nil
 }
 
-// commitPubRandListForValidator generates, commits and saves a list of
+// CommitPubRandForValidator generates, commits and saves a list of
 // Schnorr random pair for a specific managed validator
-func (app *ValidatorApp) commitPubRandListForValidator(pkBytes []byte, num uint64) ([]byte, error) {
+func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) ([]byte, error) {
 	// get the managed validator object
 	validator, err := app.vs.GetValidator(pkBytes)
 	if err != nil {
@@ -184,6 +176,7 @@ func (app *ValidatorApp) commitPubRandListForValidator(pkBytes []byte, num uint6
 	}
 
 	// save the committed random list to DB
+	// TODO: Optimize the db interface to batch the saving operations
 	for i := 0; i < int(num); i++ {
 		height := startHeight + uint64(i)
 		privRand := privRandList[i].Bytes()

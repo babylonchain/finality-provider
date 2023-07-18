@@ -25,6 +25,8 @@ const (
 	DefaultRPCPort        = 15812
 	defaultConfigFileName = "validatord.conf"
 	defaultKeyringBackend = "test"
+	defaultRandomNum      = 100
+	defaultRandomNumMax   = 1000
 )
 
 var (
@@ -49,6 +51,8 @@ type Config struct {
 	DumpCfg        bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
 	KeyringDir     string `long:"keyringdir" description:"Directory to the keyring."`
 	KeyringBackend string `long:"keyringbackend" description:"The backend of the keyring {os, test, file}"`
+	RandomNum      uint64 `long:"randomnum" description:"The number of Schnorr public randomness for each commitment"`
+	RandomNumMax   uint64 `long:"randomnummax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
 
 	*DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
@@ -71,6 +75,8 @@ func DefaultConfig() Config {
 		DatabaseConfig: DefaultDatabaseConfig(),
 		BabylonConfig:  &bbnCfg,
 		KeyringBackend: defaultKeyringBackend,
+		RandomNum:      defaultRandomNum,
+		RandomNumMax:   defaultRandomNumMax,
 	}
 }
 

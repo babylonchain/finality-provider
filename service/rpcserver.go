@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -112,16 +113,42 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *valrpc.RegisterV
 	return &valrpc.RegisterValidatorResponse{TxHash: txHash}, nil
 }
 
-// CommitPubRandList commits a list of Schnorr public randomness for BTC validators
-func (r *rpcServer) CommitPubRandList(ctx context.Context, req *valrpc.CommitPubRandListRequest) (
-	*valrpc.CommitPubRandListResponse, error) {
+// CommitPubRandForValidator commits a list of Schnorr public randomness for a specific BTC validator
+func (r *rpcServer) CommitPubRandForValidator(ctx context.Context, req *valrpc.CommitPubRandForValidatorRequest) (
+	*valrpc.CommitPubRandForValidatorResponse, error) {
 
-	txHashes, err := r.app.CommitPubRandList(req.BabylonPk, req.Num)
+	if req.Num > r.cfg.RandomNumMax {
+		return nil, fmt.Errorf("the request public rand num %v should not be larger than %v",
+			req.Num, r.cfg.RandomNumMax)
+	}
+
+	if req.BabylonPk == nil {
+		return nil, fmt.Errorf("the Babylon public key should not be nil")
+	}
+
+	txHash, err := r.app.CommitPubRandForValidator(req.BabylonPk, req.Num)
 	if err != nil {
 		return nil, err
 	}
 
-	return &valrpc.CommitPubRandListResponse{TxHashes: txHashes}, nil
+	return &valrpc.CommitPubRandForValidatorResponse{TxHash: txHash}, nil
+}
+
+// CommitPubRandForAll commits a list of Schnorr public randomness for each managed BTC validator
+func (r *rpcServer) CommitPubRandForAll(ctx context.Context, req *valrpc.CommitPubRandForAllRequest) (
+	*valrpc.CommitPubRandForAllResponse, error) {
+
+	if req.Num > r.cfg.RandomNumMax {
+		return nil, fmt.Errorf("the request public rand num %v should not be larger than %v",
+			req.Num, r.cfg.RandomNumMax)
+	}
+
+	txHashes, err := r.app.CommitPubRandForAll(req.Num)
+	if err != nil {
+		return nil, err
+	}
+
+	return &valrpc.CommitPubRandForAllResponse{TxHashes: txHashes}, nil
 }
 
 // QueryValidator queries the information of the validator

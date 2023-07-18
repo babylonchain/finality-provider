@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	BtcValidators_GetInfo_FullMethodName            = "/valrpc.BtcValidators/GetInfo"
-	BtcValidators_CreateValidator_FullMethodName    = "/valrpc.BtcValidators/CreateValidator"
-	BtcValidators_RegisterValidator_FullMethodName  = "/valrpc.BtcValidators/RegisterValidator"
-	BtcValidators_CommitPubRandList_FullMethodName  = "/valrpc.BtcValidators/CommitPubRandList"
-	BtcValidators_QueryValidator_FullMethodName     = "/valrpc.BtcValidators/QueryValidator"
-	BtcValidators_QueryValidatorList_FullMethodName = "/valrpc.BtcValidators/QueryValidatorList"
+	BtcValidators_GetInfo_FullMethodName                   = "/valrpc.BtcValidators/GetInfo"
+	BtcValidators_CreateValidator_FullMethodName           = "/valrpc.BtcValidators/CreateValidator"
+	BtcValidators_RegisterValidator_FullMethodName         = "/valrpc.BtcValidators/RegisterValidator"
+	BtcValidators_CommitPubRandForValidator_FullMethodName = "/valrpc.BtcValidators/CommitPubRandForValidator"
+	BtcValidators_CommitPubRandForAll_FullMethodName       = "/valrpc.BtcValidators/CommitPubRandForAll"
+	BtcValidators_QueryValidator_FullMethodName            = "/valrpc.BtcValidators/QueryValidator"
+	BtcValidators_QueryValidatorList_FullMethodName        = "/valrpc.BtcValidators/QueryValidatorList"
 )
 
 // BtcValidatorsClient is the client API for BtcValidators service.
@@ -38,9 +39,12 @@ type BtcValidatorsClient interface {
 	// RegisterValidator sends a transactions to Babylon to register a BTC
 	// validator
 	RegisterValidator(ctx context.Context, in *RegisterValidatorRequest, opts ...grpc.CallOption) (*RegisterValidatorResponse, error)
-	// CommitPubRandList commits a list of Schnorr public randomness for BTC
-	// validators
-	CommitPubRandList(ctx context.Context, in *CommitPubRandListRequest, opts ...grpc.CallOption) (*CommitPubRandListResponse, error)
+	// CommitPubRandForValidator commits a list of Schnorr public randomness
+	// for a specific BTC validator
+	CommitPubRandForValidator(ctx context.Context, in *CommitPubRandForValidatorRequest, opts ...grpc.CallOption) (*CommitPubRandForValidatorResponse, error)
+	// CommitPubRandForAll commits Schnorr public randomness
+	// for all the managed BTC validators
+	CommitPubRandForAll(ctx context.Context, in *CommitPubRandForAllRequest, opts ...grpc.CallOption) (*CommitPubRandForAllResponse, error)
 	// QueryValidator queries the validator
 	QueryValidator(ctx context.Context, in *QueryValidatorRequest, opts ...grpc.CallOption) (*QueryValidatorResponse, error)
 	// QueryValidatorList queries a list of validators
@@ -82,9 +86,18 @@ func (c *btcValidatorsClient) RegisterValidator(ctx context.Context, in *Registe
 	return out, nil
 }
 
-func (c *btcValidatorsClient) CommitPubRandList(ctx context.Context, in *CommitPubRandListRequest, opts ...grpc.CallOption) (*CommitPubRandListResponse, error) {
-	out := new(CommitPubRandListResponse)
-	err := c.cc.Invoke(ctx, BtcValidators_CommitPubRandList_FullMethodName, in, out, opts...)
+func (c *btcValidatorsClient) CommitPubRandForValidator(ctx context.Context, in *CommitPubRandForValidatorRequest, opts ...grpc.CallOption) (*CommitPubRandForValidatorResponse, error) {
+	out := new(CommitPubRandForValidatorResponse)
+	err := c.cc.Invoke(ctx, BtcValidators_CommitPubRandForValidator_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *btcValidatorsClient) CommitPubRandForAll(ctx context.Context, in *CommitPubRandForAllRequest, opts ...grpc.CallOption) (*CommitPubRandForAllResponse, error) {
+	out := new(CommitPubRandForAllResponse)
+	err := c.cc.Invoke(ctx, BtcValidators_CommitPubRandForAll_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,9 +133,12 @@ type BtcValidatorsServer interface {
 	// RegisterValidator sends a transactions to Babylon to register a BTC
 	// validator
 	RegisterValidator(context.Context, *RegisterValidatorRequest) (*RegisterValidatorResponse, error)
-	// CommitPubRandList commits a list of Schnorr public randomness for BTC
-	// validators
-	CommitPubRandList(context.Context, *CommitPubRandListRequest) (*CommitPubRandListResponse, error)
+	// CommitPubRandForValidator commits a list of Schnorr public randomness
+	// for a specific BTC validator
+	CommitPubRandForValidator(context.Context, *CommitPubRandForValidatorRequest) (*CommitPubRandForValidatorResponse, error)
+	// CommitPubRandForAll commits Schnorr public randomness
+	// for all the managed BTC validators
+	CommitPubRandForAll(context.Context, *CommitPubRandForAllRequest) (*CommitPubRandForAllResponse, error)
 	// QueryValidator queries the validator
 	QueryValidator(context.Context, *QueryValidatorRequest) (*QueryValidatorResponse, error)
 	// QueryValidatorList queries a list of validators
@@ -143,8 +159,11 @@ func (UnimplementedBtcValidatorsServer) CreateValidator(context.Context, *Create
 func (UnimplementedBtcValidatorsServer) RegisterValidator(context.Context, *RegisterValidatorRequest) (*RegisterValidatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterValidator not implemented")
 }
-func (UnimplementedBtcValidatorsServer) CommitPubRandList(context.Context, *CommitPubRandListRequest) (*CommitPubRandListResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CommitPubRandList not implemented")
+func (UnimplementedBtcValidatorsServer) CommitPubRandForValidator(context.Context, *CommitPubRandForValidatorRequest) (*CommitPubRandForValidatorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitPubRandForValidator not implemented")
+}
+func (UnimplementedBtcValidatorsServer) CommitPubRandForAll(context.Context, *CommitPubRandForAllRequest) (*CommitPubRandForAllResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitPubRandForAll not implemented")
 }
 func (UnimplementedBtcValidatorsServer) QueryValidator(context.Context, *QueryValidatorRequest) (*QueryValidatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryValidator not implemented")
@@ -219,20 +238,38 @@ func _BtcValidators_RegisterValidator_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _BtcValidators_CommitPubRandList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CommitPubRandListRequest)
+func _BtcValidators_CommitPubRandForValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitPubRandForValidatorRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BtcValidatorsServer).CommitPubRandList(ctx, in)
+		return srv.(BtcValidatorsServer).CommitPubRandForValidator(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: BtcValidators_CommitPubRandList_FullMethodName,
+		FullMethod: BtcValidators_CommitPubRandForValidator_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BtcValidatorsServer).CommitPubRandList(ctx, req.(*CommitPubRandListRequest))
+		return srv.(BtcValidatorsServer).CommitPubRandForValidator(ctx, req.(*CommitPubRandForValidatorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BtcValidators_CommitPubRandForAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitPubRandForAllRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BtcValidatorsServer).CommitPubRandForAll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BtcValidators_CommitPubRandForAll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BtcValidatorsServer).CommitPubRandForAll(ctx, req.(*CommitPubRandForAllRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -293,8 +330,12 @@ var BtcValidators_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _BtcValidators_RegisterValidator_Handler,
 		},
 		{
-			MethodName: "CommitPubRandList",
-			Handler:    _BtcValidators_CommitPubRandList_Handler,
+			MethodName: "CommitPubRandForValidator",
+			Handler:    _BtcValidators_CommitPubRandForValidator_Handler,
+		},
+		{
+			MethodName: "CommitPubRandForAll",
+			Handler:    _BtcValidators_CommitPubRandForAll_Handler,
 		},
 		{
 			MethodName: "QueryValidator",

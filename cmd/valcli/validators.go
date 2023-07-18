@@ -189,6 +189,9 @@ func registerVal(ctx *cli.Context) error {
 	return nil
 }
 
+// TODO: consider remove this command after PoC
+// because leaving this command to users is dangerous
+// committing random list should be an automatic process
 var commitRandomList = cli.Command{
 	Name:      "commit-random-list",
 	ShortName: "crl",
