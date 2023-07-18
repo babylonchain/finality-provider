@@ -4,5 +4,5 @@
 package vigilante
 
 import (
-	_ "github.com/btcsuite/btcd"
+	_ "github.com/babylonchain/babylon/cmd/babylond"
 )
