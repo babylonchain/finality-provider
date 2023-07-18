@@ -161,7 +161,9 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 
 func (w *BabylonNodeHandler) Start() error {
 	if err := w.babylonNode.start(); err != nil {
-		return w.babylonNode.cleanup()
+		// try to cleanup after start error, but return original error
+		_ = w.babylonNode.cleanup()
+		return err
 	}
 	return nil
 }

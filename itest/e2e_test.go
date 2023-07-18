@@ -40,5 +40,6 @@ func TestBabylonNodeProgressing(t *testing.T) {
 		}
 
 		return true
+		// TODO parametrize timeout and interval
 	}, 30*time.Second, 1*time.Second)
 }
