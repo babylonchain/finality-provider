@@ -15,6 +15,7 @@ import (
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/testutil/mocks"
+	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -86,14 +87,21 @@ func FuzzCommitPubRandList(f *testing.F) {
 		require.NoError(t, err)
 
 		// create a validator object and save it to db
+		keyName := testutil.GenRandomHexStr(r, 4)
+		kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+		require.NoError(t, err)
+		validator, err := kc.CreateBTCValidator()
+		require.NoError(t, err)
 		s := app.GetValidatorStore()
-		validator := testutil.GenRandomValidator(r, t)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
+		btcPk := new(types.BIP340PubKey)
+		err = btcPk.Unmarshal(validator.BtcPk)
+		require.NoError(t, err)
 		txHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
-			CommitPubRandList(validator.BabylonPk, 0, gomock.Any(), gomock.Any()).
+			CommitPubRandList(btcPk, uint64(1), gomock.Any(), gomock.Any()).
 			Return(txHash, nil).AnyTimes()
 		txHashes, err := app.CommitPubRandForAll(100)
 		require.NoError(t, err)

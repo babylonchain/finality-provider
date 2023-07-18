@@ -68,6 +68,10 @@ func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
 	return app.vs
 }
 
+func (app *ValidatorApp) GetKeyring() keyring.Keyring {
+	return app.kr
+}
+
 func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	validator, err := app.vs.GetValidator(pkBytes)
 	if err != nil {
@@ -232,8 +236,8 @@ func GenerateRandPairList(num uint64) ([]*eots.PrivateRand, []types.SchnorrPubRa
 			return nil, nil, err
 		}
 		pr := types.NewSchnorrPubRandFromFieldVal(eotsPR)
-		srList = append(srList, eotsSR)
-		prList = append(prList, *pr)
+		srList[i] = eotsSR
+		prList[i] = *pr
 	}
 	return srList, prList, nil
 }
