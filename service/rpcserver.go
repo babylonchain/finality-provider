@@ -114,8 +114,8 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 }
 
 // CommitPubRandForValidator commits a list of Schnorr public randomness for a specific BTC validator
-func (r *rpcServer) CommitPubRandForValidator(ctx context.Context, req *valrpc.CommitPubRandForValidatorRequest) (
-	*valrpc.CommitPubRandForValidatorResponse, error) {
+func (r *rpcServer) CommitPubRandForValidator(ctx context.Context, req *proto.CommitPubRandForValidatorRequest) (
+	*proto.CommitPubRandForValidatorResponse, error) {
 
 	if req.Num > r.cfg.RandomNumMax {
 		return nil, fmt.Errorf("the request public rand num %v should not be larger than %v",
@@ -131,12 +131,12 @@ func (r *rpcServer) CommitPubRandForValidator(ctx context.Context, req *valrpc.C
 		return nil, err
 	}
 
-	return &valrpc.CommitPubRandForValidatorResponse{TxHash: txHash}, nil
+	return &proto.CommitPubRandForValidatorResponse{TxHash: txHash}, nil
 }
 
 // CommitPubRandForAll commits a list of Schnorr public randomness for each managed BTC validator
-func (r *rpcServer) CommitPubRandForAll(ctx context.Context, req *valrpc.CommitPubRandForAllRequest) (
-	*valrpc.CommitPubRandForAllResponse, error) {
+func (r *rpcServer) CommitPubRandForAll(ctx context.Context, req *proto.CommitPubRandForAllRequest) (
+	*proto.CommitPubRandForAllResponse, error) {
 
 	if req.Num > r.cfg.RandomNumMax {
 		return nil, fmt.Errorf("the request public rand num %v should not be larger than %v",
@@ -148,7 +148,7 @@ func (r *rpcServer) CommitPubRandForAll(ctx context.Context, req *valrpc.CommitP
 		return nil, err
 	}
 
-	return &valrpc.CommitPubRandForAllResponse{TxHashes: txHashes}, nil
+	return &proto.CommitPubRandForAllResponse{TxHashes: txHashes}, nil
 }
 
 // QueryValidator queries the information of the validator
