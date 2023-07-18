@@ -24,6 +24,7 @@ const (
 	defaultLogFilename    = "validatord.log"
 	DefaultRPCPort        = 15812
 	defaultConfigFileName = "validatord.conf"
+	defaultKeyringBackend = "test"
 )
 
 var (
@@ -40,15 +41,18 @@ var (
 
 // Config is the main config for the tapd cli command
 type Config struct {
-	DebugLevel    string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
-	ValidatordDir string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
-	ConfigFile    string `long:"configfile" description:"Path to configuration file"`
-	DataDir       string `long:"datadir" description:"The directory to store validator's data within"`
-	LogDir        string `long:"logdir" description:"Directory to log output."`
-	DumpCfg       bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
+	DebugLevel     string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
+	ValidatordDir  string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
+	ConfigFile     string `long:"configfile" description:"Path to configuration file"`
+	DataDir        string `long:"datadir" description:"The directory to store validator's data within"`
+	LogDir         string `long:"logdir" description:"Directory to log output."`
+	DumpCfg        bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
+	KeyringDir     string `long:"keyringdir" description:"Directory to the keyring."`
+	KeyringBackend string `long:"keyringbackend" description:"The backend of the keyring {os, test, file}"`
 
 	*DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
+	// TODO: replace this using our own config
 	*bbncfg.BabylonConfig
 
 	*GRpcServerConfig
@@ -66,6 +70,7 @@ func DefaultConfig() Config {
 		LogDir:         defaultLogDir,
 		DatabaseConfig: DefaultDatabaseConfig(),
 		BabylonConfig:  &bbnCfg,
+		KeyringBackend: defaultKeyringBackend,
 	}
 }
 

@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
 
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/service"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -38,7 +35,7 @@ var validatorsCommands = []cli.Command{
 		Usage:     "Control BTC validators.",
 		Category:  "Validators",
 		Subcommands: []cli.Command{
-			createValidator, listValidators, importValidator, registerValidator,
+			createValidator, listValidators, importValidator, registerValidator, commitRandomList,
 		},
 	},
 }
@@ -72,7 +69,10 @@ var createValidator = cli.Command{
 }
 
 func createVal(ctx *cli.Context) error {
-	sdkCtx, err := createClientCtx(ctx)
+	sdkCtx, err := service.CreateClientCtx(
+		ctx.String(keyringDirFlag),
+		ctx.String(chainIdFlag),
+	)
 	if err != nil {
 		return err
 	}
@@ -251,23 +251,4 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 	}
 
 	return valStore, nil
-}
-
-func createClientCtx(ctx *cli.Context) (client.Context, error) {
-	var err error
-	var homeDir string
-
-	dir := ctx.String(keyringDirFlag)
-	if dir == "" {
-		homeDir, err = os.UserHomeDir()
-		if err != nil {
-			return client.Context{}, err
-		}
-		dir = path.Join(homeDir, ".btc-validator")
-	}
-
-	return client.Context{}.
-		WithChainID(ctx.String(chainIdFlag)).
-		WithCodec(codec.MakeCodec()).
-		WithKeyringDir(dir), nil
 }

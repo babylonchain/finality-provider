@@ -6,6 +6,7 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -58,6 +59,16 @@ func NewKeyringController(ctx client.Context, name string, keyringBackend string
 	return &KeyringController{
 		name: KeyName(name),
 		kr:   kr,
+	}, nil
+}
+
+func NewKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*KeyringController, error) {
+	if name == "" {
+		return nil, fmt.Errorf("the key name should not be empty")
+	}
+	return &KeyringController{
+		kr:   kr,
+		name: KeyName(name),
 	}, nil
 }
 
@@ -203,4 +214,13 @@ func (kc *KeyringController) getKey(name string) (*btcec.PrivateKey, *btcec.Publ
 	default:
 		return nil, nil, fmt.Errorf("unsupported key type in keyring")
 	}
+}
+
+func (kc *KeyringController) SchnorrSign(msg []byte) (*schnorr.Signature, error) {
+	btcPrivKey, _, err := kc.getKey(kc.name.GetBtcKeyName())
+	if err != nil {
+		return nil, err
+	}
+
+	return schnorr.Sign(btcPrivKey, msg)
 }

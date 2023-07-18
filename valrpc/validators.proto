@@ -126,13 +126,6 @@ message SchnorrRandPair {
     bytes sec_rand = 2;
 }
 
-// CommittedRandPair defines the Schonorr randomness pair that has been
-// committed to Babylon stored in the DB as: babylon_pk + committed_height ->
-// pair
-message CommittedRandPair {
-    SchnorrRandPair pair = 1;
-}
-
 // ValidatorStatus is the status of a BTC validator
 // a Validator object has 4 states:
 //  - Created - created and managed by validator client, not registered to
