@@ -180,7 +180,8 @@ func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) (
 	}
 
 	// save the committed random list to DB
-	// TODO: Optimize the db interface to batch the saving operations
+	// TODO 1: Optimize the db interface to batch the saving operations
+	// TODO 2: Consider safety after recovery
 	for i := 0; i < int(num); i++ {
 		height := startHeight + uint64(i)
 		privRand := privRandList[i].Bytes()
