@@ -192,6 +192,9 @@ func (app *ValidatorApp) commitPubRandListForValidator(pkBytes []byte, num uint6
 			PubRand: pubRandList[i].MustMarshal(),
 		}
 		err = app.vs.SaveRandPair(pkBytes, height, randPair)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return txHash, nil

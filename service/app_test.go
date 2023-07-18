@@ -64,3 +64,39 @@ func FuzzRegisterValidator(f *testing.F) {
 		require.Equal(t, txHash, actualTxHash)
 	})
 }
+
+func FuzzCommitPubRandList(f *testing.F) {
+	testutil.AddRandomSeedsToFuzzer(f, 10)
+	f.Fuzz(func(t *testing.T, seed int64) {
+		r := rand.New(rand.NewSource(seed))
+
+		// create validator app with db and mocked Babylon client
+		cfg := valcfg.DefaultConfig()
+		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
+		// cfg.KeyringDir = t.TempDir()
+		defer func() {
+			err := os.RemoveAll(cfg.DatabaseConfig.Path)
+			require.NoError(t, err)
+			// err = os.RemoveAll(cfg.KeyringDir)
+			// require.NoError(t, err)
+		}()
+		ctl := gomock.NewController(t)
+		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
+		require.NoError(t, err)
+
+		// create a validator object and save it to db
+		s := app.GetValidatorStore()
+		validator := testutil.GenRandomValidator(r, t)
+		err = s.SaveValidator(validator)
+		require.NoError(t, err)
+
+		txHash := testutil.GenRandomByteArray(r, 32)
+		mockBabylonClient.EXPECT().
+			CommitPubRandList(validator.BabylonPk, 0, gomock.Any(), gomock.Any()).
+			Return(txHash, nil).AnyTimes()
+		txHashes, err := app.CommitPubRandList(validator.BabylonPk, 100)
+		require.NoError(t, err)
+		require.Equal(t, txHash, txHashes[0])
+	})
+}

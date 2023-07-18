@@ -42,7 +42,7 @@ func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *valrp
 	k := append(pk, types.Uint64ToBigEndian(height)...)
 	v, err := proto.Marshal(randPair)
 	if err != nil {
-		fmt.Errorf("failed to marshal the Schnorr random pair: %w", err)
+		return fmt.Errorf("failed to marshal the Schnorr random pair: %w", err)
 	}
 
 	if err := vs.s.Put(k, v); err != nil {
