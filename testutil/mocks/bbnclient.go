@@ -9,6 +9,7 @@ import (
 
 	types "github.com/babylonchain/babylon/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -51,6 +52,21 @@ func (mr *MockBabylonClientMockRecorder) CommitPubRandList(btcPubKey, startHeigh
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandForAll", reflect.TypeOf((*MockBabylonClient)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
 }
 
+// QueryHeader mocks base method.
+func (m *MockBabylonClient) QueryHeader(height int64) (*coretypes.ResultHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryHeader", height)
+	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryHeader indicates an expected call of QueryHeader.
+func (mr *MockBabylonClientMockRecorder) QueryHeader(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeader", reflect.TypeOf((*MockBabylonClient)(nil).QueryHeader), height)
+}
+
 // QueryHeightWithLastPubRand mocks base method.
 func (m *MockBabylonClient) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -64,6 +80,21 @@ func (m *MockBabylonClient) QueryHeightWithLastPubRand(btcPubKey *types.BIP340Pu
 func (mr *MockBabylonClientMockRecorder) QueryHeightWithLastPubRand(btcPubKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockBabylonClient)(nil).QueryHeightWithLastPubRand), btcPubKey)
+}
+
+// QueryNodeStatus mocks base method.
+func (m *MockBabylonClient) QueryNodeStatus() (*coretypes.ResultStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryNodeStatus")
+	ret0, _ := ret[0].(*coretypes.ResultStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryNodeStatus indicates an expected call of QueryNodeStatus.
+func (mr *MockBabylonClientMockRecorder) QueryNodeStatus() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryNodeStatus", reflect.TypeOf((*MockBabylonClient)(nil).QueryNodeStatus))
 }
 
 // QueryShouldSubmitJurySigs mocks base method.
