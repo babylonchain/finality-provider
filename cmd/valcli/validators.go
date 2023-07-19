@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/babylonchain/btc-validator/codec"
-	"github.com/cosmos/cosmos-sdk/client"
 
 	"github.com/urfave/cli"
 
