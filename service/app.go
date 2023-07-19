@@ -7,15 +7,13 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/val"
+	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
-
-	bbncli "github.com/babylonchain/btc-validator/bbnclient"
-	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/valcfg"
-
-	"github.com/babylonchain/btc-validator/val"
 )
 
 type ValidatorApp struct {
@@ -58,40 +56,9 @@ func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
-func (app *ValidatorApp) GetValidatorStore() (*val.ValidatorStore, error) {
-	valStore, err := val.NewValidatorStore(app.config.DatabaseConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
-	}
-
-	return valStore, nil
-}
-
-func (app *ValidatorApp) AccessValidatorStore(accessFunc func(valStore *val.ValidatorStore) error) error {
-	valStore, err := app.GetValidatorStore()
-	if err != nil {
-		return err
-	}
-	if err := accessFunc(valStore); err != nil {
-		return err
-	}
-	if err := valStore.Close(); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	// get validator from ValidatorStore
-	var validator *proto.Validator
-	err := app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
-		val, err := valStore.GetValidator(pkBytes)
-		if err != nil {
-			return err
-		}
-		validator = val
-		return nil
-	})
+	validator, err := app.GetValidator(pkBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -126,15 +93,7 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 // Otherwise, it is for all the managed validators.
 func (app *ValidatorApp) CommitPubRandForAll(num uint64) ([][]byte, error) {
 	// list validators from ValidatorStore
-	var validators []*proto.Validator
-	err := app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
-		vals, err := valStore.ListValidators()
-		if err != nil {
-			return err
-		}
-		validators = vals
-		return nil
-	})
+	validators, err := app.ListValidators()
 	if err != nil {
 		return nil, err
 	}
@@ -155,15 +114,7 @@ func (app *ValidatorApp) CommitPubRandForAll(num uint64) ([][]byte, error) {
 // Schnorr random pair for a specific managed validator
 func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) ([]byte, error) {
 	// get the managed validator object
-	var validator *proto.Validator
-	err := app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
-		val, err := valStore.GetValidator(pkBytes)
-		if err != nil {
-			return err
-		}
-		validator = val
-		return nil
-	})
+	validator, err := app.GetValidator(pkBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -211,10 +162,7 @@ func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) (
 	// update and save the validator object to DB
 	validator.LastCommittedHeight = validator.LastCommittedHeight + num
 
-	err = app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
-		return valStore.SaveValidator(validator)
-	})
-	if err != nil {
+	if err = app.SaveValidator(validator); err != nil {
 		panic(fmt.Errorf("failed to save updated validator object: %w", err))
 	}
 
@@ -228,10 +176,7 @@ func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) (
 			SecRand: privRand[:],
 			PubRand: pubRandList[i].MustMarshal(),
 		}
-		err = app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
-			return valStore.SaveRandPair(pkBytes, height, randPair)
-		})
-		if err != nil {
+		if err = app.SaveRandPair(pkBytes, height, randPair); err != nil {
 			return nil, err
 		}
 	}
