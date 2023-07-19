@@ -92,6 +92,8 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
+	fmt.Println("created BTC validator")
+
 	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
 		return err
@@ -100,9 +102,13 @@ func createVal(ctx *cli.Context) error {
 		err = vs.Close()
 	}()
 
+	fmt.Println("got val store from ctx")
+
 	if err := vs.SaveValidator(validator); err != nil {
 		return err
 	}
+
+	fmt.Println("saved BTC validator")
 
 	printRespJSON(&proto.CreateValidatorResponse{
 		BabylonPk: validator.BabylonPk,
