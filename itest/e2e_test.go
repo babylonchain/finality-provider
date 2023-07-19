@@ -10,8 +10,8 @@ import (
 
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/valcfg"
 	cfg "github.com/babylonchain/btc-validator/valcfg"
-	"github.com/babylonchain/rpc-client/config"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +27,7 @@ func TestPoller(t *testing.T) {
 	// Let the node start up
 	// TODO Add polling with to check for startup
 	// time.Sleep(5 * time.Second)
-	defaultConfig := config.DefaultBabylonConfig()
+	defaultConfig := valcfg.DefaultBBNConfig()
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout

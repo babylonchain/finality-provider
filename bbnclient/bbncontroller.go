@@ -10,13 +10,14 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
-	bbncfg "github.com/babylonchain/rpc-client/config"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"google.golang.org/grpc/metadata"
+	"github.com/babylonchain/btc-validator/valcfg"
+
 )
 
 var _ BabylonClient = &BabylonController{}
