@@ -5,16 +5,33 @@ package e2etest
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/valcfg"
-	cfg "github.com/babylonchain/btc-validator/valcfg"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+func TempDirWithName(name string) (string, error) {
+	tempPath := os.TempDir()
+
+	tempName, err := os.MkdirTemp(tempPath, name)
+	if err != nil {
+		return "", err
+	}
+
+	err = os.Chmod(tempName, 0755)
+
+	if err != nil {
+		return "", err
+	}
+
+	return tempName, nil
+}
 
 func TestPoller(t *testing.T) {
 	handler, err := NewBabylonNodeHandler()
@@ -31,7 +48,7 @@ func TestPoller(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
-	defaultPollerConfig := cfg.DefaulPollerConfig()
+	defaultPollerConfig := valcfg.DefaulPollerConfig()
 
 	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
 	require.NoError(t, err)
@@ -67,4 +84,42 @@ func TestPoller(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")
 	}
+}
+
+func TestCreateValidator(t *testing.T) {
+	tDir, err := TempDirWithName("valtest")
+	require.NoError(t, err)
+	defer func() {
+		err = os.RemoveAll(tDir)
+		require.NoError(t, err)
+	}()
+
+	defaultConfig := valcfg.DefaultConfig()
+	defaultConfig.KeyringDir = tDir
+	defaultConfig.BabylonConfig.KeyDirectory = tDir
+	defaultConfig.DatabaseConfig.Path = filepath.Join(tDir, "valtest.db")
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.Out = os.Stdout
+
+	bc, err := babylonclient.NewBabylonController(defaultConfig.BabylonConfig, logger)
+	require.NoError(t, err)
+
+	app, err := service.NewValidatorAppFromConfig(&defaultConfig, logger, bc)
+	require.NoError(t, err)
+
+	err = app.Start()
+	require.NoError(t, err)
+	defer app.Stop()
+
+	newValName := "testingValidator"
+	valResult, err := app.CreateValidator(newValName)
+	require.NoError(t, err)
+
+	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+
+	require.Equal(t, newValName, validator.KeyName)
+
 }
