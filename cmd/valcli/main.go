@@ -11,7 +11,7 @@ import (
 )
 
 func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "[btc-staker] %v\n", err)
+	fmt.Fprintf(os.Stderr, "[btc-validator] %v\n", err)
 	os.Exit(1)
 }
 

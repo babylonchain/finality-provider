@@ -2,16 +2,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/valcfg"
+
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
+
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var adminCommands = []cli.Command{
 	{
 		Name:      "admin",
 		ShortName: "ad",
-		Usage:     "Different utility and admin commands",
+		Usage:     "Different utility and admin commands.",
 		Category:  "Admin",
 		Subcommands: []cli.Command{
 			dumpCfgCommand,

@@ -192,21 +192,21 @@ func registerVal(ctx *cli.Context) error {
 var commitRandomList = cli.Command{
 	Name:      "commit-random-list",
 	ShortName: "crl",
-	Usage:     "generate a list of Schnorr random pair and commit the public rand for BTC validator",
+	Usage:     "Generate a list of Schnorr random pair and commit the public rand for Bitcoin validator.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
-			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
 			Value: defaultValdDaemonAddress,
 		},
 		cli.Int64Flag{
 			Name:  randNumFlag,
-			Usage: "the number of public randomness you want to commit",
+			Usage: "The number of public randomness you want to commit",
 			Value: int64(defaultRandomNum),
 		},
 		cli.StringFlag{
 			Name:  babylonPkFlag,
-			Usage: "commit random list for a specific BTC validator",
+			Usage: "Commit random list for a specific Bitcoin validator",
 		},
 	},
 	Action: commitRand,

@@ -529,7 +529,7 @@ type CommitPubRandForAllResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// hashes of the successful Babylon transaction
+	// hashes of the successful Babylon transactions
 	TxHashes [][]byte `protobuf:"bytes,1,rep,name=tx_hashes,json=txHashes,proto3" json:"tx_hashes,omitempty"`
 }
 
