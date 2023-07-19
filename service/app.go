@@ -6,10 +6,13 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 
 	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
 
 	"github.com/babylonchain/btc-validator/val"
@@ -22,6 +25,7 @@ type ValidatorApp struct {
 	quit      chan struct{}
 
 	bc     bbncli.BabylonClient
+	kr     keyring.Keyring
 	vs     *val.ValidatorStore
 	config *valcfg.Config
 	logger *logrus.Logger
@@ -32,6 +36,11 @@ func NewValidatorAppFromConfig(
 	logger *logrus.Logger,
 	bc bbncli.BabylonClient,
 ) (*ValidatorApp, error) {
+
+	kr, err := CreateKeyring(config.KeyringDir, config.BabylonConfig.ChainID, config.KeyringBackend)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyring: %w", err)
+	}
 
 	valStore, err := val.NewValidatorStore(config.DatabaseConfig)
 	if err != nil {
@@ -45,6 +54,7 @@ func NewValidatorAppFromConfig(
 	return &ValidatorApp{
 		bc:     bc,
 		vs:     valStore,
+		kr:     kr,
 		config: config,
 		logger: logger,
 		quit:   make(chan struct{}),
@@ -53,6 +63,10 @@ func NewValidatorAppFromConfig(
 
 func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
 	return app.vs
+}
+
+func (app *ValidatorApp) GetKeyring() keyring.Keyring {
+	return app.kr
 }
 
 func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
@@ -82,6 +96,103 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	}
 
 	return app.bc.RegisterValidator(bbnPk, btcPk, pop)
+}
+
+// CommitPubRandForAll generates a list of Schnorr rand pairs,
+// commits the public randomness for the managed validators,
+// and save the randomness pair to DB
+// Note: if pkBytes is nil, this function works for this validator.
+// Otherwise, it is for all the managed validators.
+func (app *ValidatorApp) CommitPubRandForAll(num uint64) ([][]byte, error) {
+	var txHashes [][]byte
+	validators, err := app.vs.ListValidators()
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range validators {
+		txHash, err := app.CommitPubRandForValidator(v.BabylonPk, num)
+		if err != nil {
+			return nil, err
+		}
+		txHashes = append(txHashes, txHash)
+	}
+
+	return txHashes, nil
+}
+
+// CommitPubRandForValidator generates, commits and saves a list of
+// Schnorr random pair for a specific managed validator
+func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) ([]byte, error) {
+	// get the managed validator object
+	validator, err := app.vs.GetValidator(pkBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// generate a list of Schnorr randomness pairs
+	privRandList, pubRandList, err := GenerateRandPairList(num)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the message hash for signing
+	btcPk := new(types.BIP340PubKey)
+	err = btcPk.Unmarshal(validator.BtcPk)
+	if err != nil {
+		return nil, err
+	}
+	startHeight := validator.LastCommittedHeight + 1
+	msg := &ftypes.MsgCommitPubRandList{
+		ValBtcPk:    btcPk,
+		StartHeight: startHeight,
+		PubRandList: pubRandList,
+	}
+	hash, err := msg.HashToSign()
+	if err != nil {
+		return nil, err
+	}
+
+	// sign the message hash using the validator's BTC private key
+	kc, err := val.NewKeyringControllerWithKeyring(app.kr, validator.KeyName)
+	if err != nil {
+		return nil, err
+	}
+	schnorrSig, err := kc.SchnorrSign(hash)
+	if err != nil {
+		return nil, err
+	}
+	sig := types.NewBIP340SignatureFromBTCSig(schnorrSig)
+
+	// commit the rand list to Babylon
+	txHash, err := app.bc.CommitPubRandList(btcPk, startHeight, pubRandList, &sig)
+	if err != nil {
+		return nil, err
+	}
+
+	// update and save the validator object to DB
+	validator.LastCommittedHeight = validator.LastCommittedHeight + num
+	err = app.vs.SaveValidator(validator)
+	if err != nil {
+		panic(fmt.Errorf("failed to save updated validator object: %w", err))
+	}
+
+	// save the committed random list to DB
+	// TODO 1: Optimize the db interface to batch the saving operations
+	// TODO 2: Consider safety after recovery
+	for i := 0; i < int(num); i++ {
+		height := startHeight + uint64(i)
+		privRand := privRandList[i].Bytes()
+		randPair := &proto.SchnorrRandPair{
+			SecRand: privRand[:],
+			PubRand: pubRandList[i].MustMarshal(),
+		}
+		err = app.vs.SaveRandPair(pkBytes, height, randPair)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return txHash, nil
 }
 
 func (app *ValidatorApp) Start() error {

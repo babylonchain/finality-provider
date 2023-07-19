@@ -23,6 +23,9 @@ const (
 	defaultLogFilename    = "validatord.log"
 	DefaultRPCPort        = 15812
 	defaultConfigFileName = "validatord.conf"
+	defaultKeyringBackend = "test"
+	defaultRandomNum      = 100
+	defaultRandomNumMax   = 1000
 )
 
 var (
@@ -39,12 +42,16 @@ var (
 
 // Config is the main config for the validatord cli command
 type Config struct {
-	DebugLevel    string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
-	ValidatordDir string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
-	ConfigFile    string `long:"configfile" description:"Path to configuration file"`
-	DataDir       string `long:"datadir" description:"The directory to store validator's data within"`
-	LogDir        string `long:"logdir" description:"Directory to log output."`
-	DumpCfg       bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
+	DebugLevel     string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
+	ValidatordDir  string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
+	ConfigFile     string `long:"configfile" description:"Path to configuration file"`
+	DataDir        string `long:"datadir" description:"The directory to store validator's data within"`
+	LogDir         string `long:"logdir" description:"Directory to log output."`
+	DumpCfg        bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
+	KeyringDir     string `long:"keyringdir" description:"Directory to the keyring."`
+	KeyringBackend string `long:"keyringbackend" description:"The backend of the keyring {os, test, file}"`
+	RandomNum      uint64 `long:"randomnum" description:"The number of Schnorr public randomness for each commitment"`
+	RandomNumMax   uint64 `long:"randomnummax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
 
 	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
@@ -66,6 +73,9 @@ func DefaultConfig() Config {
 		LogDir:         defaultLogDir,
 		DatabaseConfig: &dbCfg,
 		BabylonConfig:  &bbnCfg,
+		KeyringBackend: defaultKeyringBackend,
+		RandomNum:      defaultRandomNum,
+		RandomNumMax:   defaultRandomNumMax,
 	}
 }
 

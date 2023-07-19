@@ -15,6 +15,7 @@ import (
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/testutil/mocks"
+	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -62,5 +63,61 @@ func FuzzRegisterValidator(f *testing.F) {
 		actualTxHash, err := app.RegisterValidator(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, txHash, actualTxHash)
+	})
+}
+
+func FuzzCommitPubRandList(f *testing.F) {
+	testutil.AddRandomSeedsToFuzzer(f, 10)
+	f.Fuzz(func(t *testing.T, seed int64) {
+		r := rand.New(rand.NewSource(seed))
+
+		// create validator app with db and mocked Babylon client
+		cfg := valcfg.DefaultConfig()
+		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
+		cfg.KeyringDir = t.TempDir()
+		defer func() {
+			err := os.RemoveAll(cfg.DatabaseConfig.Path)
+			require.NoError(t, err)
+			err = os.RemoveAll(cfg.KeyringDir)
+			require.NoError(t, err)
+		}()
+		ctl := gomock.NewController(t)
+		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
+		require.NoError(t, err)
+
+		// create a validator object and save it to db
+		keyName := testutil.GenRandomHexStr(r, 4)
+		kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+		require.NoError(t, err)
+		validator, err := kc.CreateBTCValidator()
+		require.NoError(t, err)
+		s := app.GetValidatorStore()
+		err = s.SaveValidator(validator)
+		require.NoError(t, err)
+
+		btcPk := new(types.BIP340PubKey)
+		err = btcPk.Unmarshal(validator.BtcPk)
+		require.NoError(t, err)
+		txHash := testutil.GenRandomByteArray(r, 32)
+		mockBabylonClient.EXPECT().
+			CommitPubRandList(btcPk, uint64(1), gomock.Any(), gomock.Any()).
+			Return(txHash, nil).AnyTimes()
+		num := r.Intn(10) + 1
+		txHashes, err := app.CommitPubRandForAll(uint64(num))
+		require.NoError(t, err)
+		require.Equal(t, txHash, txHashes[0])
+
+		// check the last_committed_height
+		updatedVal, err := s.GetValidator(validator.BabylonPk)
+		require.NoError(t, err)
+		require.Equal(t, uint64(num), updatedVal.LastCommittedHeight)
+
+		// check the committed pub rand
+		for i := 1; i <= num; i++ {
+			randPair, err := s.GetRandPair(validator.BabylonPk, uint64(i))
+			require.NoError(t, err)
+			require.NotNil(t, randPair)
+		}
 	})
 }

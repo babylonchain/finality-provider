@@ -19,6 +19,16 @@ service BtcValidators {
     rpc RegisterValidator (RegisterValidatorRequest)
         returns (RegisterValidatorResponse);
 
+    // CommitPubRandForValidator commits a list of Schnorr public randomness
+    // for a specific BTC validator
+    rpc CommitPubRandForValidator (CommitPubRandForValidatorRequest)
+        returns (CommitPubRandForValidatorResponse);
+
+    // CommitPubRandForAll commits Schnorr public randomness
+    // for all the managed BTC validators
+    rpc CommitPubRandForAll (CommitPubRandForAllRequest)
+        returns (CommitPubRandForAllResponse);
+
     // QueryValidator queries the validator
     rpc QueryValidator (QueryValidatorRequest) returns (QueryValidatorResponse);
     // QueryValidatorList queries a list of validators
@@ -51,6 +61,28 @@ message RegisterValidatorRequest {
 message RegisterValidatorResponse {
     // hash of the successful Babylon registration transaction
     bytes tx_hash = 1;
+}
+
+message CommitPubRandForValidatorRequest {
+    // the Babylon public key of the BTC validator
+    bytes babylon_pk = 1;
+    // the number of Schorr randomness
+    uint64 num = 2;
+}
+
+message CommitPubRandForValidatorResponse {
+    // hash of the successful Babylon transaction
+    bytes tx_hash = 1;
+}
+
+message CommitPubRandForAllRequest {
+    // the number of Schorr randomness
+    uint64 num = 2;
+}
+
+message CommitPubRandForAllResponse {
+    // hashes of the successful Babylon transaction
+    repeated bytes tx_hashes = 1;
 }
 
 message QueryValidatorRequest {
@@ -107,13 +139,6 @@ message ProofOfPossession {
 message SchnorrRandPair {
     bytes pub_rand = 1;
     bytes sec_rand = 2;
-}
-
-// CommittedRandPair defines the Schonorr randomness pair that has been
-// committed to Babylon stored in the DB as: babylon_pk + committed_height ->
-// pair
-message CommittedRandPair {
-    SchnorrRandPair pair = 1;
 }
 
 // ValidatorStatus is the status of a BTC validator

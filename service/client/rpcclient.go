@@ -48,3 +48,13 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, bbnP
 
 	return res, nil
 }
+
+func (c *ValidatorServiceGRpcClient) CommitPubRandList(ctx context.Context, bbnPkBytes []byte) (*proto.CommitPubRandForValidatorResponse, error) {
+	req := &proto.CommitPubRandForValidatorRequest{BabylonPk: bbnPkBytes}
+	res, err := c.client.CommitPubRandForValidator(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

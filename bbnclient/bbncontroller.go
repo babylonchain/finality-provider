@@ -7,6 +7,7 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -61,7 +62,19 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
-	panic("implement me")
+	msg := &finalitytypes.MsgCommitPubRandList{
+		ValBtcPk:    btcPubKey,
+		StartHeight: startHeight,
+		PubRandList: pubRandList,
+		Sig:         sig,
+	}
+
+	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(res.TxHash), nil
 }
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode

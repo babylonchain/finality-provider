@@ -3,6 +3,7 @@ package val
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -35,6 +36,35 @@ func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
 	}
 
 	return nil
+}
+
+func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto.SchnorrRandPair) error {
+	k := append(pk, types.Uint64ToBigEndian(height)...)
+	v, err := gproto.Marshal(randPair)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the Schnorr random pair: %w", err)
+	}
+
+	if err := vs.s.Put(k, v); err != nil {
+		return fmt.Errorf("failed to save the Schnorr random pair: %w", err)
+	}
+
+	return nil
+}
+
+func (vs *ValidatorStore) GetRandPair(pk []byte, height uint64) (*proto.SchnorrRandPair, error) {
+	k := append(pk, types.Uint64ToBigEndian(height)...)
+	pairBytes, err := vs.s.Get(k)
+	if err != nil {
+		return nil, err
+	}
+	randPair := new(proto.SchnorrRandPair)
+	err = gproto.Unmarshal(pairBytes, randPair)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal the random pair object: %w", err)
+	}
+
+	return randPair, nil
 }
 
 func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {

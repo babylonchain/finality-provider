@@ -3,24 +3,26 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client"
+
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/service"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
-	chainIdFlag        = "chain-id"
-	keyringDirFlag     = "keyring-dir"
-	keyringBackendFlag = "keyring-backend"
-	keyNameFlag        = "key-name"
-
+	chainIdFlag           = "chain-id"
+	keyringDirFlag        = "keyring-dir"
+	keyringBackendFlag    = "keyring-backend"
+	keyNameFlag           = "key-name"
+	randNumFlag           = "rand-num"
+	babylonPkFlag         = "babylon-pk"
 	defaultChainID        = "test-chain"
 	defaultKeyringBackend = "test"
+	defaultRandomNum      = 100
 )
 
 var validatorsCommands = []cli.Command{
@@ -30,7 +32,7 @@ var validatorsCommands = []cli.Command{
 		Usage:     "Control Bitcoin validators.",
 		Category:  "Validators",
 		Subcommands: []cli.Command{
-			createValidator, listValidators, importValidator, registerValidator,
+			createValidator, listValidators, importValidator, registerValidator, commitRandomList,
 		},
 	},
 }
@@ -64,7 +66,10 @@ var createValidator = cli.Command{
 }
 
 func createVal(ctx *cli.Context) error {
-	sdkCtx, err := createClientCtx(ctx)
+	sdkCtx, err := service.CreateClientCtx(
+		ctx.String(keyringDirFlag),
+		ctx.String(chainIdFlag),
+	)
 	if err != nil {
 		return err
 	}
@@ -181,6 +186,55 @@ func registerVal(ctx *cli.Context) error {
 	return nil
 }
 
+// TODO: consider remove this command after PoC
+// because leaving this command to users is dangerous
+// committing random list should be an automatic process
+var commitRandomList = cli.Command{
+	Name:      "commit-random-list",
+	ShortName: "crl",
+	Usage:     "generate a list of Schnorr random pair and commit the public rand for BTC validator",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  validatorDaemonAddressFlag,
+			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValidatorDaemonAddress,
+		},
+		cli.Int64Flag{
+			Name:  randNumFlag,
+			Usage: "the number of public randomness you want to commit",
+			Value: int64(defaultRandomNum),
+		},
+		cli.StringFlag{
+			Name:  babylonPkFlag,
+			Usage: "commit random list for a specific BTC validator",
+		},
+	},
+	Action: commitRand,
+}
+
+func commitRand(ctx *cli.Context) error {
+	daemonAddress := ctx.String(validatorDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	var bbnPkBytes []byte
+	if ctx.String(babylonPkFlag) != "" {
+		bbnPkBytes = []byte(ctx.String(babylonPkFlag))
+	}
+	res, err := rpcClient.CommitPubRandList(context.Background(),
+		bbnPkBytes)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(res)
+
+	return nil
+}
+
 func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 	dbcfg, err := valcfg.NewDatabaseConfig(
 		ctx.GlobalString(dbTypeFlag),
@@ -197,16 +251,4 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 	}
 
 	return valStore, nil
-}
-
-func createClientCtx(ctx *cli.Context) (client.Context, error) {
-	dir := ctx.String(keyringDirFlag)
-	if dir == "" {
-		dir = valcfg.DefaultValidatordDir
-	}
-
-	return client.Context{}.
-		WithChainID(ctx.String(chainIdFlag)).
-		WithCodec(codec.MakeCodec()).
-		WithKeyringDir(dir), nil
 }
