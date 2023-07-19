@@ -103,8 +103,21 @@ func FuzzCommitPubRandList(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(btcPk, uint64(1), gomock.Any(), gomock.Any()).
 			Return(txHash, nil).AnyTimes()
-		txHashes, err := app.CommitPubRandForAll(100)
+		num := r.Intn(10) + 1
+		txHashes, err := app.CommitPubRandForAll(uint64(num))
 		require.NoError(t, err)
 		require.Equal(t, txHash, txHashes[0])
+
+		// check the last_committed_height
+		updatedVal, err := s.GetValidator(validator.BabylonPk)
+		require.NoError(t, err)
+		require.Equal(t, uint64(num), updatedVal.LastCommittedHeight)
+
+		// check the committed pub rand
+		for i := 1; i <= num; i++ {
+			randPair, err := s.GetRandPair(validator.BabylonPk, uint64(i))
+			require.NoError(t, err)
+			require.NotNil(t, randPair)
+		}
 	})
 }

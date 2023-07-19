@@ -2,11 +2,8 @@ package service
 
 import (
 	"fmt"
-	"math/rand"
 	"sync"
-	"time"
 
-	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
@@ -223,22 +220,4 @@ func (app *ValidatorApp) Stop() error {
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {
 	panic("implement me")
-}
-
-func GenerateRandPairList(num uint64) ([]*eots.PrivateRand, []types.SchnorrPubRand, error) {
-	srList := make([]*eots.PrivateRand, num)
-	prList := make([]types.SchnorrPubRand, num)
-
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	for i := uint64(0); i < num; i++ {
-		eotsSR, eotsPR, err := eots.RandGen(r)
-		if err != nil {
-			return nil, nil, err
-		}
-		pr := types.NewSchnorrPubRandFromFieldVal(eotsPR)
-		srList[i] = eotsSR
-		prList[i] = *pr
-	}
-	return srList, prList, nil
 }
