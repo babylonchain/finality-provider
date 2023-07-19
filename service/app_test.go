@@ -37,7 +37,8 @@ func FuzzRegisterValidator(f *testing.F) {
 		require.NoError(t, err)
 
 		// create a validator object and save it to db
-		s := app.GetValidatorStore()
+		s, err := app.GetValidatorStore()
+		require.NoError(t, err)
 		validator := testutil.GenRandomValidator(r, t)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
@@ -92,7 +93,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 		require.NoError(t, err)
 		validator, err := kc.CreateBTCValidator()
 		require.NoError(t, err)
-		s := app.GetValidatorStore()
+		s, err := app.GetValidatorStore()
+		require.NoError(t, err)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 

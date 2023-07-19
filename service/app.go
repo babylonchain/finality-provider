@@ -26,7 +26,6 @@ type ValidatorApp struct {
 
 	bc     bbncli.BabylonClient
 	kr     keyring.Keyring
-	vs     *val.ValidatorStore
 	config *valcfg.Config
 	logger *logrus.Logger
 }
@@ -42,18 +41,12 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	valStore, err := val.NewValidatorStore(config.DatabaseConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
-	}
-
 	if err != nil {
 		return nil, err
 	}
 
 	return &ValidatorApp{
 		bc:     bc,
-		vs:     valStore,
 		kr:     kr,
 		config: config,
 		logger: logger,
@@ -61,16 +54,44 @@ func NewValidatorAppFromConfig(
 	}, nil
 }
 
-func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
-	return app.vs
-}
-
 func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
+func (app *ValidatorApp) GetValidatorStore() (*val.ValidatorStore, error) {
+	valStore, err := val.NewValidatorStore(app.config.DatabaseConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
+	}
+
+	return valStore, nil
+}
+
+func (app *ValidatorApp) AccessValidatorStore(accessFunc func(valStore *val.ValidatorStore) error) error {
+	valStore, err := app.GetValidatorStore()
+	if err != nil {
+		return err
+	}
+	if err := accessFunc(valStore); err != nil {
+		return err
+	}
+	if err := valStore.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
-	validator, err := app.vs.GetValidator(pkBytes)
+	// get validator from ValidatorStore
+	var validator *proto.Validator
+	err := app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
+		val, err := valStore.GetValidator(pkBytes)
+		if err != nil {
+			return err
+		}
+		validator = val
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -104,11 +125,21 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 // Note: if pkBytes is nil, this function works for this validator.
 // Otherwise, it is for all the managed validators.
 func (app *ValidatorApp) CommitPubRandForAll(num uint64) ([][]byte, error) {
-	var txHashes [][]byte
-	validators, err := app.vs.ListValidators()
+	// list validators from ValidatorStore
+	var validators []*proto.Validator
+	err := app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
+		vals, err := valStore.ListValidators()
+		if err != nil {
+			return err
+		}
+		validators = vals
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	var txHashes [][]byte
 	for _, v := range validators {
 		txHash, err := app.CommitPubRandForValidator(v.BabylonPk, num)
 		if err != nil {
@@ -124,7 +155,15 @@ func (app *ValidatorApp) CommitPubRandForAll(num uint64) ([][]byte, error) {
 // Schnorr random pair for a specific managed validator
 func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) ([]byte, error) {
 	// get the managed validator object
-	validator, err := app.vs.GetValidator(pkBytes)
+	var validator *proto.Validator
+	err := app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
+		val, err := valStore.GetValidator(pkBytes)
+		if err != nil {
+			return err
+		}
+		validator = val
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +210,10 @@ func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) (
 
 	// update and save the validator object to DB
 	validator.LastCommittedHeight = validator.LastCommittedHeight + num
-	err = app.vs.SaveValidator(validator)
+
+	err = app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
+		return valStore.SaveValidator(validator)
+	})
 	if err != nil {
 		panic(fmt.Errorf("failed to save updated validator object: %w", err))
 	}
@@ -186,7 +228,9 @@ func (app *ValidatorApp) CommitPubRandForValidator(pkBytes []byte, num uint64) (
 			SecRand: privRand[:],
 			PubRand: pubRandList[i].MustMarshal(),
 		}
-		err = app.vs.SaveRandPair(pkBytes, height, randPair)
+		err = app.AccessValidatorStore(func(valStore *val.ValidatorStore) error {
+			return valStore.SaveRandPair(pkBytes, height, randPair)
+		})
 		if err != nil {
 			return nil, err
 		}
