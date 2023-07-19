@@ -254,15 +254,3 @@ func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
 
 	return valStore, nil
 }
-
-func createClientCtx(ctx *cli.Context) (client.Context, error) {
-	dir := ctx.String(keyringDirFlag)
-	if dir == "" {
-		dir = valcfg.DefaultValdDir
-	}
-
-	return client.Context{}.
-		WithChainID(ctx.String(chainIdFlag)).
-		WithCodec(codec.MakeCodec()).
-		WithKeyringDir(dir), nil
-}
