@@ -58,3 +58,13 @@ func (c *ValidatorServiceGRpcClient) CommitPubRandList(ctx context.Context, bbnP
 
 	return res, nil
 }
+
+func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName string) (*proto.CreateValidatorResponse, error) {
+	req := &proto.CreateValidatorRequest{KeyName: keyName}
+	res, err := c.client.CreateValidator(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

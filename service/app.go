@@ -7,6 +7,9 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -29,6 +32,8 @@ type ValidatorApp struct {
 	vs     *val.ValidatorStore
 	config *valcfg.Config
 	logger *logrus.Logger
+
+	createValidatorRequestChan chan *createValidatorRequest
 }
 
 func NewValidatorAppFromConfig(
@@ -52,13 +57,29 @@ func NewValidatorAppFromConfig(
 	}
 
 	return &ValidatorApp{
-		bc:     bc,
-		vs:     valStore,
-		kr:     kr,
-		config: config,
-		logger: logger,
-		quit:   make(chan struct{}),
+		bc:                         bc,
+		vs:                         valStore,
+		kr:                         kr,
+		config:                     config,
+		logger:                     logger,
+		quit:                       make(chan struct{}),
+		createValidatorRequestChan: make(chan *createValidatorRequest),
 	}, nil
+}
+
+type createValidatorResponse struct {
+	BtcValidatorPk     btcec.PublicKey
+	BabylonValidatorPk secp256k1.PubKey
+}
+type createValidatorRequest struct {
+	keyName         string
+	errResponse     chan error
+	successResponse chan *createValidatorResponse
+}
+
+type CreateValidatorResult struct {
+	BtcValidatorPk     btcec.PublicKey
+	BabylonValidatorPk secp256k1.PubKey
 }
 
 func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
@@ -217,7 +238,95 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
+func (app *ValidatorApp) CreateValidator(keyName string) (*CreateValidatorResult, error) {
+	req := &createValidatorRequest{
+		keyName:         keyName,
+		errResponse:     make(chan error),
+		successResponse: make(chan *createValidatorResponse),
+	}
+
+	app.createValidatorRequestChan <- req
+
+	select {
+	case err := <-req.errResponse:
+		return nil, err
+	case successResponse := <-req.successResponse:
+		return &CreateValidatorResult{
+			BtcValidatorPk:     successResponse.BtcValidatorPk,
+			BabylonValidatorPk: successResponse.BabylonValidatorPk,
+		}, nil
+	case <-app.quit:
+		return nil, fmt.Errorf("validator app is shutting down")
+	}
+}
+
+func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) {
+	return app.vs.GetValidator(pkBytes)
+}
+
+func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
+
+	kr, err := val.NewKeyringControllerWithKeyring(app.kr, req.keyName)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyring controller: %w", err)
+	}
+
+	if kr.KeyNameTaken() {
+		return nil, fmt.Errorf("the key name %s is taken", kr.GetKeyName())
+	}
+
+	// TODO should not expose direct proto here, as this is internal db representation
+	// conected to serialization
+	validator, err := kr.CreateBTCValidator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validator: %w", err)
+	}
+
+	if err := app.vs.SaveValidator(validator); err != nil {
+		return nil, fmt.Errorf("failed to save validator: %w", err)
+	}
+
+	btcPubKey, err := schnorr.ParsePubKey(validator.BtcPk)
+
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("failed to parse created btc public key")
+	}
+
+	babylonPubKey := secp256k1.PubKey{
+		Key: validator.BabylonPk,
+	}
+
+	return &createValidatorResponse{
+		BtcValidatorPk:     *btcPubKey,
+		BabylonValidatorPk: babylonPubKey,
+	}, nil
+}
+
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {
-	panic("implement me")
+	defer app.wg.Done()
+
+	for {
+		select {
+		case req := <-app.createValidatorRequestChan:
+			resp, err := app.handleCreateValidatorRequest(req)
+
+			if err != nil {
+				req.errResponse <- err
+				continue
+			}
+
+			app.logger.WithFields(logrus.Fields{
+				"btc_pub_key":     resp.BtcValidatorPk,
+				"babylon_pub_key": resp.BabylonValidatorPk,
+			}).Info("Successfully created validator")
+
+			req.successResponse <- resp
+		case <-app.quit:
+			return
+		}
+	}
 }

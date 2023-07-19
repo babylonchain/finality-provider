@@ -44,13 +44,15 @@ message GetInfoResponse {
 }
 
 message CreateValidatorRequest {
+    // key_name is the identifier key in keyring
+    string key_name = 1;
 }
 
 message CreateValidatorResponse {
     // babylon_pk is the Babylon secp256k1 PK of this BTC validator
-    bytes babylon_pk = 1;
+    string babylon_pk = 1;
     // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
-    bytes btc_pk = 2;
+    string btc_pk = 2;
 }
 
 message RegisterValidatorRequest {

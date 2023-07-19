@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/urfave/cli"
@@ -105,8 +106,8 @@ func createVal(ctx *cli.Context) error {
 	}
 
 	printRespJSON(&proto.CreateValidatorResponse{
-		BabylonPk: validator.BabylonPk,
-		BtcPk:     validator.BtcPk,
+		BabylonPk: hex.EncodeToString(validator.BabylonPk),
+		BtcPk:     hex.EncodeToString(validator.BtcPk),
 	})
 
 	return err
