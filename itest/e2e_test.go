@@ -4,16 +4,19 @@
 package e2etest
 
 import (
+	"os"
 	"testing"
 	"time"
 
-	"github.com/babylonchain/rpc-client/client"
-	"github.com/babylonchain/rpc-client/config"
+	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/valcfg"
+	cfg "github.com/babylonchain/btc-validator/valcfg"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO For now tests checks only if test works. Add something more sensible
-func TestBabylonNodeProgressing(t *testing.T) {
+func TestPoller(t *testing.T) {
 	handler, err := NewBabylonNodeHandler()
 	require.NoError(t, err)
 
@@ -24,22 +27,44 @@ func TestBabylonNodeProgressing(t *testing.T) {
 	// Let the node start up
 	// TODO Add polling with to check for startup
 	// time.Sleep(5 * time.Second)
-	defaultConfig := config.DefaultBabylonConfig()
-	client, err := client.New(&defaultConfig)
+	defaultConfig := valcfg.DefaultBBNConfig()
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.Out = os.Stdout
+	defaultPollerConfig := cfg.DefaulPollerConfig()
+
+	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
 	require.NoError(t, err)
 
-	require.Eventually(t, func() bool {
-		resp, err := client.QueryClient.GetStatus()
-		if err != nil {
-			return false
-		}
+	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
+	require.NoError(t, err)
 
-		// Wait for 3 blocks to check node is progressing as expected
-		if resp.SyncInfo.LatestBlockHeight < 3 {
-			return false
-		}
+	err = poller.Start()
+	require.NoError(t, err)
+	defer poller.Stop()
 
-		return true
-		// TODO parametrize timeout and interval
-	}, 30*time.Second, 1*time.Second)
+	// Get 3 blocks which should be received in order
+	select {
+	case info := <-poller.GetBlockInfoChan():
+		require.Equal(t, uint64(1), info.Height)
+
+	case <-time.After(10 * time.Second):
+		t.Fatalf("Failed to get block info")
+	}
+
+	select {
+	case info := <-poller.GetBlockInfoChan():
+		require.Equal(t, uint64(2), info.Height)
+
+	case <-time.After(10 * time.Second):
+		t.Fatalf("Failed to get block info")
+	}
+
+	select {
+	case info := <-poller.GetBlockInfoChan():
+		require.Equal(t, uint64(3), info.Height)
+
+	case <-time.After(10 * time.Second):
+		t.Fatalf("Failed to get block info")
+	}
 }

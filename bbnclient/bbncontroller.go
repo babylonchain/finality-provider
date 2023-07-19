@@ -3,14 +3,21 @@ package babylonclient
 import (
 	"context"
 	"fmt"
-	"github.com/babylonchain/btc-validator/valcfg"
+	"strconv"
+	"time"
 
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/sirupsen/logrus"
+	lensquery "github.com/strangelove-ventures/lens/client/query"
+	"google.golang.org/grpc/metadata"
+	"github.com/babylonchain/btc-validator/valcfg"
+
 )
 
 var _ BabylonClient = &BabylonController{}
@@ -18,6 +25,7 @@ var _ BabylonClient = &BabylonController{}
 type BabylonController struct {
 	rpcClient *client.Client
 	logger    *logrus.Logger
+	timeout   time.Duration
 }
 
 func NewBabylonController(
@@ -39,6 +47,7 @@ func NewBabylonController(
 	return &BabylonController{
 		rpcClient,
 		logger,
+		cfg.Timeout,
 	}, nil
 }
 
@@ -104,4 +113,35 @@ func (bc *BabylonController) QueryShouldSubmitJurySigs(btcPubKey *types.BIP340Pu
 // QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
 func (bc *BabylonController) QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error) {
 	panic("implement me")
+}
+
+func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
+	status, err := bc.rpcClient.QueryClient.GetStatus()
+	if err != nil {
+		return nil, err
+	}
+
+	return status, nil
+}
+
+func getQueryContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	defaultOptions := lensquery.DefaultOptions()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	strHeight := strconv.Itoa(int(defaultOptions.Height))
+	ctx = metadata.AppendToOutgoingContext(ctx, grpctypes.GRPCBlockHeightHeader, strHeight)
+	return ctx, cancel
+}
+
+func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	headerResp, err := bc.rpcClient.ChainClient.RPCClient.Header(ctx, &height)
+	defer cancel()
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Returning response directly, if header with specified number did not exist
+	// at request will contain nill header
+	return headerResp, nil
 }

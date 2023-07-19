@@ -3,6 +3,7 @@ package babylonclient
 import (
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 )
 
@@ -28,4 +29,11 @@ type BabylonClient interface {
 	QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, []*types.BIP340PubKey, error)
 	// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
 	QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
+
+	// QueryNodeStatus returns current node status, with info about latest block
+	QueryNodeStatus() (*ctypes.ResultStatus, error)
+
+	// QueryHeader queries the header at the given height, if header is not found
+	// it returns result with nil header
+	QueryHeader(height int64) (*ctypes.ResultHeader, error)
 }
