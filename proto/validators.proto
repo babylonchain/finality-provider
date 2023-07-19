@@ -81,7 +81,7 @@ message CommitPubRandForAllRequest {
 }
 
 message CommitPubRandForAllResponse {
-    // hashes of the successful Babylon transaction
+    // hashes of the successful Babylon transactions
     repeated bytes tx_hashes = 1;
 }
 
