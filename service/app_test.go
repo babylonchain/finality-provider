@@ -42,6 +42,8 @@ func FuzzRegisterValidator(f *testing.F) {
 		validator := testutil.GenRandomValidator(r, t)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
+		err = s.Close()
+		require.NoError(t, err)
 
 		// TODO avoid conversion after btcstaking protos are introduced
 		// decode db object to specific types
@@ -97,6 +99,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 		require.NoError(t, err)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
+		err = s.Close()
+		require.NoError(t, err)
 
 		btcPk := new(types.BIP340PubKey)
 		err = btcPk.Unmarshal(validator.BtcPk)
@@ -111,15 +115,23 @@ func FuzzCommitPubRandList(f *testing.F) {
 		require.Equal(t, txHash, txHashes[0])
 
 		// check the last_committed_height
+		s, err = app.GetValidatorStore()
+		require.NoError(t, err)
 		updatedVal, err := s.GetValidator(validator.BabylonPk)
+		require.NoError(t, err)
+		err = s.Close()
 		require.NoError(t, err)
 		require.Equal(t, uint64(num), updatedVal.LastCommittedHeight)
 
 		// check the committed pub rand
+		s, err = app.GetValidatorStore()
+		require.NoError(t, err)
 		for i := 1; i <= num; i++ {
 			randPair, err := s.GetRandPair(validator.BabylonPk, uint64(i))
 			require.NoError(t, err)
 			require.NotNil(t, randPair)
 		}
+		err = s.Close()
+		require.NoError(t, err)
 	})
 }
