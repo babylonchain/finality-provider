@@ -11,7 +11,7 @@ const (
 type DatabaseConfig struct {
 	Backend string `long:"backend" description:"Possible database to choose as backend"`
 	Path    string `long:"path" description:"The path that stores the database file"`
-	Name    string `long:"path" description:"The name of the database"`
+	Name    string `long:"name" description:"The name of the database"`
 }
 
 func NewDatabaseConfig(backend string, path string, name string) (*DatabaseConfig, error) {
