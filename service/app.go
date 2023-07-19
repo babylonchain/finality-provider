@@ -264,6 +264,47 @@ func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) 
 	return app.vs.GetValidator(pkBytes)
 }
 
+func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
+
+	kr, err := val.NewKeyringControllerWithKeyring(app.kr, req.keyName)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keyring controller: %w", err)
+	}
+
+	if kr.KeyNameTaken() {
+		return nil, fmt.Errorf("the key name %s is taken", kr.GetKeyName())
+	}
+
+	// TODO should not expose direct proto here, as this is internal db representation
+	// conected to serialization
+	validator, err := kr.CreateBTCValidator()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validator: %w", err)
+	}
+
+	if err := app.vs.SaveValidator(validator); err != nil {
+		return nil, fmt.Errorf("failed to save validator: %w", err)
+	}
+
+	btcPubKey, err := schnorr.ParsePubKey(validator.BtcPk)
+
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("failed to parse created btc public key")
+	}
+
+	babylonPubKey := secp256k1.PubKey{
+		Key: validator.BabylonPk,
+	}
+
+	return &createValidatorResponse{
+		BtcValidatorPk:     *btcPubKey,
+		BabylonValidatorPk: babylonPubKey,
+	}, nil
+}
+
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {
 	defer app.wg.Done()
@@ -271,52 +312,19 @@ func (app *ValidatorApp) eventLoop() {
 	for {
 		select {
 		case req := <-app.createValidatorRequestChan:
-			kr, err := val.NewKeyringControllerWithKeyring(app.kr, req.keyName)
+			resp, err := app.handleCreateValidatorRequest(req)
 
 			if err != nil {
-				req.errResponse <- fmt.Errorf("failed to create keyring controller: %w", err)
+				req.errResponse <- err
 				continue
-			}
-
-			if kr.KeyNameTaken() {
-				req.errResponse <- fmt.Errorf("the key name %s is taken", kr.GetKeyName())
-				continue
-			}
-
-			// TODO should not expose direct proto here, as this is internal db representation
-			// conected to serialization
-			validator, err := kr.CreateBTCValidator()
-			if err != nil {
-				req.errResponse <- fmt.Errorf("failed to create validator: %w", err)
-				continue
-			}
-
-			if err := app.vs.SaveValidator(validator); err != nil {
-				req.errResponse <- fmt.Errorf("failed to save validator: %w", err)
-				continue
-			}
-
-			btcPubKey, err := schnorr.ParsePubKey(validator.BtcPk)
-
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Fatal("failed to parse created btc public key")
-			}
-
-			babylonPubKey := secp256k1.PubKey{
-				Key: validator.BabylonPk,
 			}
 
 			app.logger.WithFields(logrus.Fields{
-				"btc_pub_key":     btcPubKey,
-				"babylon_pub_key": babylonPubKey,
+				"btc_pub_key":     resp.BtcValidatorPk,
+				"babylon_pub_key": resp.BabylonValidatorPk,
 			}).Info("Successfully created validator")
 
-			req.successResponse <- &createValidatorResponse{
-				BtcValidatorPk:     *btcPubKey,
-				BabylonValidatorPk: babylonPubKey,
-			}
+			req.successResponse <- resp
 		case <-app.quit:
 			return
 		}
