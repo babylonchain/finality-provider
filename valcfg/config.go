@@ -79,6 +79,18 @@ func DefaultConfig() Config {
 	}
 }
 
+type PollerConfig struct {
+	StartingHeight uint64
+	BufferSize     uint32
+}
+
+func DefaulPollerConfig() PollerConfig {
+	return PollerConfig{
+		StartingHeight: 1,
+		BufferSize:     1000,
+	}
+}
+
 // usageError is an error type that signals a problem with the supplied flags.
 type usageError struct {
 	err error

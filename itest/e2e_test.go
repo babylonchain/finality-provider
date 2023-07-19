@@ -10,6 +10,7 @@ import (
 
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/service"
+	cfg "github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/rpc-client/config"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func TestPoller(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
-	defaultPollerConfig := service.DefaulPollerConfig()
+	defaultPollerConfig := cfg.DefaulPollerConfig()
 
 	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
 	require.NoError(t, err)
@@ -44,7 +45,7 @@ func TestPoller(t *testing.T) {
 
 	// Get 3 blocks which should be received in order
 	select {
-	case info := <-poller.GetInfoChannel():
+	case info := <-poller.GetBlockInfoChan():
 		require.Equal(t, uint64(1), info.Height)
 
 	case <-time.After(10 * time.Second):
@@ -52,7 +53,7 @@ func TestPoller(t *testing.T) {
 	}
 
 	select {
-	case info := <-poller.GetInfoChannel():
+	case info := <-poller.GetBlockInfoChan():
 		require.Equal(t, uint64(2), info.Height)
 
 	case <-time.After(10 * time.Second):
@@ -60,7 +61,7 @@ func TestPoller(t *testing.T) {
 	}
 
 	select {
-	case info := <-poller.GetInfoChannel():
+	case info := <-poller.GetBlockInfoChan():
 		require.Equal(t, uint64(3), info.Height)
 
 	case <-time.After(10 * time.Second):

@@ -6,6 +6,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	cfg "github.com/babylonchain/btc-validator/valcfg"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
 )
@@ -31,22 +32,10 @@ type ChainPoller struct {
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
-	bc          bbncli.BabylonClient
-	cfg         *PollerConfig
-	infoChannel chan *BlockInfo
-	logger      *logrus.Logger
-}
-
-type PollerConfig struct {
-	StartingHeight uint64
-	BufferSize     uint32
-}
-
-func DefaulPollerConfig() PollerConfig {
-	return PollerConfig{
-		StartingHeight: 1,
-		BufferSize:     1000,
-	}
+	bc            bbncli.BabylonClient
+	cfg           *cfg.PollerConfig
+	blockInfoChan chan *BlockInfo
+	logger        *logrus.Logger
 }
 
 type PollerState struct {
@@ -61,24 +50,35 @@ type BlockInfo struct {
 
 func NewChainPoller(
 	logger *logrus.Logger,
-	cfg *PollerConfig,
+	cfg *cfg.PollerConfig,
 	bc bbncli.BabylonClient,
 ) *ChainPoller {
 	return &ChainPoller{
-		logger:      logger,
-		cfg:         cfg,
-		bc:          bc,
-		infoChannel: make(chan *BlockInfo, cfg.BufferSize),
-		quit:        make(chan struct{}),
+		logger:        logger,
+		cfg:           cfg,
+		bc:            bc,
+		blockInfoChan: make(chan *BlockInfo, cfg.BufferSize),
+		quit:          make(chan struct{}),
 	}
 }
 
 func (cp *ChainPoller) Start() error {
-	var err error
+	var startErr error
 	cp.startOnce.Do(func() {
-		err = cp.initPoller()
+		initialBlockToGet, err := cp.initPoller()
+
+		if err != nil {
+			startErr = err
+			return
+		}
+
+		cp.wg.Add(1)
+		go cp.pollChain(PollerState{
+			HeaderToRetrieve: initialBlockToGet,
+			FailedCycles:     0,
+		})
 	})
-	return err
+	return startErr
 }
 
 func (cp *ChainPoller) Stop() error {
@@ -93,8 +93,8 @@ func (cp *ChainPoller) Stop() error {
 // Return read only channel for incoming blocks
 // TODO: Handle the case when there is more than one consumer. Currently with more than
 // one consumer blocks most probably will be received out of order to those consumers.
-func (cp *ChainPoller) GetInfoChannel() <-chan *BlockInfo {
-	return cp.infoChannel
+func (cp *ChainPoller) GetBlockInfoChan() <-chan *BlockInfo {
+	return cp.blockInfoChan
 }
 
 func (cp *ChainPoller) nodeStatusWithRetry() (*ctypes.ResultStatus, error) {
@@ -139,7 +139,7 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 	return response, nil
 }
 
-func (cp *ChainPoller) initPoller() error {
+func (cp *ChainPoller) initPoller() (uint64, error) {
 	// Infinite retry to get initial latest height
 	// TODO: Add possible cancelation or timeout for starting node
 	var currentBestChainHeight uint64
@@ -166,18 +166,13 @@ func (cp *ChainPoller) initPoller() error {
 		initialBlockToGet = cp.cfg.StartingHeight
 	}
 
-	cp.wg.Add(1)
-	go cp.pollChain(PollerState{
-		HeaderToRetrieve: initialBlockToGet,
-		FailedCycles:     0,
-	})
-	return nil
+	return initialBlockToGet, nil
 }
 
-func (cp *ChainPoller) pollChain(initalState PollerState) {
+func (cp *ChainPoller) pollChain(initialState PollerState) {
 	defer cp.wg.Done()
 
-	var state = initalState
+	var state = initialState
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
@@ -200,7 +195,7 @@ func (cp *ChainPoller) pollChain(initalState PollerState) {
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will
 			// stop retrieving data from the node.
-			cp.infoChannel <- &BlockInfo{
+			cp.blockInfoChan <- &BlockInfo{
 				Height:         uint64(result.Header.Height),
 				LastCommitHash: result.Header.LastCommitHash,
 			}
