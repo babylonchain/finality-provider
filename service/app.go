@@ -299,7 +299,9 @@ func (app *ValidatorApp) eventLoop() {
 			btcPubKey, err := schnorr.ParsePubKey(validator.BtcPk)
 
 			if err != nil {
-				app.logger.Fatalf("failed to parse created btc public key: %w", err)
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Fatal("failed to parse created btc public key")
 			}
 
 			babylonPubKey := secp256k1.PubKey{

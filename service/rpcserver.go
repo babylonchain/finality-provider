@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -98,7 +100,19 @@ func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetI
 // CreateValidator generates a validator object and saves it in the database
 func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValidatorRequest) (
 	*proto.CreateValidatorResponse, error) {
-	panic("implement me")
+	result, err := r.app.CreateValidator(req.KeyName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	btcPk := schnorr.SerializePubKey(&result.BtcValidatorPk)
+
+	return &proto.CreateValidatorResponse{
+		BtcPk:     hex.EncodeToString(btcPk),
+		BabylonPk: hex.EncodeToString(result.BabylonValidatorPk.Key),
+	}, nil
+
 }
 
 // RegisterValidator sends a transactions to Babylon to register a BTC validator
