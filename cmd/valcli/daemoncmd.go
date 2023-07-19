@@ -23,11 +23,11 @@ var daemonCommands = []cli.Command{
 }
 
 const (
-	validatorDaemonAddressFlag = "daemon-address"
+	valdDaemonAddressFlag = "daemon-address"
 )
 
 var (
-	defaultValidatorDaemonAddress = "127.0.0.1:" + strconv.Itoa(valcfg.DefaultRPCPort)
+	defaultValdDaemonAddress = "127.0.0.1:" + strconv.Itoa(valcfg.DefaultRPCPort)
 )
 
 var getDaemonInfo = cli.Command{
@@ -36,16 +36,16 @@ var getDaemonInfo = cli.Command{
 	Usage:     "Get information of the running daemon.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  validatorDaemonAddressFlag,
+			Name:  valdDaemonAddressFlag,
 			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValidatorDaemonAddress,
+			Value: defaultValdDaemonAddress,
 		},
 	},
 	Action: getInfo,
 }
 
 func getInfo(ctx *cli.Context) error {
-	daemonAddress := ctx.String(validatorDaemonAddressFlag)
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	client, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err

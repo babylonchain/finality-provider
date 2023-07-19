@@ -159,9 +159,9 @@ var registerValidator = cli.Command{
 	UsageText: "register-validator [Babylon public key]",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  validatorDaemonAddressFlag,
+			Name:  valdDaemonAddressFlag,
 			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValidatorDaemonAddress,
+			Value: defaultValdDaemonAddress,
 		},
 	},
 	Action: registerVal,
@@ -169,7 +169,7 @@ var registerValidator = cli.Command{
 
 func registerVal(ctx *cli.Context) error {
 	pkBytes := []byte(ctx.Args().First())
-	daemonAddress := ctx.String(validatorDaemonAddressFlag)
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -195,9 +195,9 @@ var commitRandomList = cli.Command{
 	Usage:     "generate a list of Schnorr random pair and commit the public rand for BTC validator",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  validatorDaemonAddressFlag,
+			Name:  valdDaemonAddressFlag,
 			Usage: "full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValidatorDaemonAddress,
+			Value: defaultValdDaemonAddress,
 		},
 		cli.Int64Flag{
 			Name:  randNumFlag,
@@ -213,7 +213,7 @@ var commitRandomList = cli.Command{
 }
 
 func commitRand(ctx *cli.Context) error {
-	daemonAddress := ctx.String(validatorDaemonAddressFlag)
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
