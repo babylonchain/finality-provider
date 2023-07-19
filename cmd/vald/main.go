@@ -33,7 +33,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// TODO: use default babylon config for now
 	bbnClient, err := babylonclient.NewBabylonController(cfg.BabylonConfig, cfgLogger)
 	if err != nil {
 		cfgLogger.Errorf("failed to create Babylon rpc client: %v", err)
