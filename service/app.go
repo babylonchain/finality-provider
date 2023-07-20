@@ -98,13 +98,7 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	// TODO: the following decoding is not needed if Babylon and cosmos protos are introduced
 
 	bbnPk := &secp256k1.PubKey{Key: validator.BabylonPk}
-
-	btcPk := new(types.BIP340PubKey)
-	err = btcPk.Unmarshal(validator.BtcPk)
-	if err != nil {
-		return nil, err
-	}
-
+	btcPk := validator.MustGetBIP340BTCPK()
 	btcSig, err := types.NewBIP340Signature(validator.Pop.BtcSig)
 	if err != nil {
 		return nil, err

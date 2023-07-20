@@ -3,6 +3,7 @@ package proto
 import (
 	"fmt"
 
+	bbn "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -20,4 +21,9 @@ func (v *Validator) MustGetBTCPK() *btcec.PublicKey {
 		panic(fmt.Errorf("failed to parse BTC PK: %w", err))
 	}
 	return btcPubKey
+}
+
+func (v *Validator) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
+	btcPK := v.MustGetBTCPK()
+	return bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 }
