@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"strconv"
 
 	"github.com/urfave/cli"
@@ -18,8 +19,10 @@ var daemonCommands = []cli.Command{
 		Category:  "Daemon commands",
 		Subcommands: []cli.Command{
 			getDaemonInfoCmd,
-			createValCmd,
-			lsValCmd,
+			createValDaemonCmd,
+			lsValDaemonCmd,
+			registerValDaemonCmd,
+			commitRandomListDaemonCmd,
 		},
 	},
 }
@@ -65,7 +68,7 @@ func getInfo(ctx *cli.Context) error {
 	return nil
 }
 
-var createValCmd = cli.Command{
+var createValDaemonCmd = cli.Command{
 	Name:      "create-validator",
 	ShortName: "cv",
 	Usage:     "Get information of the running daemon.",
@@ -104,7 +107,7 @@ func createValDaemon(ctx *cli.Context) error {
 	return nil
 }
 
-var lsValCmd = cli.Command{
+var lsValDaemonCmd = cli.Command{
 	Name:      "list-validators",
 	ShortName: "ls",
 	Usage:     "List validators stored in the database.",
@@ -132,6 +135,94 @@ func lsValDaemon(ctx *cli.Context) error {
 	}
 
 	printRespJSON(resp)
+
+	return nil
+}
+
+var registerValDaemonCmd = cli.Command{
+	Name:      "register-validator",
+	ShortName: "rv",
+	Usage:     "Register a created Bitcoin validator to Babylon, requiring the validator daemon running.",
+	UsageText: "register-validator [Babylon public key]",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
+		},
+	},
+	Action: registerVal,
+}
+
+func registerVal(ctx *cli.Context) error {
+	pkHexStr := ctx.Args().First()
+	pkBytes, err := hex.DecodeString(pkHexStr)
+	if err != nil {
+		return err
+	}
+
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	res, err := rpcClient.RegisterValidator(context.Background(), pkBytes)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(res)
+
+	return nil
+}
+
+// TODO: consider remove this command after PoC
+// because leaving this command to users is dangerous
+// committing random list should be an automatic process
+var commitRandomListDaemonCmd = cli.Command{
+	Name:      "commit-random-list",
+	ShortName: "crl",
+	Usage:     "Generate a list of Schnorr random pair and commit the public rand for Bitcoin validator.",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
+		},
+		cli.Int64Flag{
+			Name:  randNumFlag,
+			Usage: "The number of public randomness you want to commit",
+			Value: int64(defaultRandomNum),
+		},
+		cli.StringFlag{
+			Name:  babylonPkFlag,
+			Usage: "Commit random list for a specific Bitcoin validator",
+		},
+	},
+	Action: commitRand,
+}
+
+func commitRand(ctx *cli.Context) error {
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	var bbnPkBytes []byte
+	if ctx.String(babylonPkFlag) != "" {
+		bbnPkBytes = []byte(ctx.String(babylonPkFlag))
+	}
+	res, err := rpcClient.CommitPubRandList(context.Background(),
+		bbnPkBytes)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(res)
 
 	return nil
 }
