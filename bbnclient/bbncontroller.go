@@ -14,6 +14,7 @@ import (
 	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/sirupsen/logrus"
@@ -22,6 +23,12 @@ import (
 )
 
 var _ BabylonClient = &BabylonController{}
+
+func (bc *BabylonController) GetTxSigner() string {
+	signer := bc.rpcClient.MustGetAddr()
+	prefix := bc.rpcClient.GetConfig().AccountPrefix
+	return sdk.MustBech32ifyAddressBytes(prefix, signer)
+}
 
 type BabylonController struct {
 	rpcClient *client.Client
@@ -65,6 +72,7 @@ func NewBabylonController(
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {
 	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
+		Signer:    bc.GetTxSigner(),
 		BabylonPk: bbnPubKey,
 		BtcPk:     btcPubKey,
 		Pop:       pop,
@@ -82,6 +90,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 // it returns tx hash and error
 func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
+		Signer:      bc.GetTxSigner(),
 		ValBtcPk:    btcPubKey,
 		StartHeight: startHeight,
 		PubRandList: pubRandList,
