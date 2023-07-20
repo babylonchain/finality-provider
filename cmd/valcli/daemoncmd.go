@@ -146,8 +146,8 @@ func lsValDaemon(ctx *cli.Context) error {
 var registerValDaemonCmd = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
-	Usage:     "Register a created Bitcoin validator to Babylon, requiring the validator daemon running.",
-	UsageText: "register-validator [Babylon public key]",
+	Usage:     "Register a created Bitcoin validator to Babylon.",
+	UsageText: "register-validator [hex string of Babylon public key]",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
