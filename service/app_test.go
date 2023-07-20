@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/testutil/mocks"
@@ -38,18 +39,27 @@ func FuzzRegisterValidator(f *testing.F) {
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
+		err = app.Start()
+		require.NoError(t, err)
+		defer func() {
+			err = app.Stop()
+			require.NoError(t, err)
+		}()
+
 		// create a validator object and save it to db
+		keyName := testutil.GenRandomHexStr(r, 4)
+		kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+		require.NoError(t, err)
+		validator, err := kc.CreateBTCValidator()
+		require.NoError(t, err)
 		s := app.GetValidatorStore()
-		validator := testutil.GenRandomValidator(r, t)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
 		// TODO avoid conversion after btcstaking protos are introduced
 		// decode db object to specific types
-		btcPk := new(types.BIP340PubKey)
-		err = btcPk.Unmarshal(validator.BtcPk)
-		require.NoError(t, err)
-		bbnPk := &secp256k1.PubKey{Key: validator.BabylonPk}
+		btcPk := validator.MustGetBIP340BTCPK()
+		bbnPk := validator.GetBabylonPK()
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
@@ -62,9 +72,14 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			RegisterValidator(bbnPk, btcPk, pop).Return(txHash, nil).AnyTimes()
 
-		actualTxHash, err := app.RegisterValidator(validator.BabylonPk)
+		actualTxHash, err := app.RegisterValidator(validator.KeyName)
 		require.NoError(t, err)
 		require.Equal(t, txHash, actualTxHash)
+
+		val, err := s.GetValidator(validator.BabylonPk)
+		require.NoError(t, err)
+		require.Equal(t, val.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+
 	})
 }
 
@@ -76,11 +91,11 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		cfg.KeyringDir = t.TempDir()
+		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
-			err = os.RemoveAll(cfg.KeyringDir)
+			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
 		ctl := gomock.NewController(t)
@@ -98,9 +113,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
-		btcPk := new(types.BIP340PubKey)
-		err = btcPk.Unmarshal(validator.BtcPk)
-		require.NoError(t, err)
+		btcPk := validator.MustGetBIP340BTCPK()
 		txHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(btcPk, uint64(1), gomock.Any(), gomock.Any()).
@@ -132,11 +145,11 @@ func FuzzAddJurySig(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		cfg.KeyringDir = t.TempDir()
+		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
-			err = os.RemoveAll(cfg.KeyringDir)
+			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
 		ctl := gomock.NewController(t)

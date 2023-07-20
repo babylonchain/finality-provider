@@ -99,6 +99,18 @@ func (kc *KeyringController) GetKeyName() string {
 	return string(kc.name)
 }
 
+func (kc *KeyringController) GetBabylonPublicKeyBytes() ([]byte, error) {
+	k, err := kc.kr.Key(kc.name.GetBabylonKeyName())
+	if err != nil {
+		return nil, err
+	}
+	pubKey, err := k.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
+	return pubKey.Bytes(), err
+}
+
 func (kc *KeyringController) ValidatorKeyExists() bool {
 	return kc.keyExists(kc.name.GetBabylonKeyName()) && kc.keyExists(kc.name.GetBtcKeyName())
 }
@@ -220,14 +232,14 @@ func (kc *KeyringController) getKey(name string) (*btcec.PrivateKey, *btcec.Publ
 		return nil, nil, fmt.Errorf("failed to get private key by name %s: %w", name, err)
 	}
 
-	privKey := k.GetLocal().PrivKey.GetCachedValue()
+	privKeyCached := k.GetLocal().PrivKey.GetCachedValue()
 
-	var btcPrivKey *btcec.PrivateKey
-	var btcPubKey *btcec.PublicKey
-	switch v := privKey.(type) {
+	var privKey *btcec.PrivateKey
+	var pubKey *btcec.PublicKey
+	switch v := privKeyCached.(type) {
 	case *secp256k1.PrivKey:
-		btcPrivKey, btcPubKey = btcec.PrivKeyFromBytes(v.Key)
-		return btcPrivKey, btcPubKey, nil
+		privKey, pubKey = btcec.PrivKeyFromBytes(v.Key)
+		return privKey, pubKey, nil
 	default:
 		return nil, nil, fmt.Errorf("unsupported key type in keyring")
 	}

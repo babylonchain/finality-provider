@@ -6,13 +6,16 @@ import (
 	"strconv"
 	"time"
 
+	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
+	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"google.golang.org/grpc/metadata"
@@ -44,6 +47,15 @@ func NewBabylonController(
 		return nil, fmt.Errorf("unable to create Babylon rpc client: %w", err)
 	}
 
+	// HACK: replace the modules in public rpc-client to add BTC staking / finality modules
+	// so that it recognises their message formats
+	// TODO: fix this either by fixing rpc-client side
+	var moduleBasics []module.AppModuleBasic
+	for _, mbasic := range bbnapp.ModuleBasics {
+		moduleBasics = append(moduleBasics, mbasic)
+	}
+	rpcClient.Config.Modules = moduleBasics
+
 	return &BabylonController{
 		rpcClient,
 		logger,
@@ -51,10 +63,17 @@ func NewBabylonController(
 	}, nil
 }
 
+func (bc *BabylonController) GetTxSigner() string {
+	signer := bc.rpcClient.MustGetAddr()
+	prefix := bc.rpcClient.GetConfig().AccountPrefix
+	return sdk.MustBech32ifyAddressBytes(prefix, signer)
+}
+
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {
 	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
+		Signer:    bc.GetTxSigner(),
 		BabylonPk: bbnPubKey,
 		BtcPk:     btcPubKey,
 		Pop:       pop,
@@ -72,6 +91,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 // it returns tx hash and error
 func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
+		Signer:      bc.GetTxSigner(),
 		ValBtcPk:    btcPubKey,
 		StartHeight: startHeight,
 		PubRandList: pubRandList,

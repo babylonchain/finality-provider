@@ -10,6 +10,7 @@ import (
 	"time"
 
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/sirupsen/logrus"
@@ -94,9 +95,22 @@ func TestCreateValidator(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	handler, err := NewBabylonNodeHandler()
+	require.NoError(t, err)
+
+	err = handler.Start()
+	require.NoError(t, err)
+	defer handler.Stop()
+
 	defaultConfig := valcfg.DefaultConfig()
-	defaultConfig.KeyringDir = tDir
-	defaultConfig.BabylonConfig.KeyDirectory = tDir
+	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
+	// need to use this one to send otherwise we will have account sequence mismatch
+	// errors
+	defaultConfig.BabylonConfig.Key = "test-spending-key"
+
+	// Big adjustment to make sure we have enough gas in our transactions
+	defaultConfig.BabylonConfig.GasAdjustment = 3.0
+
 	defaultConfig.DatabaseConfig.Path = filepath.Join(tDir, "valtest.db")
 
 	logger := logrus.New()
@@ -121,5 +135,12 @@ func TestCreateValidator(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, newValName, validator.KeyName)
+
+	_, err = app.RegisterValidator(validator.KeyName)
+	require.NoError(t, err)
+
+	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
 
 }
