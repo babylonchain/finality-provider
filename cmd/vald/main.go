@@ -44,6 +44,12 @@ func main() {
 		cfgLogger.Errorf("failed to create validator app: %v", err)
 		os.Exit(1)
 	}
+	// start app event loop
+	// TODO: graceful shutdown
+	if err := valApp.Start(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	valServer := service.NewValidatorServer(cfg, cfgLogger, valApp, shutdownInterceptor)
 

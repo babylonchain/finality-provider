@@ -174,5 +174,11 @@ func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidato
 // QueryValidatorList queries the information of a list of validators
 func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryValidatorListRequest) (
 	*proto.QueryValidatorListResponse, error) {
-	panic("implement me")
+
+	vals, err := r.app.ListValidators()
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.QueryValidatorListResponse{Validators: vals}, nil
 }

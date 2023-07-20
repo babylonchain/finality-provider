@@ -19,6 +19,7 @@ var daemonCommands = []cli.Command{
 		Subcommands: []cli.Command{
 			getDaemonInfoCmd,
 			createValCmd,
+			lsValCmd,
 		},
 	},
 }
@@ -99,6 +100,38 @@ func createValDaemon(ctx *cli.Context) error {
 	}
 
 	printRespJSON(info)
+
+	return nil
+}
+
+var lsValCmd = cli.Command{
+	Name:      "list-validators",
+	ShortName: "ls",
+	Usage:     "List validators stored in the database.",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
+		},
+	},
+	Action: lsValDaemon,
+}
+
+func lsValDaemon(ctx *cli.Context) error {
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	resp, err := rpcClient.QueryValidatorList(context.Background())
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
 
 	return nil
 }
