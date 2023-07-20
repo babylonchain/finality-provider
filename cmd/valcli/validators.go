@@ -3,10 +3,15 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/urfave/cli"
 
+	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/service"
 	dc "github.com/babylonchain/btc-validator/service/client"
+	"github.com/babylonchain/btc-validator/val"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -39,65 +44,97 @@ var createValidator = cli.Command{
 	Usage:     "Create a Bitcoin validator object and save it in database.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
+			Name:  chainIdFlag,
+			Usage: "The chainID of the Babylonchain",
+			Value: defaultChainID,
+		},
+		cli.StringFlag{
 			Name:     keyNameFlag,
 			Usage:    "The unique name of the validator key",
 			Required: true,
 		},
 		cli.StringFlag{
-			Name:  valdDaemonAddressFlag,
-			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValdDaemonAddress,
+			Name:  keyringBackendFlag,
+			Usage: "Select keyring's backend (os|file|test)",
+			Value: defaultKeyringBackend,
+		},
+		cli.StringFlag{
+			Name:  keyringDirFlag,
+			Usage: "The directory where the keyring is stored",
 		},
 	},
 	Action: createVal,
 }
 
 func createVal(ctx *cli.Context) error {
-	daemonAddress := ctx.String(valdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
-	if err != nil {
-		return err
-	}
-	defer cleanUp()
-
-	resp, err := rpcClient.CreateValidator(context.Background(), ctx.String(keyNameFlag))
+	sdkCtx, err := service.CreateClientCtx(
+		ctx.String(keyringDirFlag),
+		ctx.String(chainIdFlag),
+	)
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(resp)
+	krController, err := val.NewKeyringController(
+		sdkCtx,
+		ctx.String(keyNameFlag),
+		ctx.String(keyringBackendFlag),
+	)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	if krController.KeyNameTaken() {
+		return fmt.Errorf("the key name %s is taken", krController.GetKeyName())
+	}
+
+	validator, err := krController.CreateBTCValidator()
+	if err != nil {
+		return err
+	}
+
+	vs, err := getValStoreFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = vs.Close()
+	}()
+
+	if err := vs.SaveValidator(validator); err != nil {
+		return err
+	}
+
+	printRespJSON(&proto.CreateValidatorResponse{
+		BabylonPk: hex.EncodeToString(validator.BabylonPk),
+		BtcPk:     hex.EncodeToString(validator.BtcPk),
+	})
+
+	return err
 }
 
 var listValidators = cli.Command{
 	Name:      "list-validators",
 	ShortName: "ls",
 	Usage:     "List validators stored in the database.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  valdDaemonAddressFlag,
-			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValdDaemonAddress,
-		},
-	},
-	Action: lsVal,
+	Action:    lsVal,
 }
 
 func lsVal(ctx *cli.Context) error {
-	daemonAddress := ctx.String(valdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {
 		return err
 	}
-	defer cleanUp()
+	defer func() {
+		err = vs.Close()
+	}()
 
-	resp, err := rpcClient.QueryValidatorList(context.Background())
+	valList, err := vs.ListValidators()
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(resp)
+	printRespJSON(&proto.QueryValidatorListResponse{Validators: valList})
 
 	return nil
 }
@@ -202,4 +239,22 @@ func commitRand(ctx *cli.Context) error {
 	printRespJSON(res)
 
 	return nil
+}
+
+func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
+	dbcfg, err := valcfg.NewDatabaseConfig(
+		ctx.GlobalString(dbTypeFlag),
+		ctx.GlobalString(dbPathFlag),
+		ctx.GlobalString(dbNameFlag),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB config: %w", err)
+	}
+
+	valStore, err := val.NewValidatorStore(dbcfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open the store: %w", err)
+	}
+
+	return valStore, nil
 }
