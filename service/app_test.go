@@ -74,11 +74,11 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		cfg.KeyringDir = t.TempDir()
+        cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
-			err = os.RemoveAll(cfg.KeyringDir)
+			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
 		ctl := gomock.NewController(t)

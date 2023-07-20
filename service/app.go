@@ -41,7 +41,9 @@ func NewValidatorAppFromConfig(
 	bc bbncli.BabylonClient,
 ) (*ValidatorApp, error) {
 
-	kr, err := CreateKeyring(config.KeyringDir, config.BabylonConfig.ChainID, config.KeyringBackend)
+	kr, err := CreateKeyring(config.BabylonConfig.KeyDirectory,
+		config.BabylonConfig.ChainID,
+		config.BabylonConfig.KeyringBackend)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
