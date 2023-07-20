@@ -94,8 +94,15 @@ func TestCreateValidator(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	handler, err := NewBabylonNodeHandler()
+	require.NoError(t, err)
+
+	err = handler.Start()
+	require.NoError(t, err)
+	defer handler.Stop()
+
 	defaultConfig := valcfg.DefaultConfig()
-	defaultConfig.BabylonConfig.KeyDirectory = tDir
+	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
 	defaultConfig.DatabaseConfig.Path = filepath.Join(tDir, "valtest.db")
 
 	logger := logrus.New()
@@ -104,6 +111,17 @@ func TestCreateValidator(t *testing.T) {
 
 	bc, err := babylonclient.NewBabylonController(defaultConfig.BabylonConfig, logger)
 	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		status, err := bc.QueryNodeStatus()
+		require.NoError(t, err)
+		// wait for two blocks otherswise client fails with some weird error
+		// failed to load state at height 1; version does not exist (latest height: 1): invalid request
+		if status.SyncInfo.LatestBlockHeight < 2 {
+			return false
+		}
+		return true
+	}, 20*time.Second, 1*time.Second)
 
 	app, err := service.NewValidatorAppFromConfig(&defaultConfig, logger, bc)
 	require.NoError(t, err)
@@ -121,4 +139,6 @@ func TestCreateValidator(t *testing.T) {
 
 	require.Equal(t, newValName, validator.KeyName)
 
+	_, err = app.RegisterValidator(validator.BabylonPk)
+	require.NoError(t, err)
 }
