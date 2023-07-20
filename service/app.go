@@ -411,7 +411,11 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			tx, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
 
 			if err != nil {
-				app.logger.WithField("error", err).Error("failed to register validator")
+				app.logger.WithFields(logrus.Fields{
+					"err":       err,
+					"bbnPubKey": req.bbnPubKey,
+					"btcPubKey": req.btcPubKey,
+				}).Error("failed to register validator")
 				req.errResponse <- err
 				continue
 			}

@@ -88,15 +88,15 @@ func (n *babylonNode) cleanup() error {
 		}
 	}
 
-	// dirs := []string{
-	// 	n.dataDir,
-	// }
-	// var err error
-	// for _, dir := range dirs {
-	// 	if err = os.RemoveAll(dir); err != nil {
-	// 		log.Printf("Cannot remove dir %s: %v", dir, err)
-	// 	}
-	// }
+	dirs := []string{
+		n.dataDir,
+	}
+	var err error
+	for _, dir := range dirs {
+		if err = os.RemoveAll(dir); err != nil {
+			log.Printf("Cannot remove dir %s: %v", dir, err)
+		}
+	}
 	return nil
 }
 
@@ -145,9 +145,6 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 	}
 
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
-
-	fmt.Println("HOME DIR IS")
-	fmt.Println(nodeDataDir)
 
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
 
