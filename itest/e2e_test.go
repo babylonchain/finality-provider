@@ -136,7 +136,7 @@ func TestCreateValidator(t *testing.T) {
 
 	require.Equal(t, newValName, validator.KeyName)
 
-	_, err = app.RegisterValidator(validator.BabylonPk)
+	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
 
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
