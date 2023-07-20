@@ -6,7 +6,6 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/btc-validator/proto"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -63,7 +62,7 @@ func createVal(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	resp, err := rpcClient.CreateValidator(context.TODO(), ctx.String(keyNameFlag))
+	resp, err := rpcClient.CreateValidator(context.Background(), ctx.String(keyNameFlag))
 	if err != nil {
 		return err
 	}
@@ -77,24 +76,30 @@ var listValidators = cli.Command{
 	Name:      "list-validators",
 	ShortName: "ls",
 	Usage:     "List validators stored in the database.",
-	Action:    lsVal,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
+		},
+	},
+	Action: lsVal,
 }
 
 func lsVal(ctx *cli.Context) error {
-	vs, err := getValStoreFromCtx(ctx)
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		err = vs.Close()
-	}()
+	defer cleanUp()
 
-	valList, err := vs.ListValidators()
+	resp, err := rpcClient.QueryValidatorList(context.Background())
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(&proto.QueryValidatorListResponse{Validators: valList})
+	printRespJSON(resp)
 
 	return nil
 }
