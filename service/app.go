@@ -130,7 +130,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
-	stakingMsgTx, err := slashingTx.ToMsgTx()
+	stakingMsgTx, err := stakingTx.ToMsgTx()
 	if err != nil {
 		return nil, err
 	}

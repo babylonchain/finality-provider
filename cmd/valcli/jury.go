@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/urfave/cli"
@@ -83,7 +84,7 @@ func createJuryKey(ctx *cli.Context) error {
 
 	printRespJSON(&juryKey{
 		Name:      krController.GetKeyName(),
-		PublicKey: juryPk.ToHexStr(),
+		PublicKey: hex.EncodeToString(juryPk.SerializeCompressed()),
 	})
 
 	return err
