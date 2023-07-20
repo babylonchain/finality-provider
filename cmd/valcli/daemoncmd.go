@@ -29,6 +29,10 @@ var daemonCommands = []cli.Command{
 
 const (
 	valdDaemonAddressFlag = "daemon-address"
+	keyNameFlag           = "key-name"
+	randNumFlag           = "rand-num"
+	babylonPkFlag         = "babylon-pk"
+	defaultRandomNum      = 100
 )
 
 var (

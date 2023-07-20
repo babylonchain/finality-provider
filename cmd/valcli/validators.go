@@ -16,12 +16,8 @@ const (
 	chainIdFlag           = "chain-id"
 	keyringDirFlag        = "keyring-dir"
 	keyringBackendFlag    = "keyring-backend"
-	keyNameFlag           = "key-name"
-	randNumFlag           = "rand-num"
-	babylonPkFlag         = "babylon-pk"
 	defaultChainID        = "test-chain"
 	defaultKeyringBackend = "test"
-	defaultRandomNum      = 100
 )
 
 var validatorsCommands = []cli.Command{
