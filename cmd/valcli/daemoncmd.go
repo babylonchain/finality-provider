@@ -68,7 +68,7 @@ func getInfo(ctx *cli.Context) error {
 var createValCmd = cli.Command{
 	Name:      "create-validator",
 	ShortName: "cv",
-	Usage:     "Get information of the running daemon.",
+	Usage:     "Create a Bitcoin validator object and save it in database.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
