@@ -104,7 +104,7 @@ func TestCreateValidator(t *testing.T) {
 
 	defaultConfig := valcfg.DefaultConfig()
 	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
-	// need to use this one to send otherwise we will have account sequencemismatch
+	// need to use this one to send otherwise we will have account sequence mismatch
 	// errors
 	defaultConfig.BabylonConfig.Key = "test-spending-key"
 

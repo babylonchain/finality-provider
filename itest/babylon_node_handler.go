@@ -18,7 +18,7 @@ func baseDir() (string, error) {
 		return "", err
 	}
 
-	err = os.Chmod(tempName, 0777)
+	err = os.Chmod(tempName, 0755)
 
 	if err != nil {
 		return "", err
@@ -131,7 +131,6 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 		"--additional-sender-account",
 	)
 
-	// var out bytes.Buffer
 	var stderr bytes.Buffer
 	initTestnetCmd.Stderr = &stderr
 

@@ -121,7 +121,7 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	if validator.Status > proto.ValidatorStatus_VALIDATOR_STATUS_CREATED {
+	if validator.Status != proto.ValidatorStatus_VALIDATOR_STATUS_CREATED {
 		return nil, fmt.Errorf("validator is already registered")
 	}
 
@@ -395,10 +395,10 @@ func (app *ValidatorApp) eventLoop() {
 }
 
 // Loop for handling requests to send stuff to babylon. It is necessart to properly
-// serialize bayblon sends as otherwise we would keep hitting sequce mismatch errors.
+// serialize bayblon sends as otherwise we would keep hitting sequence mismatch errors.
 // This could be done either by send loop or by lock. We choose send loop as it is
 // more flexible.
-// TODO: This could be probably separate component responsbile for queuing stuff
+// TODO: This could be probably separate component responsible for queuing stuff
 // and sending it to babylon.
 func (app *ValidatorApp) handleSentToBabylonLoop() {
 	defer app.wg.Done()
@@ -406,7 +406,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 		select {
 		case req := <-app.registerValidatorRequestChan:
 			// we won't do any retries here to not block the loop for more important messages.
-			// Most probably it failes due so some user error so we just return the error to the user.
+			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
 			tx, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
 
