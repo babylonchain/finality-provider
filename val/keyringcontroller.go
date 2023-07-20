@@ -139,17 +139,13 @@ func (kc *KeyringController) createBIP340KeyPair() (*types.BIP340PubKey, error) 
 	return types.NewBIP340PubKeyFromBTCPK(btcPk), nil
 }
 
-func (kc *KeyringController) CreateJuryKey() (*types.BIP340PubKey, error) {
+func (kc *KeyringController) CreateJuryKey() (*btcec.PublicKey, error) {
 	sdkPk, err := kc.createKey(string(kc.name))
 	if err != nil {
 		return nil, err
 	}
 
-	btcPk, err := btcec.ParsePubKey(sdkPk.Key)
-	if err != nil {
-		return nil, err
-	}
-	return types.NewBIP340PubKeyFromBTCPK(btcPk), nil
+	return btcec.ParsePubKey(sdkPk.Key)
 }
 
 func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
