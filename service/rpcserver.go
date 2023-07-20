@@ -175,7 +175,7 @@ func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidato
 func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryValidatorListRequest) (
 	*proto.QueryValidatorListResponse, error) {
 
-	vals, err := r.app.GetValidatorStore().ListValidators()
+	vals, err := r.app.ListValidators()
 	if err != nil {
 		return nil, err
 	}

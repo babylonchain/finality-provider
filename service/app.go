@@ -259,6 +259,10 @@ func (app *ValidatorApp) CreateValidator(keyName string) (*CreateValidatorResult
 	}
 }
 
+func (app *ValidatorApp) ListValidators() ([]*proto.Validator, error) {
+	return app.vs.ListValidators()
+}
+
 func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) {
 	return app.vs.GetValidator(pkBytes)
 }
@@ -314,6 +318,7 @@ func (app *ValidatorApp) eventLoop() {
 
 			if err != nil {
 				req.errResponse <- err
+				continue
 			}
 
 			req.successResponse <- resp
