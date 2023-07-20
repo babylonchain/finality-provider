@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/service"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -67,50 +65,21 @@ var createValidator = cli.Command{
 }
 
 func createVal(ctx *cli.Context) error {
-	sdkCtx, err := service.CreateClientCtx(
-		ctx.String(keyringDirFlag),
-		ctx.String(chainIdFlag),
-	)
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	resp, err := rpcClient.CreateValidator(context.Background(), ctx.String(keyNameFlag))
 	if err != nil {
 		return err
 	}
 
-	krController, err := val.NewKeyringController(
-		sdkCtx,
-		ctx.String(keyNameFlag),
-		ctx.String(keyringBackendFlag),
-	)
-	if err != nil {
-		return err
-	}
+	printRespJSON(resp)
 
-	if krController.KeyNameTaken() {
-		return fmt.Errorf("the key name %s is taken", krController.GetKeyName())
-	}
-
-	validator, err := krController.CreateBTCValidator()
-	if err != nil {
-		return err
-	}
-
-	vs, err := getValStoreFromCtx(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = vs.Close()
-	}()
-
-	if err := vs.SaveValidator(validator); err != nil {
-		return err
-	}
-
-	printRespJSON(&proto.CreateValidatorResponse{
-		BabylonPk: hex.EncodeToString(validator.BabylonPk),
-		BtcPk:     hex.EncodeToString(validator.BtcPk),
-	})
-
-	return err
+	return nil
 }
 
 var listValidators = cli.Command{
