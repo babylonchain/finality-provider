@@ -95,7 +95,6 @@ func TestCreateValidator(t *testing.T) {
 	}()
 
 	defaultConfig := valcfg.DefaultConfig()
-	defaultConfig.KeyringDir = tDir
 	defaultConfig.BabylonConfig.KeyDirectory = tDir
 	defaultConfig.DatabaseConfig.Path = filepath.Join(tDir, "valtest.db")
 
