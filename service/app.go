@@ -8,7 +8,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -266,6 +265,8 @@ func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) 
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
 
+	app.logger.Debug("handling CreateValidator request")
+
 	kr, err := val.NewKeyringControllerWithKeyring(app.kr, req.keyName)
 
 	if err != nil {
@@ -287,21 +288,18 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to save validator: %w", err)
 	}
 
-	btcPubKey, err := schnorr.ParsePubKey(validator.BtcPk)
+	btcPubKey := validator.MustGetBTCPK()
+	babylonPubKey := validator.GetBabylonPK()
 
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("failed to parse created btc public key")
-	}
-
-	babylonPubKey := secp256k1.PubKey{
-		Key: validator.BabylonPk,
-	}
+	app.logger.Info("successfully created validator")
+	app.logger.WithFields(logrus.Fields{ // TODO: use hex format
+		"btc_pub_key":     btcPubKey,
+		"babylon_pub_key": babylonPubKey,
+	}).Debug("created validator")
 
 	return &createValidatorResponse{
 		BtcValidatorPk:     *btcPubKey,
-		BabylonValidatorPk: babylonPubKey,
+		BabylonValidatorPk: *babylonPubKey,
 	}, nil
 }
 
@@ -316,13 +314,7 @@ func (app *ValidatorApp) eventLoop() {
 
 			if err != nil {
 				req.errResponse <- err
-				continue
 			}
-
-			app.logger.WithFields(logrus.Fields{
-				"btc_pub_key":     resp.BtcValidatorPk,
-				"babylon_pub_key": resp.BabylonValidatorPk,
-			}).Info("Successfully created validator")
 
 			req.successResponse <- resp
 		case <-app.quit:

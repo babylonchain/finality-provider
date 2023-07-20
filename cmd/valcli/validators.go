@@ -42,23 +42,14 @@ var createValidator = cli.Command{
 	Usage:     "Create a Bitcoin validator object and save it in database.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  chainIdFlag,
-			Usage: "The chainID of the Babylonchain",
-			Value: defaultChainID,
-		},
-		cli.StringFlag{
 			Name:     keyNameFlag,
 			Usage:    "The unique name of the validator key",
 			Required: true,
 		},
 		cli.StringFlag{
-			Name:  keyringBackendFlag,
-			Usage: "Select keyring's backend (os|file|test)",
-			Value: defaultKeyringBackend,
-		},
-		cli.StringFlag{
-			Name:  keyringDirFlag,
-			Usage: "The directory where the keyring is stored",
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
 		},
 	},
 	Action: createVal,
@@ -72,7 +63,7 @@ func createVal(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	resp, err := rpcClient.CreateValidator(context.Background(), ctx.String(keyNameFlag))
+	resp, err := rpcClient.CreateValidator(context.TODO(), ctx.String(keyNameFlag))
 	if err != nil {
 		return err
 	}
