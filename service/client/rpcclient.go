@@ -68,3 +68,13 @@ func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyNam
 
 	return res, nil
 }
+
+func (c *ValidatorServiceGRpcClient) QueryValidatorList(ctx context.Context) (*proto.QueryValidatorListResponse, error) {
+	req := &proto.QueryValidatorListRequest{}
+	res, err := c.client.QueryValidatorList(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
