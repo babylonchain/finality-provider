@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"encoding/hex"
 
 	"github.com/urfave/cli"
 
 	dc "github.com/babylonchain/btc-validator/service/client"
-	"github.com/babylonchain/btc-validator/val"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -204,22 +202,4 @@ func commitRand(ctx *cli.Context) error {
 	printRespJSON(res)
 
 	return nil
-}
-
-func getValStoreFromCtx(ctx *cli.Context) (*val.ValidatorStore, error) {
-	dbcfg, err := valcfg.NewDatabaseConfig(
-		ctx.GlobalString(dbTypeFlag),
-		ctx.GlobalString(dbPathFlag),
-		ctx.GlobalString(dbNameFlag),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("invalid DB config: %w", err)
-	}
-
-	valStore, err := val.NewValidatorStore(dbcfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open the store: %w", err)
-	}
-
-	return valStore, nil
 }
