@@ -56,6 +56,7 @@ func main() {
 	app.Commands = append(app.Commands, daemonCommands...)
 	app.Commands = append(app.Commands, validatorsCommands...)
 	app.Commands = append(app.Commands, adminCommands...)
+	app.Commands = append(app.Commands, juryCommands...)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)

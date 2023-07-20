@@ -99,12 +99,16 @@ func (kc *KeyringController) GetKeyName() string {
 	return string(kc.name)
 }
 
-func (kc *KeyringController) KeyExists() bool {
+func (kc *KeyringController) ValidatorKeyExists() bool {
 	return kc.keyExists(kc.name.GetBabylonKeyName()) && kc.keyExists(kc.name.GetBtcKeyName())
 }
 
-func (kc *KeyringController) KeyNameTaken() bool {
+func (kc *KeyringController) ValidatorKeyNameTaken() bool {
 	return kc.keyExists(kc.name.GetBabylonKeyName()) || kc.keyExists(kc.name.GetBtcKeyName())
+}
+
+func (kc *KeyringController) JuryKeyTaken() bool {
+	return kc.keyExists(kc.GetKeyName())
 }
 
 func (kc *KeyringController) keyExists(name string) bool {
@@ -120,6 +124,19 @@ func (kc *KeyringController) createBabylonKeyPair() (*secp256k1.PubKey, error) {
 // createBIP340KeyPair creates a BIP340 key pair stored in the keyring
 func (kc *KeyringController) createBIP340KeyPair() (*types.BIP340PubKey, error) {
 	sdkPk, err := kc.createKey(kc.name.GetBtcKeyName())
+	if err != nil {
+		return nil, err
+	}
+
+	btcPk, err := btcec.ParsePubKey(sdkPk.Key)
+	if err != nil {
+		return nil, err
+	}
+	return types.NewBIP340PubKeyFromBTCPK(btcPk), nil
+}
+
+func (kc *KeyringController) CreateJuryKey() (*types.BIP340PubKey, error) {
+	sdkPk, err := kc.createKey(string(kc.name))
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +191,7 @@ func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
 // the input is the bytes of BTC public key used to sign
 // this requires both keys created beforehand
 func (kc *KeyringController) createPop() (*bstypes.ProofOfPossession, error) {
-	if !kc.KeyExists() {
+	if !kc.ValidatorKeyExists() {
 		return nil, fmt.Errorf("the keys do not exist")
 	}
 

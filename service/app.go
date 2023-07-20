@@ -52,8 +52,12 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
-	if err != nil {
-		return nil, err
+	if config.JuryMode {
+		_, err := kr.Key(config.JuryKeyName)
+		if err != nil {
+			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
+				config.JuryKeyName, err)
+		}
 	}
 
 	return &ValidatorApp{
@@ -272,7 +276,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create keyring controller: %w", err)
 	}
 
-	if kr.KeyNameTaken() {
+	if kr.ValidatorKeyNameTaken() {
 		return nil, fmt.Errorf("the key name %s is taken", kr.GetKeyName())
 	}
 
