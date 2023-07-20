@@ -116,6 +116,10 @@ func (kc *KeyringController) keyExists(name string) bool {
 	return err == nil
 }
 
+func (kc *KeyringController) GetKeyring() keyring.Keyring {
+	return kc.kr
+}
+
 // createBabylonKeyPair creates a babylon key pair stored in the keyring
 func (kc *KeyringController) createBabylonKeyPair() (*secp256k1.PubKey, error) {
 	return kc.createKey(kc.name.GetBabylonKeyName())

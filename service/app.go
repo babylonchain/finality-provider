@@ -9,7 +9,7 @@ import (
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -121,6 +121,42 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 	}
 
 	return app.bc.RegisterValidator(bbnPk, btcPk, pop)
+}
+
+func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte, error) {
+	if btcDel.JurySig != nil {
+		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
+	}
+
+	slashingTx := btcDel.SlashingTx
+	stakingTx := btcDel.StakingTx
+	stakingMsgTx, err := slashingTx.ToMsgTx()
+	if err != nil {
+		return nil, err
+	}
+
+	// get Jury private key from the keyring
+	var juryPrivKey *btcec.PrivateKey
+	k, err := app.kr.Key(app.config.JuryKeyName)
+	if err != nil {
+		return nil, err
+	}
+	privKey := k.GetLocal().PrivKey.GetCachedValue()
+	switch v := privKey.(type) {
+	case *secp256k1.PrivKey:
+		juryPrivKey, _ = btcec.PrivKeyFromBytes(v.Key)
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
+	}
+
+	jurySig, err := slashingTx.Sign(
+		stakingMsgTx,
+		stakingTx.StakingScript,
+		juryPrivKey,
+		&chaincfg.SimNetParams,
+	)
+
+	return app.bc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, jurySig)
 }
 
 // CommitPubRandForAll generates a list of Schnorr rand pairs,
