@@ -169,7 +169,8 @@ var registerValidator = cli.Command{
 }
 
 func registerVal(ctx *cli.Context) error {
-	pkBytes := []byte(ctx.Args().First())
+	pkHexStr := ctx.Args().First()
+	pkBytes, err := hex.DecodeString(pkHexStr)
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
