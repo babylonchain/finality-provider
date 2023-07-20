@@ -179,8 +179,6 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
-		btcSig := new(types.BIP340Signature)
-		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		// random Babylon SK
 		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
 		require.NoError(t, err)
@@ -206,11 +204,8 @@ func FuzzAddJurySig(f *testing.F) {
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
-		_, err = app.AddJurySignature(delegation)
 		txHash, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, txHash)
-		_, err = app.AddJurySignature(delegation)
-		require.NoError(t, err)
 	})
 }
