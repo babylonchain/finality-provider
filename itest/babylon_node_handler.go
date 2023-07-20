@@ -97,7 +97,7 @@ func (n *babylonNode) cleanup() error {
 			log.Printf("Cannot remove dir %s: %v", dir, err)
 		}
 	}
-	return err
+	return nil
 }
 
 func (n *babylonNode) shutdown() error {
@@ -125,16 +125,13 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 		"testnet",
 		"--v=1",
 		fmt.Sprintf("--output-dir=%s", testDir),
-		fmt.Sprintf("--home=%s", testDir),
 		"--starting-ip-address=192.168.10.2",
 		"--keyring-backend=test",
-		"--chain-id=chain-1",
+		"--chain-id=chain-test",
 		"--additional-sender-account",
 	)
 
-	var out bytes.Buffer
 	var stderr bytes.Buffer
-	initTestnetCmd.Stdout = &out
 	initTestnetCmd.Stderr = &stderr
 
 	err = initTestnetCmd.Run()
@@ -148,11 +145,20 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
 
+	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
+
+	if err != nil {
+		return nil, err
+	}
+
 	startCmd := exec.Command(
 		"babylond",
 		"start",
 		fmt.Sprintf("--home=%s", nodeDataDir),
+		"--log_level=debug",
 	)
+
+	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
 		babylonNode: newBabylonNode(testDir, startCmd),

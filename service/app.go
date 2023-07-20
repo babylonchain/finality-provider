@@ -6,9 +6,9 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -33,6 +33,9 @@ type ValidatorApp struct {
 	logger *logrus.Logger
 
 	createValidatorRequestChan chan *createValidatorRequest
+
+	registerValidatorRequestChan chan *registerValidatorRequest
+	validatorRegisteredEventChan chan *validatorRegisteredEvent
 }
 
 func NewValidatorAppFromConfig(
@@ -58,13 +61,15 @@ func NewValidatorAppFromConfig(
 	}
 
 	return &ValidatorApp{
-		bc:                         bc,
-		vs:                         valStore,
-		kr:                         kr,
-		config:                     config,
-		logger:                     logger,
-		quit:                       make(chan struct{}),
-		createValidatorRequestChan: make(chan *createValidatorRequest),
+		bc:                           bc,
+		vs:                           valStore,
+		kr:                           kr,
+		config:                       config,
+		logger:                       logger,
+		quit:                         make(chan struct{}),
+		createValidatorRequestChan:   make(chan *createValidatorRequest),
+		registerValidatorRequestChan: make(chan *registerValidatorRequest),
+		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
 	}, nil
 }
 
@@ -76,6 +81,25 @@ type createValidatorRequest struct {
 	keyName         string
 	errResponse     chan error
 	successResponse chan *createValidatorResponse
+}
+
+type registerValidatorRequest struct {
+	bbnPubKey *secp256k1.PubKey
+	btcPubKey *types.BIP340PubKey
+	// TODO we should have our own representation of PoP
+	pop             *btcstakingtypes.ProofOfPossession
+	errResponse     chan error
+	successResponse chan *registerValidatorResponse
+}
+
+type validatorRegisteredEvent struct {
+	bbnPubKey       *secp256k1.PubKey
+	txHash          []byte
+	successResponse chan *registerValidatorResponse
+}
+
+type registerValidatorResponse struct {
+	txHash []byte
 }
 
 type CreateValidatorResult struct {
@@ -97,6 +121,10 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	if validator.Status != proto.ValidatorStatus_VALIDATOR_STATUS_CREATED {
+		return nil, fmt.Errorf("validator is already registered")
+	}
+
 	// TODO: the following decoding is not needed if Babylon and cosmos protos are introduced
 
 	bbnPk := validator.GetBabylonPK()
@@ -111,7 +139,24 @@ func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
 		BtcSig:     btcSig,
 	}
 
-	return app.bc.RegisterValidator(bbnPk, btcPk, pop)
+	request := &registerValidatorRequest{
+		bbnPubKey:       bbnPk,
+		btcPubKey:       btcPk,
+		pop:             pop,
+		errResponse:     make(chan error),
+		successResponse: make(chan *registerValidatorResponse),
+	}
+
+	app.registerValidatorRequestChan <- request
+
+	select {
+	case err := <-request.errResponse:
+		return nil, err
+	case successResponse := <-request.successResponse:
+		return successResponse.txHash, nil
+	case <-app.quit:
+		return nil, fmt.Errorf("validator app is shutting down")
+	}
 }
 
 // CommitPubRandForAll generates a list of Schnorr rand pairs,
@@ -212,7 +257,8 @@ func (app *ValidatorApp) Start() error {
 	app.startOnce.Do(func() {
 		app.logger.Infof("Starting ValidatorApp")
 
-		app.wg.Add(1)
+		app.wg.Add(2)
+		go app.handleSentToBabylonLoop()
 		go app.eventLoop()
 	})
 
@@ -314,6 +360,75 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 			req.successResponse <- resp
+
+		case ev := <-app.validatorRegisteredEventChan:
+			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)
+
+			if err != nil {
+				// we always check if the validator is in the DB before sending the registration request
+				app.logger.WithFields(logrus.Fields{
+					"bbn_pk": ev.bbnPubKey,
+				}).Fatal("Registred validator not found in DB")
+			}
+
+			// change the status of the validator to registered
+			val.Status = proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED
+
+			// save the updated validator object to DB
+			err = app.vs.SaveValidator(val)
+
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"bbn_pk": ev.bbnPubKey,
+				}).Fatal("erroch while saving validator to DB")
+			}
+
+			// return to the caller
+			ev.successResponse <- &registerValidatorResponse{
+				txHash: ev.txHash,
+			}
+
+		case <-app.quit:
+			return
+		}
+	}
+}
+
+// Loop for handling requests to send stuff to babylon. It is necessart to properly
+// serialize bayblon sends as otherwise we would keep hitting sequence mismatch errors.
+// This could be done either by send loop or by lock. We choose send loop as it is
+// more flexible.
+// TODO: This could be probably separate component responsible for queuing stuff
+// and sending it to babylon.
+func (app *ValidatorApp) handleSentToBabylonLoop() {
+	defer app.wg.Done()
+	for {
+		select {
+		case req := <-app.registerValidatorRequestChan:
+			// we won't do any retries here to not block the loop for more important messages.
+			// Most probably it fails due so some user error so we just return the error to the user.
+			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
+			tx, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
+
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err":       err,
+					"bbnPubKey": req.bbnPubKey,
+					"btcPubKey": req.btcPubKey,
+				}).Error("failed to register validator")
+				req.errResponse <- err
+				continue
+			}
+
+			app.logger.WithField("bbnPk", req.bbnPubKey).Info("successfully registered validator on babylon")
+
+			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
+				bbnPubKey: req.bbnPubKey,
+				txHash:    tx,
+				// pass the channel to the event so that we can send the response to the user which requested
+				// the registration
+				successResponse: req.successResponse,
+			}
 		case <-app.quit:
 			return
 		}

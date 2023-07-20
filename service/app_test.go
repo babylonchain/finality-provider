@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/testutil/mocks"
@@ -34,6 +35,13 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
+
+		err = app.Start()
+		require.NoError(t, err)
+		defer func() {
+			err = app.Stop()
+			require.NoError(t, err)
+		}()
 
 		// create a validator object and save it to db
 		s := app.GetValidatorStore()
@@ -60,6 +68,11 @@ func FuzzRegisterValidator(f *testing.F) {
 		actualTxHash, err := app.RegisterValidator(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, txHash, actualTxHash)
+
+		val, err := s.GetValidator(validator.BabylonPk)
+		require.NoError(t, err)
+		require.Equal(t, val.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+
 	})
 }
 
@@ -71,7 +84,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-        cfg.BabylonConfig.KeyDirectory = t.TempDir()
+		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
