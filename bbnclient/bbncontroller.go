@@ -6,18 +6,19 @@ import (
 	"strconv"
 	"time"
 
+	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
+	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"google.golang.org/grpc/metadata"
-	"github.com/babylonchain/btc-validator/valcfg"
-
 )
 
 var _ BabylonClient = &BabylonController{}
@@ -43,6 +44,15 @@ func NewBabylonController(
 	if err != nil {
 		return nil, fmt.Errorf("unable to create Babylon rpc client: %w", err)
 	}
+
+	// HACK: replace the modules in public rpc-client to add BTC staking / finality modules
+	// so that it recognises their message formats
+	// TODO: fix this either by fixing rpc-client side
+	var moduleBasics []module.AppModuleBasic
+	for _, mbasic := range bbnapp.ModuleBasics {
+		moduleBasics = append(moduleBasics, mbasic)
+	}
+	rpcClient.Config.Modules = moduleBasics
 
 	return &BabylonController{
 		rpcClient,

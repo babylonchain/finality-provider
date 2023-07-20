@@ -7,7 +7,6 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -44,10 +43,8 @@ func FuzzRegisterValidator(f *testing.F) {
 
 		// TODO avoid conversion after btcstaking protos are introduced
 		// decode db object to specific types
-		btcPk := new(types.BIP340PubKey)
-		err = btcPk.Unmarshal(validator.BtcPk)
-		require.NoError(t, err)
-		bbnPk := &secp256k1.PubKey{Key: validator.BabylonPk}
+		btcPk := validator.MustGetBIP340BTCPK()
+		bbnPk := validator.GetBabylonPK()
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
@@ -96,9 +93,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
-		btcPk := new(types.BIP340PubKey)
-		err = btcPk.Unmarshal(validator.BtcPk)
-		require.NoError(t, err)
+		btcPk := validator.MustGetBIP340BTCPK()
 		txHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(btcPk, uint64(1), gomock.Any(), gomock.Any()).
