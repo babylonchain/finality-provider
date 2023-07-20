@@ -115,8 +115,19 @@ func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
-func (app *ValidatorApp) RegisterValidator(pkBytes []byte) ([]byte, error) {
-	validator, err := app.vs.GetValidator(pkBytes)
+func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
+	kc, err := val.NewKeyringControllerWithKeyring(app.kr, keyName)
+	if err != nil {
+		return nil, err
+	}
+	if !kc.KeyExists() {
+		return nil, fmt.Errorf("key name %s does not exist", keyName)
+	}
+	babylonPublicKeyBytes, err := kc.GetBabylonPublicKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+	validator, err := app.vs.GetValidator(babylonPublicKeyBytes)
 	if err != nil {
 		return nil, err
 	}

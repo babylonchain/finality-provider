@@ -24,12 +24,6 @@ import (
 
 var _ BabylonClient = &BabylonController{}
 
-func (bc *BabylonController) GetTxSigner() string {
-	signer := bc.rpcClient.MustGetAddr()
-	prefix := bc.rpcClient.GetConfig().AccountPrefix
-	return sdk.MustBech32ifyAddressBytes(prefix, signer)
-}
-
 type BabylonController struct {
 	rpcClient *client.Client
 	logger    *logrus.Logger
@@ -66,6 +60,12 @@ func NewBabylonController(
 		logger,
 		cfg.Timeout,
 	}, nil
+}
+
+func (bc *BabylonController) GetTxSigner() string {
+	signer := bc.rpcClient.MustGetAddr()
+	prefix := bc.rpcClient.GetConfig().AccountPrefix
+	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon

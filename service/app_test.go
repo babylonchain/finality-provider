@@ -44,8 +44,12 @@ func FuzzRegisterValidator(f *testing.F) {
 		}()
 
 		// create a validator object and save it to db
+		keyName := testutil.GenRandomHexStr(r, 4)
+		kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+		require.NoError(t, err)
+		validator, err := kc.CreateBTCValidator()
+		require.NoError(t, err)
 		s := app.GetValidatorStore()
-		validator := testutil.GenRandomValidator(r, t)
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
@@ -65,7 +69,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			RegisterValidator(bbnPk, btcPk, pop).Return(txHash, nil).AnyTimes()
 
-		actualTxHash, err := app.RegisterValidator(validator.BabylonPk)
+		actualTxHash, err := app.RegisterValidator(validator.KeyName)
 		require.NoError(t, err)
 		require.Equal(t, txHash, actualTxHash)
 
