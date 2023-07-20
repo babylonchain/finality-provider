@@ -19,7 +19,7 @@ var juryCommands = []cli.Command{
 	{
 		Name:      "jury",
 		ShortName: "j",
-		Usage:     "Control Bitcoin Jury.",
+		Usage:     "Control Babylon Jury.",
 		Category:  "Jury",
 		Subcommands: []cli.Command{
 			createJury,

@@ -110,9 +110,10 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 // it returns tx hash and error
 func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &btcstakingtypes.MsgAddJurySig{
-		ValPk: btcPubKey,
-		DelPk: delPubKey,
-		Sig:   sig,
+		Signer: bc.GetTxSigner(),
+		ValPk:  btcPubKey,
+		DelPk:  delPubKey,
+		Sig:    sig,
 	}
 
 	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
