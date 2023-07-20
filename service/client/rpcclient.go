@@ -39,8 +39,8 @@ func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*proto.GetInf
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, bbnPkBytes []byte) (*proto.RegisterValidatorResponse, error) {
-	req := &proto.RegisterValidatorRequest{BabylonPk: bbnPkBytes}
+func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, keyName string) (*proto.RegisterValidatorResponse, error) {
+	req := &proto.RegisterValidatorRequest{KeyName: keyName}
 	res, err := c.client.RegisterValidator(ctx, req)
 	if err != nil {
 		return nil, err

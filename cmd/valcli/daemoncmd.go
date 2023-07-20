@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"strconv"
 
 	"github.com/urfave/cli"
@@ -147,23 +146,24 @@ var registerValDaemonCmd = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
 	Usage:     "Register a created Bitcoin validator to Babylon.",
-	UsageText: "register-validator [hex string of Babylon public key]",
+	UsageText: "register-validator [key-name]",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
 			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
 			Value: defaultValdDaemonAddress,
 		},
+		cli.StringFlag{
+			Name:     keyNameFlag,
+			Usage:    "The unique name of the validator key",
+			Required: true,
+		},
 	},
 	Action: registerVal,
 }
 
 func registerVal(ctx *cli.Context) error {
-	pkHexStr := ctx.Args().First()
-	pkBytes, err := hex.DecodeString(pkHexStr)
-	if err != nil {
-		return err
-	}
+	keyName := ctx.String(keyNameFlag)
 
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
@@ -172,7 +172,7 @@ func registerVal(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.RegisterValidator(context.Background(), pkBytes)
+	res, err := rpcClient.RegisterValidator(context.Background(), keyName)
 	if err != nil {
 		return err
 	}

@@ -119,7 +119,7 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterValidatorRequest) (
 	*proto.RegisterValidatorResponse, error) {
 
-	txHash, err := r.app.RegisterValidator(req.BabylonPk)
+	txHash, err := r.app.RegisterValidator(req.KeyName)
 	if err != nil {
 		return nil, err
 	}

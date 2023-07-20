@@ -68,6 +68,12 @@ func NewBabylonController(
 	}, nil
 }
 
+func (bc *BabylonController) GetTxSigner() string {
+	signer := bc.rpcClient.MustGetAddr()
+	prefix := bc.rpcClient.GetConfig().AccountPrefix
+	return sdk.MustBech32ifyAddressBytes(prefix, signer)
+}
+
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {
