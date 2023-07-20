@@ -155,6 +155,9 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 		juryPrivKey,
 		&chaincfg.SimNetParams,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return app.bc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, jurySig)
 }
