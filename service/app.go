@@ -366,6 +366,8 @@ func (app *ValidatorApp) CommitPubRandForValidator(b *BlockInfo, validator *prot
 
 func (app *ValidatorApp) Start() error {
 	var startErr error
+
+	startErr = app.poller.Start()
 	app.startOnce.Do(func() {
 		app.logger.Infof("Starting ValidatorApp")
 
@@ -380,6 +382,8 @@ func (app *ValidatorApp) Start() error {
 
 func (app *ValidatorApp) Stop() error {
 	var stopErr error
+
+	stopErr = app.poller.Stop()
 	app.stopOnce.Do(func() {
 		app.logger.Infof("Stopping ValidatorApp")
 		close(app.quit)
