@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -125,44 +124,6 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	}
 
 	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil
-}
-
-// CommitPubRandForValidator commits a list of Schnorr public randomness for a specific BTC validator
-func (r *rpcServer) CommitPubRandForValidator(ctx context.Context, req *proto.CommitPubRandForValidatorRequest) (
-	*proto.CommitPubRandForValidatorResponse, error) {
-
-	if req.Num > r.cfg.RandomNumMax {
-		return nil, fmt.Errorf("the request public rand num %v should not be larger than %v",
-			req.Num, r.cfg.RandomNumMax)
-	}
-
-	if req.BabylonPk == nil {
-		return nil, fmt.Errorf("the Babylon public key should not be nil")
-	}
-
-	txHash, err := r.app.CommitPubRandForValidator(req.BabylonPk, req.Num)
-	if err != nil {
-		return nil, err
-	}
-
-	return &proto.CommitPubRandForValidatorResponse{TxHash: txHash}, nil
-}
-
-// CommitPubRandForAll commits a list of Schnorr public randomness for each managed BTC validator
-func (r *rpcServer) CommitPubRandForAll(ctx context.Context, req *proto.CommitPubRandForAllRequest) (
-	*proto.CommitPubRandForAllResponse, error) {
-
-	if req.Num > r.cfg.RandomNumMax {
-		return nil, fmt.Errorf("the request public rand num %v should not be larger than %v",
-			req.Num, r.cfg.RandomNumMax)
-	}
-
-	txHashes, err := r.app.CommitPubRandForAll(req.Num)
-	if err != nil {
-		return nil, err
-	}
-
-	return &proto.CommitPubRandForAllResponse{TxHashes: txHashes}, nil
 }
 
 // QueryValidator queries the information of the validator

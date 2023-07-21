@@ -26,6 +26,7 @@ const (
 	defaultConfigFileName = "vald.conf"
 	defaultRandomNum      = 100
 	defaultRandomNumMax   = 1000
+	defaultMinRandomGap   = 100
 )
 
 var (
@@ -50,6 +51,7 @@ type Config struct {
 	DumpCfg      bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
 	RandomNum    uint64 `long:"randomnum" description:"The number of Schnorr public randomness for each commitment"`
 	RandomNumMax uint64 `long:"randomnummax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
+	MinRandomGap uint64 `long:"minrandomnumgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
 	// TODO: create Jury specific config
 	JuryMode bool `long:"jurymode" description:"If the program is running in Jury mode"`
 
@@ -83,6 +85,7 @@ func DefaultConfig() Config {
 		PollerConfig:   &pollerCfg,
 		RandomNum:      defaultRandomNum,
 		RandomNumMax:   defaultRandomNumMax,
+		MinRandomGap:   defaultMinRandomGap,
 	}
 }
 

@@ -92,6 +92,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
+		cfg.RandomNum = uint64(r.Intn(10) + 1)
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -102,6 +103,13 @@ func FuzzCommitPubRandList(f *testing.F) {
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
+
+		err = app.Start()
+		require.NoError(t, err)
+		defer func() {
+			err = app.Stop()
+			require.NoError(t, err)
+		}()
 
 		// create a validator object and save it to db
 		keyName := testutil.GenRandomHexStr(r, 4)
@@ -115,22 +123,27 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		btcPk := validator.MustGetBIP340BTCPK()
 		txHash := testutil.GenRandomByteArray(r, 32)
+		b := &service.BlockInfo{
+			Height:         uint64(r.Int63n(100) + 1),
+			LastCommitHash: testutil.GenRandomByteArray(r, 32),
+		}
 		mockBabylonClient.EXPECT().
-			CommitPubRandList(btcPk, uint64(1), gomock.Any(), gomock.Any()).
+			CommitPubRandList(btcPk, b.Height+1, gomock.Any(), gomock.Any()).
 			Return(txHash, nil).AnyTimes()
-		num := r.Intn(10) + 1
-		txHashes, err := app.CommitPubRandForAll(uint64(num))
+		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(validator.MustGetBtcPubKeyHexStr()).
+			Return(uint64(0), nil).AnyTimes()
+		txHashes, err := app.CommitPubRandForAll(b)
 		require.NoError(t, err)
 		require.Equal(t, txHash, txHashes[0])
 
 		// check the last_committed_height
 		updatedVal, err := s.GetValidator(validator.BabylonPk)
 		require.NoError(t, err)
-		require.Equal(t, uint64(num), updatedVal.LastCommittedHeight)
+		require.Equal(t, b.Height+cfg.RandomNum, updatedVal.LastCommittedHeight)
 
 		// check the committed pub rand
-		for i := 1; i <= num; i++ {
-			randPair, err := s.GetRandPair(validator.BabylonPk, uint64(i))
+		for i := 1; i <= int(cfg.RandomNum); i++ {
+			randPair, err := s.GetRandPair(validator.BabylonPk, b.Height+uint64(i))
 			require.NoError(t, err)
 			require.NotNil(t, randPair)
 		}

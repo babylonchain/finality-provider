@@ -12,10 +12,12 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
+	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	bq "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"google.golang.org/grpc/metadata"
@@ -131,8 +133,39 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
-func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
-	panic("implement me")
+func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKeyStr string) (uint64, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	// query the last committed public randomness
+	queryReqeust := &finalitytypes.QueryListPublicRandomnessRequest{
+		ValBtcPkHex: btcPubKeyStr,
+		Pagination: &bq.PageRequest{
+			Limit:   1,
+			Reverse: true,
+		},
+	}
+
+	res, err := queryClient.ListPublicRandomness(ctx, queryReqeust)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(res.PubRandMap) == 0 {
+		return 0, nil
+	}
+
+	maxHeight := uint64(0)
+	for h := range res.PubRandMap {
+		if h > maxHeight {
+			maxHeight = h
+		}
+	}
+
+	return maxHeight, nil
 }
 
 // QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
