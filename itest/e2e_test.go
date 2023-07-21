@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
 )
 
 func TempDirWithName(name string) (string, error) {
@@ -49,7 +50,7 @@ func TestPoller(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
-	defaultPollerConfig := valcfg.DefaulPollerConfig()
+	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
 
 	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
 	require.NoError(t, err)
