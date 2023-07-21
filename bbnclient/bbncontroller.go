@@ -141,7 +141,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKeyStr string) (ui
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
 	// query the last committed public randomness
-	queryReqeust := &finalitytypes.QueryListPublicRandomnessRequest{
+	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
 		ValBtcPkHex: btcPubKeyStr,
 		Pagination: &bq.PageRequest{
 			Limit:   1,
@@ -149,7 +149,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKeyStr string) (ui
 		},
 	}
 
-	res, err := queryClient.ListPublicRandomness(ctx, queryReqeust)
+	res, err := queryClient.ListPublicRandomness(ctx, queryRequest)
 	if err != nil {
 		return 0, err
 	}
@@ -168,11 +168,28 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKeyStr string) (ui
 	return maxHeight, nil
 }
 
-// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
+// QueryPendingBTCDelegations queries BTC delegations that are needing Jury sig
 // it is only used when the program is running in Jury mode
-// it returns a list of public keys used for delegations
-func (bc *BabylonController) QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, []*types.BIP340PubKey, error) {
-	panic("implement me")
+func (bc *BabylonController) QueryPendingBTCDelegations(btcPubKeyHexStr string) ([]*btcstakingtypes.BTCDelegation, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	// query all the unsigned delegations
+	queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+		ValBtcPkHex: btcPubKeyHexStr,
+		DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
+		// TODO handle pagination?
+	}
+
+	res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.BtcDelegations, nil
 }
 
 // QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
