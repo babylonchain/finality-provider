@@ -78,7 +78,7 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
-	if krController.KeyNameTaken() {
+	if krController.ValidatorKeyNameTaken() {
 		return fmt.Errorf("the key name %s is taken", krController.GetKeyName())
 	}
 

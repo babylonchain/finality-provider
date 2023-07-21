@@ -9,6 +9,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -56,8 +57,11 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
-	if err != nil {
-		return nil, err
+	if config.JuryMode {
+		if _, err := kr.Key(config.JuryModeConfig.JuryKeyName); err != nil {
+			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
+				config.JuryModeConfig.JuryKeyName, err)
+		}
 	}
 
 	return &ValidatorApp{
@@ -120,7 +124,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !kc.KeyExists() {
+	if !kc.ValidatorKeyExists() {
 		return nil, fmt.Errorf("key name %s does not exist", keyName)
 	}
 	babylonPublicKeyBytes, err := kc.GetBabylonPublicKeyBytes()
@@ -167,6 +171,53 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 		return successResponse.txHash, nil
 	case <-app.quit:
 		return nil, fmt.Errorf("validator app is shutting down")
+	}
+}
+
+func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte, error) {
+	if btcDel.JurySig != nil {
+		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
+	}
+
+	slashingTx := btcDel.SlashingTx
+	stakingTx := btcDel.StakingTx
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+	if err != nil {
+		return nil, err
+	}
+
+	// get Jury private key from the keyring
+	juryPrivKey, err := app.getJuryPrivKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Jury private key: %w", err)
+	}
+
+	jurySig, err := slashingTx.Sign(
+		stakingMsgTx,
+		stakingTx.StakingScript,
+		juryPrivKey,
+		&chaincfg.SimNetParams,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return app.bc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, jurySig)
+}
+
+func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
+	var juryPrivKey *btcec.PrivateKey
+	k, err := app.kr.Key(app.config.JuryModeConfig.JuryKeyName)
+	if err != nil {
+		return nil, err
+	}
+	privKey := k.GetLocal().PrivKey.GetCachedValue()
+	switch v := privKey.(type) {
+	case *secp256k1.PrivKey:
+		juryPrivKey, _ = btcec.PrivKeyFromBytes(v.Key)
+		return juryPrivKey, nil
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 }
 
@@ -326,12 +377,12 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create keyring controller: %w", err)
 	}
 
-	if kr.KeyNameTaken() {
+	if kr.ValidatorKeyNameTaken() {
 		return nil, fmt.Errorf("the key name %s is taken", kr.GetKeyName())
 	}
 
 	// TODO should not expose direct proto here, as this is internal db representation
-	// conected to serialization
+	// connected to serialization
 	validator, err := kr.CreateBTCValidator()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator: %w", err)

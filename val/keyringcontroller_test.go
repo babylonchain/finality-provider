@@ -28,11 +28,11 @@ func FuzzCreatePoP(f *testing.F) {
 
 		kc, err := val.NewKeyringController(sdkCtx, keyName, "test")
 		require.NoError(t, err)
-		require.False(t, kc.KeyExists())
+		require.False(t, kc.ValidatorKeyExists())
 
 		validator, err := kc.CreateBTCValidator()
 		require.NoError(t, err)
-		require.True(t, kc.KeyExists() && kc.KeyNameTaken())
+		require.True(t, kc.ValidatorKeyExists() && kc.ValidatorKeyNameTaken())
 
 		// TODO avoid conversion after btcstaking protos are introduced
 		btcPk := validator.MustGetBIP340BTCPK()

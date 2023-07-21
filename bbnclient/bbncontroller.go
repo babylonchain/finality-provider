@@ -10,7 +10,6 @@ import (
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -20,6 +19,8 @@ import (
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var _ BabylonClient = &BabylonController{}
@@ -62,7 +63,7 @@ func NewBabylonController(
 	}, nil
 }
 
-func (bc *BabylonController) GetTxSigner() string {
+func (bc *BabylonController) MustGetTxSigner() string {
 	signer := bc.rpcClient.MustGetAddr()
 	prefix := bc.rpcClient.GetConfig().AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
@@ -72,7 +73,7 @@ func (bc *BabylonController) GetTxSigner() string {
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {
 	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
-		Signer:    bc.GetTxSigner(),
+		Signer:    bc.MustGetTxSigner(),
 		BabylonPk: bbnPubKey,
 		BtcPk:     btcPubKey,
 		Pop:       pop,
@@ -90,7 +91,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 // it returns tx hash and error
 func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
-		Signer:      bc.GetTxSigner(),
+		Signer:      bc.MustGetTxSigner(),
 		ValBtcPk:    btcPubKey,
 		StartHeight: startHeight,
 		PubRandList: pubRandList,
@@ -108,7 +109,19 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error) {
-	panic("implement me")
+	msg := &btcstakingtypes.MsgAddJurySig{
+		Signer: bc.MustGetTxSigner(),
+		ValPk:  btcPubKey,
+		DelPk:  delPubKey,
+		Sig:    sig,
+	}
+
+	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(res.TxHash), nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
