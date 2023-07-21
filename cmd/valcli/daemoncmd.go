@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/urfave/cli"
@@ -146,7 +147,7 @@ var registerValDaemonCmd = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
 	Usage:     "Register a created Bitcoin validator to Babylon.",
-	UsageText: "register-validator [key-name]",
+	UsageText: fmt.Sprintf("register-validator --%s [key-name]", keyNameFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
