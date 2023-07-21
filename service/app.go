@@ -32,10 +32,11 @@ type ValidatorApp struct {
 	vs     *val.ValidatorStore
 	config *valcfg.Config
 	logger *logrus.Logger
+	poller *ChainPoller
 
-	createValidatorRequestChan chan *createValidatorRequest
-
+	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
+
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
 }
 
@@ -57,6 +58,8 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
+	poller := NewChainPoller(logger, config.PollerConfig, bc)
+
 	if config.JuryMode {
 		_, err := kr.Key(config.JuryKeyName)
 		if err != nil {
@@ -71,6 +74,7 @@ func NewValidatorAppFromConfig(
 		kr:                           kr,
 		config:                       config,
 		logger:                       logger,
+		poller:                       poller,
 		quit:                         make(chan struct{}),
 		createValidatorRequestChan:   make(chan *createValidatorRequest),
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),

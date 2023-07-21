@@ -52,6 +52,8 @@ type Config struct {
 	JuryMode     bool   `long:"jurymode" description:"If the program is running in Jury mode"`
 	JuryKeyName  string `long:"jurykeyname" description:"The key name of the Jury if the program is running in Jury mode"`
 
+	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
+
 	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
@@ -77,13 +79,13 @@ func DefaultConfig() Config {
 	}
 }
 
-type PollerConfig struct {
-	StartingHeight uint64
-	BufferSize     uint32
+type ChainPollerConfig struct {
+	StartingHeight uint64 `long:"startingheight" description:"The Babylon block height where the poller starts poll"`
+	BufferSize     uint32 `long:"buffersize" desciption:"The maximum number of Babylon blocks can be stored in the buffer"`
 }
 
-func DefaulPollerConfig() PollerConfig {
-	return PollerConfig{
+func DefaultChainPollerConfig() ChainPollerConfig {
+	return ChainPollerConfig{
 		StartingHeight: 1,
 		BufferSize:     1000,
 	}

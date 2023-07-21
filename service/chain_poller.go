@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	bbncli "github.com/babylonchain/btc-validator/bbnclient"
-	cfg "github.com/babylonchain/btc-validator/valcfg"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
+
+	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	cfg "github.com/babylonchain/btc-validator/valcfg"
 )
 
 var (
@@ -33,7 +34,7 @@ type ChainPoller struct {
 	quit      chan struct{}
 
 	bc            bbncli.BabylonClient
-	cfg           *cfg.PollerConfig
+	cfg           *cfg.ChainPollerConfig
 	blockInfoChan chan *BlockInfo
 	logger        *logrus.Logger
 }
@@ -50,7 +51,7 @@ type BlockInfo struct {
 
 func NewChainPoller(
 	logger *logrus.Logger,
-	cfg *cfg.PollerConfig,
+	cfg *cfg.ChainPollerConfig,
 	bc bbncli.BabylonClient,
 ) *ChainPoller {
 	return &ChainPoller{
