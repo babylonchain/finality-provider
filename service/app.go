@@ -464,6 +464,8 @@ func (app *ValidatorApp) newBabylonBlockLoop() {
 	for {
 		select {
 		case b := <-app.poller.GetBlockInfoChan():
+			// TODO: add a new trigger for CommitPubRand as doing this upon every
+			// block is kinda overkill
 			_, err := app.CommitPubRandForAll(b)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
