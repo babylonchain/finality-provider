@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/sirupsen/logrus"
@@ -41,7 +42,7 @@ var (
 
 // Config is the main config for the vald cli command
 type Config struct {
-	DebugLevel   string `long:"debuglevel" description:"Logging level for all subsystems {trace, debug, info, warn, error, fatal}"`
+	DebugLevel   string `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
 	ValdDir      string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
 	ConfigFile   string `long:"configfile" description:"Path to configuration file"`
 	DataDir      string `long:"datadir" description:"The directory to store validator's data within"`
@@ -49,12 +50,14 @@ type Config struct {
 	DumpCfg      bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
 	RandomNum    uint64 `long:"randomnum" description:"The number of Schnorr public randomness for each commitment"`
 	RandomNumMax uint64 `long:"randomnummax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
-	JuryMode     bool   `long:"jurymode" description:"If the program is running in Jury mode"`
-	JuryKeyName  string `long:"jurykeyname" description:"The key name of the Jury if the program is running in Jury mode"`
+	// TODO: create Jury specific config
+	JuryMode bool `long:"jurymode" description:"If the program is running in Jury mode"`
 
 	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
+
+	JuryModeConfig *JuryConfig `group:"jury" namespace:"jury"`
 
 	GRpcServerConfig *GRpcServerConfig
 
@@ -64,6 +67,7 @@ type Config struct {
 func DefaultConfig() Config {
 	bbnCfg := DefaultBBNConfig()
 	dbCfg := DefaultDatabaseConfig()
+	juryCfg := DefaultJuryConfig()
 	return Config{
 		ValdDir:        DefaultValdDir,
 		ConfigFile:     DefaultConfigFile,
@@ -72,6 +76,7 @@ func DefaultConfig() Config {
 		LogDir:         defaultLogDir,
 		DatabaseConfig: &dbCfg,
 		BabylonConfig:  &bbnCfg,
+		JuryModeConfig: &juryCfg,
 		RandomNum:      defaultRandomNum,
 		RandomNumMax:   defaultRandomNumMax,
 	}
@@ -259,7 +264,24 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	cfg.DataDir = CleanAndExpandPath(cfg.DataDir)
 	cfg.LogDir = CleanAndExpandPath(cfg.LogDir)
 
-	// TODO: Validate node host and port
+	// Multiple networks can't be selected simultaneously.  Count number of
+	// network flags passed; assign active network params
+	// while we're at it.
+	if cfg.JuryMode {
+		switch cfg.JuryModeConfig.BitcoinNetwork {
+		case "testnet":
+			cfg.JuryModeConfig.ActiveNetParams = chaincfg.TestNet3Params
+		case "regtest":
+			cfg.JuryModeConfig.ActiveNetParams = chaincfg.RegressionNetParams
+		case "simnet":
+			cfg.JuryModeConfig.ActiveNetParams = chaincfg.SimNetParams
+		case "signet":
+			cfg.JuryModeConfig.ActiveNetParams = chaincfg.SigNetParams
+		default:
+			return nil, mkErr(fmt.Sprintf("invalid network: %v",
+				cfg.JuryModeConfig.BitcoinNetwork))
+		}
+	}
 
 	// Create the vald directory and all other subdirectories if they
 	// don't already exist. This makes sure that directory trees are also

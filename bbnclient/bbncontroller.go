@@ -63,7 +63,7 @@ func NewBabylonController(
 	}, nil
 }
 
-func (bc *BabylonController) GetTxSigner() string {
+func (bc *BabylonController) MustGetTxSigner() string {
 	signer := bc.rpcClient.MustGetAddr()
 	prefix := bc.rpcClient.GetConfig().AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
@@ -73,7 +73,7 @@ func (bc *BabylonController) GetTxSigner() string {
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {
 	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
-		Signer:    bc.GetTxSigner(),
+		Signer:    bc.MustGetTxSigner(),
 		BabylonPk: bbnPubKey,
 		BtcPk:     btcPubKey,
 		Pop:       pop,
@@ -91,7 +91,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 // it returns tx hash and error
 func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
-		Signer:      bc.GetTxSigner(),
+		Signer:      bc.MustGetTxSigner(),
 		ValBtcPk:    btcPubKey,
 		StartHeight: startHeight,
 		PubRandList: pubRandList,
@@ -110,7 +110,7 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 // it returns tx hash and error
 func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &btcstakingtypes.MsgAddJurySig{
-		Signer: bc.GetTxSigner(),
+		Signer: bc.MustGetTxSigner(),
 		ValPk:  btcPubKey,
 		DelPk:  delPubKey,
 		Sig:    sig,
