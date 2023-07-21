@@ -61,10 +61,9 @@ func NewValidatorAppFromConfig(
 	poller := NewChainPoller(logger, config.PollerConfig, bc)
 
 	if config.JuryMode {
-		_, err := kr.Key(config.JuryKeyName)
-		if err != nil {
+		if _, err := kr.Key(config.JuryModeConfig.JuryKeyName); err != nil {
 			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
-				config.JuryKeyName, err)
+				config.JuryModeConfig.JuryKeyName, err)
 		}
 	}
 
@@ -192,17 +191,9 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 	}
 
 	// get Jury private key from the keyring
-	var juryPrivKey *btcec.PrivateKey
-	k, err := app.kr.Key(app.config.JuryKeyName)
+	juryPrivKey, err := app.getJuryPrivKey()
 	if err != nil {
-		return nil, err
-	}
-	privKey := k.GetLocal().PrivKey.GetCachedValue()
-	switch v := privKey.(type) {
-	case *secp256k1.PrivKey:
-		juryPrivKey, _ = btcec.PrivKeyFromBytes(v.Key)
-	default:
-		return nil, fmt.Errorf("unsupported key type in keyring")
+		return nil, fmt.Errorf("failed to get Jury private key: %w", err)
 	}
 
 	jurySig, err := slashingTx.Sign(
@@ -216,6 +207,22 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 	}
 
 	return app.bc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, jurySig)
+}
+
+func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
+	var juryPrivKey *btcec.PrivateKey
+	k, err := app.kr.Key(app.config.JuryModeConfig.JuryKeyName)
+	if err != nil {
+		return nil, err
+	}
+	privKey := k.GetLocal().PrivKey.GetCachedValue()
+	switch v := privKey.(type) {
+	case *secp256k1.PrivKey:
+		juryPrivKey, _ = btcec.PrivKeyFromBytes(v.Key)
+		return juryPrivKey, nil
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
+	}
 }
 
 // CommitPubRandForAll generates a list of Schnorr rand pairs,

@@ -179,7 +179,8 @@ func FuzzAddJurySig(f *testing.F) {
 		jurPk, err := juryKc.CreateJuryKey()
 		require.NoError(t, err)
 		require.NotNil(t, jurPk)
-		cfg.JuryKeyName = juryKeyName
+		cfg.JuryMode = true
+		cfg.JuryModeConfig.JuryKeyName = juryKeyName
 
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
