@@ -58,9 +58,9 @@ func NewValidatorAppFromConfig(
 	}
 
 	if config.JuryMode {
-		if _, err := kr.Key(config.JuryKeyName); err != nil {
+		if _, err := kr.Key(config.JuryModeConfig.JuryKeyName); err != nil {
 			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
-				config.JuryKeyName, err)
+				config.JuryModeConfig.JuryKeyName, err)
 		}
 	}
 
@@ -207,7 +207,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 
 func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
 	var juryPrivKey *btcec.PrivateKey
-	k, err := app.kr.Key(app.config.JuryKeyName)
+	k, err := app.kr.Key(app.config.JuryModeConfig.JuryKeyName)
 	if err != nil {
 		return nil, err
 	}
