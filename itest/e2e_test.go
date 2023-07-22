@@ -145,3 +145,65 @@ func TestCreateValidator(t *testing.T) {
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
 
 }
+
+func TestCommitPubRand(t *testing.T) {
+	tDir, err := TempDirWithName("valtest")
+	require.NoError(t, err)
+	defer func() {
+		err = os.RemoveAll(tDir)
+		require.NoError(t, err)
+	}()
+
+	handler, err := NewBabylonNodeHandler()
+	require.NoError(t, err)
+
+	err = handler.Start()
+	require.NoError(t, err)
+	defer handler.Stop()
+
+	defaultConfig := valcfg.DefaultConfig()
+	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
+	// need to use this one to send otherwise we will have account sequence mismatch
+	// errors
+	defaultConfig.BabylonConfig.Key = "test-spending-key"
+
+	// Big adjustment to make sure we have enough gas in our transactions
+	defaultConfig.BabylonConfig.GasAdjustment = 3.0
+
+	defaultConfig.DatabaseConfig.Path = filepath.Join(tDir, "valtest.db")
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.Out = os.Stdout
+
+	bc, err := babylonclient.NewBabylonController(defaultConfig.BabylonConfig, logger)
+	require.NoError(t, err)
+
+	app, err := service.NewValidatorAppFromConfig(&defaultConfig, logger, bc)
+	require.NoError(t, err)
+
+	err = app.Start()
+	require.NoError(t, err)
+	defer app.Stop()
+
+	newValName := "testingValidator"
+	valResult, err := app.CreateValidator(newValName)
+	require.NoError(t, err)
+
+	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+
+	require.Equal(t, newValName, validator.KeyName)
+
+	_, err = app.RegisterValidator(validator.KeyName)
+	require.NoError(t, err)
+
+	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+
+	time.Sleep(6 * time.Second)
+	randPair, err := app.GetCommittedPubRand(validator.BabylonPk, uint64(1))
+	require.NoError(t, err)
+	require.NotNil(t, randPair)
+}

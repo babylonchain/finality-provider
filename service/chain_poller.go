@@ -21,8 +21,6 @@ var (
 )
 
 const (
-	pollInterval = 5 * time.Second
-
 	// TODO: Maybe configurable?
 	maxFailedCycles = 20
 )
@@ -175,7 +173,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 
 	var state = initialState
 
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(cp.cfg.PollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -229,7 +227,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 		case <-cp.quit:
 			return
 		case <-ticker.C:
-			ticker.Reset(pollInterval)
+			ticker.Reset(cp.cfg.PollInterval)
 		}
 	}
 }

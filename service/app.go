@@ -365,9 +365,7 @@ func (app *ValidatorApp) CommitPubRandForValidator(b *BlockInfo, validator *prot
 }
 
 func (app *ValidatorApp) Start() error {
-	var startErr error
-
-	startErr = app.poller.Start()
+	startErr := app.poller.Start()
 	app.startOnce.Do(func() {
 		app.logger.Infof("Starting ValidatorApp")
 
@@ -381,9 +379,7 @@ func (app *ValidatorApp) Start() error {
 }
 
 func (app *ValidatorApp) Stop() error {
-	var stopErr error
-
-	stopErr = app.poller.Stop()
+	stopErr := app.poller.Stop()
 	app.stopOnce.Do(func() {
 		app.logger.Infof("Stopping ValidatorApp")
 		close(app.quit)
@@ -420,6 +416,10 @@ func (app *ValidatorApp) ListValidators() ([]*proto.Validator, error) {
 
 func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) {
 	return app.vs.GetValidator(pkBytes)
+}
+
+func (app *ValidatorApp) GetCommittedPubRand(pkBytes []byte, height uint64) (*proto.SchnorrRandPair, error) {
+	return app.vs.GetRandPair(pkBytes, height)
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
