@@ -365,9 +365,15 @@ func (app *ValidatorApp) CommitPubRandForValidator(b *BlockInfo, validator *prot
 }
 
 func (app *ValidatorApp) Start() error {
-	startErr := app.poller.Start()
+	var startErr error
 	app.startOnce.Do(func() {
 		app.logger.Infof("Starting ValidatorApp")
+
+		err := app.poller.Start()
+		if err != nil {
+			startErr = err
+			return
+		}
 
 		app.wg.Add(3)
 		go app.handleSentToBabylonLoop()
@@ -379,9 +385,14 @@ func (app *ValidatorApp) Start() error {
 }
 
 func (app *ValidatorApp) Stop() error {
-	stopErr := app.poller.Stop()
+	var stopErr error
 	app.stopOnce.Do(func() {
 		app.logger.Infof("Stopping ValidatorApp")
+		err := app.poller.Stop()
+		if err != nil {
+			stopErr = err
+			return
+		}
 		close(app.quit)
 		app.wg.Wait()
 	})

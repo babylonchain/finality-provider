@@ -98,7 +98,6 @@ func FuzzRegisterValidator(f *testing.F) {
 		val, err := s.GetValidator(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, val.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
-
 	})
 }
 

@@ -64,6 +64,8 @@ func NewChainPoller(
 func (cp *ChainPoller) Start() error {
 	var startErr error
 	cp.startOnce.Do(func() {
+		cp.logger.Infof("Starting the chain poller")
+
 		initialBlockToGet, err := cp.initPoller()
 
 		if err != nil {
@@ -82,6 +84,7 @@ func (cp *ChainPoller) Start() error {
 
 func (cp *ChainPoller) Stop() error {
 	cp.stopOnce.Do(func() {
+		cp.logger.Infof("Stopping the chain poller")
 		close(cp.quit)
 		cp.wg.Wait()
 	})
