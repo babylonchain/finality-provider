@@ -439,10 +439,11 @@ func (app *ValidatorApp) Start() error {
 		app.wg.Add(3)
 		go app.handleSentToBabylonLoop()
 		go app.eventLoop()
-		if !app.config.JuryMode {
+		if !app.IsJury() {
 			go app.automaticSubmissionLoop()
+		} else {
+			go app.jurySigSubmissionLoop()
 		}
-		// TODO add another loop in which the app asks Babylon whether there are any delegations need jury sig if the program is running in Jury mode
 	})
 
 	return startErr
@@ -545,12 +546,14 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 func (app *ValidatorApp) getPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 
+	// TODO: the Jury should not have access to the DB as it is managed by the validator program
 	validators, err := app.vs.ListValidators()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, v := range validators {
+		// TODO: should replace this query with the one gets all the BTC delegations other than a specific validator
 		dels, err := app.bc.QueryPendingBTCDelegations(v.MustGetBip340PubKeyHexStr())
 		if err != nil {
 			// TODO should we accumulate the errs?
@@ -562,6 +565,45 @@ func (app *ValidatorApp) getPendingDelegationsForAll() ([]*btcstakingtypes.BTCDe
 	return delegations, nil
 }
 
+// jurySigSubmissionLoop is the reactor to submit Jury signature for pending BTC delegations
+func (app *ValidatorApp) jurySigSubmissionLoop() {
+	defer app.wg.Done()
+
+	interval := app.config.JuryModeConfig.QueryInterval
+	jurySigTicker := time.NewTicker(interval)
+	defer jurySigTicker.Stop()
+
+	for {
+		select {
+		case <-jurySigTicker.C:
+			jurySigTicker.Reset(interval)
+			dels, err := app.getPendingDelegationsForAll()
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("failed to get pending delegations")
+				continue
+			}
+
+			for _, d := range dels {
+				_, err := app.AddJurySignature(d)
+				if err != nil {
+					app.logger.WithFields(logrus.Fields{
+						"err":        err,
+						"del_btc_pk": d.BtcPk,
+					}).Error("failed to submit Jury sig to the Bitcoin delegation")
+					continue
+				}
+			}
+
+		case <-app.quit:
+			return
+		}
+	}
+
+}
+
+// automaticSubmissionLoop is the reactor to submit finality signature and public randomness
 func (app *ValidatorApp) automaticSubmissionLoop() {
 	defer app.wg.Done()
 
@@ -570,39 +612,8 @@ func (app *ValidatorApp) automaticSubmissionLoop() {
 
 	for {
 		select {
-		case b := <-app.poller.GetBlockInfoChan():
-			if app.IsJury() {
-				dels, err := app.getPendingDelegationsForAll()
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"err": err,
-					}).Error("failed to get pending delegations")
-					continue
-				}
-
-				for _, d := range dels {
-					_, err := app.AddJurySignature(d)
-					if err != nil {
-						app.logger.WithFields(logrus.Fields{
-							"err":        err,
-							"del_btc_pk": d.BtcPk,
-						}).Error("failed to submit Jury sig to the Bitcoin delegation")
-						continue
-					}
-				}
-
-			} else {
-				_, err := app.CommitPubRandForAll(b)
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"block_height": b.Height,
-						"err":          err,
-					}).Error("failed to commit public randomness")
-					continue
-				}
-
-				// TODO ask Babylon whether finality vote is needed
-			}
+		case <-app.poller.GetBlockInfoChan():
+			// TODO finality sig submission
 		case <-commitRandTicker.C:
 			commitRandTicker.Reset(app.config.RandomInterval)
 			if app.lastBbnBlock == nil {
@@ -794,6 +805,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				successResponse: req.successResponse,
 			}
 		case req := <-app.addJurySigRequestChan:
+			// TODO: we should add some retry mechanism or we can have a health checker to check the connection periodically
 			tx, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

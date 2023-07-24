@@ -256,19 +256,10 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingValue := int64(2 * 10e8)
 		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, delSK, btcPk, jurPk, stakingTimeBlocks, stakingValue, slashingAddr)
 		require.NoError(t, err)
-		// stakingMsgTx, err := stakingTx.ToMsgTx()
-		// require.NoError(t, err)
-		// random Babylon SK
 		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
 		require.NoError(t, err)
 		pop, err := bstypes.NewPoP(delBabylonSK, delSK)
 		require.NoError(t, err)
-		// delegatorSig, err := slashingTx.Sign(
-		// 	stakingMsgTx,
-		// 	stakingTx.StakingScript,
-		// 	delSK,
-		// 	&chaincfg.SimNetParams,
-		// )
 		require.NoError(t, err)
 		delegation := &bstypes.BTCDelegation{
 			ValBtcPk:   btcPkBIP340,
@@ -277,7 +268,6 @@ func FuzzAddJurySig(f *testing.F) {
 			Pop:        pop,
 			StakingTx:  stakingTx,
 			SlashingTx: slashingTx,
-			// DelegatorSig: delegatorSig,
 		}
 
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
