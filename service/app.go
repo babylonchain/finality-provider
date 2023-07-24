@@ -397,7 +397,7 @@ func (app *ValidatorApp) Start() error {
 		go app.eventLoop()
 		if !app.config.JuryMode {
 			app.wg.Add(1)
-			go app.ValidatorSubmissionLoop()
+			go app.validatorSubmissionLoop()
 		}
 		// TODO add another loop in which the app asks Babylon whether there are any delegations need jury sig if the program is running in Jury mode
 	})
@@ -495,7 +495,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 	}, nil
 }
 
-func (app *ValidatorApp) ValidatorSubmissionLoop() {
+func (app *ValidatorApp) validatorSubmissionLoop() {
 	defer app.wg.Done()
 
 	commitRandTicker := time.NewTicker(app.config.RandomnessCommitInterval)
