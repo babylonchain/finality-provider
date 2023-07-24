@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	bbncli "github.com/babylonchain/btc-validator/bbnclient"
-	cfg "github.com/babylonchain/btc-validator/valcfg"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
+
+	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	cfg "github.com/babylonchain/btc-validator/valcfg"
 )
 
 var (
@@ -20,8 +21,6 @@ var (
 )
 
 const (
-	pollInterval = 5 * time.Second
-
 	// TODO: Maybe configurable?
 	maxFailedCycles = 20
 )
@@ -33,7 +32,7 @@ type ChainPoller struct {
 	quit      chan struct{}
 
 	bc            bbncli.BabylonClient
-	cfg           *cfg.PollerConfig
+	cfg           *cfg.ChainPollerConfig
 	blockInfoChan chan *BlockInfo
 	logger        *logrus.Logger
 }
@@ -50,7 +49,7 @@ type BlockInfo struct {
 
 func NewChainPoller(
 	logger *logrus.Logger,
-	cfg *cfg.PollerConfig,
+	cfg *cfg.ChainPollerConfig,
 	bc bbncli.BabylonClient,
 ) *ChainPoller {
 	return &ChainPoller{
@@ -65,6 +64,8 @@ func NewChainPoller(
 func (cp *ChainPoller) Start() error {
 	var startErr error
 	cp.startOnce.Do(func() {
+		cp.logger.Infof("Starting the chain poller")
+
 		initialBlockToGet, err := cp.initPoller()
 
 		if err != nil {
@@ -83,6 +84,7 @@ func (cp *ChainPoller) Start() error {
 
 func (cp *ChainPoller) Stop() error {
 	cp.stopOnce.Do(func() {
+		cp.logger.Infof("Stopping the chain poller")
 		close(cp.quit)
 		cp.wg.Wait()
 	})
@@ -174,7 +176,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 
 	var state = initialState
 
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(cp.cfg.PollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -225,10 +227,10 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 		}
 
 		select {
+		case <-ticker.C:
+
 		case <-cp.quit:
 			return
-		case <-ticker.C:
-			ticker.Reset(pollInterval)
 		}
 	}
 }

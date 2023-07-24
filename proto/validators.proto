@@ -19,16 +19,6 @@ service BtcValidators {
     rpc RegisterValidator (RegisterValidatorRequest)
         returns (RegisterValidatorResponse);
 
-    // CommitPubRandForValidator commits a list of Schnorr public randomness
-    // for a specific BTC validator
-    rpc CommitPubRandForValidator (CommitPubRandForValidatorRequest)
-        returns (CommitPubRandForValidatorResponse);
-
-    // CommitPubRandForAll commits Schnorr public randomness
-    // for all the managed BTC validators
-    rpc CommitPubRandForAll (CommitPubRandForAllRequest)
-        returns (CommitPubRandForAllResponse);
-
     // QueryValidator queries the validator
     rpc QueryValidator (QueryValidatorRequest) returns (QueryValidatorResponse);
     // QueryValidatorList queries a list of validators
@@ -63,28 +53,6 @@ message RegisterValidatorRequest {
 message RegisterValidatorResponse {
     // hash of the successful Babylon registration transaction
     bytes tx_hash = 1;
-}
-
-message CommitPubRandForValidatorRequest {
-    // the Babylon public key of the BTC validator
-    bytes babylon_pk = 1;
-    // the number of Schorr randomness
-    uint64 num = 2;
-}
-
-message CommitPubRandForValidatorResponse {
-    // hash of the successful Babylon transaction
-    bytes tx_hash = 1;
-}
-
-message CommitPubRandForAllRequest {
-    // the number of Schorr randomness
-    uint64 num = 2;
-}
-
-message CommitPubRandForAllResponse {
-    // hashes of the successful Babylon transactions
-    repeated bytes tx_hashes = 1;
 }
 
 message QueryValidatorRequest {
@@ -160,17 +128,13 @@ message SchnorrRandPair {
 enum ValidatorStatus {
     option (gogoproto.goproto_enum_prefix) = false;
 
-    // VALIDATOR_STATUS_CREATED defines a validator that is awaiting
-    // registration
-    VALIDATOR_STATUS_CREATED = 0 [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_CREATED"];
-    // VALIDATOR_STATUS_REGISTERED defines a validator that has been registered
+    // CREATED defines a validator that is awaiting registration
+    CREATED = 0 [(gogoproto.enumvalue_customname) = "CREATED"];
+    // REGISTERED defines a validator that has been registered
     // to Babylon but has no delegated stake
-    VALIDATOR_STATUS_REGISTERED = 1
-        [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_REGISTERED"];
-    // VALIDATOR_STATUS_ACTIVE defines a validator that is delegated to vote
-    VALIDATOR_STATUS_ACTIVE = 2 [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_ACTIVE"];
-    // VALIDATOR_STATUS_INACTIVE defines a validator whose delegations are
-    // reduced to zero
-    VALIDATOR_STATUS_INACTIVE = 3
-        [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_INACTIVE"];
+    REGISTERED = 1 [(gogoproto.enumvalue_customname) = "REGISTERED"];
+    // ACTIVE defines a validator that is delegated to vote
+    ACTIVE = 2 [(gogoproto.enumvalue_customname) = "ACTIVE"];
+    // INACTIVE defines a validator whose delegations are reduced to zero
+    INACTIVE = 3 [(gogoproto.enumvalue_customname) = "INACTIVE"];
 }

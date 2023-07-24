@@ -36,4 +36,8 @@ type BabylonClient interface {
 	// QueryHeader queries the header at the given height, if header is not found
 	// it returns result with nil header
 	QueryHeader(height int64) (*ctypes.ResultHeader, error)
+
+	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
+	// it returns result with nil header
+	QueryBestHeader() (*ctypes.ResultHeader, error)
 }

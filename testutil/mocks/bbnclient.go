@@ -40,7 +40,7 @@ func (m *MockBabylonClient) EXPECT() *MockBabylonClientMockRecorder {
 // CommitPubRandList mocks base method.
 func (m *MockBabylonClient) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CommitPubRandForAll", btcPubKey, startHeight, pubRandList, sig)
+	ret := m.ctrl.Call(m, "CommitPubRandList", btcPubKey, startHeight, pubRandList, sig)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -49,7 +49,22 @@ func (m *MockBabylonClient) CommitPubRandList(btcPubKey *types.BIP340PubKey, sta
 // CommitPubRandList indicates an expected call of CommitPubRandList.
 func (mr *MockBabylonClientMockRecorder) CommitPubRandList(btcPubKey, startHeight, pubRandList, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandForAll", reflect.TypeOf((*MockBabylonClient)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockBabylonClient)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
+}
+
+// QueryBestHeader mocks base method.
+func (m *MockBabylonClient) QueryBestHeader() (*coretypes.ResultHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBestHeader")
+	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBestHeader indicates an expected call of QueryBestHeader.
+func (mr *MockBabylonClientMockRecorder) QueryBestHeader() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestHeader", reflect.TypeOf((*MockBabylonClient)(nil).QueryBestHeader))
 }
 
 // QueryHeader mocks base method.

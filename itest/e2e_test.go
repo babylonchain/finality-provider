@@ -9,12 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/valcfg"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
+)
+
+var (
+	eventuallyWaitTimeOut = 10 * time.Second
+	eventuallyPollTime    = 500 * time.Millisecond
 )
 
 func TempDirWithName(name string) (string, error) {
@@ -49,7 +55,7 @@ func TestPoller(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
-	defaultPollerConfig := valcfg.DefaulPollerConfig()
+	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
 
 	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
 	require.NoError(t, err)
@@ -100,7 +106,6 @@ func TestCreateValidator(t *testing.T) {
 
 	err = handler.Start()
 	require.NoError(t, err)
-	defer handler.Stop()
 
 	defaultConfig := valcfg.DefaultConfig()
 	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
@@ -125,7 +130,12 @@ func TestCreateValidator(t *testing.T) {
 
 	err = app.Start()
 	require.NoError(t, err)
-	defer app.Stop()
+
+	defer func() {
+		// stop the app first as otherwise it depends on Babylon handler
+		app.Stop()
+		handler.Stop()
+	}()
 
 	newValName := "testingValidator"
 	valResult, err := app.CreateValidator(newValName)
@@ -141,6 +151,13 @@ func TestCreateValidator(t *testing.T) {
 
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
-	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
+	require.Eventually(t, func() bool {
+		randParis, err := app.GetCommittedPubRandPairs(validator.BabylonPk)
+		if err != nil {
+			return false
+		}
+		return int(defaultConfig.NumPubRand) == len(randParis)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }

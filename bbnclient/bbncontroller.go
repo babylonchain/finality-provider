@@ -12,12 +12,15 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
+	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -132,7 +135,36 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
 func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
-	panic("implement me")
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	// query the last committed public randomness
+	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
+		ValBtcPkHex: btcPubKey.MarshalHex(),
+		Pagination: &sdkquery.PageRequest{
+			Limit:   1,
+			Reverse: true,
+		},
+	}
+
+	res, err := queryClient.ListPublicRandomness(ctx, queryRequest)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(res.PubRandMap) == 0 {
+		return 0, nil
+	}
+
+	ks := maps.Keys(res.PubRandMap)
+	if len(ks) > 1 {
+		return 0, fmt.Errorf("the query should not return more than one public rand item")
+	}
+
+	return ks[0], nil
 }
 
 // QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
@@ -174,6 +206,23 @@ func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, er
 	}
 
 	// Returning response directly, if header with specified number did not exist
-	// at request will contain nill header
+	// at request will contain nil header
 	return headerResp, nil
+}
+
+func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	// this will return 20 items at max in the descending order (highest first)
+	chainInfo, err := bc.rpcClient.ChainClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	defer cancel()
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Returning response directly, if header with specified number did not exist
+	// at request will contain nil header
+	return &ctypes.ResultHeader{
+		Header: &chainInfo.BlockMetas[0].Header,
+	}, nil
 }

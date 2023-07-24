@@ -22,7 +22,6 @@ var daemonCommands = []cli.Command{
 			createValDaemonCmd,
 			lsValDaemonCmd,
 			registerValDaemonCmd,
-			commitRandomListDaemonCmd,
 		},
 	},
 }
@@ -30,9 +29,6 @@ var daemonCommands = []cli.Command{
 const (
 	valdDaemonAddressFlag = "daemon-address"
 	keyNameFlag           = "key-name"
-	randNumFlag           = "rand-num"
-	babylonPkFlag         = "babylon-pk"
-	defaultRandomNum      = 100
 )
 
 var (
@@ -174,55 +170,6 @@ func registerVal(ctx *cli.Context) error {
 	defer cleanUp()
 
 	res, err := rpcClient.RegisterValidator(context.Background(), keyName)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(res)
-
-	return nil
-}
-
-// TODO: consider remove this command after PoC
-// because leaving this command to users is dangerous
-// committing random list should be an automatic process
-var commitRandomListDaemonCmd = cli.Command{
-	Name:      "commit-random-list",
-	ShortName: "crl",
-	Usage:     "Generate a list of Schnorr random pair and commit the public rand for Bitcoin validator.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  valdDaemonAddressFlag,
-			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
-			Value: defaultValdDaemonAddress,
-		},
-		cli.Int64Flag{
-			Name:  randNumFlag,
-			Usage: "The number of public randomness you want to commit",
-			Value: int64(defaultRandomNum),
-		},
-		cli.StringFlag{
-			Name:  babylonPkFlag,
-			Usage: "Commit random list for a specific Bitcoin validator",
-		},
-	},
-	Action: commitRand,
-}
-
-func commitRand(ctx *cli.Context) error {
-	daemonAddress := ctx.String(valdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
-	if err != nil {
-		return err
-	}
-	defer cleanUp()
-
-	var bbnPkBytes []byte
-	if ctx.String(babylonPkFlag) != "" {
-		bbnPkBytes = []byte(ctx.String(babylonPkFlag))
-	}
-	res, err := rpcClient.CommitPubRandList(context.Background(),
-		bbnPkBytes)
 	if err != nil {
 		return err
 	}
