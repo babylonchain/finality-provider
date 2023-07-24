@@ -668,7 +668,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				continue
 			}
 
-			app.logger.WithField("btcPk", req.valBtcPk).Info("successfully commit public rand list on babylon")
+			app.logger.WithField("btcPk", req.valBtcPk.ToHexStr()).Info("successfully commit public rand list on babylon")
 
 			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
 				startingHeight: req.startingHeight,

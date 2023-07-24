@@ -106,7 +106,6 @@ func TestCreateValidator(t *testing.T) {
 
 	err = handler.Start()
 	require.NoError(t, err)
-	defer handler.Stop()
 
 	defaultConfig := valcfg.DefaultConfig()
 	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
@@ -131,7 +130,9 @@ func TestCreateValidator(t *testing.T) {
 
 	err = app.Start()
 	require.NoError(t, err)
+	// stop the app first as otherwise it depends on Babylon handler
 	defer app.Stop()
+	defer handler.Stop()
 
 	newValName := "testingValidator"
 	valResult, err := app.CreateValidator(newValName)
