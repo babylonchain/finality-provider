@@ -571,12 +571,10 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 
 	interval := app.config.JuryModeConfig.QueryInterval
 	jurySigTicker := time.NewTicker(interval)
-	defer jurySigTicker.Stop()
 
 	for {
 		select {
 		case <-jurySigTicker.C:
-			jurySigTicker.Reset(interval)
 			dels, err := app.getPendingDelegationsForAll()
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -607,14 +605,12 @@ func (app *ValidatorApp) automaticSubmissionLoop() {
 	defer app.wg.Done()
 
 	commitRandTicker := time.NewTicker(app.config.RandomInterval)
-	defer commitRandTicker.Stop()
 
 	for {
 		select {
 		case <-app.poller.GetBlockInfoChan():
 			// TODO finality sig submission
 		case <-commitRandTicker.C:
-			commitRandTicker.Reset(app.config.RandomInterval)
 			if app.lastBbnBlock == nil {
 				continue
 			}
