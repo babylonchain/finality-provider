@@ -153,5 +153,5 @@ func TestCreateValidator(t *testing.T) {
 	time.Sleep(defaultConfig.RandomInterval)
 	randParis, err := app.GetCommittedPubRand()
 	require.NoError(t, err)
-	require.Len(t, randParis, 1)
+	require.Equal(t, int(defaultConfig.RandomNum), len(randParis))
 }

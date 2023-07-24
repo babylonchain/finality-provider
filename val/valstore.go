@@ -58,14 +58,19 @@ func (vs *ValidatorStore) GetRandPairs(pk []byte) ([]*proto.SchnorrRandPair, err
 		return nil, err
 	}
 
-	pairList := make([]*proto.SchnorrRandPair, len(pairsBytes))
-	for i := 0; i < len(pairsBytes); i++ {
+	if len(pairsBytes) == 0 {
+		return nil, fmt.Errorf("at least one item as the validator object")
+	}
+
+	pairList := make([]*proto.SchnorrRandPair, len(pairsBytes)-1)
+	// skip the first item which is the validator object
+	for i := 1; i < len(pairsBytes); i++ {
 		val := new(proto.SchnorrRandPair)
 		err := gproto.Unmarshal(pairsBytes[i].Value, val)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal Schnorr randomness pair from the database: %w", err))
 		}
-		pairList[i] = val
+		pairList[i-1] = val
 	}
 
 	return pairList, nil
