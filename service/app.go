@@ -27,7 +27,6 @@ import (
 type ValidatorApp struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
-	mu        sync.Mutex
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
@@ -37,8 +36,6 @@ type ValidatorApp struct {
 	config *valcfg.Config
 	logger *logrus.Logger
 	poller *ChainPoller
-
-	lastBbnBlock *BlockInfo
 
 	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
@@ -159,16 +156,16 @@ func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
-func (app *ValidatorApp) GetLastBbnBlock() *BlockInfo {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-	return app.lastBbnBlock
-}
+func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
+	header, err := app.bc.QueryBestHeader()
+	if err != nil {
+		return nil, err
+	}
 
-func (app *ValidatorApp) UpdateLastBbnBlock(b *BlockInfo) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-	app.lastBbnBlock = b
+	return &BlockInfo{
+		Height:         uint64(header.Header.Height),
+		LastCommitHash: header.Header.LastCommitHash,
+	}, nil
 }
 
 func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
@@ -506,11 +503,13 @@ func (app *ValidatorApp) automaticSubmissionLoop() {
 	for {
 		select {
 		case <-commitRandTicker.C:
-			lastBlock := app.GetLastBbnBlock()
-			if lastBlock == nil {
-				continue
+			lastBlock, err := app.GetCurrentBbnBlock()
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Fatal("failed to get the current Babylon block")
 			}
-			_, err := app.CommitPubRandForAll(lastBlock)
+			_, err = app.CommitPubRandForAll(lastBlock)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"block_height": lastBlock.Height,
@@ -519,8 +518,7 @@ func (app *ValidatorApp) automaticSubmissionLoop() {
 				continue
 			}
 
-		case b := <-app.poller.GetBlockInfoChan():
-			app.UpdateLastBbnBlock(b)
+		case <-app.poller.GetBlockInfoChan():
 		// TODO ask Babylon whether finality vote is needed
 		case <-app.quit:
 			return

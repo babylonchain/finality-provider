@@ -52,6 +52,21 @@ func (mr *MockBabylonClientMockRecorder) CommitPubRandList(btcPubKey, startHeigh
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockBabylonClient)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
 }
 
+// QueryBestHeader mocks base method.
+func (m *MockBabylonClient) QueryBestHeader() (*coretypes.ResultHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBestHeader")
+	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBestHeader indicates an expected call of QueryBestHeader.
+func (mr *MockBabylonClientMockRecorder) QueryBestHeader() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestHeader", reflect.TypeOf((*MockBabylonClient)(nil).QueryBestHeader))
+}
+
 // QueryHeader mocks base method.
 func (m *MockBabylonClient) QueryHeader(height int64) (*coretypes.ResultHeader, error) {
 	m.ctrl.T.Helper()

@@ -206,6 +206,23 @@ func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, er
 	}
 
 	// Returning response directly, if header with specified number did not exist
-	// at request will contain nill header
+	// at request will contain nil header
 	return headerResp, nil
+}
+
+func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	// this will return 20 items at max in the descending order (highest first)
+	chainInfo, err := bc.rpcClient.ChainClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	defer cancel()
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Returning response directly, if header with specified number did not exist
+	// at request will contain nil header
+	return &ctypes.ResultHeader{
+		Header: &chainInfo.BlockMetas[0].Header,
+	}, nil
 }
