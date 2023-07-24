@@ -401,9 +401,8 @@ func (app *ValidatorApp) Start() error {
 		go app.eventLoop()
 		if !app.config.JuryMode {
 			go app.automaticSubmissionLoop()
-		} else {
-			// TODO add another loop in which the app asks Babylon whether there are any delegations need jury sig if the program is running in Jury mode
 		}
+		// TODO add another loop in which the app asks Babylon whether there are any delegations need jury sig if the program is running in Jury mode
 	})
 
 	return startErr
