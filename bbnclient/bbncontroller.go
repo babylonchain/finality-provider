@@ -18,7 +18,6 @@ import (
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
-	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"golang.org/x/exp/maps"
@@ -144,7 +143,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 
 	// query the last committed public randomness
 	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
-		ValBtcPkHex: btcPubKey.ToHexStr(),
+		ValBtcPkHex: btcPubKey.MarshalHex(),
 		Pagination: &sdkquery.PageRequest{
 			Limit:   1,
 			Reverse: true,
@@ -161,7 +160,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 	}
 
 	ks := maps.Keys(res.PubRandMap)
-	if len(ks) >= 1 {
+	if len(ks) > 1 {
 		return 0, fmt.Errorf("the query should not return more than one public rand item")
 	}
 
@@ -170,11 +169,8 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 
 // QueryPendingBTCDelegations queries BTC delegations that need a Jury sig
 // it is only used when the program is running in Jury mode
-func (bc *BabylonController) QueryPendingBTCDelegations(btcPubKeyHexStr string) ([]*btcstakingtypes.BTCDelegation, error) {
-	var (
-		paginationKey []byte
-		delegations   []*btcstakingtypes.BTCDelegation
-	)
+func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
+	var delegations []*btcstakingtypes.BTCDelegation
 
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
@@ -182,28 +178,13 @@ func (bc *BabylonController) QueryPendingBTCDelegations(btcPubKeyHexStr string) 
 	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
-	for {
-		pagination := &sdkquerytypes.PageRequest{
-			Key:   paginationKey,
-			Limit: 100,
-		}
-		// query all the unsigned delegations
-		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
-			ValBtcPkHex: btcPubKeyHexStr,
-			DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
-			Pagination:  pagination,
-		}
-		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations")
-		}
-		delegations = append(delegations, res.BtcDelegations...)
-
-		if res.Pagination.NextKey == nil {
-			break
-		}
-		paginationKey = res.Pagination.NextKey
+	// query all the unsigned delegations
+	queryRequest := &btcstakingtypes.QueryPendingBTCDelegationsRequest{}
+	res, err := queryClient.PendingBTCDelegations(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegations")
 	}
+	delegations = append(delegations, res.BtcDelegations...)
 
 	return delegations, nil
 }
@@ -240,6 +221,23 @@ func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, er
 	}
 
 	// Returning response directly, if header with specified number did not exist
-	// at request will contain nill header
+	// at request will contain nil header
 	return headerResp, nil
+}
+
+func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	// this will return 20 items at max in the descending order (highest first)
+	chainInfo, err := bc.rpcClient.ChainClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	defer cancel()
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Returning response directly, if header with specified number did not exist
+	// at request will contain nil header
+	return &ctypes.ResultHeader{
+		Header: &chainInfo.BlockMetas[0].Header,
+	}, nil
 }

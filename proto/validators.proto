@@ -128,17 +128,13 @@ message SchnorrRandPair {
 enum ValidatorStatus {
     option (gogoproto.goproto_enum_prefix) = false;
 
-    // VALIDATOR_STATUS_CREATED defines a validator that is awaiting
-    // registration
-    VALIDATOR_STATUS_CREATED = 0 [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_CREATED"];
-    // VALIDATOR_STATUS_REGISTERED defines a validator that has been registered
+    // CREATED defines a validator that is awaiting registration
+    CREATED = 0 [(gogoproto.enumvalue_customname) = "CREATED"];
+    // REGISTERED defines a validator that has been registered
     // to Babylon but has no delegated stake
-    VALIDATOR_STATUS_REGISTERED = 1
-        [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_REGISTERED"];
-    // VALIDATOR_STATUS_ACTIVE defines a validator that is delegated to vote
-    VALIDATOR_STATUS_ACTIVE = 2 [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_ACTIVE"];
-    // VALIDATOR_STATUS_INACTIVE defines a validator whose delegations are
-    // reduced to zero
-    VALIDATOR_STATUS_INACTIVE = 3
-        [(gogoproto.enumvalue_customname) = "VALIDATOR_STATUS_INACTIVE"];
+    REGISTERED = 1 [(gogoproto.enumvalue_customname) = "REGISTERED"];
+    // ACTIVE defines a validator that is delegated to vote
+    ACTIVE = 2 [(gogoproto.enumvalue_customname) = "ACTIVE"];
+    // INACTIVE defines a validator whose delegations are reduced to zero
+    INACTIVE = 3 [(gogoproto.enumvalue_customname) = "INACTIVE"];
 }

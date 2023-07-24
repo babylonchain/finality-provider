@@ -23,9 +23,9 @@ type BabylonClient interface {
 	// Note: the following queries are only for PoC
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
 	QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error)
-	// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
+	// QueryShouldSubmitJurySigs queries BTC delegations that need a Jury signature
 	// it is only used when the program is running in Jury mode
-	QueryPendingBTCDelegations(btcPubKeyHexStr string) ([]*btcstakingtypes.BTCDelegation, error)
+	QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
 	// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
 	QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
 
@@ -35,4 +35,8 @@ type BabylonClient interface {
 	// QueryHeader queries the header at the given height, if header is not found
 	// it returns result with nil header
 	QueryHeader(height int64) (*ctypes.ResultHeader, error)
+
+	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
+	// it returns result with nil header
+	QueryBestHeader() (*ctypes.ResultHeader, error)
 }
