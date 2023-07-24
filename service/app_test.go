@@ -271,7 +271,7 @@ func FuzzAddJurySig(f *testing.F) {
 		}
 
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
-		mockBabylonClient.EXPECT().QueryPendingBTCDelegations(delegation.ValBtcPk.ToHexStr()).
+		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()

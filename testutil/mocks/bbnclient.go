@@ -113,18 +113,18 @@ func (mr *MockBabylonClientMockRecorder) QueryNodeStatus() *gomock.Call {
 }
 
 // QueryPendingBTCDelegations mocks base method.
-func (m *MockBabylonClient) QueryPendingBTCDelegations(btcPubKeyHexStr string) ([]*types0.BTCDelegation, error) {
+func (m *MockBabylonClient) QueryPendingBTCDelegations() ([]*types0.BTCDelegation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryPendingBTCDelegations", btcPubKeyHexStr)
+	ret := m.ctrl.Call(m, "QueryPendingBTCDelegations")
 	ret0, _ := ret[0].([]*types0.BTCDelegation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QueryPendingBTCDelegations indicates an expected call of QueryPendingBTCDelegations.
-func (mr *MockBabylonClientMockRecorder) QueryPendingBTCDelegations(btcPubKeyHexStr interface{}) *gomock.Call {
+func (mr *MockBabylonClientMockRecorder) QueryPendingBTCDelegations() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingBTCDelegations", reflect.TypeOf((*MockBabylonClient)(nil).QueryPendingBTCDelegations), btcPubKeyHexStr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingBTCDelegations", reflect.TypeOf((*MockBabylonClient)(nil).QueryPendingBTCDelegations))
 }
 
 // QueryShouldValidatorVote mocks base method.
