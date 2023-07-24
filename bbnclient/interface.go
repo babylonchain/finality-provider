@@ -23,10 +23,9 @@ type BabylonClient interface {
 	// Note: the following queries are only for PoC
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
 	QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error)
-	// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
+	// QueryShouldSubmitJurySigs queries BTC delegations that need a Jury signature
 	// it is only used when the program is running in Jury mode
-	// it returns a list of public keys used for delegations
-	QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, []*types.BIP340PubKey, error)
+	QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
 	// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
 	QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
 

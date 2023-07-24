@@ -167,11 +167,26 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 	return ks[0], nil
 }
 
-// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
+// QueryPendingBTCDelegations queries BTC delegations that need a Jury sig
 // it is only used when the program is running in Jury mode
-// it returns a list of public keys used for delegations
-func (bc *BabylonController) QueryShouldSubmitJurySigs(btcPubKey *types.BIP340PubKey) (bool, []*types.BIP340PubKey, error) {
-	panic("implement me")
+func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
+	var delegations []*btcstakingtypes.BTCDelegation
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	// query all the unsigned delegations
+	queryRequest := &btcstakingtypes.QueryPendingBTCDelegationsRequest{}
+	res, err := queryClient.PendingBTCDelegations(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegations")
+	}
+	delegations = append(delegations, res.BtcDelegations...)
+
+	return delegations, nil
 }
 
 // QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height

@@ -217,6 +217,13 @@ func FuzzAddJurySig(f *testing.F) {
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
+		err = app.Start()
+		require.NoError(t, err)
+		defer func() {
+			err = app.Stop()
+			require.NoError(t, err)
+		}()
+
 		// create a validator object and save it to db
 		keyName := testutil.GenRandomHexStr(r, 4)
 		kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
@@ -233,14 +240,12 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 
 		// create a Jury key pair in the keyring
-		juryKeyName := testutil.GenRandomHexStr(r, 4)
-		juryKc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), juryKeyName)
+		juryKc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName)
 		require.NoError(t, err)
 		jurPk, err := juryKc.CreateJuryKey()
 		require.NoError(t, err)
 		require.NotNil(t, jurPk)
 		cfg.JuryMode = true
-		cfg.JuryModeConfig.JuryKeyName = juryKeyName
 
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
@@ -251,31 +256,23 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingValue := int64(2 * 10e8)
 		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, delSK, btcPk, jurPk, stakingTimeBlocks, stakingValue, slashingAddr)
 		require.NoError(t, err)
-		stakingMsgTx, err := stakingTx.ToMsgTx()
-		require.NoError(t, err)
-		// random Babylon SK
 		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
 		require.NoError(t, err)
 		pop, err := bstypes.NewPoP(delBabylonSK, delSK)
 		require.NoError(t, err)
-		delegatorSig, err := slashingTx.Sign(
-			stakingMsgTx,
-			stakingTx.StakingScript,
-			delSK,
-			&chaincfg.SimNetParams,
-		)
 		require.NoError(t, err)
 		delegation := &bstypes.BTCDelegation{
-			ValBtcPk:     btcPkBIP340,
-			BtcPk:        types.NewBIP340PubKeyFromBTCPK(delPK),
-			BabylonPk:    delBabylonPK.(*secp256k1.PubKey),
-			Pop:          pop,
-			StakingTx:    stakingTx,
-			SlashingTx:   slashingTx,
-			DelegatorSig: delegatorSig,
+			ValBtcPk:   btcPkBIP340,
+			BtcPk:      types.NewBIP340PubKeyFromBTCPK(delPK),
+			BabylonPk:  delBabylonPK.(*secp256k1.PubKey),
+			Pop:        pop,
+			StakingTx:  stakingTx,
+			SlashingTx: slashingTx,
 		}
 
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
+		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
+			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
 		txHash, err := app.AddJurySignature(delegation)
