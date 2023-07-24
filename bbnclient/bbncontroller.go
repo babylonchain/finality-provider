@@ -20,6 +20,7 @@ import (
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -158,14 +159,12 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 		return 0, nil
 	}
 
-	maxHeight := uint64(0)
-	for h := range res.PubRandMap {
-		if h > maxHeight {
-			maxHeight = h
-		}
+	ks := maps.Keys(res.PubRandMap)
+	if len(ks) >= 1 {
+		return 0, fmt.Errorf("the query should not return more than one public rand item")
 	}
 
-	return maxHeight, nil
+	return ks[0], nil
 }
 
 // QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to

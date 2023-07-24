@@ -658,6 +658,11 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				successResponse: req.successResponse,
 			}
 		case req := <-app.commitPubRandRequestChan:
+			app.logger.WithFields(logrus.Fields{
+				"val_btc_pk":   req.valBtcPk.ToHexStr(),
+				"start_height": req.startingHeight,
+			}).Debug("trying to commit public randomness to Babylon for the validator")
+
 			tx, err := app.bc.CommitPubRandList(req.valBtcPk, req.startingHeight, req.pubRandList, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
