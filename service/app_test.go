@@ -9,6 +9,8 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	cometbfttypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -30,12 +32,29 @@ func FuzzRegisterValidator(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		cfg.PollerConfig.StartingHeight = randomStartingHeight
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		status := &coretypes.ResultStatus{
+			SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(randomStartingHeight + 1)},
+		}
+		b := &service.BlockInfo{
+			Height:         randomStartingHeight,
+			LastCommitHash: testutil.GenRandomByteArray(r, 32),
+		}
+		resHeader := &coretypes.ResultHeader{
+			Header: &cometbfttypes.Header{
+				Height:         int64(b.Height),
+				LastCommitHash: b.LastCommitHash,
+			},
+		}
+		mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
+		mockBabylonClient.EXPECT().QueryHeader(int64(randomStartingHeight)).Return(resHeader, nil).AnyTimes()
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
@@ -79,7 +98,6 @@ func FuzzRegisterValidator(f *testing.F) {
 		val, err := s.GetValidator(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, val.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
-
 	})
 }
 
@@ -93,6 +111,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		cfg.RandomNum = uint64(r.Intn(10) + 1)
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		cfg.PollerConfig.StartingHeight = randomStartingHeight
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -101,6 +121,21 @@ func FuzzCommitPubRandList(f *testing.F) {
 		}()
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		status := &coretypes.ResultStatus{
+			SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(randomStartingHeight + 1)},
+		}
+		b := &service.BlockInfo{
+			Height:         randomStartingHeight,
+			LastCommitHash: testutil.GenRandomByteArray(r, 32),
+		}
+		resHeader := &coretypes.ResultHeader{
+			Header: &cometbfttypes.Header{
+				Height:         int64(b.Height),
+				LastCommitHash: b.LastCommitHash,
+			},
+		}
+		mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
+		mockBabylonClient.EXPECT().QueryHeader(int64(randomStartingHeight)).Return(resHeader, nil).AnyTimes()
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
@@ -118,19 +153,16 @@ func FuzzCommitPubRandList(f *testing.F) {
 		validator, err := kc.CreateBTCValidator()
 		require.NoError(t, err)
 		s := app.GetValidatorStore()
+		validator.Status = proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
 		btcPk := validator.MustGetBIP340BTCPK()
 		txHash := testutil.GenRandomByteArray(r, 32)
-		b := &service.BlockInfo{
-			Height:         uint64(r.Int63n(100) + 1),
-			LastCommitHash: testutil.GenRandomByteArray(r, 32),
-		}
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(btcPk, b.Height+1, gomock.Any(), gomock.Any()).
 			Return(txHash, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(validator.MustGetBtcPubKeyHexStr()).
+		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(validator.MustGetBIP340BTCPK()).
 			Return(uint64(0), nil).AnyTimes()
 		txHashes, err := app.CommitPubRandForAll(b)
 		require.NoError(t, err)
@@ -159,6 +191,8 @@ func FuzzAddJurySig(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		cfg.PollerConfig.StartingHeight = randomStartingHeight
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -167,6 +201,21 @@ func FuzzAddJurySig(f *testing.F) {
 		}()
 		ctl := gomock.NewController(t)
 		mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+		status := &coretypes.ResultStatus{
+			SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(randomStartingHeight + 1)},
+		}
+		b := &service.BlockInfo{
+			Height:         randomStartingHeight,
+			LastCommitHash: testutil.GenRandomByteArray(r, 32),
+		}
+		resHeader := &coretypes.ResultHeader{
+			Header: &cometbfttypes.Header{
+				Height:         int64(b.Height),
+				LastCommitHash: b.LastCommitHash,
+			},
+		}
+		mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
+		mockBabylonClient.EXPECT().QueryHeader(int64(randomStartingHeight)).Return(resHeader, nil).AnyTimes()
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 

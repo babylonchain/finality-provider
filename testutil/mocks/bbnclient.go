@@ -68,18 +68,18 @@ func (mr *MockBabylonClientMockRecorder) QueryHeader(height interface{}) *gomock
 }
 
 // QueryHeightWithLastPubRand mocks base method.
-func (m *MockBabylonClient) QueryHeightWithLastPubRand(btcPubKeyStr string) (uint64, error) {
+func (m *MockBabylonClient) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryHeightWithLastPubRand", btcPubKeyStr)
+	ret := m.ctrl.Call(m, "QueryHeightWithLastPubRand", btcPubKey)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QueryHeightWithLastPubRand indicates an expected call of QueryHeightWithLastPubRand.
-func (mr *MockBabylonClientMockRecorder) QueryHeightWithLastPubRand(btcPubKeyStr interface{}) *gomock.Call {
+func (mr *MockBabylonClientMockRecorder) QueryHeightWithLastPubRand(btcPubKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockBabylonClient)(nil).QueryHeightWithLastPubRand), btcPubKeyStr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockBabylonClient)(nil).QueryHeightWithLastPubRand), btcPubKey)
 }
 
 // QueryNodeStatus mocks base method.

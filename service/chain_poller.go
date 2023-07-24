@@ -21,8 +21,6 @@ var (
 )
 
 const (
-	pollInterval = 5 * time.Second
-
 	// TODO: Maybe configurable?
 	maxFailedCycles = 20
 )
@@ -66,6 +64,8 @@ func NewChainPoller(
 func (cp *ChainPoller) Start() error {
 	var startErr error
 	cp.startOnce.Do(func() {
+		cp.logger.Infof("Starting the chain poller")
+
 		initialBlockToGet, err := cp.initPoller()
 
 		if err != nil {
@@ -84,6 +84,7 @@ func (cp *ChainPoller) Start() error {
 
 func (cp *ChainPoller) Stop() error {
 	cp.stopOnce.Do(func() {
+		cp.logger.Infof("Stopping the chain poller")
 		close(cp.quit)
 		cp.wg.Wait()
 	})
@@ -175,7 +176,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 
 	var state = initialState
 
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(cp.cfg.PollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -229,7 +230,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 		case <-cp.quit:
 			return
 		case <-ticker.C:
-			ticker.Reset(pollInterval)
+			ticker.Reset(cp.cfg.PollInterval)
 		}
 	}
 }

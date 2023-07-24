@@ -18,6 +18,11 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+var (
+	eventuallyWaitTimeOut = 10 * time.Second
+	eventuallyPollTime    = 500 * time.Millisecond
+)
+
 func TempDirWithName(name string) (string, error) {
 	tempPath := os.TempDir()
 
@@ -143,5 +148,4 @@ func TestCreateValidator(t *testing.T) {
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
-
 }

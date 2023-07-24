@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	bbn "github.com/babylonchain/babylon/types"
@@ -29,6 +28,6 @@ func (v *Validator) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
 	return bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 }
 
-func (v *Validator) MustGetBtcPubKeyHexStr() string {
-	return hex.EncodeToString(v.MustGetBTCPK().SerializeCompressed())
+func (v *Validator) MustGetBip340PubKeyHexStr() string {
+	return v.MustGetBIP340BTCPK().ToHexStr()
 }

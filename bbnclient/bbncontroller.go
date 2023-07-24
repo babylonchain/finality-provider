@@ -17,7 +17,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	bq "github.com/cosmos/cosmos-sdk/types/query"
+	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"google.golang.org/grpc/metadata"
@@ -133,7 +133,7 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
-func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKeyStr string) (uint64, error) {
+func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
@@ -142,8 +142,8 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKeyStr string) (ui
 
 	// query the last committed public randomness
 	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
-		ValBtcPkHex: btcPubKeyStr,
-		Pagination: &bq.PageRequest{
+		ValBtcPkHex: btcPubKey.ToHexStr(),
+		Pagination: &sdkquery.PageRequest{
 			Limit:   1,
 			Reverse: true,
 		},
