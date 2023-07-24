@@ -188,7 +188,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 		return nil, err
 	}
 
-	if validator.Status != proto.ValidatorStatus_VALIDATOR_STATUS_CREATED {
+	if validator.Status != proto.ValidatorStatus_CREATED {
 		return nil, fmt.Errorf("validator is already registered")
 	}
 
@@ -284,8 +284,8 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 	}
 
 	for _, v := range validators {
-		// skip validators whose status are still CREATED
-		if v.Status == proto.ValidatorStatus_VALIDATOR_STATUS_CREATED {
+		// skip validators whose status is still CREATED
+		if v.Status == proto.ValidatorStatus_CREATED {
 			continue
 		}
 		txHash, err := app.CommitPubRandForValidator(b, v)
@@ -311,38 +311,37 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 // if so, generates commit public randomness request
 func (app *ValidatorApp) CommitPubRandForValidator(latestBbnBlock *BlockInfo, validator *proto.Validator) ([]byte, error) {
 	bip340BTCPK := validator.MustGetBIP340BTCPK()
-	h, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
+	lastCommittedHeight, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
 	if err != nil {
 		return nil, err
 	}
 
-	if validator.LastCommittedHeight != h {
+	if validator.LastCommittedHeight != lastCommittedHeight {
 		// for some reason number of random numbers locally does not match babylon node
 		// log it and try to recover somehow
 		return nil, fmt.Errorf("the local last committed height %v does not match the remote last committed height %v",
-			validator.LastCommittedHeight, h)
+			validator.LastCommittedHeight, lastCommittedHeight)
 	}
 
 	var startHeight uint64
 	// the validator has never submitted public rand before
-	if h == uint64(0) {
+	if lastCommittedHeight == uint64(0) {
 		startHeight = latestBbnBlock.Height + 1
-	} else if h-latestBbnBlock.Height < app.config.MinRandomGap {
-		startHeight = h + 1
+	} else if lastCommittedHeight-latestBbnBlock.Height < app.config.MinRandHeightGap {
+		startHeight = lastCommittedHeight + 1
 	} else {
 		return nil, nil
 	}
 
 	// generate a list of Schnorr randomness pairs
-	privRandList, pubRandList, err := GenerateRandPairList(app.config.RandomNum)
+	privRandList, pubRandList, err := GenerateRandPairList(app.config.NumPubRand)
 	if err != nil {
 		return nil, err
 	}
 
 	// get the message hash for signing
-	btcPk := validator.MustGetBIP340BTCPK()
 	msg := &ftypes.MsgCommitPubRandList{
-		ValBtcPk:    btcPk,
+		ValBtcPk:    bip340BTCPK,
 		StartHeight: startHeight,
 		PubRandList: pubRandList,
 	}
@@ -396,10 +395,11 @@ func (app *ValidatorApp) Start() error {
 			return
 		}
 
-		app.wg.Add(3)
+		app.wg.Add(2)
 		go app.handleSentToBabylonLoop()
 		go app.eventLoop()
 		if !app.config.JuryMode {
+			app.wg.Add(1)
 			go app.automaticSubmissionLoop()
 		}
 		// TODO add another loop in which the app asks Babylon whether there are any delegations need jury sig if the program is running in Jury mode
@@ -501,17 +501,15 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 func (app *ValidatorApp) automaticSubmissionLoop() {
 	defer app.wg.Done()
 
-	commitRandTicker := time.NewTicker(app.config.RandomInterval)
-	defer commitRandTicker.Stop()
+	commitRandTicker := time.NewTicker(app.config.RandomnessCommitInterval)
 
 	for {
 		select {
 		case <-commitRandTicker.C:
-			commitRandTicker.Reset(app.config.RandomInterval)
-			if app.lastBbnBlock == nil {
+			lastBlock := app.GetLastBbnBlock()
+			if lastBlock == nil {
 				continue
 			}
-			lastBlock := app.GetLastBbnBlock()
 			_, err := app.CommitPubRandForAll(lastBlock)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -557,7 +555,7 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 			// change the status of the validator to registered
-			val.Status = proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED
+			val.Status = proto.ValidatorStatus_REGISTERED
 
 			// save the updated validator object to DB
 			err = app.vs.SaveValidator(val)
@@ -674,7 +672,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				continue
 			}
 
-			app.logger.WithField("btcPk", req.valBtcPk.ToHexStr()).Info("successfully commit public rand list on babylon")
+			app.logger.WithField("btcPk", req.valBtcPk.ToHexStr()).Info("successfully committed public rand list on babylon")
 
 			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
 				startingHeight: req.startingHeight,

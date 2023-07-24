@@ -130,9 +130,15 @@ func TestCreateValidator(t *testing.T) {
 
 	err = app.Start()
 	require.NoError(t, err)
-	// stop the app first as otherwise it depends on Babylon handler
-	defer app.Stop()
-	defer handler.Stop()
+	defer func() {
+		// stop the app first as otherwise it depends on Babylon handler
+		app.Stop()
+		handler.Stop()
+		err := os.RemoveAll(defaultConfig.DatabaseConfig.Path)
+		require.NoError(t, err)
+		err = os.RemoveAll(defaultConfig.BabylonConfig.KeyDirectory)
+		require.NoError(t, err)
+	}()
 
 	newValName := "testingValidator"
 	valResult, err := app.CreateValidator(newValName)
@@ -148,10 +154,13 @@ func TestCreateValidator(t *testing.T) {
 
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
-	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
-	time.Sleep(defaultConfig.RandomInterval * 2)
-	randParis, err := app.GetCommittedPubRandPairs(validator.BabylonPk)
-	require.NoError(t, err)
-	require.Equal(t, int(defaultConfig.RandomNum), len(randParis))
+	require.Eventually(t, func() bool {
+		randParis, err := app.GetCommittedPubRandPairs(validator.BabylonPk)
+		if err != nil {
+			return false
+		}
+		return int(defaultConfig.NumPubRand) == len(randParis)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }

@@ -19,6 +19,6 @@ func NewValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyNam
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig.MustMarshal(),
 		},
-		Status: proto.ValidatorStatus_VALIDATOR_STATUS_CREATED,
+		Status: proto.ValidatorStatus_CREATED,
 	}
 }

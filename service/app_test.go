@@ -97,7 +97,7 @@ func FuzzRegisterValidator(f *testing.F) {
 
 		val, err := s.GetValidator(validator.BabylonPk)
 		require.NoError(t, err)
-		require.Equal(t, val.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+		require.Equal(t, val.Status, proto.ValidatorStatus_REGISTERED)
 	})
 }
 
@@ -110,7 +110,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
-		cfg.RandomNum = uint64(r.Intn(10) + 1)
+		cfg.NumPubRand = uint64(r.Intn(10) + 1)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		cfg.PollerConfig.StartingHeight = randomStartingHeight
 		defer func() {
@@ -153,7 +153,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		validator, err := kc.CreateBTCValidator()
 		require.NoError(t, err)
 		s := app.GetValidatorStore()
-		validator.Status = proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED
+		validator.Status = proto.ValidatorStatus_REGISTERED
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
@@ -171,12 +171,12 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// check the last_committed_height
 		updatedVal, err := s.GetValidator(validator.BabylonPk)
 		require.NoError(t, err)
-		require.Equal(t, b.Height+cfg.RandomNum, updatedVal.LastCommittedHeight)
+		require.Equal(t, b.Height+cfg.NumPubRand, updatedVal.LastCommittedHeight)
 
 		// check the committed pub rand
 		randPairs, err := s.GetRandPairs(validator.BabylonPk)
 		require.NoError(t, err)
-		require.Equal(t, int(cfg.RandomNum), len(randPairs))
+		require.Equal(t, int(cfg.NumPubRand), len(randPairs))
 	})
 }
 
