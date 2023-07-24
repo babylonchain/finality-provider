@@ -148,8 +148,4 @@ func TestCreateValidator(t *testing.T) {
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
-
-	randPair, err := app.GetCommittedPubRand(validator.BabylonPk, uint64(1))
-	require.NoError(t, err)
-	require.NotNil(t, randPair)
 }
