@@ -453,8 +453,9 @@ func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) 
 	return app.vs.GetValidator(pkBytes)
 }
 
-func (app *ValidatorApp) GetCommittedPubRand(pkBytes []byte, height uint64) (*proto.SchnorrRandPair, error) {
-	return app.vs.GetRandPair(pkBytes, height)
+// GetCommittedPubRandPairs gets all the public randomness pairs from DB
+func (app *ValidatorApp) GetCommittedPubRandPairs(pkBytes []byte) ([]*proto.SchnorrRandPair, error) {
+	return app.vs.GetRandPairs(pkBytes)
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {

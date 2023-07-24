@@ -52,19 +52,23 @@ func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto
 	return nil
 }
 
-func (vs *ValidatorStore) GetRandPair(pk []byte, height uint64) (*proto.SchnorrRandPair, error) {
-	k := append(pk, types.Uint64ToBigEndian(height)...)
-	pairBytes, err := vs.s.Get(k)
+func (vs *ValidatorStore) GetRandPairs(pk []byte) ([]*proto.SchnorrRandPair, error) {
+	pairsBytes, err := vs.s.List(pk)
 	if err != nil {
 		return nil, err
 	}
-	randPair := new(proto.SchnorrRandPair)
-	err = gproto.Unmarshal(pairBytes, randPair)
-	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal the random pair object: %w", err)
+
+	pairList := make([]*proto.SchnorrRandPair, len(pairsBytes))
+	for i := 0; i < len(pairsBytes); i++ {
+		val := new(proto.SchnorrRandPair)
+		err := gproto.Unmarshal(pairsBytes[i].Value, val)
+		if err != nil {
+			panic(fmt.Errorf("failed to unmarshal Schnorr randomness pair from the database: %w", err))
+		}
+		pairList[i] = val
 	}
 
-	return randPair, nil
+	return pairList, nil
 }
 
 func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {
