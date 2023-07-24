@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
+	"github.com/babylonchain/babylon/types"
 
 	"github.com/urfave/cli"
 
@@ -82,9 +82,10 @@ func createJuryKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create Jury key: %w", err)
 	}
 
+	bip340Key := types.NewBIP340PubKeyFromBTCPK(juryPk)
 	printRespJSON(&juryKey{
 		Name:      krController.GetKeyName(),
-		PublicKey: hex.EncodeToString(juryPk.SerializeCompressed()),
+		PublicKey: bip340Key.MarshalHex(),
 	})
 
 	return err
