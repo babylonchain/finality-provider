@@ -497,8 +497,9 @@ func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) 
 	return app.vs.GetValidator(pkBytes)
 }
 
-func (app *ValidatorApp) GetCommittedPubRand(pkBytes []byte, height uint64) (*proto.SchnorrRandPair, error) {
-	return app.vs.GetRandPair(pkBytes, height)
+// GetCommittedPubRandPairs gets all the public randomness pairs from DB
+func (app *ValidatorApp) GetCommittedPubRandPairs(pkBytes []byte) ([]*proto.SchnorrRandPair, error) {
+	return app.vs.GetRandPairs(pkBytes)
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
@@ -763,6 +764,11 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				successResponse: req.successResponse,
 			}
 		case req := <-app.commitPubRandRequestChan:
+			app.logger.WithFields(logrus.Fields{
+				"val_btc_pk":   req.valBtcPk.ToHexStr(),
+				"start_height": req.startingHeight,
+			}).Debug("trying to commit public randomness to Babylon for the validator")
+
 			tx, err := app.bc.CommitPubRandList(req.valBtcPk, req.startingHeight, req.pubRandList, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

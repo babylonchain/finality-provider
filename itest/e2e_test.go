@@ -149,4 +149,9 @@ func TestCreateValidator(t *testing.T) {
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
+
+	time.Sleep(defaultConfig.RandomInterval * 2)
+	randParis, err := app.GetCommittedPubRandPairs(validator.BabylonPk)
+	require.NoError(t, err)
+	require.Equal(t, int(defaultConfig.RandomNum), len(randParis))
 }

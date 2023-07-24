@@ -174,11 +174,9 @@ func FuzzCommitPubRandList(f *testing.F) {
 		require.Equal(t, b.Height+cfg.RandomNum, updatedVal.LastCommittedHeight)
 
 		// check the committed pub rand
-		for i := 1; i <= int(cfg.RandomNum); i++ {
-			randPair, err := s.GetRandPair(validator.BabylonPk, b.Height+uint64(i))
-			require.NoError(t, err)
-			require.NotNil(t, randPair)
-		}
+		randPairs, err := s.GetRandPairs(validator.BabylonPk)
+		require.NoError(t, err)
+		require.Equal(t, int(cfg.RandomNum), len(randPairs))
 	})
 }
 
