@@ -151,7 +151,7 @@ func TestCreateValidator(t *testing.T) {
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED)
 
 	time.Sleep(defaultConfig.RandomInterval)
-	randParis, err := app.GetCommittedPubRand()
+	randParis, err := app.GetCommittedPubRand(validator.BabylonPk)
 	require.NoError(t, err)
 	require.Equal(t, int(defaultConfig.RandomNum), len(randParis))
 }
