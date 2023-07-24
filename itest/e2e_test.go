@@ -130,14 +130,11 @@ func TestCreateValidator(t *testing.T) {
 
 	err = app.Start()
 	require.NoError(t, err)
+
 	defer func() {
 		// stop the app first as otherwise it depends on Babylon handler
 		app.Stop()
 		handler.Stop()
-		err := os.RemoveAll(defaultConfig.DatabaseConfig.Path)
-		require.NoError(t, err)
-		err = os.RemoveAll(defaultConfig.BabylonConfig.KeyDirectory)
-		require.NoError(t, err)
 	}()
 
 	newValName := "testingValidator"
