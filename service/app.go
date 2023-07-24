@@ -638,7 +638,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				app.logger.WithFields(logrus.Fields{
 					"err":       err,
 					"bbnPubKey": hex.EncodeToString(req.bbnPubKey.Key),
-					"btcPubKey": req.btcPubKey.ToHexStr(),
+					"btcPubKey": req.btcPubKey.MarshalHex(),
 				}).Error("failed to register validator")
 				req.errResponse <- err
 				continue
@@ -655,7 +655,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			}
 		case req := <-app.commitPubRandRequestChan:
 			app.logger.WithFields(logrus.Fields{
-				"val_btc_pk":   req.valBtcPk.ToHexStr(),
+				"val_btc_pk":   req.valBtcPk.MarshalHex(),
 				"start_height": req.startingHeight,
 			}).Debug("trying to commit public randomness to Babylon for the validator")
 
@@ -670,7 +670,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				continue
 			}
 
-			app.logger.WithField("btcPk", req.valBtcPk.ToHexStr()).Info("successfully committed public rand list on babylon")
+			app.logger.WithField("btcPk", req.valBtcPk.MarshalHex()).Info("successfully committed public rand list on babylon")
 
 			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
 				startingHeight: req.startingHeight,

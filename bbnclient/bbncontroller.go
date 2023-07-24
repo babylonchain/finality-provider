@@ -143,7 +143,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 
 	// query the last committed public randomness
 	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
-		ValBtcPkHex: btcPubKey.ToHexStr(),
+		ValBtcPkHex: btcPubKey.MarshalHex(),
 		Pagination: &sdkquery.PageRequest{
 			Limit:   1,
 			Reverse: true,
