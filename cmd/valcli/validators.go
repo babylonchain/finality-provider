@@ -16,7 +16,7 @@ const (
 	chainIdFlag           = "chain-id"
 	keyringDirFlag        = "keyring-dir"
 	keyringBackendFlag    = "keyring-backend"
-	defaultChainID        = "test-chain"
+	defaultChainID        = "chain-test"
 	defaultKeyringBackend = "test"
 )
 
