@@ -177,7 +177,6 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 	var state = initialState
 
 	ticker := time.NewTicker(cp.cfg.PollInterval)
-	defer ticker.Stop()
 
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
@@ -227,10 +226,9 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 		}
 
 		select {
+		case <-ticker.C:
 		case <-cp.quit:
 			return
-		case <-ticker.C:
-			ticker.Reset(cp.cfg.PollInterval)
 		}
 	}
 }

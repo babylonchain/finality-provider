@@ -27,7 +27,7 @@ const (
 	defaultConfigFileName   = "vald.conf"
 	defaultNumPubRand       = 100
 	defaultNumPubRandMax    = 1000
-	defaultMinRandHeightGap = 100
+	defaultMinRandHeightGap = 10
 	defaultRandomInterval   = 5 * time.Second
 )
 
