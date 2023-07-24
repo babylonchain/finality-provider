@@ -592,7 +592,6 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 						"err":        err,
 						"del_btc_pk": d.BtcPk,
 					}).Error("failed to submit Jury sig to the Bitcoin delegation")
-					continue
 				}
 			}
 

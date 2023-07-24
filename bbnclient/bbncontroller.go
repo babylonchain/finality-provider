@@ -18,6 +18,7 @@ import (
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/sirupsen/logrus"
 	lensquery "github.com/strangelove-ventures/lens/client/query"
 	"golang.org/x/exp/maps"
@@ -167,28 +168,44 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 	return ks[0], nil
 }
 
-// QueryPendingBTCDelegations queries BTC delegations that are needing Jury sig
+// QueryPendingBTCDelegations queries BTC delegations that need a Jury sig
 // it is only used when the program is running in Jury mode
 func (bc *BabylonController) QueryPendingBTCDelegations(btcPubKeyHexStr string) ([]*btcstakingtypes.BTCDelegation, error) {
+	var (
+		paginationKey []byte
+		delegations   []*btcstakingtypes.BTCDelegation
+	)
+
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
-	// query all the unsigned delegations
-	queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
-		ValBtcPkHex: btcPubKeyHexStr,
-		DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
-		// TODO handle pagination?
+	for {
+		pagination := &sdkquerytypes.PageRequest{
+			Key:   paginationKey,
+			Limit: 100,
+		}
+		// query all the unsigned delegations
+		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+			ValBtcPkHex: btcPubKeyHexStr,
+			DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
+			Pagination:  pagination,
+		}
+		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC delegations")
+		}
+		delegations = append(delegations, res.BtcDelegations...)
+
+		if res.Pagination.NextKey == nil {
+			break
+		}
+		paginationKey = res.Pagination.NextKey
 	}
 
-	res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	return res.BtcDelegations, nil
+	return delegations, nil
 }
 
 // QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
