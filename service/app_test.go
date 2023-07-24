@@ -153,6 +153,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		validator, err := kc.CreateBTCValidator()
 		require.NoError(t, err)
 		s := app.GetValidatorStore()
+		validator.Status = proto.ValidatorStatus_VALIDATOR_STATUS_REGISTERED
 		err = s.SaveValidator(validator)
 		require.NoError(t, err)
 
@@ -161,7 +162,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(btcPk, b.Height+1, gomock.Any(), gomock.Any()).
 			Return(txHash, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(validator.MustGetBtcPubKeyHexStr()).
+		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(validator.MustGetBIP340BTCPK()).
 			Return(uint64(0), nil).AnyTimes()
 		txHashes, err := app.CommitPubRandForAll(b)
 		require.NoError(t, err)

@@ -22,7 +22,7 @@ type BabylonClient interface {
 
 	// Note: the following queries are only for PoC
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
-	QueryHeightWithLastPubRand(btcPubKeyStr string) (uint64, error)
+	QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error)
 	// QueryShouldSubmitJurySigs queries if there's a list of delegations that the Jury should submit Jury sigs to
 	// it is only used when the program is running in Jury mode
 	// it returns a list of public keys used for delegations

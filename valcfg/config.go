@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -27,6 +28,7 @@ const (
 	defaultRandomNum      = 100
 	defaultRandomNumMax   = 1000
 	defaultMinRandomGap   = 100
+	defaultRandomInterval = 5 * time.Second
 )
 
 var (
@@ -43,15 +45,16 @@ var (
 
 // Config is the main config for the vald cli command
 type Config struct {
-	DebugLevel   string `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
-	ValdDir      string `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
-	ConfigFile   string `long:"configfile" description:"Path to configuration file"`
-	DataDir      string `long:"datadir" description:"The directory to store validator's data within"`
-	LogDir       string `long:"logdir" description:"Directory to log output."`
-	DumpCfg      bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
-	RandomNum    uint64 `long:"randomnum" description:"The number of Schnorr public randomness for each commitment"`
-	RandomNumMax uint64 `long:"randomnummax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
-	MinRandomGap uint64 `long:"minrandomnumgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
+	DebugLevel     string        `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	ValdDir        string        `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
+	ConfigFile     string        `long:"configfile" description:"Path to configuration file"`
+	DataDir        string        `long:"datadir" description:"The directory to store validator's data within"`
+	LogDir         string        `long:"logdir" description:"Directory to log output."`
+	DumpCfg        bool          `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
+	RandomNum      uint64        `long:"randomnum" description:"The number of Schnorr public randomness for each commitment"`
+	RandomNumMax   uint64        `long:"randomnummax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
+	MinRandomGap   uint64        `long:"minrandomnumgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
+	RandomInterval time.Duration `long:"randominterval" description:"The interval between each attempt to commit public randomness"`
 	// TODO: create Jury specific config
 	JuryMode bool `long:"jurymode" description:"If the program is running in Jury mode"`
 
@@ -86,6 +89,7 @@ func DefaultConfig() Config {
 		RandomNum:      defaultRandomNum,
 		RandomNumMax:   defaultRandomNumMax,
 		MinRandomGap:   defaultMinRandomGap,
+		RandomInterval: defaultRandomInterval,
 	}
 }
 

@@ -28,6 +28,6 @@ func (v *Validator) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
 	return bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 }
 
-func (v *Validator) MustGetBtcPubKeyHexStr() string {
+func (v *Validator) MustGetBip340PubKeyHexStr() string {
 	return v.MustGetBIP340BTCPK().ToHexStr()
 }

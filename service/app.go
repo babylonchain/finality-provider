@@ -1,8 +1,10 @@
 package service
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
@@ -25,6 +27,7 @@ import (
 type ValidatorApp struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
+	mu        sync.Mutex
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
@@ -34,6 +37,8 @@ type ValidatorApp struct {
 	config *valcfg.Config
 	logger *logrus.Logger
 	poller *ChainPoller
+
+	lastBbnBlock *BlockInfo
 
 	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
@@ -154,6 +159,18 @@ func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
+func (app *ValidatorApp) GetLastBbnBlock() *BlockInfo {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+	return app.lastBbnBlock
+}
+
+func (app *ValidatorApp) UpdateLastBbnBlock(b *BlockInfo) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+	app.lastBbnBlock = b
+}
+
 func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 	kc, err := val.NewKeyringControllerWithKeyring(app.kr, keyName)
 	if err != nil {
@@ -267,6 +284,10 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 	}
 
 	for _, v := range validators {
+		// skip validators whose status are still CREATED
+		if v.Status == proto.ValidatorStatus_VALIDATOR_STATUS_CREATED {
+			continue
+		}
 		txHash, err := app.CommitPubRandForValidator(b, v)
 		if err != nil {
 			return nil, err
@@ -288,9 +309,9 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 // CommitPubRandForValidator asks Babylon whether the given
 // validator's public randomness has run out
 // if so, generates commit public randomness request
-func (app *ValidatorApp) CommitPubRandForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, error) {
-	pkStr := validator.MustGetBtcPubKeyHexStr()
-	h, err := app.bc.QueryHeightWithLastPubRand(pkStr)
+func (app *ValidatorApp) CommitPubRandForValidator(latestBbnBlock *BlockInfo, validator *proto.Validator) ([]byte, error) {
+	bip340BTCPK := validator.MustGetBIP340BTCPK()
+	h, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
 	if err != nil {
 		return nil, err
 	}
@@ -305,8 +326,8 @@ func (app *ValidatorApp) CommitPubRandForValidator(b *BlockInfo, validator *prot
 	var startHeight uint64
 	// the validator has never submitted public rand before
 	if h == uint64(0) {
-		startHeight = b.Height + 1
-	} else if h-b.Height < app.config.MinRandomGap {
+		startHeight = latestBbnBlock.Height + 1
+	} else if h-latestBbnBlock.Height < app.config.MinRandomGap {
 		startHeight = h + 1
 	} else {
 		return nil, nil
@@ -378,7 +399,11 @@ func (app *ValidatorApp) Start() error {
 		app.wg.Add(3)
 		go app.handleSentToBabylonLoop()
 		go app.eventLoop()
-		go app.newBabylonBlockLoop()
+		if !app.config.JuryMode {
+			go app.automaticSubmissionLoop()
+		} else {
+			// TODO add another loop in which the app asks Babylon whether there are any delegations need jury sig if the program is running in Jury mode
+		}
 	})
 
 	return startErr
@@ -463,8 +488,8 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 
 	app.logger.Info("successfully created validator")
 	app.logger.WithFields(logrus.Fields{ // TODO: use hex format
-		"btc_pub_key":     btcPubKey,
-		"babylon_pub_key": babylonPubKey,
+		"btc_pub_key":     hex.EncodeToString(btcPubKey.SerializeCompressed()),
+		"babylon_pub_key": hex.EncodeToString(babylonPubKey.Key),
 	}).Debug("created validator")
 
 	return &createValidatorResponse{
@@ -473,25 +498,31 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 	}, nil
 }
 
-func (app *ValidatorApp) newBabylonBlockLoop() {
+func (app *ValidatorApp) automaticSubmissionLoop() {
 	defer app.wg.Done()
+
+	commitRandTicker := time.NewTicker(app.config.RandomInterval)
+	defer commitRandTicker.Stop()
 
 	for {
 		select {
-		case b := <-app.poller.GetBlockInfoChan():
-			// TODO: add a new trigger for CommitPubRand as doing this upon every
-			// block is kinda overkill
-			_, err := app.CommitPubRandForAll(b)
+		case <-commitRandTicker.C:
+			commitRandTicker.Reset(app.config.RandomInterval)
+			if app.lastBbnBlock == nil {
+				continue
+			}
+			lastBlock := app.GetLastBbnBlock()
+			_, err := app.CommitPubRandForAll(lastBlock)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
-					"block_height": b.Height,
+					"block_height": lastBlock.Height,
 					"err":          err,
 				}).Error("failed to commit public randomness")
 				continue
 			}
 
-		// TODO ask Babylon whether there are any delegations need jury sig if the program is running in Jury mode
-
+		case b := <-app.poller.GetBlockInfoChan():
+			app.UpdateLastBbnBlock(b)
 		// TODO ask Babylon whether finality vote is needed
 		case <-app.quit:
 			return
@@ -610,8 +641,8 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err":       err,
-					"bbnPubKey": req.bbnPubKey,
-					"btcPubKey": req.btcPubKey,
+					"bbnPubKey": hex.EncodeToString(req.bbnPubKey.Key),
+					"btcPubKey": req.btcPubKey.ToHexStr(),
 				}).Error("failed to register validator")
 				req.errResponse <- err
 				continue
