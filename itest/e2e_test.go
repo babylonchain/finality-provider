@@ -93,7 +93,7 @@ func TestPoller(t *testing.T) {
 	}
 }
 
-func TestCreateValidator(t *testing.T) {
+func TestValidatorLifeCycle(t *testing.T) {
 	tDir, err := TempDirWithName("valtest")
 	require.NoError(t, err)
 	defer func() {
@@ -159,5 +159,13 @@ func TestCreateValidator(t *testing.T) {
 			return false
 		}
 		return int(defaultConfig.NumPubRand) == len(randParis)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	require.Eventually(t, func() bool {
+		valAfterVote, err := app.GetValidator(validator.BabylonPk)
+		if err != nil {
+			return false
+		}
+		return valAfterVote.LastVotedHeight > uint64(0)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
