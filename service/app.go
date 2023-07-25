@@ -301,6 +301,15 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			}
 			continue
 		}
+		if v.LastVotedHeight >= b.Height {
+			app.logger.WithFields(logrus.Fields{
+				"err":               err,
+				"val_btc_pk":        btcPk.MarshalHex(),
+				"bbn_height":        b.Height,
+				"last_voted_height": v.LastVotedHeight,
+			}).Error("the validator's last voted height should less than the current block height")
+			continue
+		}
 		txHash, err := app.submitFinalitySignatureForValidator(b, v)
 		if err != nil {
 			return nil, fmt.Errorf("failed to submit the finality signature from validator %s to Babylon: %w",
@@ -322,6 +331,9 @@ func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, valid
 	privRand.SetByteSlice(pair.SecRand)
 
 	btcPrivKey, err := app.getBtcPrivKey(validator.KeyName)
+	if err != nil {
+		return nil, err
+	}
 
 	msg := &ftypes.MsgAddFinalitySig{
 		ValBtcPk:            validator.MustGetBIP340BTCPK(),
