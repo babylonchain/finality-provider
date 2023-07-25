@@ -231,7 +231,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			app.logger.WithFields(logrus.Fields{
 				"btcPubKey": req.valBtcPk.MarshalHex(),
 				"height":    req.blockHeight,
-				"txHash":    txHash,
+				"txHash":    hex.EncodeToString(txHash),
 			}).Info("successfully submitted a finality signature to babylon")
 
 			app.finalitySigAddedEventChan <- &finalitySigAddedEvent{
@@ -260,7 +260,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			app.logger.WithFields(logrus.Fields{
 				"bbnPk":  req.bbnPubKey,
-				"txHash": txHash,
+				"txHash": hex.EncodeToString(txHash),
 			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
@@ -285,7 +285,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			app.logger.WithFields(logrus.Fields{
 				"btcPk":  req.valBtcPk.MarshalHex(),
-				"txHash": txHash,
+				"txHash": hex.EncodeToString(txHash),
 			}).Info("successfully committed public rand list on babylon")
 
 			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
@@ -315,7 +315,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			app.logger.WithFields(logrus.Fields{
 				"delBtcPk":     req.delBtcPk.MarshalHex(),
 				"valBtcPubKey": req.valBtcPk.MarshalHex(),
-				"txHash":       txHash,
+				"txHash":       hex.EncodeToString(txHash),
 			}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
 
 			app.jurySigAddedEventChan <- &jurySigAddedEvent{

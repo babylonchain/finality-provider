@@ -169,7 +169,7 @@ func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error)
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
 		}
 		if val.Status != proto.ValidatorStatus_CREATED {
-			valsList[i] = val
+			valsList = append(valsList, val)
 		}
 	}
 
