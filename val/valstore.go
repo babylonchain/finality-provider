@@ -11,6 +11,11 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+const (
+	validatorPrefix = "validator"
+	randPairPrefix  = "rand-pair"
+)
+
 type ValidatorStore struct {
 	s store.Store
 }
@@ -24,8 +29,24 @@ func NewValidatorStore(dbcfg *valcfg.DatabaseConfig) (*ValidatorStore, error) {
 	return &ValidatorStore{s: s}, nil
 }
 
+func (vs *ValidatorStore) getValidatorKey(pk []byte) []byte {
+	return append([]byte(validatorPrefix), pk...)
+}
+
+func (vs *ValidatorStore) getValidatorListKey() []byte {
+	return []byte(validatorPrefix)
+}
+
+func (vs *ValidatorStore) getRandPairKey(pk []byte, height uint64) []byte {
+	return append(vs.getRandPairListKey(pk), types.Uint64ToBigEndian(height)...)
+}
+
+func (vs *ValidatorStore) getRandPairListKey(pk []byte) []byte {
+	return append([]byte(randPairPrefix), pk...)
+}
+
 func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
-	k := val.BabylonPk
+	k := vs.getValidatorKey(val.BabylonPk)
 	v, err := gproto.Marshal(val)
 	if err != nil {
 		return fmt.Errorf("failed to marshal the created validator object: %w", err)
@@ -39,7 +60,7 @@ func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
 }
 
 func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto.SchnorrRandPair) error {
-	k := append(pk, types.Uint64ToBigEndian(height)...)
+	k := vs.getRandPairKey(pk, height)
 	v, err := gproto.Marshal(randPair)
 	if err != nil {
 		return fmt.Errorf("failed to marshal the Schnorr random pair: %w", err)
@@ -52,32 +73,44 @@ func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto
 	return nil
 }
 
-func (vs *ValidatorStore) GetRandPairs(pk []byte) ([]*proto.SchnorrRandPair, error) {
-	pairsBytes, err := vs.s.List(pk)
+func (vs *ValidatorStore) GetRandPairList(pk []byte) ([]*proto.SchnorrRandPair, error) {
+	k := vs.getRandPairListKey(pk)
+	pairsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(pairsBytes) == 0 {
-		return nil, fmt.Errorf("at least one item as the validator object")
-	}
-
-	pairList := make([]*proto.SchnorrRandPair, len(pairsBytes)-1)
-	// skip the first item which is the validator object
-	for i := 1; i < len(pairsBytes); i++ {
-		val := new(proto.SchnorrRandPair)
-		err := gproto.Unmarshal(pairsBytes[i].Value, val)
+	pairList := make([]*proto.SchnorrRandPair, len(pairsBytes))
+	for i := 0; i < len(pairsBytes); i++ {
+		pair := new(proto.SchnorrRandPair)
+		err := gproto.Unmarshal(pairsBytes[i].Value, pair)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal Schnorr randomness pair from the database: %w", err))
 		}
-		pairList[i-1] = val
+		pairList[i] = pair
 	}
 
 	return pairList, nil
 }
 
+func (vs *ValidatorStore) GetRandPair(pk []byte, height uint64) (*proto.SchnorrRandPair, error) {
+	k := vs.getRandPairKey(pk, height)
+	v, err := vs.s.Get(k)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
+	}
+	pair := new(proto.SchnorrRandPair)
+	err = gproto.Unmarshal(v, pair)
+	if err != nil {
+		panic(fmt.Errorf("unable to unmarshal Schnorr randomness pair: %w", err))
+	}
+
+	return pair, nil
+}
+
 func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {
-	valsBytes, err := vs.s.Get(pk)
+	k := vs.getValidatorKey(pk)
+	valsBytes, err := vs.s.Get(k)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +125,8 @@ func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {
 }
 
 func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
-	valsBytes, err := vs.s.List(nil)
+	k := vs.getValidatorListKey()
+	valsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}

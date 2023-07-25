@@ -189,9 +189,25 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	return delegations, nil
 }
 
-// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
-func (bc *BabylonController) QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error) {
-	panic("implement me")
+// QueryValidatorVotePower queries the voting power of the validator at a given height
+func (bc *BabylonController) QueryValidatorVotePower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	// query all the unsigned delegations
+	queryRequest := &btcstakingtypes.QueryBTCValidatorPowerAtHeightRequest{
+		ValBtcPkHex: btcPubKey.MarshalHex(),
+		Height:      blockHeight,
+	}
+	res, err := queryClient.BTCValidatorPowerAtHeight(ctx, queryRequest)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query BTC delegations")
+	}
+
+	return res.VotingPower, nil
 }
 
 func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {

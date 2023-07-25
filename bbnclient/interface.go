@@ -26,8 +26,8 @@ type BabylonClient interface {
 	// QueryShouldSubmitJurySigs queries BTC delegations that need a Jury signature
 	// it is only used when the program is running in Jury mode
 	QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
-	// QueryShouldValidatorVote asks Babylon if the validator should submit a finality sig for the given block height
-	QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error)
+	// QueryValidatorVotePower queries the voting power of the validator at a given height
+	QueryValidatorVotePower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error)
 
 	// QueryNodeStatus returns current node status, with info about latest block
 	QueryNodeStatus() (*ctypes.ResultStatus, error)
