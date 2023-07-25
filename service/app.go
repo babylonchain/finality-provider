@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
@@ -40,10 +39,12 @@ type ValidatorApp struct {
 	registerValidatorRequestChan chan *registerValidatorRequest
 	commitPubRandRequestChan     chan *commitPubRandRequest
 	addJurySigRequestChan        chan *addJurySigRequest
+	addFinalitySigRequestChan    chan *addFinalitySigRequest
 
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
 	pubRandCommittedEventChan    chan *pubRandCommittedEvent
 	jurySigAddedEventChan        chan *jurySigAddedEvent
+	finalitySigAddedEventChan    chan *finalitySigAddedEvent
 }
 
 func NewValidatorAppFromConfig(
@@ -85,89 +86,12 @@ func NewValidatorAppFromConfig(
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
 		commitPubRandRequestChan:     make(chan *commitPubRandRequest),
 		addJurySigRequestChan:        make(chan *addJurySigRequest),
+		addFinalitySigRequestChan:    make(chan *addFinalitySigRequest),
 		pubRandCommittedEventChan:    make(chan *pubRandCommittedEvent),
 		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
 		jurySigAddedEventChan:        make(chan *jurySigAddedEvent),
+		finalitySigAddedEventChan:    make(chan *finalitySigAddedEvent),
 	}, nil
-}
-
-type createValidatorResponse struct {
-	BtcValidatorPk     btcec.PublicKey
-	BabylonValidatorPk secp256k1.PubKey
-}
-type createValidatorRequest struct {
-	keyName         string
-	errResponse     chan error
-	successResponse chan *createValidatorResponse
-}
-
-type registerValidatorRequest struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *types.BIP340PubKey
-	// TODO we should have our own representation of PoP
-	pop             *btcstakingtypes.ProofOfPossession
-	errResponse     chan error
-	successResponse chan *registerValidatorResponse
-}
-
-type validatorRegisteredEvent struct {
-	bbnPubKey       *secp256k1.PubKey
-	txHash          []byte
-	successResponse chan *registerValidatorResponse
-}
-
-type registerValidatorResponse struct {
-	txHash []byte
-}
-
-type commitPubRandRequest struct {
-	startingHeight uint64
-	bbnPubKey      *secp256k1.PubKey
-	valBtcPk       *types.BIP340PubKey
-	privRandList   []*eots.PrivateRand
-	pubRandList    []types.SchnorrPubRand
-	sig            *types.BIP340Signature
-
-	errResponse     chan error
-	successResponse chan *commitPubRandResponse
-}
-
-type commitPubRandResponse struct {
-	txHash []byte
-}
-
-type pubRandCommittedEvent struct {
-	startingHeight  uint64
-	bbnPubKey       *secp256k1.PubKey
-	valBtcPk        *types.BIP340PubKey
-	pubRandList     []types.SchnorrPubRand
-	privRandList    []*eots.PrivateRand
-	txHash          []byte
-	successResponse chan *commitPubRandResponse
-}
-
-type addJurySigRequest struct {
-	bbnPubKey       *secp256k1.PubKey
-	valBtcPk        *types.BIP340PubKey
-	delBtcPk        *types.BIP340PubKey
-	sig             *types.BIP340Signature
-	errResponse     chan error
-	successResponse chan *addJurySigResponse
-}
-
-type addJurySigResponse struct {
-	txHash []byte
-}
-
-type jurySigAddedEvent struct {
-	bbnPubKey       *secp256k1.PubKey
-	txHash          []byte
-	successResponse chan *addJurySigResponse
-}
-
-type CreateValidatorResult struct {
-	BtcValidatorPk     btcec.PublicKey
-	BabylonValidatorPk secp256k1.PubKey
 }
 
 func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
@@ -245,6 +169,113 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 	}
 }
 
+// SubmitFinalitySignaturesForAll signs and submits finality signatures to Babylon
+// for all the managed validators at the given Babylon block height
+func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte, error) {
+	// get all the managed validators
+	var txHashes [][]byte
+	validators, err := app.vs.ListRegisteredValidators()
+	if err != nil {
+		return nil, err
+	}
+
+	// only submit finality signature if the validator has power at the current block height
+	for _, v := range validators {
+		btcPk := v.MustGetBIP340BTCPK()
+		power, err := app.bc.QueryValidatorVotingPower(btcPk, b.Height)
+		if err != nil {
+			app.logger.WithFields(logrus.Fields{
+				"err":        err,
+				"val_btc_pk": btcPk.MarshalHex(),
+				"bbn_height": b.Height,
+			}).Error("failed to check whether the validator should vote")
+			continue
+		}
+		if power == 0 {
+			if v.Status == proto.ValidatorStatus_ACTIVE {
+				if err := app.vs.SetValidatorStatus(v, proto.ValidatorStatus_INACTIVE); err != nil {
+					return nil, fmt.Errorf("cannot save the validator object %s into DB: %w", v.GetBabylonPkHexString(), err)
+				}
+			}
+			app.logger.WithFields(logrus.Fields{
+				"val_btc_pk": btcPk.MarshalHex(),
+				"bbn_height": b.Height,
+			}).Debug("the validator's voting power is 0, skip voting")
+			continue
+		}
+
+		if v.Status == proto.ValidatorStatus_INACTIVE {
+			if err := app.vs.SetValidatorStatus(v, proto.ValidatorStatus_ACTIVE); err != nil {
+				return nil, fmt.Errorf("cannot save the validator object %s into DB: %w", v.GetBabylonPkHexString(), err)
+			}
+		}
+		if v.LastVotedHeight >= b.Height {
+			app.logger.WithFields(logrus.Fields{
+				"err":               err,
+				"val_btc_pk":        btcPk.MarshalHex(),
+				"bbn_height":        b.Height,
+				"last_voted_height": v.LastVotedHeight,
+			}).Debug("the validator's last voted height should be less than the current block height")
+			continue
+		}
+		txHash, err := app.submitFinalitySignatureForValidator(b, v)
+		if err != nil {
+			return nil, fmt.Errorf("failed to submit the finality signature from validator %s to Babylon: %w",
+				v.GetBabylonPkHexString(), err)
+		}
+		txHashes = append(txHashes, txHash)
+	}
+
+	return txHashes, nil
+}
+
+func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, error) {
+	privRand, err := app.GetCommittedPrivPubRand(validator.BabylonPk, b.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	btcPrivKey, err := app.getBtcPrivKey(validator.KeyName)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &ftypes.MsgAddFinalitySig{
+		ValBtcPk:            validator.MustGetBIP340BTCPK(),
+		BlockHeight:         b.Height,
+		BlockLastCommitHash: b.LastCommitHash,
+	}
+	msgToSign := msg.MsgToSign()
+	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
+	if err != nil {
+		return nil, err
+	}
+	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
+
+	request := &addFinalitySigRequest{
+		bbnPubKey:           validator.GetBabylonPK(),
+		valBtcPk:            validator.MustGetBIP340BTCPK(),
+		blockHeight:         b.Height,
+		blockLastCommitHash: b.LastCommitHash,
+		sig:                 eotsSig,
+		errResponse:         make(chan error),
+		successResponse:     make(chan *addFinalitySigResponse),
+	}
+
+	app.addFinalitySigRequestChan <- request
+
+	select {
+	case err := <-request.errResponse:
+		return nil, err
+	case successResponse := <-request.successResponse:
+		return successResponse.txHash, nil
+	case <-app.quit:
+		return nil, fmt.Errorf("validator app is shutting down")
+	}
+}
+
+// AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
+// Note: this should be only called when the program is running in Jury mode
 func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte, error) {
 	if btcDel.JurySig != nil {
 		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
@@ -295,16 +326,23 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 }
 
 func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
-	var juryPrivKey *btcec.PrivateKey
-	k, err := app.kr.Key(app.config.JuryModeConfig.JuryKeyName)
+	return app.getPrivKey(app.config.JuryModeConfig.JuryKeyName)
+}
+
+func (app *ValidatorApp) getBtcPrivKey(name string) (*btcec.PrivateKey, error) {
+	return app.getPrivKey(val.KeyName(name).GetBtcKeyName())
+}
+
+func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
+	k, err := app.kr.Key(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get key %s from the keyring: %w", name, err)
 	}
-	privKey := k.GetLocal().PrivKey.GetCachedValue()
-	switch v := privKey.(type) {
+	localKey := k.GetLocal().PrivKey.GetCachedValue()
+	switch v := localKey.(type) {
 	case *secp256k1.PrivKey:
-		juryPrivKey, _ = btcec.PrivKeyFromBytes(v.Key)
-		return juryPrivKey, nil
+		privKey, _ := btcec.PrivKeyFromBytes(v.Key)
+		return privKey, nil
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
@@ -325,7 +363,7 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 		if v.Status == proto.ValidatorStatus_CREATED {
 			continue
 		}
-		txHash, err := app.CommitPubRandForValidator(b, v)
+		txHash, err := app.commitPubRandForValidator(b, v)
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +371,7 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 			txHashes = append(txHashes, txHash)
 		} else {
 			app.logger.WithFields(logrus.Fields{
-				"btc_pub_key":           v.MustGetBIP340BTCPK(),
+				"btc_pub_key":           v.MustGetBIP340BTCPK().MarshalHex(),
 				"block_height":          b.Height,
 				"last_committed_height": v.LastCommittedHeight,
 			}).Debug("the validator has sufficient committed randomness")
@@ -343,10 +381,10 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 	return txHashes, nil
 }
 
-// CommitPubRandForValidator asks Babylon whether the given
+// commitPubRandForValidator asks Babylon whether the given
 // validator's public randomness has run out
 // if so, generates commit public randomness request
-func (app *ValidatorApp) CommitPubRandForValidator(latestBbnBlock *BlockInfo, validator *proto.Validator) ([]byte, error) {
+func (app *ValidatorApp) commitPubRandForValidator(latestBbnBlock *BlockInfo, validator *proto.Validator) ([]byte, error) {
 	bip340BTCPK := validator.MustGetBIP340BTCPK()
 	lastCommittedHeight, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
 	if err != nil {
@@ -494,9 +532,29 @@ func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) 
 	return app.vs.GetValidator(pkBytes)
 }
 
-// GetCommittedPubRandPairs gets all the public randomness pairs from DB
-func (app *ValidatorApp) GetCommittedPubRandPairs(pkBytes []byte) ([]*proto.SchnorrRandPair, error) {
-	return app.vs.GetRandPairs(pkBytes)
+// GetCommittedPubRandPairList gets all the public randomness pairs from DB with the descending order
+func (app *ValidatorApp) GetCommittedPubRandPairList(pkBytes []byte) ([]*proto.SchnorrRandPair, error) {
+	return app.vs.GetRandPairList(pkBytes)
+}
+
+func (app *ValidatorApp) GetCommittedPubRandPair(pkBytes []byte, height uint64) (*proto.SchnorrRandPair, error) {
+	return app.vs.GetRandPair(pkBytes, height)
+}
+
+func (app *ValidatorApp) GetCommittedPrivPubRand(pkBytes []byte, height uint64) (*eots.PrivateRand, error) {
+	randPair, err := app.vs.GetRandPair(pkBytes, height)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(randPair.SecRand) != 32 {
+		return nil, fmt.Errorf("the private randomness should be 32 bytes")
+	}
+
+	privRand := new(eots.PrivateRand)
+	privRand.SetByteSlice(randPair.SecRand)
+
+	return privRand, nil
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
@@ -549,268 +607,4 @@ func (app *ValidatorApp) getPendingDelegationsForAll() ([]*btcstakingtypes.BTCDe
 	delegations = append(delegations, dels...)
 
 	return delegations, nil
-}
-
-// jurySigSubmissionLoop is the reactor to submit Jury signature for pending BTC delegations
-func (app *ValidatorApp) jurySigSubmissionLoop() {
-	defer app.wg.Done()
-
-	interval := app.config.JuryModeConfig.QueryInterval
-	jurySigTicker := time.NewTicker(interval)
-
-	for {
-		select {
-		case <-jurySigTicker.C:
-			dels, err := app.getPendingDelegationsForAll()
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get pending delegations")
-				continue
-			}
-
-			for _, d := range dels {
-				_, err := app.AddJurySignature(d)
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"err":        err,
-						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Jury sig to the Bitcoin delegation")
-				}
-			}
-
-		case <-app.quit:
-			return
-		}
-	}
-
-}
-
-// validatorSubmissionLoop is the reactor to submit finality signature and public randomness
-func (app *ValidatorApp) validatorSubmissionLoop() {
-	defer app.wg.Done()
-
-	commitRandTicker := time.NewTicker(app.config.RandomnessCommitInterval)
-
-	for {
-		select {
-		case <-app.poller.GetBlockInfoChan():
-			// TODO finality sig submission
-		case <-commitRandTicker.C:
-			lastBlock, err := app.GetCurrentBbnBlock()
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Fatal("failed to get the current Babylon block")
-			}
-			_, err = app.CommitPubRandForAll(lastBlock)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"block_height": lastBlock.Height,
-					"err":          err,
-				}).Error("failed to commit public randomness")
-				continue
-			}
-
-		case <-app.poller.GetBlockInfoChan():
-		// TODO ask Babylon whether finality vote is needed
-		case <-app.quit:
-			return
-		}
-	}
-}
-
-// main event loop for the validator app
-func (app *ValidatorApp) eventLoop() {
-	defer app.wg.Done()
-
-	for {
-		select {
-		case req := <-app.createValidatorRequestChan:
-			resp, err := app.handleCreateValidatorRequest(req)
-
-			if err != nil {
-				req.errResponse <- err
-				continue
-			}
-
-			req.successResponse <- resp
-
-		case ev := <-app.validatorRegisteredEventChan:
-			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)
-
-			if err != nil {
-				// we always check if the validator is in the DB before sending the registration request
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("Registred validator not found in DB")
-			}
-
-			// change the status of the validator to registered
-			val.Status = proto.ValidatorStatus_REGISTERED
-
-			// save the updated validator object to DB
-			err = app.vs.SaveValidator(val)
-
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("err while saving validator to DB")
-			}
-
-			// return to the caller
-			ev.successResponse <- &registerValidatorResponse{
-				txHash: ev.txHash,
-			}
-
-		case ev := <-app.pubRandCommittedEventChan:
-			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)
-			if err != nil {
-				// we always check if the validator is in the DB before sending the registration request
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("Public randomness committed validator not found in DB")
-			}
-
-			val.LastCommittedHeight = ev.startingHeight + uint64(len(ev.pubRandList)-1)
-
-			// save the updated validator object to DB
-			err = app.vs.SaveValidator(val)
-
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("err while saving validator to DB")
-			}
-
-			// save the committed random list to DB
-			// TODO 1: Optimize the db interface to batch the saving operations
-			// TODO 2: Consider safety after recovery
-			for i, pr := range ev.privRandList {
-				height := ev.startingHeight + uint64(i)
-				privRand := pr.Bytes()
-				randPair := &proto.SchnorrRandPair{
-					SecRand: privRand[:],
-					PubRand: ev.pubRandList[i].MustMarshal(),
-				}
-				err = app.vs.SaveRandPair(ev.bbnPubKey.Key, height, randPair)
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"bbn_pk": ev.bbnPubKey,
-					}).Fatal("err while saving committed random pair to DB")
-				}
-			}
-
-			// return to the caller
-			ev.successResponse <- &commitPubRandResponse{
-				txHash: ev.txHash,
-			}
-		case ev := <-app.jurySigAddedEventChan:
-			// TODO do we assume the delegator is also a BTC validator?
-			// if so, do we want to change its status to ACTIVE here?
-			// if not, maybe we can remove the handler of this event
-
-			// return to the caller
-			ev.successResponse <- &addJurySigResponse{
-				txHash: ev.txHash,
-			}
-
-		case <-app.quit:
-			return
-		}
-	}
-}
-
-// Loop for handling requests to send stuff to babylon. It is necessart to properly
-// serialize bayblon sends as otherwise we would keep hitting sequence mismatch errors.
-// This could be done either by send loop or by lock. We choose send loop as it is
-// more flexible.
-// TODO: This could be probably separate component responsible for queuing stuff
-// and sending it to babylon.
-func (app *ValidatorApp) handleSentToBabylonLoop() {
-	defer app.wg.Done()
-	for {
-		select {
-		case req := <-app.registerValidatorRequestChan:
-			// we won't do any retries here to not block the loop for more important messages.
-			// Most probably it fails due so some user error so we just return the error to the user.
-			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			tx, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
-
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err":       err,
-					"bbnPubKey": hex.EncodeToString(req.bbnPubKey.Key),
-					"btcPubKey": req.btcPubKey.MarshalHex(),
-				}).Error("failed to register validator")
-				req.errResponse <- err
-				continue
-			}
-
-			app.logger.WithField("bbnPk", req.bbnPubKey).Info("successfully registered validator on babylon")
-
-			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
-				bbnPubKey: req.bbnPubKey,
-				txHash:    tx,
-				// pass the channel to the event so that we can send the response to the user which requested
-				// the registration
-				successResponse: req.successResponse,
-			}
-		case req := <-app.commitPubRandRequestChan:
-			app.logger.WithFields(logrus.Fields{
-				"val_btc_pk":   req.valBtcPk.MarshalHex(),
-				"start_height": req.startingHeight,
-			}).Debug("trying to commit public randomness to Babylon for the validator")
-
-			tx, err := app.bc.CommitPubRandList(req.valBtcPk, req.startingHeight, req.pubRandList, req.sig)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err":         err,
-					"btcPubKey":   req.valBtcPk,
-					"startHeight": req.startingHeight,
-				}).Error("failed to commit public randomness")
-				req.errResponse <- err
-				continue
-			}
-
-			app.logger.WithField("btcPk", req.valBtcPk.MarshalHex()).Info("successfully committed public rand list on babylon")
-
-			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
-				startingHeight: req.startingHeight,
-				bbnPubKey:      req.bbnPubKey,
-				valBtcPk:       req.valBtcPk,
-				privRandList:   req.privRandList,
-				pubRandList:    req.pubRandList,
-				txHash:         tx,
-				// pass the channel to the event so that we can send the response to the user which requested
-				// the commit
-				successResponse: req.successResponse,
-			}
-		case req := <-app.addJurySigRequestChan:
-			// TODO: we should add some retry mechanism or we can have a health checker to check the connection periodically
-			tx, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.sig)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"valBtcPubKey": req.valBtcPk,
-					"delBtcPubKey": req.delBtcPk,
-				}).Error("failed to submit Jury signature")
-				req.errResponse <- err
-				continue
-			}
-
-			app.logger.WithField("delBtcPk", req.delBtcPk).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
-
-			app.jurySigAddedEventChan <- &jurySigAddedEvent{
-				bbnPubKey: req.bbnPubKey,
-				txHash:    tx,
-				// pass the channel to the event so that we can send the response to the user which requested
-				// the registration
-				successResponse: req.successResponse,
-			}
-
-		case <-app.quit:
-			return
-		}
-	}
 }

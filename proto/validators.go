@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	bbn "github.com/babylonchain/babylon/types"
@@ -13,6 +14,10 @@ func (v *Validator) GetBabylonPK() *secp256k1.PubKey {
 	return &secp256k1.PubKey{
 		Key: v.BabylonPk,
 	}
+}
+
+func (v *Validator) GetBabylonPkHexString() string {
+	return hex.EncodeToString(v.BabylonPk)
 }
 
 func (v *Validator) MustGetBTCPK() *btcec.PublicKey {

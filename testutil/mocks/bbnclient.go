@@ -127,19 +127,19 @@ func (mr *MockBabylonClientMockRecorder) QueryPendingBTCDelegations() *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingBTCDelegations", reflect.TypeOf((*MockBabylonClient)(nil).QueryPendingBTCDelegations))
 }
 
-// QueryShouldValidatorVote mocks base method.
-func (m *MockBabylonClient) QueryShouldValidatorVote(btcPubKey *types.BIP340PubKey, blockHeight uint64) (bool, error) {
+// QueryValidatorVotingPower mocks base method.
+func (m *MockBabylonClient) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryShouldValidatorVote", btcPubKey, blockHeight)
-	ret0, _ := ret[0].(bool)
+	ret := m.ctrl.Call(m, "QueryValidatorVotingPower", btcPubKey, blockHeight)
+	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryShouldValidatorVote indicates an expected call of QueryShouldValidatorVote.
-func (mr *MockBabylonClientMockRecorder) QueryShouldValidatorVote(btcPubKey, blockHeight interface{}) *gomock.Call {
+// QueryValidatorVotingPower indicates an expected call of QueryValidatorVotingPower.
+func (mr *MockBabylonClientMockRecorder) QueryValidatorVotingPower(btcPubKey, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryShouldValidatorVote", reflect.TypeOf((*MockBabylonClient)(nil).QueryShouldValidatorVote), btcPubKey, blockHeight)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorVotingPower", reflect.TypeOf((*MockBabylonClient)(nil).QueryValidatorVotingPower), btcPubKey, blockHeight)
 }
 
 // RegisterValidator mocks base method.

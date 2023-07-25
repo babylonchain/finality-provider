@@ -93,7 +93,7 @@ func TestPoller(t *testing.T) {
 	}
 }
 
-func TestCreateValidator(t *testing.T) {
+func TestValidatorLifeCycle(t *testing.T) {
 	tDir, err := TempDirWithName("valtest")
 	require.NoError(t, err)
 	defer func() {
@@ -154,7 +154,7 @@ func TestCreateValidator(t *testing.T) {
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
 	require.Eventually(t, func() bool {
-		randParis, err := app.GetCommittedPubRandPairs(validator.BabylonPk)
+		randParis, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
 		if err != nil {
 			return false
 		}

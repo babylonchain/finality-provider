@@ -25,9 +25,9 @@ const (
 	defaultLogFilename      = "vald.log"
 	DefaultRPCPort          = 15812
 	defaultConfigFileName   = "vald.conf"
-	defaultNumPubRand       = 100
+	defaultNumPubRand       = 10
 	defaultNumPubRandMax    = 1000
-	defaultMinRandHeightGap = 10
+	defaultMinRandHeightGap = 5
 	defaultRandomInterval   = 5 * time.Second
 )
 
