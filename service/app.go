@@ -425,7 +425,7 @@ func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (app *ValidatorApp) getBtcPrivKey(name string) (*btcec.PrivateKey, error) {
-	return app.getPrivKey(val.KeyName(name).GetBabylonKeyName())
+	return app.getPrivKey(val.KeyName(name).GetBtcKeyName())
 }
 
 func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
