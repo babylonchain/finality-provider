@@ -466,7 +466,7 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 			txHashes = append(txHashes, txHash)
 		} else {
 			app.logger.WithFields(logrus.Fields{
-				"btc_pub_key":           v.MustGetBIP340BTCPK(),
+				"btc_pub_key":           v.MustGetBIP340BTCPK().MarshalHex(),
 				"block_height":          b.Height,
 				"last_committed_height": v.LastCommittedHeight,
 			}).Debug("the validator has sufficient committed randomness")
@@ -732,6 +732,9 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 	for {
 		select {
 		case b := <-app.poller.GetBlockInfoChan():
+			app.logger.WithFields(logrus.Fields{
+				"bbn_height": b.Height,
+			}).Debug("Submitting finality signatures for managed validators")
 			_, err := app.SubmitFinalitySignaturesForAll(b)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
