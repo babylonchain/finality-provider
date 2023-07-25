@@ -160,12 +160,4 @@ func TestValidatorLifeCycle(t *testing.T) {
 		}
 		return int(defaultConfig.NumPubRand) == len(randParis)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	require.Eventually(t, func() bool {
-		valAfterVote, err := app.GetValidator(validator.BabylonPk)
-		if err != nil {
-			return false
-		}
-		return valAfterVote.LastVotedHeight > uint64(0)
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }

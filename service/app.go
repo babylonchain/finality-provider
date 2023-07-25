@@ -299,6 +299,10 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 					return nil, fmt.Errorf("cannot save the validator object %s into DB: %w", v.GetBabylonPkHexString(), err)
 				}
 			}
+			app.logger.WithFields(logrus.Fields{
+				"val_btc_pk": btcPk.MarshalHex(),
+				"bbn_height": b.Height,
+			}).Debug("the validator's voting power is 0, skip voting")
 			continue
 		}
 		if v.LastVotedHeight >= b.Height {
@@ -732,9 +736,6 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 	for {
 		select {
 		case b := <-app.poller.GetBlockInfoChan():
-			app.logger.WithFields(logrus.Fields{
-				"bbn_height": b.Height,
-			}).Debug("Submitting finality signatures for managed validators")
 			_, err := app.SubmitFinalitySignaturesForAll(b)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
