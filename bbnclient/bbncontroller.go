@@ -129,7 +129,20 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, error) {
-	panic("implement me")
+	msg := &finalitytypes.MsgAddFinalitySig{
+		Signer:              bc.MustGetTxSigner(),
+		ValBtcPk:            btcPubKey,
+		BlockHeight:         blockHeight,
+		BlockLastCommitHash: blockHash,
+		FinalitySig:         sig,
+	}
+
+	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(res.TxHash), nil
 }
 
 // Note: the following queries are only for PoC
@@ -175,8 +188,7 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
 
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryPendingBTCDelegationsRequest{}
@@ -189,13 +201,12 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	return delegations, nil
 }
 
-// QueryValidatorVotePower queries the voting power of the validator at a given height
-func (bc *BabylonController) QueryValidatorVotePower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
+// QueryValidatorVotingPower queries the voting power of the validator at a given height
+func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
 
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryBTCValidatorPowerAtHeightRequest{

@@ -111,8 +111,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		// create a validator object and save it to db
 		validator := createValidator(r, t, app)
-		validator.Status = proto.ValidatorStatus_REGISTERED
-		err = app.GetValidatorStore().SaveValidator(validator)
+		err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 		require.NoError(t, err)
 
 		btc340Pk := validator.MustGetBIP340BTCPK()
@@ -245,8 +244,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// create a validator object and save it to db
 		validator := createValidator(r, t, app)
-		validator.Status = proto.ValidatorStatus_REGISTERED
-		err = app.GetValidatorStore().SaveValidator(validator)
+		err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 		require.NoError(t, err)
 		btcPkBIP340 := validator.MustGetBIP340BTCPK()
 
@@ -275,7 +273,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			SubmitFinalitySig(btcPkBIP340, nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(txHash, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryValidatorVotePower(btcPkBIP340, nextBlock.Height).
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(btcPkBIP340, nextBlock.Height).
 			Return(uint64(1), nil).AnyTimes()
 		txHashes, err = app.SubmitFinalitySignaturesForAll(nextBlock)
 		require.NoError(t, err)

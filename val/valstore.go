@@ -59,6 +59,16 @@ func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
 	return nil
 }
 
+func (vs *ValidatorStore) SetValidatorLastVotedHeight(val *proto.Validator, height uint64) error {
+	val.LastVotedHeight = height
+	return vs.SaveValidator(val)
+}
+
+func (vs *ValidatorStore) SetValidatorStatus(val *proto.Validator, status proto.ValidatorStatus) error {
+	val.Status = status
+	return vs.SaveValidator(val)
+}
+
 func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto.SchnorrRandPair) error {
 	k := vs.getRandPairKey(pk, height)
 	v, err := gproto.Marshal(randPair)
