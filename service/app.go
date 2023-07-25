@@ -174,7 +174,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte, error) {
 	// get all the managed validators
 	var txHashes [][]byte
-	validators, err := app.vs.ListValidators()
+	validators, err := app.vs.ListRegisteredValidators()
 	if err != nil {
 		return nil, err
 	}
@@ -203,13 +203,19 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			}).Debug("the validator's voting power is 0, skip voting")
 			continue
 		}
+
+		if v.Status == proto.ValidatorStatus_INACTIVE {
+			if err := app.vs.SetValidatorStatus(v, proto.ValidatorStatus_ACTIVE); err != nil {
+				return nil, fmt.Errorf("cannot save the validator object %s into DB: %w", v.GetBabylonPkHexString(), err)
+			}
+		}
 		if v.LastVotedHeight >= b.Height {
 			app.logger.WithFields(logrus.Fields{
 				"err":               err,
 				"val_btc_pk":        btcPk.MarshalHex(),
 				"bbn_height":        b.Height,
 				"last_voted_height": v.LastVotedHeight,
-			}).Error("the validator's last voted height should be less than the current block height")
+			}).Debug("the validator's last voted height should be less than the current block height")
 			continue
 		}
 		txHash, err := app.submitFinalitySignatureForValidator(b, v)

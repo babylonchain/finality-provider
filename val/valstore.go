@@ -154,6 +154,28 @@ func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
 	return valsList, nil
 }
 
+func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error) {
+	k := vs.getValidatorListKey()
+	valsBytes, err := vs.s.List(k)
+	if err != nil {
+		return nil, err
+	}
+
+	valsList := make([]*proto.Validator, 0)
+	for i := 0; i < len(valsBytes); i++ {
+		val := new(proto.Validator)
+		err := gproto.Unmarshal(valsBytes[i].Value, val)
+		if err != nil {
+			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
+		}
+		if val.Status != proto.ValidatorStatus_CREATED {
+			valsList[i] = val
+		}
+	}
+
+	return valsList, nil
+}
+
 func (vs *ValidatorStore) Close() error {
 	if err := vs.s.Close(); err != nil {
 		return err
