@@ -492,6 +492,11 @@ func (app *ValidatorApp) Stop() error {
 			stopErr = err
 			return
 		}
+		err = app.vs.Close()
+		if err != nil {
+			stopErr = err
+			return
+		}
 		close(app.quit)
 		app.wg.Wait()
 	})
@@ -597,7 +602,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 	}, nil
 }
 
-func (app *ValidatorApp) getPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
+func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 
 	dels, err := app.bc.QueryPendingBTCDelegations()

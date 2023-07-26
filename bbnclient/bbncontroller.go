@@ -8,6 +8,7 @@ import (
 
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
@@ -145,6 +146,32 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	return []byte(res.TxHash), nil
 }
 
+func (bc *BabylonController) CreateBTCDelegation(
+	delBabylonPk *secp256k1.PubKey,
+	pop *btcstakingtypes.ProofOfPossession,
+	stakingTx *btcstakingtypes.StakingTx,
+	stakingTxInfo *btcctypes.TransactionInfo,
+	slashingTx *btcstakingtypes.BTCSlashingTx,
+	delSig *types.BIP340Signature,
+) ([]byte, error) {
+	msg := &btcstakingtypes.MsgCreateBTCDelegation{
+		Signer:        bc.MustGetTxSigner(),
+		BabylonPk:     delBabylonPk,
+		Pop:           pop,
+		StakingTx:     stakingTx,
+		StakingTxInfo: stakingTxInfo,
+		SlashingTx:    slashingTx,
+		DelegatorSig:  delSig,
+	}
+
+	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(res.TxHash), nil
+}
+
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
 func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
@@ -197,6 +224,38 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 		return nil, fmt.Errorf("failed to query BTC delegations")
 	}
 	delegations = append(delegations, res.BtcDelegations...)
+
+	return delegations, nil
+}
+
+func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
+	var delegations []*btcstakingtypes.BTCDelegation
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
+
+	for {
+		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+			ValBtcPkHex: valBtcPk.MarshalHex(),
+			DelStatus:   btcstakingtypes.BTCDelegationStatus_ACTIVE,
+			Pagination:  pagination,
+		}
+		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC delegations")
+		}
+		delegations = append(delegations, res.BtcDelegations...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
 
 	return delegations, nil
 }

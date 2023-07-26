@@ -19,7 +19,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	for {
 		select {
 		case <-jurySigTicker.C:
-			dels, err := app.getPendingDelegationsForAll()
+			dels, err := app.GetPendingDelegationsForAll()
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,

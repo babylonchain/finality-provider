@@ -5,7 +5,6 @@ package e2etest
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+// bitcoin params used for testing
 var (
 	eventuallyWaitTimeOut = 10 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
@@ -94,49 +94,10 @@ func TestPoller(t *testing.T) {
 }
 
 func TestValidatorLifeCycle(t *testing.T) {
-	tDir, err := TempDirWithName("valtest")
-	require.NoError(t, err)
-	defer func() {
-		err = os.RemoveAll(tDir)
-		require.NoError(t, err)
-	}()
+	tm := StartManager(t, false)
+	defer tm.Stop(t)
 
-	handler, err := NewBabylonNodeHandler()
-	require.NoError(t, err)
-
-	err = handler.Start()
-	require.NoError(t, err)
-
-	defaultConfig := valcfg.DefaultConfig()
-	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
-	// need to use this one to send otherwise we will have account sequence mismatch
-	// errors
-	defaultConfig.BabylonConfig.Key = "test-spending-key"
-
-	// Big adjustment to make sure we have enough gas in our transactions
-	defaultConfig.BabylonConfig.GasAdjustment = 3.0
-
-	defaultConfig.DatabaseConfig.Path = filepath.Join(tDir, "valtest.db")
-
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
-	logger.Out = os.Stdout
-
-	bc, err := babylonclient.NewBabylonController(defaultConfig.BabylonConfig, logger)
-	require.NoError(t, err)
-
-	app, err := service.NewValidatorAppFromConfig(&defaultConfig, logger, bc)
-	require.NoError(t, err)
-
-	err = app.Start()
-	require.NoError(t, err)
-
-	defer func() {
-		// stop the app first as otherwise it depends on Babylon handler
-		app.Stop()
-		handler.Stop()
-	}()
-
+	app := tm.Va
 	newValName := "testingValidator"
 	valResult, err := app.CreateValidator(newValName)
 	require.NoError(t, err)
@@ -158,6 +119,43 @@ func TestValidatorLifeCycle(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return int(defaultConfig.NumPubRand) == len(randParis)
+		return int(tm.Config.NumPubRand) == len(randParis)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func TestJurySigSubmission(t *testing.T) {
+	tm := StartManager(t, true)
+	defer tm.Stop(t)
+
+	app := tm.Va
+	newValName := "testingValidator"
+	valResult, err := app.CreateValidator(newValName)
+	require.NoError(t, err)
+
+	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+
+	require.Equal(t, newValName, validator.KeyName)
+
+	_, err = app.RegisterValidator(validator.KeyName)
+	require.NoError(t, err)
+
+	// send BTC delegation
+	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK())
+
+	require.Eventually(t, func() bool {
+		dels, err := app.GetPendingDelegationsForAll()
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	require.Eventually(t, func() bool {
+		dels, err := tm.BabylonClient.QueryActiveBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
