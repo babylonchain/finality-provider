@@ -149,8 +149,7 @@ func TestJurySigSubmission(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return len(dels) == 1
-		// return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
+		return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	require.Eventually(t, func() bool {
