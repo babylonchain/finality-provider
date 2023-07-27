@@ -41,6 +41,13 @@ func TempDirWithName(name string) (string, error) {
 }
 
 func TestPoller(t *testing.T) {
+	tDir, err := TempDirWithName("valtest")
+	require.NoError(t, err)
+	defer func() {
+		err = os.RemoveAll(tDir)
+		require.NoError(t, err)
+	}()
+
 	handler, err := NewBabylonNodeHandler()
 	require.NoError(t, err)
 
@@ -57,7 +64,7 @@ func TestPoller(t *testing.T) {
 	logger.Out = os.Stdout
 	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
 
-	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
+	bc, err := babylonclient.NewBabylonController(tDir, &defaultConfig, logger)
 	require.NoError(t, err)
 
 	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
@@ -108,7 +115,8 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.NoError(t, err)
 
 	defaultConfig := valcfg.DefaultConfig()
-	defaultConfig.BabylonConfig.KeyDirectory = handler.GetNodeDataDir()
+	nodeDataDir := handler.GetNodeDataDir()
+	defaultConfig.BabylonConfig.KeyDirectory = nodeDataDir
 	// need to use this one to send otherwise we will have account sequence mismatch
 	// errors
 	defaultConfig.BabylonConfig.Key = "test-spending-key"
@@ -122,7 +130,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
 
-	bc, err := babylonclient.NewBabylonController(defaultConfig.BabylonConfig, logger)
+	bc, err := babylonclient.NewBabylonController(tDir, defaultConfig.BabylonConfig, logger)
 	require.NoError(t, err)
 
 	app, err := service.NewValidatorAppFromConfig(&defaultConfig, logger, bc)

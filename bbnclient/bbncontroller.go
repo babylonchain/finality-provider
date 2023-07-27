@@ -3,25 +3,24 @@ package babylonclient
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"os"
 	"time"
 
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	"github.com/babylonchain/rpc-client/client"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
+	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/sirupsen/logrus"
-	lensquery "github.com/strangelove-ventures/lens/client/query"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
-	"google.golang.org/grpc/metadata"
 
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -29,25 +28,50 @@ import (
 var _ BabylonClient = &BabylonController{}
 
 type BabylonController struct {
-	rpcClient *client.Client
-	logger    *logrus.Logger
-	timeout   time.Duration
+	provider *cosmos.CosmosProvider
+	logger   *logrus.Logger
+	timeout  time.Duration
+}
+
+func newRootLogger(format string, debug bool) (*zap.Logger, error) {
+	config := zap.NewProductionEncoderConfig()
+	config.EncodeTime = func(ts time.Time, encoder zapcore.PrimitiveArrayEncoder) {
+		encoder.AppendString(ts.UTC().Format("2006-01-02T15:04:05.000000Z07:00"))
+	}
+	config.LevelKey = "lvl"
+
+	var enc zapcore.Encoder
+	switch format {
+	case "json":
+		enc = zapcore.NewJSONEncoder(config)
+	case "auto", "console":
+		enc = zapcore.NewConsoleEncoder(config)
+	case "logfmt":
+		enc = zaplogfmt.NewEncoder(config)
+	default:
+		return nil, fmt.Errorf("unrecognized log format %q", format)
+	}
+
+	level := zap.InfoLevel
+	if debug {
+		level = zap.DebugLevel
+	}
+	return zap.New(zapcore.NewCore(
+		enc,
+		os.Stderr,
+		level,
+	)), nil
 }
 
 func NewBabylonController(
+	homedir string,
 	cfg *valcfg.BBNConfig,
 	logger *logrus.Logger,
 ) (*BabylonController, error) {
-	babylonConfig := valcfg.BBNConfigToBabylonConfig(cfg)
 
-	// TODO should be validated earlier
-	if err := babylonConfig.Validate(); err != nil {
-		return nil, err
-	}
-	// create a Tendermint/Cosmos client for Babylon
-	rpcClient, err := client.New(&babylonConfig)
+	zapLogger, err := newRootLogger("console", true)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create Babylon rpc client: %w", err)
+		return nil, err
 	}
 
 	// HACK: replace the modules in public rpc-client to add BTC staking / finality modules
@@ -57,19 +81,47 @@ func NewBabylonController(
 	for _, mbasic := range bbnapp.ModuleBasics {
 		moduleBasics = append(moduleBasics, mbasic)
 	}
-	rpcClient.Config.Modules = moduleBasics
+
+	cosmosConfig := valcfg.BBNConfigToCosmosProviderConfig(cfg)
+
+	cosmosConfig.Modules = moduleBasics
+
+	provider, err := cosmosConfig.NewProvider(
+		zapLogger,
+		homedir,
+		true,
+		"babylon",
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cp := provider.(*cosmos.CosmosProvider)
+
+	cp.PCfg.KeyDirectory = cfg.KeyDirectory
+	// Need to override this manually as otherwise oprion from config is ignored
+	cp.Cdc = cosmos.MakeCodec(moduleBasics, []string{})
+
+	err = cp.Init(context.Background())
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &BabylonController{
-		rpcClient,
+		cp,
 		logger,
 		cfg.Timeout,
 	}, nil
 }
 
 func (bc *BabylonController) MustGetTxSigner() string {
-	signer := bc.rpcClient.MustGetAddr()
-	prefix := bc.rpcClient.GetConfig().AccountPrefix
-	return sdk.MustBech32ifyAddressBytes(prefix, signer)
+	address, err := bc.provider.Address()
+	if err != nil {
+		panic(err)
+	}
+	return address
 }
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
@@ -82,7 +134,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 		Pop:       pop,
 	}
 
-	res, err := bc.rpcClient.SendMsg(context.Background(), registerMsg, "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(registerMsg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +153,7 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 		Sig:         sig,
 	}
 
-	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +171,7 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 		Sig:    sig,
 	}
 
-	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +189,7 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 		FinalitySig:         sig,
 	}
 
-	res, err := bc.rpcClient.SendMsg(context.Background(), msg, "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +203,8 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.rpcClient.QueryClient.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
 	// query the last committed public randomness
@@ -188,7 +241,9 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
-	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryPendingBTCDelegationsRequest{}
@@ -206,7 +261,9 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
 
-	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryBTCValidatorPowerAtHeightRequest{
@@ -222,7 +279,10 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 }
 
 func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
-	status, err := bc.rpcClient.QueryClient.GetStatus()
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	status, err := bc.provider.QueryStatus(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -231,16 +291,13 @@ func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
 }
 
 func getQueryContext(timeout time.Duration) (context.Context, context.CancelFunc) {
-	defaultOptions := lensquery.DefaultOptions()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	strHeight := strconv.Itoa(int(defaultOptions.Height))
-	ctx = metadata.AppendToOutgoingContext(ctx, grpctypes.GRPCBlockHeightHeader, strHeight)
 	return ctx, cancel
 }
 
 func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, error) {
 	ctx, cancel := getQueryContext(bc.timeout)
-	headerResp, err := bc.rpcClient.ChainClient.RPCClient.Header(ctx, &height)
+	headerResp, err := bc.provider.RPCClient.Header(ctx, &height)
 	defer cancel()
 
 	if err != nil {
@@ -255,7 +312,7 @@ func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, er
 func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
 	ctx, cancel := getQueryContext(bc.timeout)
 	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := bc.rpcClient.ChainClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	chainInfo, err := bc.provider.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
 	if err != nil {

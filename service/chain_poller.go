@@ -227,6 +227,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 
 		select {
 		case <-ticker.C:
+			ticker.Reset(cp.cfg.PollInterval)
 		case <-cp.quit:
 			return
 		}
