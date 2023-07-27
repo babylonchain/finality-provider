@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/avast/retry-go/v4 v4.3.3
-	github.com/babylonchain/babylon v0.7.1
+	github.com/babylonchain/babylon v0.7.2
 	github.com/babylonchain/rpc-client v0.7.0
 	github.com/btcsuite/btcd v0.23.5-0.20230228185050-38331963bddd
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
@@ -296,7 +296,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230724085949-744ada452cc6
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20230725104825-74890fa0abea
 	github.com/cosmos/ibc-go/v7 => github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
