@@ -19,6 +19,8 @@ import (
 
 // bitcoin params used for testing
 var (
+	stakingTime           = uint16(7)
+	stakingAmount         = int64(20000)
 	eventuallyWaitTimeOut = 10 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
@@ -41,10 +43,9 @@ func TempDirWithName(name string) (string, error) {
 }
 
 func TestPoller(t *testing.T) {
-	handler, err := NewBabylonNodeHandler()
-	require.NoError(t, err)
+	handler := NewBabylonNodeHandler(t)
 
-	err = handler.Start()
+	err := handler.Start()
 	require.NoError(t, err)
 	defer handler.Stop()
 
@@ -141,7 +142,7 @@ func TestJurySigSubmission(t *testing.T) {
 	require.NoError(t, err)
 
 	// send BTC delegation
-	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK())
+	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
 
 	require.Eventually(t, func() bool {
 		dels, err := app.GetPendingDelegationsForAll()

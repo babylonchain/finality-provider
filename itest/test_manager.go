@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/babylonchain/babylon/types"
@@ -26,8 +27,6 @@ var (
 	// methods of generating keys i.e with each started btcd node we increment this number
 	// by 1, and then use hdSeed || numTestInstances as the seed for generating keys
 	NumTestInstances = 0
-	StakingTime      = 7
-	StakingAmount    = 10000
 )
 
 type TestManager struct {
@@ -42,8 +41,6 @@ type TestDelegationData struct {
 	DelegatorKey            *btcec.PublicKey
 	DelegatorBabylonPrivKey *secp256k1.PrivKey
 	DelegatorBabylonKey     *secp256k1.PubKey
-	JuryPrivKey             *btcec.PrivateKey
-	JuryKey                 *btcec.PublicKey
 	StakingTx               *bstypes.StakingTx
 	SlashingTx              *bstypes.BTCSlashingTx
 	StakingTxInfo           *btcctypes.TransactionInfo
@@ -55,10 +52,9 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T, isJury bool) *TestManager {
-	bh, err := NewBabylonNodeHandler()
-	require.NoError(t, err)
+	bh := NewBabylonNodeHandler(t)
 
-	err = bh.Start()
+	err := bh.Start()
 	require.NoError(t, err)
 
 	logger := logrus.New()
@@ -101,36 +97,43 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey) *TestDelegationData {
-	delegatorPrivKey, err := btcec.NewPrivateKey()
-	require.NoError(t, err)
-	delBabylonPrivKey := secp256k1.GenPrivKey()
-	delBabylonPubKey := delBabylonPrivKey.PubKey()
-	pop, err := bstypes.NewPoP(delBabylonPrivKey, delegatorPrivKey)
-	require.NoError(t, err)
-	juryPrivKey, err := btcec.NewPrivateKey()
+func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// get Jury public key
+	juryPk, err := tm.Va.GetJuryPk()
 	require.NoError(t, err)
 
-	r := rand.New(rand.NewSource(1))
-	slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
+	// delegator BTC key pairs, staking tx and slashing tx
+	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(
-		r, delegatorPrivKey, valBtcPk, juryPrivKey.PubKey(), uint16(StakingTime), int64(StakingAmount), slashingAddr)
+		r, delBtcPrivKey, valBtcPk, juryPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
 	require.NoError(t, err)
 
-	// generate staking tx info
+	// get msgTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
+
+	// delegator Babylon key pairs
+	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
+	require.NoError(t, err)
+
+	// proof-of-possession
+	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
+	require.NoError(t, err)
+
+	// staking tx info
 	prevBlock, _ := datagen.GenRandomBtcdBlock(r, 0, nil)
 	btcHeaderWithProof := datagen.CreateBlockWithTransaction(r, &prevBlock.Header, stakingMsgTx)
 	btcHeader := btcHeaderWithProof.HeaderBytes
 	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, stakingTx.Tx, btcHeaderWithProof.SpvProof.MerkleNodes)
 
-	// generate proper delegator sig
+	// delegator sig
 	delegatorSig, err := slashingTx.Sign(
 		stakingMsgTx,
 		stakingTx.StakingScript,
-		delegatorPrivKey,
+		delBtcPrivKey,
 		&chaincfg.SimNetParams,
 	)
 	require.NoError(t, err)
@@ -140,19 +143,17 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 
 	return &TestDelegationData{
-		DelegatorPrivKey:        delegatorPrivKey,
-		DelegatorKey:            delegatorPrivKey.PubKey(),
-		DelegatorBabylonPrivKey: delBabylonPrivKey,
+		DelegatorPrivKey:        delBtcPrivKey,
+		DelegatorKey:            delBtcPubKey,
+		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
 		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		JuryPrivKey:             juryPrivKey,
-		JuryKey:                 juryPrivKey.PubKey(),
 		StakingTx:               stakingTx,
 		SlashingTx:              slashingTx,
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
-		SlashingAddr:            slashingAddr,
-		StakingTime:             uint16(StakingTime),
-		StakingAmount:           int64(StakingAmount),
+		SlashingAddr:            tm.BabylonHandler.GetSlashingAddress(),
+		StakingTime:             stakingTime,
+		StakingAmount:           stakingAmount,
 	}
 }
 

@@ -102,6 +102,14 @@ func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
+func (app *ValidatorApp) GetJuryPk() (*btcec.PublicKey, error) {
+	juryPrivKey, err := app.getJuryPrivKey()
+	if err != nil {
+		return nil, err
+	}
+	return juryPrivKey.PubKey(), nil
+}
+
 func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
 	header, err := app.bc.QueryBestHeader()
 	if err != nil {
