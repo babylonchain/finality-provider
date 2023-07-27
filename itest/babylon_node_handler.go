@@ -2,7 +2,6 @@ package e2etest
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/babylonchain/babylon/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/service"
@@ -129,11 +129,6 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	testDir, err := baseDir()
 	require.NoError(t, err)
 
-	defer func() {
-		err = os.RemoveAll(testDir)
-		require.NoError(t, err)
-	}()
-
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
 
 	// the Jury key needs to be created before babylond is started
@@ -152,6 +147,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	require.NoError(t, err)
 	juryPk, err := krController.CreateJuryKey()
 	require.NoError(t, err)
+	juryPkBip340 := types.NewBIP340PubKeyFromBTCPK(juryPk)
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 
@@ -165,13 +161,16 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 		"--chain-id=chain-test",
 		"--additional-sender-account",
 		fmt.Sprintf("--slashing-address=%s", slashingAddr),
-		fmt.Sprintf("--jury-pk=%s", hex.EncodeToString(juryPk.SerializeCompressed())),
+		fmt.Sprintf("--jury-pk=%s", juryPkBip340.MarshalHex()),
 	)
 
 	var stderr bytes.Buffer
 	initTestnetCmd.Stderr = &stderr
 
 	err = initTestnetCmd.Run()
+	if err != nil {
+		fmt.Printf("init testnet failed: %s \n", stderr.String())
+	}
 	require.NoError(t, err)
 
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))

@@ -9,6 +9,7 @@ import (
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
@@ -146,6 +147,7 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	return []byte(res.TxHash), nil
 }
 
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
 	pop *btcstakingtypes.ProofOfPossession,
@@ -169,7 +171,30 @@ func (bc *BabylonController) CreateBTCDelegation(
 		return nil, err
 	}
 
+	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
 	return []byte(res.TxHash), nil
+}
+
+// Insert BTC block header using rpc client
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*sdk.TxResponse, error) {
+	// convert to []sdk.Msg type
+	imsgs := []sdk.Msg{}
+	for _, h := range headers {
+		msg := btclctypes.MsgInsertHeader{
+			Signer: bc.MustGetTxSigner(),
+			Header: h,
+		}
+
+		imsgs = append(imsgs, &msg)
+	}
+
+	res, err := bc.rpcClient.SendMsgs(context.Background(), imsgs, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // Note: the following queries are only for PoC
@@ -228,6 +253,22 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	return delegations, nil
 }
 
+func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	queryClient := btclctypes.NewQueryClient(bc.rpcClient)
+
+	queryRequest := &btclctypes.QueryTipRequest{}
+	res, err := queryClient.Tip(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC tip")
+	}
+
+	return res.Header, nil
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 	pagination := &sdkquery.PageRequest{
@@ -243,6 +284,39 @@ func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.
 		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
 			ValBtcPkHex: valBtcPk.MarshalHex(),
 			DelStatus:   btcstakingtypes.BTCDelegationStatus_ACTIVE,
+			Pagination:  pagination,
+		}
+		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC delegations")
+		}
+		delegations = append(delegations, res.BtcDelegations...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return delegations, nil
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
+func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
+	var delegations []*btcstakingtypes.BTCDelegation
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
+
+	for {
+		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+			ValBtcPkHex: valBtcPk.MarshalHex(),
+			DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
 			Pagination:  pagination,
 		}
 		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)

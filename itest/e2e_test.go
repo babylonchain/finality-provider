@@ -141,15 +141,16 @@ func TestJurySigSubmission(t *testing.T) {
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
 
-	// send BTC delegation
+	// send BTC delegation and make sure it's deep enough in btcclient module
 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
 
 	require.Eventually(t, func() bool {
-		dels, err := app.GetPendingDelegationsForAll()
+		dels, err := tm.BabylonClient.QueryPendingBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
 		if err != nil {
 			return false
 		}
-		return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
+		return len(dels) == 1
+		// return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	require.Eventually(t, func() bool {

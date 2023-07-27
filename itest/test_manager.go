@@ -10,6 +10,7 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -26,7 +27,8 @@ var (
 	// current number of active test nodes. This is necessary to replicate btcd rpctest.Harness
 	// methods of generating keys i.e with each started btcd node we increment this number
 	// by 1, and then use hdSeed || numTestInstances as the seed for generating keys
-	NumTestInstances = 0
+	NumTestInstances         = 0
+	retargetAdjustmentFactor = 4
 )
 
 type TestManager struct {
@@ -123,11 +125,29 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
 	require.NoError(t, err)
 
-	// staking tx info
-	prevBlock, _ := datagen.GenRandomBtcdBlock(r, 0, nil)
-	btcHeaderWithProof := datagen.CreateBlockWithTransaction(r, &prevBlock.Header, stakingMsgTx)
-	btcHeader := btcHeaderWithProof.HeaderBytes
-	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, stakingTx.Tx, btcHeaderWithProof.SpvProof.MerkleNodes)
+	// create and insert BTC headers which include the staking tx to get staking tx info
+	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), stakingMsgTx)
+	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
+	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
+		Header: &blockWithStakingTx.HeaderBytes,
+		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
+		Height: currentBtcTip.Height + 1,
+		Work:   &accumulatedWork,
+	}
+	headers := make([]*types.BTCHeaderBytes, 0)
+	headers = append(headers, &blockWithStakingTx.HeaderBytes)
+	for i := 0; i < int(stakingTime); i++ {
+		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
+		headers = append(headers, headerInfo.Header)
+		parentBlockHeaderInfo = headerInfo
+	}
+	_, err = tm.BabylonClient.InsertBtcBlockHeaders(headers)
+	require.NoError(t, err)
+	btcHeader := blockWithStakingTx.HeaderBytes
+	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, stakingTx.Tx, blockWithStakingTx.SpvProof.MerkleNodes)
 
 	// delegator sig
 	delegatorSig, err := slashingTx.Sign(
