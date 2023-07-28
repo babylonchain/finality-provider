@@ -68,7 +68,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isJury)
 
-	bl, err := babylonclient.NewBabylonController(cfg.BabylonConfig, logger)
+	bl, err := babylonclient.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bl)

@@ -59,7 +59,7 @@ func TestPoller(t *testing.T) {
 	logger.Out = os.Stdout
 	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
 
-	bc, err := babylonclient.NewBabylonController(&defaultConfig, logger)
+	bc, err := babylonclient.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
 	require.NoError(t, err)
 
 	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
