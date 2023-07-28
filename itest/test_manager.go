@@ -23,13 +23,6 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
-var (
-	// current number of active test nodes. This is necessary to replicate btcd rpctest.Harness
-	// methods of generating keys i.e with each started btcd node we increment this number
-	// by 1, and then use hdSeed || numTestInstances as the seed for generating keys
-	NumTestInstances = 0
-)
-
 type TestManager struct {
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
@@ -76,8 +69,6 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 
 	err = valApp.Start()
 	require.NoError(t, err)
-
-	NumTestInstances++
 
 	return &TestManager{
 		BabylonHandler: bh,
