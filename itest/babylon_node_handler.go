@@ -8,6 +8,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"testing"
+
+	"github.com/babylonchain/babylon/types"
+	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/val"
 )
 
 func baseDir() (string, error) {
@@ -28,15 +35,19 @@ func baseDir() (string, error) {
 }
 
 type babylonNode struct {
-	cmd     *exec.Cmd
-	pidFile string
-	dataDir string
+	cmd          *exec.Cmd
+	pidFile      string
+	dataDir      string
+	juryKeyName  string
+	slashingAddr string
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd) *babylonNode {
+func newBabylonNode(dataDir string, cmd *exec.Cmd, juryKeyName, slashingAddr string) *babylonNode {
 	return &babylonNode{
-		dataDir: dataDir,
-		cmd:     cmd,
+		dataDir:      dataDir,
+		cmd:          cmd,
+		juryKeyName:  juryKeyName,
+		slashingAddr: slashingAddr,
 	}
 }
 
@@ -114,11 +125,37 @@ type BabylonNodeHandler struct {
 	babylonNode *babylonNode
 }
 
-func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
+func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	testDir, err := baseDir()
-	if err != nil {
-		return nil, err
-	}
+	require.NoError(t, err)
+	defer func() {
+		if err != nil {
+			err := os.RemoveAll(testDir)
+			require.NoError(t, err)
+		}
+	}()
+
+	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
+
+	// the Jury key needs to be created before babylond is started
+	chainID := "chain-test"
+	sdkCtx, err := service.CreateClientCtx(
+		nodeDataDir,
+		chainID,
+	)
+	require.NoError(t, err)
+	juryKeyName := "jury-key"
+	krController, err := val.NewKeyringController(
+		sdkCtx,
+		juryKeyName,
+		"test",
+	)
+	require.NoError(t, err)
+	juryPk, err := krController.CreateJuryKey()
+	require.NoError(t, err)
+	juryPkBip340 := types.NewBIP340PubKeyFromBTCPK(juryPk)
+
+	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 
 	initTestnetCmd := exec.Command(
 		"babylond",
@@ -129,27 +166,21 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 		"--keyring-backend=test",
 		"--chain-id=chain-test",
 		"--additional-sender-account",
+		fmt.Sprintf("--slashing-address=%s", slashingAddr),
+		fmt.Sprintf("--jury-pk=%s", juryPkBip340.MarshalHex()),
 	)
 
 	var stderr bytes.Buffer
 	initTestnetCmd.Stderr = &stderr
 
 	err = initTestnetCmd.Run()
-
 	if err != nil {
-		// remove the testDir if this fails
-		_ = os.RemoveAll(testDir)
-		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
-		return nil, err
+		fmt.Printf("init testnet failed: %s \n", stderr.String())
 	}
-
-	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
+	require.NoError(t, err)
 
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
-
-	if err != nil {
-		return nil, err
-	}
+	require.NoError(t, err)
 
 	startCmd := exec.Command(
 		"babylond",
@@ -161,8 +192,8 @@ func NewBabylonNodeHandler() (*BabylonNodeHandler, error) {
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd),
-	}, nil
+		babylonNode: newBabylonNode(testDir, startCmd, juryKeyName, slashingAddr),
+	}
 }
 
 func (w *BabylonNodeHandler) Start() error {
@@ -185,4 +216,12 @@ func (w *BabylonNodeHandler) Stop() error {
 func (w *BabylonNodeHandler) GetNodeDataDir() string {
 	dir := filepath.Join(w.babylonNode.dataDir, "node0", "babylond")
 	return dir
+}
+
+func (w *BabylonNodeHandler) GetJuryKeyName() string {
+	return w.babylonNode.juryKeyName
+}
+
+func (w *BabylonNodeHandler) GetSlashingAddress() string {
+	return w.babylonNode.slashingAddr
 }

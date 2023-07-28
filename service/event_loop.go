@@ -19,12 +19,15 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	for {
 		select {
 		case <-jurySigTicker.C:
-			dels, err := app.getPendingDelegationsForAll()
+			dels, err := app.GetPendingDelegationsForAll()
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
 				}).Error("failed to get pending delegations")
 				continue
+			}
+			if len(dels) == 0 {
+				app.logger.WithFields(logrus.Fields{}).Debug("no pending delegations are found")
 			}
 
 			for _, d := range dels {
@@ -259,8 +262,8 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			}
 
 			app.logger.WithFields(logrus.Fields{
-				"bbnPk":  req.bbnPubKey,
-				"txHash": hex.EncodeToString(txHash),
+				"bbnPk":  hex.EncodeToString(req.bbnPubKey.Key),
+				"txHash": string(txHash),
 			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
@@ -285,7 +288,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			app.logger.WithFields(logrus.Fields{
 				"btcPk":  req.valBtcPk.MarshalHex(),
-				"txHash": hex.EncodeToString(txHash),
+				"txHash": string(txHash),
 			}).Info("successfully committed public rand list on babylon")
 
 			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
@@ -315,7 +318,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			app.logger.WithFields(logrus.Fields{
 				"delBtcPk":     req.delBtcPk.MarshalHex(),
 				"valBtcPubKey": req.valBtcPk.MarshalHex(),
-				"txHash":       hex.EncodeToString(txHash),
+				"txHash":       string(txHash),
 			}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
 
 			app.jurySigAddedEventChan <- &jurySigAddedEvent{

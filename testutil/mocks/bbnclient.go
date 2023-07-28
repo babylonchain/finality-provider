@@ -9,6 +9,7 @@ import (
 
 	types "github.com/babylonchain/babylon/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
+	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	gomock "github.com/golang/mock/gomock"
@@ -50,6 +51,21 @@ func (m *MockBabylonClient) CommitPubRandList(btcPubKey *types.BIP340PubKey, sta
 func (mr *MockBabylonClientMockRecorder) CommitPubRandList(btcPubKey, startHeight, pubRandList, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockBabylonClient)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
+}
+
+// GetStakingParams mocks base method.
+func (m *MockBabylonClient) GetStakingParams() (*babylonclient.StakingParams, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStakingParams")
+	ret0, _ := ret[0].(*babylonclient.StakingParams)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStakingParams indicates an expected call of GetStakingParams.
+func (mr *MockBabylonClientMockRecorder) GetStakingParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockBabylonClient)(nil).GetStakingParams))
 }
 
 // QueryBestHeader mocks base method.

@@ -3,11 +3,30 @@ package babylonclient
 import (
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 )
 
+type StakingParams struct {
+	// K-deep
+	ComfirmationTimeBlocks uint32
+	// W-deep
+	FinalizationTimeoutBlocks uint32
+
+	// Minimum amount of satoshis required for slashing transaction
+	MinSlashingTxFeeSat btcutil.Amount
+
+	// Bitcoin public key of the current jury
+	JuryPk *btcec.PublicKey
+
+	// Address to which slashing transactions are sent
+	SlashingAddress string
+}
+
 type BabylonClient interface {
+	GetStakingParams() (*StakingParams, error)
 	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 	// it returns tx hash and error
 	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error)

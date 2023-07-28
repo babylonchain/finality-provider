@@ -102,6 +102,14 @@ func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
 }
 
+func (app *ValidatorApp) GetJuryPk() (*btcec.PublicKey, error) {
+	juryPrivKey, err := app.getJuryPrivKey()
+	if err != nil {
+		return nil, err
+	}
+	return juryPrivKey.PubKey(), nil
+}
+
 func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
 	header, err := app.bc.QueryBestHeader()
 	if err != nil {
@@ -374,7 +382,7 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 				"btc_pub_key":           v.MustGetBIP340BTCPK().MarshalHex(),
 				"block_height":          b.Height,
 				"last_committed_height": v.LastCommittedHeight,
-			}).Debug("the validator has sufficient committed randomness")
+			}).Debug("the validator has sufficient committed randomness, skip commitment")
 		}
 	}
 
@@ -492,6 +500,11 @@ func (app *ValidatorApp) Stop() error {
 			stopErr = err
 			return
 		}
+		err = app.vs.Close()
+		if err != nil {
+			stopErr = err
+			return
+		}
 		close(app.quit)
 		app.wg.Wait()
 	})
@@ -597,14 +610,6 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 	}, nil
 }
 
-func (app *ValidatorApp) getPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
-
-	dels, err := app.bc.QueryPendingBTCDelegations()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pending BTC delegations: %w", err)
-	}
-	delegations = append(delegations, dels...)
-
-	return delegations, nil
+func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
+	return app.bc.QueryPendingBTCDelegations()
 }

@@ -8,14 +8,18 @@ import (
 
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
+	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
+	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
+	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
@@ -124,6 +128,39 @@ func (bc *BabylonController) MustGetTxSigner() string {
 	return address
 }
 
+func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	queryCkptClient := btcctypes.NewQueryClient(bc.provider)
+
+	ckptQueryRequest := &btcctypes.QueryParamsRequest{}
+	ckptParamRes, err := queryCkptClient.Params(ctx, ckptQueryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module")
+	}
+
+	queryStakingClient := btcstakingtypes.NewQueryClient(bc.provider)
+	stakingQueryRequest := &btcstakingtypes.QueryParamsRequest{}
+	stakingParamRes, err := queryStakingClient.Params(ctx, stakingQueryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query staking params")
+	}
+	juryPk, err := stakingParamRes.Params.JuryPk.ToBTCPK()
+	if err != nil {
+		return nil, err
+	}
+
+	return &StakingParams{
+		ComfirmationTimeBlocks:    uint32(ckptParamRes.Params.BtcConfirmationDepth),
+		FinalizationTimeoutBlocks: uint32(ckptParamRes.Params.CheckpointFinalizationTimeout),
+		// TODO: Currently hardcoded on babylon level.
+		MinSlashingTxFeeSat: btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
+		JuryPk:              juryPk,
+		SlashingAddress:     stakingParamRes.Params.SlashingAddress,
+	}, nil
+}
+
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {
@@ -197,6 +234,57 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	return []byte(res.TxHash), nil
 }
 
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
+func (bc *BabylonController) CreateBTCDelegation(
+	delBabylonPk *secp256k1.PubKey,
+	pop *btcstakingtypes.ProofOfPossession,
+	stakingTx *btcstakingtypes.StakingTx,
+	stakingTxInfo *btcctypes.TransactionInfo,
+	slashingTx *btcstakingtypes.BTCSlashingTx,
+	delSig *types.BIP340Signature,
+) ([]byte, error) {
+	msg := &btcstakingtypes.MsgCreateBTCDelegation{
+		Signer:        bc.MustGetTxSigner(),
+		BabylonPk:     delBabylonPk,
+		Pop:           pop,
+		StakingTx:     stakingTx,
+		StakingTxInfo: stakingTxInfo,
+		SlashingTx:    slashingTx,
+		DelegatorSig:  delSig,
+	}
+
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	if err != nil {
+		return nil, err
+	}
+
+	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
+	return []byte(res.TxHash), nil
+}
+
+// Insert BTC block header using rpc client
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) ([]byte, error) {
+	// convert to []sdk.Msg type
+	imsgs := []pv.RelayerMessage{}
+	for _, h := range headers {
+		msg := cosmos.NewCosmosMessage(
+			&btclctypes.MsgInsertHeader{
+				Signer: bc.MustGetTxSigner(),
+				Header: h,
+			})
+
+		imsgs = append(imsgs, msg)
+	}
+
+	res, _, err := bc.provider.SendMessages(context.Background(), imsgs, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(res.TxHash), nil
+}
+
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
 func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
@@ -252,6 +340,126 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 		return nil, fmt.Errorf("failed to query BTC delegations")
 	}
 	delegations = append(delegations, res.BtcDelegations...)
+
+	return delegations, nil
+}
+
+// QueryValidators queries BTC validators
+func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator, error) {
+	var validators []*btcstakingtypes.BTCValidator
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	for {
+		queryRequest := &btcstakingtypes.QueryBTCValidatorsRequest{
+			Pagination: pagination,
+		}
+		res, err := queryClient.BTCValidators(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC validators")
+		}
+		validators = append(validators, res.BtcValidators...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return validators, nil
+}
+
+func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btclctypes.NewQueryClient(clientCtx)
+
+	queryRequest := &btclctypes.QueryTipRequest{}
+	res, err := queryClient.Tip(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC tip")
+	}
+
+	return res.Header, nil
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
+func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
+	var delegations []*btcstakingtypes.BTCDelegation
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	for {
+		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+			ValBtcPkHex: valBtcPk.MarshalHex(),
+			DelStatus:   btcstakingtypes.BTCDelegationStatus_ACTIVE,
+			Pagination:  pagination,
+		}
+		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC delegations")
+		}
+		delegations = append(delegations, res.BtcDelegations...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return delegations, nil
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
+func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
+	var delegations []*btcstakingtypes.BTCDelegation
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	for {
+		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+			ValBtcPkHex: valBtcPk.MarshalHex(),
+			DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
+			Pagination:  pagination,
+		}
+		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC delegations")
+		}
+		delegations = append(delegations, res.BtcDelegations...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
 
 	return delegations, nil
 }
