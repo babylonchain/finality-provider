@@ -104,6 +104,7 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 		juryPrivKey,
 		&tm.Config.JuryModeConfig.ActiveNetParams,
 	)
+	require.NoError(t, err)
 
 	txHash, err := tm.BabylonClient.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, jurySig)
 	require.NoError(t, err)
