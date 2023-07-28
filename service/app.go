@@ -504,6 +504,11 @@ func (app *ValidatorApp) Stop() error {
 			stopErr = err
 			return
 		}
+		err = app.bc.Close()
+		if err != nil {
+			stopErr = err
+			return
+		}
 		close(app.quit)
 		app.wg.Wait()
 	})

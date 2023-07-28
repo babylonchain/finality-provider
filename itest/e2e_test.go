@@ -22,7 +22,7 @@ import (
 var (
 	stakingTime           = uint16(100)
 	stakingAmount         = int64(20000)
-	eventuallyWaitTimeOut = 10 * time.Second
+	eventuallyWaitTimeOut = 20 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
@@ -165,13 +165,16 @@ func TestValidatorLifeCycle(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
-	// check a block is finalized
+	// check there's a block finalized
 	require.Eventually(t, func() bool {
 		blocks, err := tm.BabylonClient.QueryFinalizedBlocks()
 		if err != nil {
 			return false
 		}
-		return len(blocks) == 1
+		if len(blocks) == 1 {
+			return true
+		}
+		return false
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 

@@ -129,7 +129,7 @@ func (bc *BabylonController) MustGetTxSigner() string {
 }
 
 func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	queryCkptClient := btcctypes.NewQueryClient(bc.provider)
@@ -171,7 +171,9 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 		Pop:       pop,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(registerMsg), "")
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(registerMsg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +192,9 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 		Sig:         sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +212,9 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 		Sig:    sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +232,10 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 		FinalitySig:         sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +262,10 @@ func (bc *BabylonController) CreateBTCDelegation(
 		DelegatorSig:  delSig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +289,10 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 		imsgs = append(imsgs, msg)
 	}
 
-	res, _, err := bc.provider.SendMessages(context.Background(), imsgs, "")
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	res, _, err := bc.provider.SendMessages(ctx, imsgs, "")
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +303,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
 func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -326,7 +341,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -351,7 +366,7 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -378,7 +393,7 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 }
 
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -401,7 +416,7 @@ func (bc *BabylonController) QueryFinalizedBlocks() ([]*finalitytypes.IndexedBlo
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -435,7 +450,7 @@ func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -470,7 +485,7 @@ func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -500,7 +515,7 @@ func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
 func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -521,7 +536,7 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 }
 
 func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	status, err := bc.provider.QueryStatus(ctx)
@@ -532,13 +547,13 @@ func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
 	return status, nil
 }
 
-func getQueryContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	return ctx, cancel
 }
 
 func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	headerResp, err := bc.provider.RPCClient.Header(ctx, &height)
 	defer cancel()
 
@@ -552,7 +567,7 @@ func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, er
 }
 
 func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := bc.provider.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
@@ -566,4 +581,12 @@ func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
 	return &ctypes.ResultHeader{
 		Header: &chainInfo.BlockMetas[0].Header,
 	}, nil
+}
+
+func (bc *BabylonController) Close() error {
+	if !bc.provider.RPCClient.IsRunning() {
+		return nil
+	}
+
+	return bc.provider.RPCClient.Stop()
 }
