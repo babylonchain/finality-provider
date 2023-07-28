@@ -515,7 +515,7 @@ func (app *ValidatorApp) Stop() error {
 			stopErr = err
 			return
 		}
-		
+
 		// Always stop the submission loop first to not generate addional events and actions
 		app.logger.Debug("Stopping submission loop")
 		close(app.quit)

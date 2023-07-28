@@ -171,9 +171,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 		Pop:       pop,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(registerMsg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(registerMsg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +190,7 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 		Sig:         sig,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -212,9 +208,7 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 		Sig:    sig,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -232,10 +226,7 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 		FinalitySig:         sig,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -262,10 +253,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		DelegatorSig:  delSig,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	res, _, err := bc.provider.SendMessage(ctx, cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
 		return nil, err
 	}
@@ -289,10 +277,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 		imsgs = append(imsgs, msg)
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	res, _, err := bc.provider.SendMessages(ctx, imsgs, "")
+	res, _, err := bc.provider.SendMessages(context.Background(), imsgs, "")
 	if err != nil {
 		return nil, err
 	}
