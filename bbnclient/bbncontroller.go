@@ -74,6 +74,39 @@ func (bc *BabylonController) MustGetTxSigner() string {
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
+func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	queryCkptClient := btcctypes.NewQueryClient(bc.rpcClient)
+
+	ckptQueryRequest := &btcctypes.QueryParamsRequest{}
+	ckptParamRes, err := queryCkptClient.Params(ctx, ckptQueryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module")
+	}
+
+	queryStakingClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
+	stakingQueryRequest := &btcstakingtypes.QueryParamsRequest{}
+	stakingParamRes, err := queryStakingClient.Params(ctx, stakingQueryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query staking params")
+	}
+	juryPk, err := stakingParamRes.Params.JuryPk.ToBTCPK()
+	if err != nil {
+		return nil, err
+	}
+
+	return &StakingParams{
+		ComfirmationTimeBlocks:    uint32(ckptParamRes.Params.BtcConfirmationDepth),
+		FinalizationTimeoutBlocks: uint32(ckptParamRes.Params.CheckpointFinalizationTimeout),
+		// TODO: Currently hardcoded on babylon level.
+		MinSlashingTxFeeSat: 1,
+		JuryPk:              juryPk,
+		SlashingAddress:     stakingParamRes.Params.SlashingAddress,
+	}, nil
+}
+
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error) {

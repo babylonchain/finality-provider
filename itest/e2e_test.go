@@ -116,11 +116,11 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
 	require.Eventually(t, func() bool {
-		randParis, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
+		randPairs, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
 		if err != nil {
 			return false
 		}
-		return int(tm.Config.NumPubRand) == len(randParis)
+		return int(tm.Config.NumPubRand) == len(randPairs)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
@@ -140,6 +140,10 @@ func TestJurySigSubmission(t *testing.T) {
 
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
+
+	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)

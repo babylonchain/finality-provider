@@ -101,9 +101,17 @@ func (tm *TestManager) Stop(t *testing.T) {
 func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	// examine staking params
+	params, err := tm.BabylonClient.GetStakingParams()
+	slashingAddr := params.SlashingAddress
+	require.NoError(t, err)
+	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
+	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
+
 	// get Jury public key
 	juryPk, err := tm.Va.GetJuryPk()
 	require.NoError(t, err)
+	require.True(t, juryPk.IsEqual(params.JuryPk))
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
@@ -138,7 +146,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	}
 	headers := make([]*types.BTCHeaderBytes, 0)
 	headers = append(headers, &blockWithStakingTx.HeaderBytes)
-	for i := 0; i < int(stakingTime); i++ {
+	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
 		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
 		headers = append(headers, headerInfo.Header)
 		parentBlockHeaderInfo = headerInfo
