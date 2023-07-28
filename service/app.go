@@ -13,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	bbncli "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/proto"
@@ -46,7 +47,6 @@ type ValidatorApp struct {
 	registerValidatorRequestChan chan *registerValidatorRequest
 	commitPubRandRequestChan     chan *commitPubRandRequest
 	addJurySigRequestChan        chan *addJurySigRequest
-	addFinalitySigRequestChan    chan *addFinalitySigRequest
 
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
 	pubRandCommittedEventChan    chan *pubRandCommittedEvent
@@ -95,7 +95,6 @@ func NewValidatorAppFromConfig(
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
 		commitPubRandRequestChan:     make(chan *commitPubRandRequest),
 		addJurySigRequestChan:        make(chan *addJurySigRequest),
-		addFinalitySigRequestChan:    make(chan *addFinalitySigRequest),
 		pubRandCommittedEventChan:    make(chan *pubRandCommittedEvent),
 		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
 		jurySigAddedEventChan:        make(chan *jurySigAddedEvent),
@@ -196,7 +195,9 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 		return nil, err
 	}
 
+	var finalitySigRequests []*addFinalitySigRequest
 	// only submit finality signature if the validator has power at the current block height
+	// 1. Fist build all the requests, based on local and babylon data
 	for _, v := range validators {
 		btcPk := v.MustGetBIP340BTCPK()
 		power, err := app.bc.QueryValidatorVotingPower(btcPk, b.Height)
@@ -235,60 +236,117 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			}).Debug("the validator's last voted height should be less than the current block height")
 			continue
 		}
-		txHash, err := app.submitFinalitySignatureForValidator(b, v)
+
+		// build proper finality siganture request
+		privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
 		if err != nil {
-			return nil, fmt.Errorf("failed to submit the finality signature from validator %s to Babylon: %w",
-				v.GetBabylonPkHexString(), err)
+			return nil, err
 		}
-		txHashes = append(txHashes, txHash)
+
+		btcPrivKey, err := app.getBtcPrivKey(v.KeyName)
+		if err != nil {
+			return nil, err
+		}
+
+		msg := &ftypes.MsgAddFinalitySig{
+			ValBtcPk:            v.MustGetBIP340BTCPK(),
+			BlockHeight:         b.Height,
+			BlockLastCommitHash: b.LastCommitHash,
+		}
+		msgToSign := msg.MsgToSign()
+		sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
+		if err != nil {
+			return nil, err
+		}
+		eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
+
+		request := &addFinalitySigRequest{
+			bbnPubKey:           v.GetBabylonPK(),
+			valBtcPk:            v.MustGetBIP340BTCPK(),
+			blockHeight:         b.Height,
+			blockLastCommitHash: b.LastCommitHash,
+			sig:                 eotsSig,
+		}
+
+		finalitySigRequests = append(finalitySigRequests, request)
+	}
+
+	// 2. Then submit all the requests
+	var eg errgroup.Group
+	var responses []*addFinalitySigResponse
+	var mu sync.Mutex
+
+	for _, request := range finalitySigRequests {
+		req := request
+		eg.Go(func() error {
+			txHash, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
+			mu.Lock()
+			defer mu.Unlock()
+
+			// Do not return errors, as errgroup cancels another requests in case of errors.
+			if err != nil {
+				responses = append(responses, &addFinalitySigResponse{
+					txHash:    nil,
+					err:       err,
+					bbnPubKey: req.bbnPubKey,
+				})
+			} else {
+				responses = append(responses, &addFinalitySigResponse{
+					txHash:    txHash,
+					height:    req.blockHeight,
+					err:       nil,
+					bbnPubKey: req.bbnPubKey,
+				})
+			}
+			return nil
+		})
+	}
+
+	// should not happen as we do not return errors from our go routines
+	if err := eg.Wait(); err != nil {
+		app.logger.WithFields(logrus.Fields{}).Fatal("Unexpected error when waiting for finality signature submissions")
+	}
+
+	// 3. Check which requests succeed and bump the LastVotedHeight for each succeed one
+	// report errors for failed ones.
+	for _, response := range responses {
+		res := response
+
+		if res.err != nil {
+			// we got the error, log it and continue.
+			// TODO. this is of course not correct. check issue: https://github.com/babylonchain/btc-validator/issues/34
+			app.logger.WithFields(logrus.Fields{
+				"err":        res.err,
+				"bbn_pk":     res.bbnPubKey,
+				"bbn_height": res.height,
+			}).Error("failed to submit finality signature")
+			continue
+		}
+
+		respChannel := make(chan struct{}, 1)
+
+		app.finalitySigAddedEventChan <- &finalitySigAddedEvent{
+			bbnPubKey: res.bbnPubKey,
+			height:    res.height,
+			txHash:    res.txHash,
+			// pass the channel to the event so that we can send the response to the user which requested
+			// the registration
+			successResponse: respChannel,
+		}
+
+		select {
+		case <-respChannel:
+			app.logger.WithFields(logrus.Fields{
+				"bbn_height": res.height,
+				"bbn_pk":     res.bbnPubKey,
+			}).Debug("successfully updated last voted height in db")
+		case <-app.quit:
+		}
+
+		txHashes = append(txHashes, res.txHash)
 	}
 
 	return txHashes, nil
-}
-
-func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, error) {
-	privRand, err := app.GetCommittedPrivPubRand(validator.BabylonPk, b.Height)
-	if err != nil {
-		return nil, err
-	}
-
-	btcPrivKey, err := app.getBtcPrivKey(validator.KeyName)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := &ftypes.MsgAddFinalitySig{
-		ValBtcPk:            validator.MustGetBIP340BTCPK(),
-		BlockHeight:         b.Height,
-		BlockLastCommitHash: b.LastCommitHash,
-	}
-	msgToSign := msg.MsgToSign()
-	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
-	if err != nil {
-		return nil, err
-	}
-	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
-
-	request := &addFinalitySigRequest{
-		bbnPubKey:           validator.GetBabylonPK(),
-		valBtcPk:            validator.MustGetBIP340BTCPK(),
-		blockHeight:         b.Height,
-		blockLastCommitHash: b.LastCommitHash,
-		sig:                 eotsSig,
-		errResponse:         make(chan error, 1),
-		successResponse:     make(chan *addFinalitySigResponse, 1),
-	}
-
-	app.addFinalitySigRequestChan <- request
-
-	select {
-	case err := <-request.errResponse:
-		return nil, err
-	case successResponse := <-request.successResponse:
-		return successResponse.txHash, nil
-	case <-app.quit:
-		return nil, fmt.Errorf("validator app is shutting down")
-	}
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
