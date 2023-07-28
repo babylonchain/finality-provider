@@ -95,27 +95,30 @@ func TestPoller(t *testing.T) {
 	}
 }
 
+// TestValidatorLifeCycle tests the whole life cycle of a validator
+// creation -> registration -> randomness commitment ->
+// activation with BTC delegation and Jury sig ->
+// vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
 	tm := StartManager(t, false)
 	defer tm.Stop(t)
 
 	app := tm.Va
 	newValName := "testingValidator"
+
+	// create a validator object
 	valResult, err := app.CreateValidator(newValName)
 	require.NoError(t, err)
-
 	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
-
 	require.Equal(t, newValName, validator.KeyName)
 
+	// register the validator to Babylon
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
-
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
-
 	var queriedValidators []*btcstakingtypes.BTCValidator
 	require.Eventually(t, func() bool {
 		queriedValidators, err = tm.BabylonClient.QueryValidators()
@@ -126,6 +129,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	require.True(t, queriedValidators[0].BabylonPk.Equals(validator.GetBabylonPK()))
 
+	// check the public randomness is committed
 	require.Eventually(t, func() bool {
 		randPairs, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
 		if err != nil {
@@ -134,9 +138,10 @@ func TestValidatorLifeCycle(t *testing.T) {
 		return int(tm.Config.NumPubRand) == len(randPairs)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	// send BTC delegation and make sure it's deep enough in btclightclient module
+	// send a BTC delegation
 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
 
+	// check the BTC delegation is pending
 	var dels []*btcstakingtypes.BTCDelegation
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
@@ -147,8 +152,10 @@ func TestValidatorLifeCycle(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
+	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
+	// check the BTC delegation is active
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryActiveBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
 		if err != nil {
@@ -158,6 +165,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
+	// check a block is finalized
 	require.Eventually(t, func() bool {
 		blocks, err := tm.BabylonClient.QueryFinalizedBlocks()
 		if err != nil {
