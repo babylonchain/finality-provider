@@ -611,13 +611,5 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 }
 
 func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
-
-	dels, err := app.bc.QueryPendingBTCDelegations()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pending BTC delegations: %w", err)
-	}
-	delegations = append(delegations, dels...)
-
-	return delegations, nil
+	return app.bc.QueryPendingBTCDelegations()
 }

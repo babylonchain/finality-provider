@@ -157,6 +157,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	)
 	require.NoError(t, err)
 
+	// submit the BTC delegation to Babylon
 	_, err = tm.BabylonClient.CreateBTCDelegation(
 		delBabylonPubKey.(*secp256k1.PubKey), pop, stakingTx, txInfo, slashingTx, delegatorSig)
 	require.NoError(t, err)

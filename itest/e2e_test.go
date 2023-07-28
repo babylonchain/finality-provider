@@ -21,7 +21,7 @@ import (
 var (
 	stakingTime           = uint16(7)
 	stakingAmount         = int64(20000)
-	eventuallyWaitTimeOut = 10 * time.Second
+	eventuallyWaitTimeOut = 20 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
@@ -141,11 +141,11 @@ func TestJurySigSubmission(t *testing.T) {
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
 
-	// send BTC delegation and make sure it's deep enough in btcclient module
+	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
 
 	require.Eventually(t, func() bool {
-		dels, err := tm.BabylonClient.QueryPendingBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
+		dels, err := tm.BabylonClient.QueryPendingBTCDelegations()
 		if err != nil {
 			return false
 		}

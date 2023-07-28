@@ -26,6 +26,9 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 				}).Error("failed to get pending delegations")
 				continue
 			}
+			if len(dels) == 0 {
+				app.logger.WithFields(logrus.Fields{}).Debug("no pending delegations are found")
+			}
 
 			for _, d := range dels {
 				_, err := app.AddJurySignature(d)
@@ -260,7 +263,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			app.logger.WithFields(logrus.Fields{
 				"bbnPk":  req.bbnPubKey,
-				"txHash": hex.EncodeToString(txHash),
+				"txHash": txHash,
 			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
