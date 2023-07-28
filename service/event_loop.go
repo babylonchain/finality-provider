@@ -41,6 +41,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 			}
 
 		case <-app.quit:
+			app.logger.Debug("exiting jurySigSubmissionLoop")
 			return
 		}
 	}
@@ -79,6 +80,7 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 				continue
 			}
 		case <-app.quit:
+			app.logger.Debug("exiting validatorSubmissionLoop")
 			return
 		}
 	}
@@ -86,7 +88,7 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {
-	defer app.wg.Done()
+	defer app.eventWg.Done()
 
 	for {
 		select {
@@ -201,7 +203,8 @@ func (app *ValidatorApp) eventLoop() {
 				txHash: ev.txHash,
 			}
 
-		case <-app.quit:
+		case <-app.eventQuit:
+			app.logger.Debug("exiting main eventLoop")
 			return
 		}
 	}
@@ -214,7 +217,7 @@ func (app *ValidatorApp) eventLoop() {
 // TODO: This could be probably separate component responsible for queuing stuff
 // and sending it to babylon.
 func (app *ValidatorApp) handleSentToBabylonLoop() {
-	defer app.wg.Done()
+	defer app.sentWg.Done()
 	for {
 		select {
 		case req := <-app.addFinalitySigRequestChan:
@@ -329,7 +332,8 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				successResponse: req.successResponse,
 			}
 
-		case <-app.quit:
+		case <-app.sentQuit:
+			app.logger.Debug("exiting sentToBabylonLoop")
 			return
 		}
 	}

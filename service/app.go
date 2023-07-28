@@ -8,7 +8,6 @@ import (
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -25,8 +24,16 @@ import (
 type ValidatorApp struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
-	wg        sync.WaitGroup
-	quit      chan struct{}
+
+	// wg and quit are responsible for submissions go routines
+	wg   sync.WaitGroup
+	quit chan struct{}
+
+	sentWg   sync.WaitGroup
+	sentQuit chan struct{}
+
+	eventWg   sync.WaitGroup
+	eventQuit chan struct{}
 
 	bc     bbncli.BabylonClient
 	kr     keyring.Keyring
@@ -82,6 +89,8 @@ func NewValidatorAppFromConfig(
 		logger:                       logger,
 		poller:                       poller,
 		quit:                         make(chan struct{}),
+		sentQuit:                     make(chan struct{}),
+		eventQuit:                    make(chan struct{}),
 		createValidatorRequestChan:   make(chan *createValidatorRequest),
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
 		commitPubRandRequestChan:     make(chan *commitPubRandRequest),
@@ -161,8 +170,8 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 		bbnPubKey:       bbnPk,
 		btcPubKey:       btcPk,
 		pop:             pop,
-		errResponse:     make(chan error),
-		successResponse: make(chan *registerValidatorResponse),
+		errResponse:     make(chan error, 1),
+		successResponse: make(chan *registerValidatorResponse, 1),
 	}
 
 	app.registerValidatorRequestChan <- request
@@ -266,8 +275,8 @@ func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, valid
 		blockHeight:         b.Height,
 		blockLastCommitHash: b.LastCommitHash,
 		sig:                 eotsSig,
-		errResponse:         make(chan error),
-		successResponse:     make(chan *addFinalitySigResponse),
+		errResponse:         make(chan error, 1),
+		successResponse:     make(chan *addFinalitySigResponse, 1),
 	}
 
 	app.addFinalitySigRequestChan <- request
@@ -317,8 +326,8 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 		valBtcPk:        btcDel.ValBtcPk,
 		delBtcPk:        btcDel.BtcPk,
 		sig:             jurySig,
-		errResponse:     make(chan error),
-		successResponse: make(chan *addJurySigResponse),
+		errResponse:     make(chan error, 1),
+		successResponse: make(chan *addJurySigResponse, 1),
 	}
 
 	app.addJurySigRequestChan <- request
@@ -450,8 +459,8 @@ func (app *ValidatorApp) commitPubRandForValidator(latestBbnBlock *BlockInfo, va
 		valBtcPk:        validator.MustGetBIP340BTCPK(),
 		privRandList:    privRandList,
 		pubRandList:     pubRandList,
-		errResponse:     make(chan error),
-		successResponse: make(chan *commitPubRandResponse),
+		errResponse:     make(chan error, 1),
+		successResponse: make(chan *commitPubRandResponse, 1),
 		sig:             &sig,
 	}
 
@@ -478,9 +487,15 @@ func (app *ValidatorApp) Start() error {
 			return
 		}
 
-		app.wg.Add(3)
-		go app.handleSentToBabylonLoop()
+		app.eventWg.Add(1)
 		go app.eventLoop()
+
+		app.sentWg.Add(1)
+		go app.handleSentToBabylonLoop()
+
+		// Start submission loop last, as at this point both eventLoop and sentToBabylonLoop
+		// are already running
+		app.wg.Add(1)
 		if !app.IsJury() {
 			go app.validatorSubmissionLoop()
 		} else {
@@ -505,8 +520,22 @@ func (app *ValidatorApp) Stop() error {
 			stopErr = err
 			return
 		}
+
+		// Always stop the submission loop first to not generate addional events and actions
+		app.logger.Debug("Stopping submission loop")
 		close(app.quit)
 		app.wg.Wait()
+
+		app.logger.Debug("Sent to Babylon loop stopped")
+		close(app.sentQuit)
+		app.sentWg.Wait()
+
+		app.logger.Debug("Stopping main eventLoop")
+		close(app.eventQuit)
+		app.eventWg.Wait()
+
+		app.logger.Debug("ValidatorApp successfuly stopped")
+
 	})
 	return stopErr
 }
@@ -514,8 +543,8 @@ func (app *ValidatorApp) Stop() error {
 func (app *ValidatorApp) CreateValidator(keyName string) (*CreateValidatorResult, error) {
 	req := &createValidatorRequest{
 		keyName:         keyName,
-		errResponse:     make(chan error),
-		successResponse: make(chan *createValidatorResponse),
+		errResponse:     make(chan error, 1),
+		successResponse: make(chan *createValidatorResponse, 1),
 	}
 
 	app.createValidatorRequestChan <- req
@@ -610,6 +639,6 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 	}, nil
 }
 
-func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
+func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*bstypes.BTCDelegation, error) {
 	return app.bc.QueryPendingBTCDelegations()
 }
