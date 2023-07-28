@@ -133,6 +133,38 @@ func TestValidatorLifeCycle(t *testing.T) {
 		}
 		return int(tm.Config.NumPubRand) == len(randPairs)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// send BTC delegation and make sure it's deep enough in btclightclient module
+	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
+
+	var dels []*btcstakingtypes.BTCDelegation
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	_ = tm.AddJurySignature(t, dels[0])
+
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryActiveBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	require.Eventually(t, func() bool {
+		blocks, err := tm.BabylonClient.QueryFinalizedBlocks()
+		if err != nil {
+			return false
+		}
+		return len(blocks) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
 func TestJurySigSubmission(t *testing.T) {

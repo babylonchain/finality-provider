@@ -8,7 +8,6 @@ import (
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -608,8 +607,4 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		BtcValidatorPk:     *btcPubKey,
 		BabylonValidatorPk: *babylonPubKey,
 	}, nil
-}
-
-func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*btcstakingtypes.BTCDelegation, error) {
-	return app.bc.QueryPendingBTCDelegations()
 }
