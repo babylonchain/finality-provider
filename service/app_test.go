@@ -300,6 +300,7 @@ func prepareMockedBabylonClient(t *testing.T, startingBlock *service.BlockInfo) 
 	}
 	mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 	mockBabylonClient.EXPECT().QueryHeader(int64(startingBlock.Height)).Return(resHeader, nil).AnyTimes()
+	mockBabylonClient.EXPECT().Close().Return(nil).AnyTimes()
 
 	return mockBabylonClient
 }
