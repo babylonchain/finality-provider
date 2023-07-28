@@ -19,9 +19,9 @@ import (
 
 // bitcoin params used for testing
 var (
-	stakingTime           = uint16(7)
+	stakingTime           = uint16(100)
 	stakingAmount         = int64(20000)
-	eventuallyWaitTimeOut = 20 * time.Second
+	eventuallyWaitTimeOut = 10 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
@@ -116,6 +116,14 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
 	require.Eventually(t, func() bool {
+		validators, err := tm.BabylonClient.QueryValidators()
+		if err != nil {
+			return false
+		}
+		return len(validators) == 1 && validators[0].BabylonPk.Equals(validator.GetBabylonPK())
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	require.Eventually(t, func() bool {
 		randPairs, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
 		if err != nil {
 			return false
@@ -144,6 +152,14 @@ func TestJurySigSubmission(t *testing.T) {
 	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
+
+	require.Eventually(t, func() bool {
+		validators, err := tm.BabylonClient.QueryValidators()
+		if err != nil {
+			return false
+		}
+		return len(validators) == 1 && validators[0].BabylonPk.Equals(validator.GetBabylonPK())
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)

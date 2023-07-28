@@ -107,11 +107,9 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
 	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-
-	// get Jury public key
 	juryPk, err := tm.Va.GetJuryPk()
 	require.NoError(t, err)
-	require.True(t, juryPk.IsEqual(params.JuryPk))
+	require.Equal(t, params.JuryPk.SerializeCompressed()[1:], juryPk.SerializeCompressed()[1:])
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
@@ -193,7 +191,7 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	// errors
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
-	cfg.BabylonConfig.GasAdjustment = 3.0
+	cfg.BabylonConfig.GasAdjustment = 5
 	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
 	cfg.JuryMode = isJury
 

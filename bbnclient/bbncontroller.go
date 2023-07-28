@@ -286,6 +286,37 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	return delegations, nil
 }
 
+// QueryValidators queries BTC validators
+func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator, error) {
+	var validators []*btcstakingtypes.BTCValidator
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getQueryContext(bc.timeout)
+	defer cancel()
+
+	queryClient := btcstakingtypes.NewQueryClient(bc.rpcClient)
+
+	for {
+		queryRequest := &btcstakingtypes.QueryBTCValidatorsRequest{
+			Pagination: pagination,
+		}
+		res, err := queryClient.BTCValidators(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query BTC validators")
+		}
+		validators = append(validators, res.BtcValidators...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return validators, nil
+}
+
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
 	ctx, cancel := getQueryContext(bc.timeout)
 	defer cancel()
