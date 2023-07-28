@@ -79,13 +79,13 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
-	err := tm.BabylonHandler.Stop()
-	require.NoError(t, err)
-	err = tm.Va.Stop()
+	err := tm.Va.Stop()
 	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
 	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
+	require.NoError(t, err)
+	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
 }
 
