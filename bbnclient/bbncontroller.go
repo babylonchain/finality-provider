@@ -129,7 +129,7 @@ func (bc *BabylonController) MustGetTxSigner() string {
 }
 
 func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	queryCkptClient := btcctypes.NewQueryClient(bc.provider)
@@ -288,7 +288,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
 func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -326,7 +326,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -351,7 +351,7 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -378,7 +378,7 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 }
 
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -395,13 +395,47 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
+func (bc *BabylonController) QueryFinalizedBlocks() ([]*finalitytypes.IndexedBlock, error) {
+	var blocks []*finalitytypes.IndexedBlock
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	for {
+		queryRequest := &finalitytypes.QueryListBlocksRequest{
+			Status:     finalitytypes.QueriedBlockStatus_FINALIZED,
+			Pagination: pagination,
+		}
+		res, err := queryClient.ListBlocks(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query finalized blocks")
+		}
+		blocks = append(blocks, res.Blocks...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return blocks, nil
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 	pagination := &sdkquery.PageRequest{
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -436,7 +470,7 @@ func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types
 		Limit: 100,
 	}
 
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -466,7 +500,7 @@ func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
 func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
@@ -487,7 +521,7 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 }
 
 func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	status, err := bc.provider.QueryStatus(ctx)
@@ -498,13 +532,13 @@ func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
 	return status, nil
 }
 
-func getQueryContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	return ctx, cancel
 }
 
 func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	headerResp, err := bc.provider.RPCClient.Header(ctx, &height)
 	defer cancel()
 
@@ -518,7 +552,7 @@ func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, er
 }
 
 func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
-	ctx, cancel := getQueryContext(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := bc.provider.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
@@ -532,4 +566,12 @@ func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
 	return &ctypes.ResultHeader{
 		Header: &chainInfo.BlockMetas[0].Header,
 	}, nil
+}
+
+func (bc *BabylonController) Close() error {
+	if !bc.provider.RPCClient.IsRunning() {
+		return nil
+	}
+
+	return bc.provider.RPCClient.Stop()
 }

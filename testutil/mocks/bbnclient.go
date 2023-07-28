@@ -38,6 +38,20 @@ func (m *MockBabylonClient) EXPECT() *MockBabylonClientMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockBabylonClient) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockBabylonClientMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockBabylonClient)(nil).Close))
+}
+
 // CommitPubRandList mocks base method.
 func (m *MockBabylonClient) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
 	m.ctrl.T.Helper()

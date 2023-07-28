@@ -81,12 +81,46 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 func (tm *TestManager) Stop(t *testing.T) {
 	err := tm.Va.Stop()
 	require.NoError(t, err)
-	err = tm.BabylonHandler.Stop()
-	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
 	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
 	require.NoError(t, err)
+	err = tm.BabylonHandler.Stop()
+	require.NoError(t, err)
+}
+
+func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) []byte {
+	slashingTx := btcDel.SlashingTx
+	stakingTx := btcDel.StakingTx
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+	require.NoError(t, err)
+
+	// get Jury private key from the keyring
+	juryPrivKey := tm.GetJuryPrivKey(t)
+
+	jurySig, err := slashingTx.Sign(
+		stakingMsgTx,
+		stakingTx.StakingScript,
+		juryPrivKey,
+		&tm.Config.JuryModeConfig.ActiveNetParams,
+	)
+	require.NoError(t, err)
+
+	txHash, err := tm.BabylonClient.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, jurySig)
+	require.NoError(t, err)
+
+	return txHash
+}
+
+func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
+	kr := tm.Va.GetKeyring()
+	juryKeyName := tm.BabylonHandler.GetJuryKeyName()
+	k, err := kr.Key(juryKeyName)
+	require.NoError(t, err)
+	localKey := k.GetLocal().PrivKey.GetCachedValue()
+	require.IsType(t, &secp256k1.PrivKey{}, localKey)
+	juryPrivKey, _ := btcec.PrivKeyFromBytes(localKey.(*secp256k1.PrivKey).Key)
+	return juryPrivKey
 }
 
 func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {

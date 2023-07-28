@@ -58,4 +58,6 @@ type BabylonClient interface {
 	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
 	// it returns result with nil header
 	QueryBestHeader() (*ctypes.ResultHeader, error)
+
+	Close() error
 }

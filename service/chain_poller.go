@@ -83,13 +83,19 @@ func (cp *ChainPoller) Start() error {
 }
 
 func (cp *ChainPoller) Stop() error {
+	var stopError error
 	cp.stopOnce.Do(func() {
 		cp.logger.Infof("Stopping the chain poller")
+		err := cp.bc.Close()
+		if err != nil {
+			stopError = err
+			return
+		}
 		close(cp.quit)
 		cp.wg.Wait()
 	})
 
-	return nil
+	return stopError
 }
 
 // Return read only channel for incoming blocks

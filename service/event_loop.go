@@ -19,7 +19,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	for {
 		select {
 		case <-jurySigTicker.C:
-			dels, err := app.GetPendingDelegationsForAll()
+			dels, err := app.bc.QueryPendingBTCDelegations()
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
@@ -109,7 +109,7 @@ func (app *ValidatorApp) eventLoop() {
 				// we always check if the validator is in the DB before sending the registration request
 				app.logger.WithFields(logrus.Fields{
 					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("finality signature added validator not found in DB")
+				}).Error("finality signature added validator not found in DB")
 			}
 
 			// update the last_voted_height
