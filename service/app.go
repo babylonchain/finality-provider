@@ -515,11 +515,6 @@ func (app *ValidatorApp) Stop() error {
 			stopErr = err
 			return
 		}
-		err = app.vs.Close()
-		if err != nil {
-			stopErr = err
-			return
-		}
 
 		// Always stop the submission loop first to not generate addional events and actions
 		app.logger.Debug("Stopping submission loop")
@@ -533,6 +528,14 @@ func (app *ValidatorApp) Stop() error {
 		app.logger.Debug("Stopping main eventLoop")
 		close(app.eventQuit)
 		app.eventWg.Wait()
+
+		// Closing db as last to avoid anybody to write do db
+		app.logger.Debug("Stopping data store")
+		err = app.vs.Close()
+		if err != nil {
+			stopErr = err
+			return
+		}
 
 		app.logger.Debug("ValidatorApp successfuly stopped")
 
