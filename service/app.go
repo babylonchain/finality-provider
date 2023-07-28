@@ -382,7 +382,7 @@ func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
 				"btc_pub_key":           v.MustGetBIP340BTCPK().MarshalHex(),
 				"block_height":          b.Height,
 				"last_committed_height": v.LastCommittedHeight,
-			}).Debug("the validator has sufficient committed randomness")
+			}).Debug("the validator has sufficient committed randomness, skip commitment")
 		}
 	}
 

@@ -13,6 +13,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/rpc-client/client"
+	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -101,7 +102,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 		ComfirmationTimeBlocks:    uint32(ckptParamRes.Params.BtcConfirmationDepth),
 		FinalizationTimeoutBlocks: uint32(ckptParamRes.Params.CheckpointFinalizationTimeout),
 		// TODO: Currently hardcoded on babylon level.
-		MinSlashingTxFeeSat: 1,
+		MinSlashingTxFeeSat: btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		JuryPk:              juryPk,
 		SlashingAddress:     stakingParamRes.Params.SlashingAddress,
 	}, nil

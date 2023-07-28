@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -115,13 +116,15 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
+	var queriedValidators []*btcstakingtypes.BTCValidator
 	require.Eventually(t, func() bool {
-		validators, err := tm.BabylonClient.QueryValidators()
+		queriedValidators, err = tm.BabylonClient.QueryValidators()
 		if err != nil {
 			return false
 		}
-		return len(validators) == 1 && validators[0].BabylonPk.Equals(validator.GetBabylonPK())
+		return len(queriedValidators) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, queriedValidators[0].BabylonPk.Equals(validator.GetBabylonPK()))
 
 	require.Eventually(t, func() bool {
 		randPairs, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
@@ -153,30 +156,35 @@ func TestJurySigSubmission(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
+	var queriedValidators []*btcstakingtypes.BTCValidator
 	require.Eventually(t, func() bool {
-		validators, err := tm.BabylonClient.QueryValidators()
+		queriedValidators, err = tm.BabylonClient.QueryValidators()
 		if err != nil {
 			return false
 		}
-		return len(validators) == 1 && validators[0].BabylonPk.Equals(validator.GetBabylonPK())
+		return len(queriedValidators) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, queriedValidators[0].BabylonPk.Equals(validator.GetBabylonPK()))
 
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
 
+	var dels []*btcstakingtypes.BTCDelegation
 	require.Eventually(t, func() bool {
-		dels, err := tm.BabylonClient.QueryPendingBTCDelegations()
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
 		if err != nil {
 			return false
 		}
-		return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
+		return len(dels) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	require.Eventually(t, func() bool {
-		dels, err := tm.BabylonClient.QueryActiveBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
+		dels, err = tm.BabylonClient.QueryActiveBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
 		if err != nil {
 			return false
 		}
-		return len(dels) == 1 && dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey)
+		return len(dels) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 }
