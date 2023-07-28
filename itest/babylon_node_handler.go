@@ -129,8 +129,10 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	testDir, err := baseDir()
 	require.NoError(t, err)
 	defer func() {
-		err := os.RemoveAll(testDir)
-		require.NoError(t, err)
+		if err != nil {
+			err := os.RemoveAll(testDir)
+			require.NoError(t, err)
+		}
 	}()
 
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
