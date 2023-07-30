@@ -19,11 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	BtcValidators_GetInfo_FullMethodName            = "/proto.BtcValidators/GetInfo"
-	BtcValidators_CreateValidator_FullMethodName    = "/proto.BtcValidators/CreateValidator"
-	BtcValidators_RegisterValidator_FullMethodName  = "/proto.BtcValidators/RegisterValidator"
-	BtcValidators_QueryValidator_FullMethodName     = "/proto.BtcValidators/QueryValidator"
-	BtcValidators_QueryValidatorList_FullMethodName = "/proto.BtcValidators/QueryValidatorList"
+	BtcValidators_GetInfo_FullMethodName              = "/proto.BtcValidators/GetInfo"
+	BtcValidators_CreateValidator_FullMethodName      = "/proto.BtcValidators/CreateValidator"
+	BtcValidators_RegisterValidator_FullMethodName    = "/proto.BtcValidators/RegisterValidator"
+	BtcValidators_AddFinalitySignature_FullMethodName = "/proto.BtcValidators/AddFinalitySignature"
+	BtcValidators_QueryValidator_FullMethodName       = "/proto.BtcValidators/QueryValidator"
+	BtcValidators_QueryValidatorList_FullMethodName   = "/proto.BtcValidators/QueryValidatorList"
 )
 
 // BtcValidatorsClient is the client API for BtcValidators service.
@@ -37,6 +38,9 @@ type BtcValidatorsClient interface {
 	// RegisterValidator sends a transactions to Babylon to register a BTC
 	// validator
 	RegisterValidator(ctx context.Context, in *RegisterValidatorRequest, opts ...grpc.CallOption) (*RegisterValidatorResponse, error)
+	// AddFinalitySignature sends a transactions to Babylon to add a Finality
+	// signature for a block
+	AddFinalitySignature(ctx context.Context, in *AddFinalitySignatureRequest, opts ...grpc.CallOption) (*AddFinalitySignatureResponse, error)
 	// QueryValidator queries the validator
 	QueryValidator(ctx context.Context, in *QueryValidatorRequest, opts ...grpc.CallOption) (*QueryValidatorResponse, error)
 	// QueryValidatorList queries a list of validators
@@ -78,6 +82,15 @@ func (c *btcValidatorsClient) RegisterValidator(ctx context.Context, in *Registe
 	return out, nil
 }
 
+func (c *btcValidatorsClient) AddFinalitySignature(ctx context.Context, in *AddFinalitySignatureRequest, opts ...grpc.CallOption) (*AddFinalitySignatureResponse, error) {
+	out := new(AddFinalitySignatureResponse)
+	err := c.cc.Invoke(ctx, BtcValidators_AddFinalitySignature_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *btcValidatorsClient) QueryValidator(ctx context.Context, in *QueryValidatorRequest, opts ...grpc.CallOption) (*QueryValidatorResponse, error) {
 	out := new(QueryValidatorResponse)
 	err := c.cc.Invoke(ctx, BtcValidators_QueryValidator_FullMethodName, in, out, opts...)
@@ -107,6 +120,9 @@ type BtcValidatorsServer interface {
 	// RegisterValidator sends a transactions to Babylon to register a BTC
 	// validator
 	RegisterValidator(context.Context, *RegisterValidatorRequest) (*RegisterValidatorResponse, error)
+	// AddFinalitySignature sends a transactions to Babylon to add a Finality
+	// signature for a block
+	AddFinalitySignature(context.Context, *AddFinalitySignatureRequest) (*AddFinalitySignatureResponse, error)
 	// QueryValidator queries the validator
 	QueryValidator(context.Context, *QueryValidatorRequest) (*QueryValidatorResponse, error)
 	// QueryValidatorList queries a list of validators
@@ -126,6 +142,9 @@ func (UnimplementedBtcValidatorsServer) CreateValidator(context.Context, *Create
 }
 func (UnimplementedBtcValidatorsServer) RegisterValidator(context.Context, *RegisterValidatorRequest) (*RegisterValidatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterValidator not implemented")
+}
+func (UnimplementedBtcValidatorsServer) AddFinalitySignature(context.Context, *AddFinalitySignatureRequest) (*AddFinalitySignatureResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddFinalitySignature not implemented")
 }
 func (UnimplementedBtcValidatorsServer) QueryValidator(context.Context, *QueryValidatorRequest) (*QueryValidatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryValidator not implemented")
@@ -200,6 +219,24 @@ func _BtcValidators_RegisterValidator_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BtcValidators_AddFinalitySignature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddFinalitySignatureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BtcValidatorsServer).AddFinalitySignature(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BtcValidators_AddFinalitySignature_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BtcValidatorsServer).AddFinalitySignature(ctx, req.(*AddFinalitySignatureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BtcValidators_QueryValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(QueryValidatorRequest)
 	if err := dec(in); err != nil {
@@ -254,6 +291,10 @@ var BtcValidators_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterValidator",
 			Handler:    _BtcValidators_RegisterValidator_Handler,
+		},
+		{
+			MethodName: "AddFinalitySignature",
+			Handler:    _BtcValidators_AddFinalitySignature_Handler,
 		},
 		{
 			MethodName: "QueryValidator",

@@ -19,6 +19,11 @@ service BtcValidators {
     rpc RegisterValidator (RegisterValidatorRequest)
         returns (RegisterValidatorResponse);
 
+    // AddFinalitySignature sends a transactions to Babylon to add a Finality
+    // signature for a block
+    rpc AddFinalitySignature(AddFinalitySignatureRequest)
+        returns (AddFinalitySignatureResponse);
+
     // QueryValidator queries the validator
     rpc QueryValidator (QueryValidatorRequest) returns (QueryValidatorResponse);
     // QueryValidatorList queries a list of validators
@@ -52,6 +57,20 @@ message RegisterValidatorRequest {
 
 message RegisterValidatorResponse {
     // hash of the successful Babylon registration transaction
+    bytes tx_hash = 1;
+}
+
+message AddFinalitySignatureRequest {
+    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
+    bytes babylon_pk = 1;
+    // height is the height of the Babylon block
+    uint64 height = 2;
+    // last_commit_hash is the last commit hash of the Babylon block
+    bytes last_commit_hash = 3;
+}
+
+message AddFinalitySignatureResponse {
+    // hash of the successful Babylon finality signature submission transaction
     bytes tx_hash = 1;
 }
 
