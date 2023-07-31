@@ -172,11 +172,7 @@ func (cp *ChainPoller) initPoller(earliestVotedHeight uint64) (uint64, error) {
 	if currentBestChainHeight == 0 {
 		return 1, nil
 	}
-	// Decide on the initial block to get:
-	// If AutoStartHeight is set to false, then set initial block to:
-	//    - current chain height: if the config value is more than the current height
-	//    - config value: otherwise
-	// If AutoStartHeight is set to true, then set initial block to the maximum of
+	// Set initial block to the maximum of
 	//    - earliestVotedHeight
 	//    - the latest Babylon finalised block
 	// The above is to ensure that:
@@ -185,28 +181,19 @@ func (cp *ChainPoller) initPoller(earliestVotedHeight uint64) (uint64, error) {
 	//	 doesn't miss submitting a vote for it.
 	//	(2) The validators do not submit signatures for any already
 	//	 finalised blocks.
-	var initialBlockToGet uint64
-	if cp.cfg.AutoStartHeight {
-		latestFinalisedBlock, err := cp.bc.QueryLatestFinalisedBlocks(1)
-		if err != nil {
-			return 0, err
-		}
-		if len(latestFinalisedBlock) != 0 {
-			if earliestVotedHeight > latestFinalisedBlock[0].Height {
-				initialBlockToGet = earliestVotedHeight
-			} else {
-				initialBlockToGet = latestFinalisedBlock[0].Height
-			}
+	var initialBlockToGet uint64 = 0
+	latestFinalisedBlock, err := cp.bc.QueryLatestFinalisedBlocks(1)
+	if err != nil {
+		return 0, err
+	}
+	if len(latestFinalisedBlock) != 0 {
+		if earliestVotedHeight > latestFinalisedBlock[0].Height {
+			initialBlockToGet = earliestVotedHeight
 		} else {
-			// No finalised blocks
-			initialBlockToGet = 0
+			initialBlockToGet = latestFinalisedBlock[0].Height
 		}
 	} else {
-		if cp.cfg.StartingHeight > currentBestChainHeight {
-			initialBlockToGet = currentBestChainHeight
-		} else {
-			initialBlockToGet = cp.cfg.StartingHeight
-		}
+		initialBlockToGet = earliestVotedHeight
 	}
 
 	if initialBlockToGet == 0 {

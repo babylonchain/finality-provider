@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"math/rand"
 	"os"
 	"testing"
@@ -33,8 +34,6 @@ func FuzzRegisterValidator(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		cfg.PollerConfig.StartingHeight = randomStartingHeight
-		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -91,8 +90,6 @@ func FuzzCommitPubRandList(f *testing.F) {
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		cfg.NumPubRand = uint64(r.Intn(10) + 1)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		cfg.PollerConfig.StartingHeight = randomStartingHeight
-		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -149,8 +146,6 @@ func FuzzAddJurySig(f *testing.F) {
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		cfg.PollerConfig.StartingHeight = randomStartingHeight
-		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -225,16 +220,13 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		cfg.PollerConfig.StartingHeight = randomStartingHeight
-		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &service.BlockInfo{Height: 1, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockBabylonClient := prepareMockedBabylonClient(t, startingBlock)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
@@ -302,8 +294,17 @@ func prepareMockedBabylonClient(t *testing.T, startingBlock *service.BlockInfo) 
 			LastCommitHash: startingBlock.LastCommitHash,
 		},
 	}
+	finalizedBlocks := make([]*finalitytypes.IndexedBlock, 0)
+	finalizedBlock := &finalitytypes.IndexedBlock{
+		Height:         startingBlock.Height,
+		LastCommitHash: startingBlock.LastCommitHash,
+		Finalized:      true,
+	}
+	finalizedBlocks = append(finalizedBlocks, finalizedBlock)
+
 	mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 	mockBabylonClient.EXPECT().QueryHeader(int64(startingBlock.Height)).Return(resHeader, nil).AnyTimes()
+	mockBabylonClient.EXPECT().QueryLatestFinalisedBlocks(uint64(1)).Return(finalizedBlocks, nil).AnyTimes()
 	mockBabylonClient.EXPECT().Close().Return(nil).AnyTimes()
 
 	return mockBabylonClient

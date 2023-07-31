@@ -58,7 +58,6 @@ func TestPoller(t *testing.T) {
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
 	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
-	defaultPollerConfig.AutoStartHeight = false
 
 	bc, err := babylonclient.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
 	require.NoError(t, err)
