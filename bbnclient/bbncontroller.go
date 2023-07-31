@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"encoding/base64"
+	"encoding/hex"
+
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -236,7 +239,13 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	var privKey *btcec.PrivateKey
 	for _, ev := range res.Events {
 		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
-			privKeyBytes := []byte(ev.Attributes["ExtractedBtcSk"])
+			extractedBtcSk := strings.Trim(ev.Attributes["extracted_btc_sk"], `'"`)
+			privKeyBytes, err := base64.StdEncoding.DecodeString(extractedBtcSk)
+			if err != nil {
+				bc.logger.Errorf("failed to decode extracted BTC SK: %w", err)
+				continue
+			}
+			bc.logger.Debugf("extracted BTC SK: %s", hex.EncodeToString(privKeyBytes))
 			privKey, _ = btcec.PrivKeyFromBytes(privKeyBytes)
 			break
 		}
