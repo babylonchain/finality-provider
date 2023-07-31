@@ -315,7 +315,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 
 	ks := maps.Keys(res.PubRandMap)
 	if len(ks) > 1 {
-		return 0, fmt.Errorf("the query should not return more than one public rand item: %v", err)
+		return 0, fmt.Errorf("the query should not return more than one public rand item")
 	}
 
 	return ks[0], nil
