@@ -141,7 +141,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		return nil, fmt.Errorf("failed to fet the validator %w", err)
 	}
 
-	txHash, privKey, err := r.app.submitFinalitySignatureForValidator(b, v)
+	txHash, privKey, err := r.app.SubmitFinalitySignatureForValidator(b, v)
 	if err != nil {
 		return nil, err
 	}

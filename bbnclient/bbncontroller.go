@@ -2,13 +2,12 @@ package babylonclient
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
 	"time"
-
-	"encoding/base64"
-	"encoding/hex"
 
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
@@ -239,11 +238,12 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	var privKey *btcec.PrivateKey
 	for _, ev := range res.Events {
 		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
+			// add this trim because the attribute is a string with quotation marks
 			extractedBtcSk := strings.Trim(ev.Attributes["extracted_btc_sk"], `'"`)
 			privKeyBytes, err := base64.StdEncoding.DecodeString(extractedBtcSk)
 			if err != nil {
-				bc.logger.Errorf("failed to decode extracted BTC SK: %w", err)
-				continue
+				bc.logger.Errorf("failed to decode extracted BTC SK: %s", err.Error())
+				break
 			}
 			bc.logger.Debugf("extracted BTC SK: %s", hex.EncodeToString(privKeyBytes))
 			privKey, _ = btcec.PrivKeyFromBytes(privKeyBytes)

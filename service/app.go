@@ -235,7 +235,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			}).Debug("the validator's last voted height should be less than the current block height")
 			continue
 		}
-		txHash, _, err := app.submitFinalitySignatureForValidator(b, v)
+		txHash, _, err := app.SubmitFinalitySignatureForValidator(b, v)
 		if err != nil {
 			return nil, fmt.Errorf("failed to submit the finality signature from validator %s to Babylon: %w",
 				v.GetBabylonPkHexString(), err)
@@ -246,7 +246,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	return txHashes, nil
 }
 
-func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
+func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
 	privRand, err := app.GetCommittedPrivPubRand(validator.BabylonPk, b.Height)
 	if err != nil {
 		return nil, nil, err

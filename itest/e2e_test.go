@@ -4,17 +4,25 @@
 package e2etest
 
 import (
+	"encoding/hex"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/babylonchain/babylon/testutil/datagen"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -230,4 +238,116 @@ func TestJurySigSubmission(t *testing.T) {
 		return len(dels) == 1
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+}
+
+// TestDoubleSigning tests the attack scenario where the validator
+// sends a finality vote over a conflicting block
+// in this case, the BTC private key should be extracted by Babylon
+func TestDoubleSigning(t *testing.T) {
+	tm := StartManager(t, false)
+	defer tm.Stop(t)
+
+	app := tm.Va
+	newValName := "testingValidator"
+
+	// create a validator object
+	valResult, err := app.CreateValidator(newValName)
+	require.NoError(t, err)
+	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+	require.Equal(t, newValName, validator.KeyName)
+
+	// register the validator to Babylon
+	_, err = app.RegisterValidator(validator.KeyName)
+	require.NoError(t, err)
+	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	require.NoError(t, err)
+	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
+	var queriedValidators []*btcstakingtypes.BTCValidator
+	require.Eventually(t, func() bool {
+		queriedValidators, err = tm.BabylonClient.QueryValidators()
+		if err != nil {
+			return false
+		}
+		return len(queriedValidators) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, queriedValidators[0].BabylonPk.Equals(validator.GetBabylonPK()))
+
+	// check the public randomness is committed
+	require.Eventually(t, func() bool {
+		randPairs, err := app.GetCommittedPubRandPairList(validator.BabylonPk)
+		if err != nil {
+			return false
+		}
+		return int(tm.Config.NumPubRand) == len(randPairs)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// send a BTC delegation
+	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
+
+	// check the BTC delegation is pending
+	var dels []*btcstakingtypes.BTCDelegation
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	// submit Jury sig
+	_ = tm.AddJurySignature(t, dels[0])
+
+	// check the BTC delegation is active
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryActiveBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	// check there's a block finalized
+	var blocks []*types.IndexedBlock
+	require.Eventually(t, func() bool {
+		blocks, err = tm.BabylonClient.QueryFinalizedBlocks()
+		if err != nil {
+			return false
+		}
+		if len(blocks) == 1 {
+			return true
+		}
+		return false
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// attack: manually submit a finality vote over a conflicting block
+	// to trigger the extraction of validator's private key
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := &service.BlockInfo{
+		Height:         blocks[0].Height,
+		LastCommitHash: datagen.GenRandomLastCommitHash(r),
+	}
+	_, extractedKey, err := app.SubmitFinalitySignatureForValidator(b, validator)
+	require.NoError(t, err)
+	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(validator.KeyName))
+	require.NoError(t, err)
+	require.Equal(t, hex.EncodeToString(localKey.Serialize()),
+		hex.EncodeToString(extractedKey.Serialize()))
+}
+
+func getBtcPrivKey(kr keyring.Keyring, keyName val.KeyName) (*btcec.PrivateKey, error) {
+	k, err := kr.Key(keyName.GetBtcKeyName())
+	if err != nil {
+		return nil, err
+	}
+	localKey := k.GetLocal().PrivKey.GetCachedValue()
+	switch v := localKey.(type) {
+	case *secp256k1.PrivKey:
+		privKey, _ := btcec.PrivKeyFromBytes(v.Key)
+		return privKey, nil
+	default:
+		return nil, err
+	}
 }
