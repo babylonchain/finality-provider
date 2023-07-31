@@ -72,6 +72,8 @@ message AddFinalitySignatureRequest {
 message AddFinalitySignatureResponse {
     // hash of the successful Babylon finality signature submission transaction
     bytes tx_hash = 1;
+    string extracted_sk_hex = 2;
+    string local_sk_hex = 3;
 }
 
 message QueryValidatorRequest {

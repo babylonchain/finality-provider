@@ -235,7 +235,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			}).Debug("the validator's last voted height should be less than the current block height")
 			continue
 		}
-		txHash, err := app.submitFinalitySignatureForValidator(b, v)
+		txHash, _, err := app.submitFinalitySignatureForValidator(b, v)
 		if err != nil {
 			return nil, fmt.Errorf("failed to submit the finality signature from validator %s to Babylon: %w",
 				v.GetBabylonPkHexString(), err)
@@ -246,15 +246,15 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	return txHashes, nil
 }
 
-func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, error) {
+func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
 	privRand, err := app.GetCommittedPrivPubRand(validator.BabylonPk, b.Height)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	btcPrivKey, err := app.getBtcPrivKey(validator.KeyName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	msg := &ftypes.MsgAddFinalitySig{
@@ -265,7 +265,7 @@ func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, valid
 	msgToSign := msg.MsgToSign()
 	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
@@ -283,11 +283,11 @@ func (app *ValidatorApp) submitFinalitySignatureForValidator(b *BlockInfo, valid
 
 	select {
 	case err := <-request.errResponse:
-		return nil, err
+		return nil, nil, err
 	case successResponse := <-request.successResponse:
-		return successResponse.txHash, nil
+		return successResponse.txHash, successResponse.extractedPrivKey, nil
 	case <-app.quit:
-		return nil, fmt.Errorf("validator app is shutting down")
+		return nil, nil, fmt.Errorf("validator app is shutting down")
 	}
 }
 

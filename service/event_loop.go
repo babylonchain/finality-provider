@@ -124,7 +124,8 @@ func (app *ValidatorApp) eventLoop() {
 
 			// return to the caller
 			ev.successResponse <- &addFinalitySigResponse{
-				txHash: ev.txHash,
+				extractedPrivKey: ev.extractedPrivKey,
+				txHash:           ev.txHash,
 			}
 
 		case ev := <-app.validatorRegisteredEventChan:
@@ -222,8 +223,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 		select {
 		case req := <-app.addFinalitySigRequestChan:
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			txHash, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
-
+			txHash, privKey, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err":       err,
@@ -241,9 +241,10 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			}).Info("successfully submitted a finality signature to babylon")
 
 			app.finalitySigAddedEventChan <- &finalitySigAddedEvent{
-				bbnPubKey: req.bbnPubKey,
-				height:    req.blockHeight,
-				txHash:    txHash,
+				bbnPubKey:        req.bbnPubKey,
+				extractedPrivKey: privKey,
+				height:           req.blockHeight,
+				txHash:           txHash,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,

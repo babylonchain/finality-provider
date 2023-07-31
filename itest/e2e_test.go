@@ -24,7 +24,6 @@ var (
 	stakingAmount         = int64(20000)
 	eventuallyWaitTimeOut = 20 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
-	lastCommitHashStr     = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
 )
 
 func TempDirWithName(name string) (string, error) {

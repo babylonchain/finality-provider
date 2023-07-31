@@ -12,6 +12,7 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -217,7 +218,7 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, error) {
+func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
 		Signer:              bc.MustGetTxSigner(),
 		ValBtcPk:            btcPubKey,
@@ -228,10 +229,19 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return []byte(res.TxHash), nil
+	var privKey *btcec.PrivateKey
+	for _, ev := range res.Events {
+		if ev.EventType == "EventSlashedBTCValidator" {
+			privKeyBytes := []byte(ev.Attributes["extracted_btc_sk"])
+			privKey, _ = btcec.PrivKeyFromBytes(privKeyBytes)
+			break
+		}
+	}
+
+	return []byte(res.TxHash), privKey, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface

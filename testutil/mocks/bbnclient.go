@@ -10,6 +10,7 @@ import (
 	types "github.com/babylonchain/babylon/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	btcec "github.com/btcsuite/btcd/btcec/v2"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	gomock "github.com/golang/mock/gomock"
@@ -188,12 +189,13 @@ func (mr *MockBabylonClientMockRecorder) RegisterValidator(bbnPubKey, btcPubKey,
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockBabylonClient) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, error) {
+func (m *MockBabylonClient) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitFinalitySig", btcPubKey, blockHeight, blockHash, sig)
 	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(*btcec.PrivateKey)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // SubmitFinalitySig indicates an expected call of SubmitFinalitySig.
