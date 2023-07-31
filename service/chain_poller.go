@@ -181,7 +181,7 @@ func (cp *ChainPoller) initPoller(earliestVotedHeight uint64) (uint64, error) {
 	//	 doesn't miss submitting a vote for it.
 	//	(2) The validators do not submit signatures for any already
 	//	 finalised blocks.
-	var initialBlockToGet uint64 = 0
+	var initialBlockToGet uint64
 	latestFinalisedBlock, err := cp.bc.QueryLatestFinalisedBlocks(1)
 	if err != nil {
 		return 0, err
