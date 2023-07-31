@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	bbnapp "github.com/babylonchain/babylon/app"
@@ -234,8 +235,8 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 
 	var privKey *btcec.PrivateKey
 	for _, ev := range res.Events {
-		if ev.EventType == "EventSlashedBTCValidator" {
-			privKeyBytes := []byte(ev.Attributes["extracted_btc_sk"])
+		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
+			privKeyBytes := []byte(ev.Attributes["ExtractedBtcSk"])
 			privKey, _ = btcec.PrivKeyFromBytes(privKeyBytes)
 			break
 		}

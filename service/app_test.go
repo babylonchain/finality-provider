@@ -272,7 +272,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		txHash = testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
 			SubmitFinalitySig(btcPkBIP340, nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
-			Return(txHash, nil).AnyTimes()
+			Return(txHash, nil, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(btcPkBIP340, nextBlock.Height).
 			Return(uint64(1), nil).AnyTimes()
 		txHashes, err = app.SubmitFinalitySignaturesForAll(nextBlock)
