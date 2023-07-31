@@ -237,7 +237,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			continue
 		}
 
-		// build proper finality siganture request
+		// build proper finality signature request
 		privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
 		if err != nil {
 			return nil, err
@@ -283,7 +283,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			mu.Lock()
 			defer mu.Unlock()
 
-			// Do not return errors, as errgroup cancels another requests in case of errors.
+			// Do not return errors, as errgroup cancels other requests in case of errors.
 			if err != nil {
 				responses = append(responses, &addFinalitySigResponse{
 					txHash:    nil,
@@ -304,7 +304,9 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 
 	// should not happen as we do not return errors from our go routines
 	if err := eg.Wait(); err != nil {
-		app.logger.WithFields(logrus.Fields{}).Fatal("Unexpected error when waiting for finality signature submissions")
+		app.logger.WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Unexpected error when waiting for finality signature submissions")
 	}
 
 	// 3. Check which requests succeed and bump the LastVotedHeight for each succeed one
