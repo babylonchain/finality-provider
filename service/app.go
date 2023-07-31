@@ -541,7 +541,15 @@ func (app *ValidatorApp) Start() error {
 	app.startOnce.Do(func() {
 		app.logger.Infof("Starting ValidatorApp")
 
-		err := app.poller.Start()
+		// We perform this calculation here as we do not want to expose the database
+		// to the poller.
+		earliestVotedHeight, err := app.vs.GetEarliestActiveValidatorVotedHeight()
+		if err != nil {
+			startErr = err
+			return
+		}
+
+		err = app.poller.Start(earliestVotedHeight)
 		if err != nil {
 			startErr = err
 			return

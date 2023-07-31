@@ -2,6 +2,7 @@ package val
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
@@ -174,6 +175,28 @@ func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error)
 	}
 
 	return valsList, nil
+}
+
+func (vs *ValidatorStore) GetEarliestActiveValidatorVotedHeight() (uint64, error) {
+	registeredValidators, err := vs.ListRegisteredValidators()
+	if err != nil {
+		return 0, err
+	}
+
+	if len(registeredValidators) == 0 {
+		return 0, nil
+	}
+
+	earliestHeight := uint64(math.MaxUint64)
+	for _, val := range registeredValidators {
+		if val.Status != proto.ValidatorStatus_ACTIVE {
+			continue
+		}
+		if earliestHeight > val.LastVotedHeight {
+			earliestHeight = val.LastVotedHeight
+		}
+	}
+	return earliestHeight, nil
 }
 
 func (vs *ValidatorStore) Close() error {

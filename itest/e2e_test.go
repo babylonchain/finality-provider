@@ -58,6 +58,7 @@ func TestPoller(t *testing.T) {
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
 	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
+	defaultPollerConfig.AutoStartHeight = false
 
 	bc, err := babylonclient.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
 	require.NoError(t, err)
@@ -65,7 +66,8 @@ func TestPoller(t *testing.T) {
 	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
 	require.NoError(t, err)
 
-	err = poller.Start()
+	// Set auto calculated start height to 0, as we have disabled automatic start height calculation
+	err = poller.Start(0)
 	require.NoError(t, err)
 	defer poller.Stop()
 
@@ -167,7 +169,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 
 	// check there's a block finalized
 	require.Eventually(t, func() bool {
-		blocks, err := tm.BabylonClient.QueryFinalizedBlocks()
+		blocks, err := tm.BabylonClient.QueryLatestFinalisedBlocks(100)
 		if err != nil {
 			return false
 		}

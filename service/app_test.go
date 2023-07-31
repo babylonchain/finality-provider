@@ -34,6 +34,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		cfg.PollerConfig.StartingHeight = randomStartingHeight
+		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -91,6 +92,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		cfg.NumPubRand = uint64(r.Intn(10) + 1)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		cfg.PollerConfig.StartingHeight = randomStartingHeight
+		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -148,6 +150,7 @@ func FuzzAddJurySig(f *testing.F) {
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		cfg.PollerConfig.StartingHeight = randomStartingHeight
+		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
@@ -224,6 +227,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		cfg.PollerConfig.StartingHeight = randomStartingHeight
+		cfg.PollerConfig.AutoStartHeight = false
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)

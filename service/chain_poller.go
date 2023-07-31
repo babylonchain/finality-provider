@@ -61,12 +61,12 @@ func NewChainPoller(
 	}
 }
 
-func (cp *ChainPoller) Start() error {
+func (cp *ChainPoller) Start(earliestVotedHeight uint64) error {
 	var startErr error
 	cp.startOnce.Do(func() {
 		cp.logger.Infof("Starting the chain poller")
 
-		initialBlockToGet, err := cp.initPoller()
+		initialBlockToGet, err := cp.initPoller(earliestVotedHeight)
 
 		if err != nil {
 			startErr = err
@@ -147,16 +147,16 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 	return response, nil
 }
 
-func (cp *ChainPoller) initPoller() (uint64, error) {
+func (cp *ChainPoller) initPoller(earliestVotedHeight uint64) (uint64, error) {
 	// Infinite retry to get initial latest height
-	// TODO: Add possible cancelation or timeout for starting node
+	// TODO: Add possible cancellation or timeout for starting node
 	var currentBestChainHeight uint64
 	for {
 		status, err := cp.nodeStatusWithRetry()
 		if err != nil {
 			cp.logger.WithFields(logrus.Fields{
 				"error": err,
-			}).Error("Failed to query babylon For the latest status")
+			}).Error("Failed to query babylon for the latest status")
 			continue
 		}
 
@@ -164,14 +164,53 @@ func (cp *ChainPoller) initPoller() (uint64, error) {
 		break
 	}
 
-	var initialBlockToGet uint64
+	if earliestVotedHeight > currentBestChainHeight {
+		panic("Earliest voted height is more than the chain tip height")
+	}
 
+	// If the chain has not yet started, only return the first height
 	if currentBestChainHeight == 0 {
-		initialBlockToGet = 1
-	} else if cp.cfg.StartingHeight > currentBestChainHeight {
-		initialBlockToGet = currentBestChainHeight
+		return 1, nil
+	}
+	// Decide on the initial block to get:
+	// If AutoStartHeight is set to false, then set initial block to:
+	//    - current chain height: if the config value is more than the current height
+	//    - config value: otherwise
+	// If AutoStartHeight is set to true, then set initial block to the maximum of
+	//    - earliestVotedHeight
+	//    - the latest Babylon finalised block
+	// The above is to ensure that:
+	//
+	//	(1) Any validator that is eligible to vote for a block,
+	//	 doesn't miss submitting a vote for it.
+	//	(2) The validators do not submit signatures for any already
+	//	 finalised blocks.
+	var initialBlockToGet uint64
+	if cp.cfg.AutoStartHeight {
+		latestFinalisedBlock, err := cp.bc.QueryLatestFinalisedBlocks(1)
+		if err != nil {
+			return 0, err
+		}
+		if len(latestFinalisedBlock) != 0 {
+			if earliestVotedHeight > latestFinalisedBlock[0].Height {
+				initialBlockToGet = earliestVotedHeight
+			} else {
+				initialBlockToGet = latestFinalisedBlock[0].Height
+			}
+		} else {
+			// No finalised blocks
+			initialBlockToGet = 0
+		}
 	} else {
-		initialBlockToGet = cp.cfg.StartingHeight
+		if cp.cfg.StartingHeight > currentBestChainHeight {
+			initialBlockToGet = currentBestChainHeight
+		} else {
+			initialBlockToGet = cp.cfg.StartingHeight
+		}
+	}
+
+	if initialBlockToGet == 0 {
+		initialBlockToGet = 1
 	}
 
 	return initialBlockToGet, nil
