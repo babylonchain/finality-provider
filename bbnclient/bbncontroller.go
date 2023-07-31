@@ -137,14 +137,14 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 	ckptQueryRequest := &btcctypes.QueryParamsRequest{}
 	ckptParamRes, err := queryCkptClient.Params(ctx, ckptQueryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query params of the btccheckpoint module")
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
 	}
 
 	queryStakingClient := btcstakingtypes.NewQueryClient(bc.provider)
 	stakingQueryRequest := &btcstakingtypes.QueryParamsRequest{}
 	stakingParamRes, err := queryStakingClient.Params(ctx, stakingQueryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query staking params")
+		return nil, fmt.Errorf("failed to query staking params: %v", err)
 	}
 	juryPk, err := stakingParamRes.Params.JuryPk.ToBTCPK()
 	if err != nil {
@@ -315,7 +315,7 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 
 	ks := maps.Keys(res.PubRandMap)
 	if len(ks) > 1 {
-		return 0, fmt.Errorf("the query should not return more than one public rand item")
+		return 0, fmt.Errorf("the query should not return more than one public rand item: %v", err)
 	}
 
 	return ks[0], nil
@@ -337,7 +337,7 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	queryRequest := &btcstakingtypes.QueryPendingBTCDelegationsRequest{}
 	res, err := queryClient.PendingBTCDelegations(ctx, queryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegations")
+		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
 	delegations = append(delegations, res.BtcDelegations...)
 
@@ -364,7 +364,7 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 		}
 		res, err := queryClient.BTCValidators(ctx, queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC validators")
+			return nil, fmt.Errorf("failed to query BTC validators: %v", err)
 		}
 		validators = append(validators, res.BtcValidators...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
@@ -388,7 +388,7 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	queryRequest := &btclctypes.QueryTipRequest{}
 	res, err := queryClient.Tip(ctx, queryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC tip")
+		return nil, fmt.Errorf("failed to query BTC tip: %v", err)
 	}
 
 	return res.Header, nil
@@ -415,7 +415,7 @@ func (bc *BabylonController) QueryFinalizedBlocks() ([]*finalitytypes.IndexedBlo
 		}
 		res, err := queryClient.ListBlocks(ctx, queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query finalized blocks")
+			return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
 		}
 		blocks = append(blocks, res.Blocks...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
@@ -450,7 +450,7 @@ func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.
 		}
 		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations")
+			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
 		delegations = append(delegations, res.BtcDelegations...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
@@ -485,7 +485,7 @@ func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types
 		}
 		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations")
+			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
 		delegations = append(delegations, res.BtcDelegations...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
@@ -514,7 +514,7 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 	}
 	res, err := queryClient.BTCValidatorPowerAtHeight(ctx, queryRequest)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query BTC delegations")
+		return 0, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
 
 	return res.VotingPower, nil
