@@ -560,11 +560,11 @@ func (app *ValidatorApp) latestFinalisedBlocksWithRetry(count uint64) ([]*ftypes
 }
 
 func (app *ValidatorApp) getPollerStartingHeight() (uint64, error) {
-	if !app.config.ValidatorModeConfig.AutoChainScnaningStart {
-		if app.config.ValidatorModeConfig.StaticChainScanningStart == nil {
+	if !app.config.ValidatorModeConfig.AutoChainScanningMode {
+		if app.config.ValidatorModeConfig.StaticChainScanningStartHeight == nil {
 			return 0, fmt.Errorf("AutoChainScanningStart set to false, but no static starting height provided")
 		}
-		return *app.config.ValidatorModeConfig.StaticChainScanningStart, nil
+		return *app.config.ValidatorModeConfig.StaticChainScanningStartHeight, nil
 	}
 	earliestVotedHeight, err := app.vs.GetEarliestActiveValidatorVotedHeight()
 	if err != nil {
