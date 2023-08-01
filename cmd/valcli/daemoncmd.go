@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/urfave/cli"
 
+	"github.com/babylonchain/btc-validator/proto"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -22,6 +24,7 @@ var daemonCommands = []cli.Command{
 			createValDaemonCmd,
 			lsValDaemonCmd,
 			registerValDaemonCmd,
+			addFinalitySigDaemonCmd,
 		},
 	},
 }
@@ -29,10 +32,14 @@ var daemonCommands = []cli.Command{
 const (
 	valdDaemonAddressFlag = "daemon-address"
 	keyNameFlag           = "key-name"
+	valBabylonPkFlag      = "babylon-pk"
+	blockHeightFlag       = "height"
+	lastCommitHashFlag    = "last-commit-hash"
 )
 
 var (
 	defaultValdDaemonAddress = "127.0.0.1:" + strconv.Itoa(valcfg.DefaultRPCPort)
+	defaultLastCommitHashStr = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
 )
 
 var getDaemonInfoCmd = cli.Command{
@@ -170,6 +177,65 @@ func registerVal(ctx *cli.Context) error {
 	defer cleanUp()
 
 	res, err := rpcClient.RegisterValidator(context.Background(), keyName)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(res)
+
+	return nil
+}
+
+var addFinalitySigDaemonCmd = cli.Command{
+	Name:      "add-finality-sig",
+	ShortName: "afs",
+	Usage:     "Send a finality signature to Babylon.",
+	UsageText: fmt.Sprintf("add-finality-sig --%s []", keyNameFlag),
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
+		},
+		cli.StringFlag{
+			Name:     valBabylonPkFlag,
+			Usage:    "The hex string of the Babylon public key",
+			Required: true,
+		},
+		cli.Uint64Flag{
+			Name:     blockHeightFlag,
+			Usage:    "The height of the Babylon block",
+			Required: true,
+		},
+		cli.StringFlag{
+			Name:  lastCommitHashFlag,
+			Usage: "The last commit hash of the Babylon block",
+			Value: defaultLastCommitHashStr,
+		},
+	},
+	Action: addFinalitySig,
+}
+
+func addFinalitySig(ctx *cli.Context) error {
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	bbnPk, err := proto.NewBabylonPkFromHex(ctx.String(valBabylonPkFlag))
+	if err != nil {
+		return err
+	}
+
+	lch, err := types.NewLastCommitHashFromHex(ctx.String(lastCommitHashFlag))
+	if err != nil {
+		return err
+	}
+
+	res, err := rpcClient.AddFinalitySignature(
+		context.Background(), bbnPk.Key, ctx.Uint64(blockHeightFlag), lch)
 	if err != nil {
 		return err
 	}

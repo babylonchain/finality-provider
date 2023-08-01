@@ -16,6 +16,15 @@ func (v *Validator) GetBabylonPK() *secp256k1.PubKey {
 	}
 }
 
+func NewBabylonPkFromHex(hexStr string) (*secp256k1.PubKey, error) {
+	pkBytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &secp256k1.PubKey{Key: pkBytes}, nil
+}
+
 func (v *Validator) GetBabylonPkHexString() string {
 	return hex.EncodeToString(v.BabylonPk)
 }

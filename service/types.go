@@ -92,8 +92,8 @@ type addFinalitySigRequest struct {
 
 type addFinalitySigResponse struct {
 	bbnPubKey *secp256k1.PubKey
-	txHash    []byte
 	height    uint64
+	txHash    []byte
 	err       error
 }
 

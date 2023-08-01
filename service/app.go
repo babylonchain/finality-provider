@@ -3,9 +3,9 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/avast/retry-go/v4"
 	"sync"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -223,7 +223,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			continue
 		}
 
-		if v.Status == proto.ValidatorStatus_INACTIVE {
+		if v.Status == proto.ValidatorStatus_REGISTERED || v.Status == proto.ValidatorStatus_INACTIVE {
 			if err := app.vs.SetValidatorStatus(v, proto.ValidatorStatus_ACTIVE); err != nil {
 				return nil, fmt.Errorf("cannot save the validator object %s into DB: %w", v.GetBabylonPkHexString(), err)
 			}
@@ -239,34 +239,9 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 		}
 
 		// build proper finality signature request
-		privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
+		request, err := app.buildFinalitySigRequest(v, b)
 		if err != nil {
-			return nil, err
-		}
-
-		btcPrivKey, err := app.getBtcPrivKey(v.KeyName)
-		if err != nil {
-			return nil, err
-		}
-
-		msg := &ftypes.MsgAddFinalitySig{
-			ValBtcPk:            v.MustGetBIP340BTCPK(),
-			BlockHeight:         b.Height,
-			BlockLastCommitHash: b.LastCommitHash,
-		}
-		msgToSign := msg.MsgToSign()
-		sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
-		if err != nil {
-			return nil, err
-		}
-		eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
-
-		request := &addFinalitySigRequest{
-			bbnPubKey:           v.GetBabylonPK(),
-			valBtcPk:            v.MustGetBIP340BTCPK(),
-			blockHeight:         b.Height,
-			blockLastCommitHash: b.LastCommitHash,
-			sig:                 eotsSig,
+			return nil, fmt.Errorf("failed to build finality signature request: %w", err)
 		}
 
 		finalitySigRequests = append(finalitySigRequests, request)
@@ -280,7 +255,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	for _, request := range finalitySigRequests {
 		req := request
 		eg.Go(func() error {
-			txHash, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
+			txHash, _, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
 			mu.Lock()
 			defer mu.Unlock()
 
@@ -350,6 +325,50 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	}
 
 	return txHashes, nil
+}
+
+func (app *ValidatorApp) buildFinalitySigRequest(v *proto.Validator, b *BlockInfo) (*addFinalitySigRequest, error) {
+	privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	btcPrivKey, err := app.getBtcPrivKey(v.KeyName)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &ftypes.MsgAddFinalitySig{
+		ValBtcPk:            v.MustGetBIP340BTCPK(),
+		BlockHeight:         b.Height,
+		BlockLastCommitHash: b.LastCommitHash,
+	}
+	msgToSign := msg.MsgToSign()
+	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
+	if err != nil {
+		return nil, err
+	}
+	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
+
+	return &addFinalitySigRequest{
+		bbnPubKey:           v.GetBabylonPK(),
+		valBtcPk:            v.MustGetBIP340BTCPK(),
+		blockHeight:         b.Height,
+		blockLastCommitHash: b.LastCommitHash,
+		sig:                 eotsSig,
+	}, nil
+}
+
+// SubmitFinalitySignatureForValidator submits a finality signature for a given validator
+// NOTE: this function is only called for testing double-signing so we don't want it to change
+// the status of the validator
+func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
+	req, err := app.buildFinalitySigRequest(validator, b)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build finality sig request: %w", err)
+	}
+
+	return app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
@@ -771,8 +790,4 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		BtcValidatorPk:     *btcPubKey,
 		BabylonValidatorPk: *babylonPubKey,
 	}, nil
-}
-
-func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*bstypes.BTCDelegation, error) {
-	return app.bc.QueryPendingBTCDelegations()
 }

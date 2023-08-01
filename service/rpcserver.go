@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/sirupsen/logrus"
@@ -124,6 +126,39 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	}
 
 	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil
+}
+
+func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFinalitySignatureRequest) (
+	*proto.AddFinalitySignatureResponse, error) {
+
+	b := &BlockInfo{
+		Height:         req.Height,
+		LastCommitHash: req.LastCommitHash,
+	}
+
+	v, err := r.app.GetValidator(req.BabylonPk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fet the validator %w", err)
+	}
+
+	txHash, privKey, err := r.app.SubmitFinalitySignatureForValidator(b, v)
+	if err != nil {
+		return nil, err
+	}
+
+	var localPrivKey *btcec.PrivateKey
+	if privKey != nil {
+		localPrivKey, err = r.app.getBtcPrivKey(v.KeyName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &proto.AddFinalitySignatureResponse{
+		TxHash:         txHash,
+		ExtractedSkHex: hex.EncodeToString(privKey.Serialize()),
+		LocalSkHex:     hex.EncodeToString(localPrivKey.Serialize()),
+	}, nil
 }
 
 // QueryValidator queries the information of the validator

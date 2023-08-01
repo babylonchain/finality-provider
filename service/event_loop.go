@@ -122,7 +122,7 @@ func (app *ValidatorApp) eventLoop() {
 				}).Fatal("err while updating the validator last voted height to DB")
 			}
 
-			// signal to caller value in db is updated
+			// return to the caller
 			ev.successResponse <- struct{}{}
 
 		case ev := <-app.validatorRegisteredEventChan:

@@ -38,7 +38,8 @@ type BabylonClient interface {
 	// it returns tx hash and error
 	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error)
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, error)
+	// validator's BTC private key will be returned if the validator is slashed due to double signing
+	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error)
 
 	// Note: the following queries are only for PoC
 

@@ -155,6 +155,7 @@ func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
 	return valsList, nil
 }
 
+// ListRegisteredValidators returns a list of validators whose status is more than CREATED
 func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error) {
 	k := vs.getValidatorListKey()
 	valsBytes, err := vs.s.List(k)
@@ -169,7 +170,7 @@ func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
 		}
-		if val.Status != proto.ValidatorStatus_CREATED {
+		if val.Status >= proto.ValidatorStatus_CREATED {
 			valsList = append(valsList, val)
 		}
 	}
