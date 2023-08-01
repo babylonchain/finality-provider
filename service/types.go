@@ -88,8 +88,6 @@ type addFinalitySigRequest struct {
 	blockHeight         uint64
 	blockLastCommitHash []byte
 	sig                 *types.SchnorrEOTSSig
-	errResponse         chan error
-	successResponse     chan struct{}
 }
 
 type addFinalitySigResponse struct {
@@ -100,11 +98,10 @@ type addFinalitySigResponse struct {
 }
 
 type finalitySigAddedEvent struct {
-	bbnPubKey        *secp256k1.PubKey
-	extractedPrivKey *btcec.PrivateKey
-	height           uint64
-	txHash           []byte
-	successResponse  chan struct{}
+	bbnPubKey       *secp256k1.PubKey
+	height          uint64
+	txHash          []byte
+	successResponse chan struct{}
 }
 
 type CreateValidatorResult struct {
