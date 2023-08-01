@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	reflect "reflect"
 
 	types "github.com/babylonchain/babylon/types"
@@ -126,6 +127,21 @@ func (m *MockBabylonClient) QueryHeightWithLastPubRand(btcPubKey *types.BIP340Pu
 func (mr *MockBabylonClientMockRecorder) QueryHeightWithLastPubRand(btcPubKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockBabylonClient)(nil).QueryHeightWithLastPubRand), btcPubKey)
+}
+
+// QueryLatestFinalisedBlocks mocks base method.
+func (m *MockBabylonClient) QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryLatestFinalisedBlocks", count)
+	ret0, _ := ret[0].([]*finalitytypes.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryLatestFinalisedBlocks indicates an expected call of QueryLatestFinalisedBlocks.
+func (mr *MockBabylonClientMockRecorder) QueryLatestFinalisedBlocks(count interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalisedBlocks", reflect.TypeOf((*MockBabylonClient)(nil).QueryLatestFinalisedBlocks), count)
 }
 
 // QueryNodeStatus mocks base method.

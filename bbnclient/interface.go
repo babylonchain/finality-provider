@@ -3,6 +3,7 @@ package babylonclient
 import (
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -41,13 +42,16 @@ type BabylonClient interface {
 	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error)
 
 	// Note: the following queries are only for PoC
+
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
 	QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error)
-	// QueryShouldSubmitJurySigs queries BTC delegations that need a Jury signature
+	// QueryPendingBTCDelegations queries BTC delegations that need a Jury signature
 	// it is only used when the program is running in Jury mode
 	QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
 	// QueryValidatorVotingPower queries the voting power of the validator at a given height
 	QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error)
+	// QueryLatestFinalisedBlocks returns the latest `count` finalised blocks
+	QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error)
 
 	// QueryNodeStatus returns current node status, with info about latest block
 	QueryNodeStatus() (*ctypes.ResultStatus, error)
