@@ -164,12 +164,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 // QueryValidator queries the information of the validator
 func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidatorRequest) (
 	*proto.QueryValidatorResponse, error) {
-	bbnPkBytes, err := hex.DecodeString(req.BabylonPkHex)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode the hex string of Babylon public key: %w", err)
-	}
-
-	val, err := r.app.GetValidator(bbnPkBytes)
+	val, err := r.app.GetValidator(req.BabylonPk)
 	if err != nil {
 		return nil, err
 	}

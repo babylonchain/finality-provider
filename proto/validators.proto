@@ -77,8 +77,8 @@ message AddFinalitySignatureResponse {
 }
 
 message QueryValidatorRequest {
-    // babylon_pk_hex is the hex string of the Babylon secp256k1 PK of this BTC validator
-    string babylon_pk_hex = 1;
+    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
+    bytes babylon_pk = 1;
 }
 
 message QueryValidatorResponse {

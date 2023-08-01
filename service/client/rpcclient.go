@@ -83,3 +83,13 @@ func (c *ValidatorServiceGRpcClient) QueryValidatorList(ctx context.Context) (*p
 
 	return res, nil
 }
+
+func (c *ValidatorServiceGRpcClient) QueryValidatorInfo(ctx context.Context, bbnPk []byte) (*proto.QueryValidatorResponse, error) {
+	req := &proto.QueryValidatorRequest{BabylonPk: bbnPk}
+	res, err := c.client.QueryValidator(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
