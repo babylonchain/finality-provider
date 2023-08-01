@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -61,13 +62,12 @@ func NewChainPoller(
 	}
 }
 
-func (cp *ChainPoller) Start(earliestVotedHeight uint64) error {
+func (cp *ChainPoller) Start(startHeight uint64) error {
 	var startErr error
 	cp.startOnce.Do(func() {
 		cp.logger.Infof("Starting the chain poller")
 
-		initialBlockToGet, err := cp.initPoller(earliestVotedHeight)
-
+		err := cp.validateStartHeight(startHeight)
 		if err != nil {
 			startErr = err
 			return
@@ -75,7 +75,7 @@ func (cp *ChainPoller) Start(earliestVotedHeight uint64) error {
 
 		cp.wg.Add(1)
 		go cp.pollChain(PollerState{
-			HeaderToRetrieve: initialBlockToGet,
+			HeaderToRetrieve: startHeight,
 			FailedCycles:     0,
 		})
 	})
@@ -147,7 +147,7 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 	return response, nil
 }
 
-func (cp *ChainPoller) initPoller(earliestVotedHeight uint64) (uint64, error) {
+func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	// Infinite retry to get initial latest height
 	// TODO: Add possible cancellation or timeout for starting node
 	var currentBestChainHeight uint64
@@ -164,43 +164,15 @@ func (cp *ChainPoller) initPoller(earliestVotedHeight uint64) (uint64, error) {
 		break
 	}
 
-	if earliestVotedHeight > currentBestChainHeight {
-		panic("Earliest voted height is more than the chain tip height")
+	if startHeight == 0 {
+		return fmt.Errorf("start height can't be 0")
+	}
+	// Allow the start height to be the next chain height
+	if startHeight > currentBestChainHeight+1 {
+		return fmt.Errorf("start height %d is more than the next chain tip height %d", startHeight, currentBestChainHeight+1)
 	}
 
-	// If the chain has not yet started, only return the first height
-	if currentBestChainHeight == 0 {
-		return 1, nil
-	}
-	// Set initial block to the maximum of
-	//    - earliestVotedHeight
-	//    - the latest Babylon finalised block
-	// The above is to ensure that:
-	//
-	//	(1) Any validator that is eligible to vote for a block,
-	//	 doesn't miss submitting a vote for it.
-	//	(2) The validators do not submit signatures for any already
-	//	 finalised blocks.
-	var initialBlockToGet uint64
-	latestFinalisedBlock, err := cp.bc.QueryLatestFinalisedBlocks(1)
-	if err != nil {
-		return 0, err
-	}
-	if len(latestFinalisedBlock) != 0 {
-		if earliestVotedHeight > latestFinalisedBlock[0].Height {
-			initialBlockToGet = earliestVotedHeight
-		} else {
-			initialBlockToGet = latestFinalisedBlock[0].Height
-		}
-	} else {
-		initialBlockToGet = earliestVotedHeight
-	}
-
-	if initialBlockToGet == 0 {
-		initialBlockToGet = 1
-	}
-
-	return initialBlockToGet, nil
+	return nil
 }
 
 func (cp *ChainPoller) pollChain(initialState PollerState) {

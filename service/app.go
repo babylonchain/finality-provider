@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/avast/retry-go/v4"
 	"sync"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -536,6 +537,71 @@ func (app *ValidatorApp) commitPubRandForValidator(latestBbnBlock *BlockInfo, va
 	}
 }
 
+func (app *ValidatorApp) latestFinalisedBlocksWithRetry(count uint64) ([]*ftypes.IndexedBlock, error) {
+	var response []*ftypes.IndexedBlock
+	if err := retry.Do(func() error {
+		latestFinalisedBlock, err := app.bc.QueryLatestFinalisedBlocks(count)
+		if err != nil {
+			return err
+		}
+		response = latestFinalisedBlock
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		app.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("Failed to query babylon for the latest finalised blocks")
+	})); err != nil {
+		return nil, err
+	}
+	return response, nil
+
+}
+
+func (app *ValidatorApp) getPollerStartingHeight() (uint64, error) {
+	if !app.config.ValidatorModeConfig.AutoChainScnaningStart {
+		if app.config.ValidatorModeConfig.StaticChainScanningStart == nil {
+			return 0, fmt.Errorf("AutoChainScanningStart set to false, but no static starting height provided")
+		}
+		return *app.config.ValidatorModeConfig.StaticChainScanningStart, nil
+	}
+	earliestVotedHeight, err := app.vs.GetEarliestActiveValidatorVotedHeight()
+	if err != nil {
+		return 0, err
+	}
+
+	// Set initial block to the maximum of
+	//    - earliestVotedHeight
+	//    - the latest Babylon finalised block
+	// The above is to ensure that:
+	//
+	//	(1) Any validator that is eligible to vote for a block,
+	//	 doesn't miss submitting a vote for it.
+	//	(2) The validators do not submit signatures for any already
+	//	 finalised blocks.
+	var initialBlockToGet uint64
+	latestFinalisedBlock, err := app.latestFinalisedBlocksWithRetry(1)
+	if err != nil {
+		return 0, err
+	}
+	if len(latestFinalisedBlock) != 0 {
+		if earliestVotedHeight > latestFinalisedBlock[0].Height {
+			initialBlockToGet = earliestVotedHeight
+		} else {
+			initialBlockToGet = latestFinalisedBlock[0].Height
+		}
+	} else {
+		initialBlockToGet = earliestVotedHeight
+	}
+
+	// ensure that initialBlockToGet is at least 1
+	if initialBlockToGet == 0 {
+		initialBlockToGet = 1
+	}
+	return initialBlockToGet, nil
+}
+
 func (app *ValidatorApp) Start() error {
 	var startErr error
 	app.startOnce.Do(func() {
@@ -543,13 +609,13 @@ func (app *ValidatorApp) Start() error {
 
 		// We perform this calculation here as we do not want to expose the database
 		// to the poller.
-		earliestVotedHeight, err := app.vs.GetEarliestActiveValidatorVotedHeight()
+		startHeight, err := app.getPollerStartingHeight()
 		if err != nil {
 			startErr = err
 			return
 		}
 
-		err = app.poller.Start(earliestVotedHeight)
+		err = app.poller.Start(startHeight)
 		if err != nil {
 			startErr = err
 			return

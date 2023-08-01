@@ -65,8 +65,8 @@ func TestPoller(t *testing.T) {
 	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
 	require.NoError(t, err)
 
-	// Set auto calculated start height to 0, as we have disabled automatic start height calculation
-	err = poller.Start(0)
+	// Set auto calculated start height to 1, as we have disabled automatic start height calculation
+	err = poller.Start(1)
 	require.NoError(t, err)
 	defer poller.Stop()
 
