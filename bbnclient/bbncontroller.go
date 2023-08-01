@@ -395,10 +395,11 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryFinalizedBlocks() ([]*finalitytypes.IndexedBlock, error) {
+func (bc *BabylonController) QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error) {
 	var blocks []*finalitytypes.IndexedBlock
 	pagination := &sdkquery.PageRequest{
-		Limit: 100,
+		Limit:   count,
+		Reverse: true,
 	}
 
 	ctx, cancel := getContextWithCancel(bc.timeout)

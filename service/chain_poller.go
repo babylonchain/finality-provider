@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -61,13 +62,12 @@ func NewChainPoller(
 	}
 }
 
-func (cp *ChainPoller) Start() error {
+func (cp *ChainPoller) Start(startHeight uint64) error {
 	var startErr error
 	cp.startOnce.Do(func() {
 		cp.logger.Infof("Starting the chain poller")
 
-		initialBlockToGet, err := cp.initPoller()
-
+		err := cp.validateStartHeight(startHeight)
 		if err != nil {
 			startErr = err
 			return
@@ -75,7 +75,7 @@ func (cp *ChainPoller) Start() error {
 
 		cp.wg.Add(1)
 		go cp.pollChain(PollerState{
-			HeaderToRetrieve: initialBlockToGet,
+			HeaderToRetrieve: startHeight,
 			FailedCycles:     0,
 		})
 	})
@@ -147,16 +147,16 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 	return response, nil
 }
 
-func (cp *ChainPoller) initPoller() (uint64, error) {
+func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	// Infinite retry to get initial latest height
-	// TODO: Add possible cancelation or timeout for starting node
+	// TODO: Add possible cancellation or timeout for starting node
 	var currentBestChainHeight uint64
 	for {
 		status, err := cp.nodeStatusWithRetry()
 		if err != nil {
 			cp.logger.WithFields(logrus.Fields{
 				"error": err,
-			}).Error("Failed to query babylon For the latest status")
+			}).Error("Failed to query babylon for the latest status")
 			continue
 		}
 
@@ -164,17 +164,15 @@ func (cp *ChainPoller) initPoller() (uint64, error) {
 		break
 	}
 
-	var initialBlockToGet uint64
-
-	if currentBestChainHeight == 0 {
-		initialBlockToGet = 1
-	} else if cp.cfg.StartingHeight > currentBestChainHeight {
-		initialBlockToGet = currentBestChainHeight
-	} else {
-		initialBlockToGet = cp.cfg.StartingHeight
+	if startHeight == 0 {
+		return fmt.Errorf("start height can't be 0")
+	}
+	// Allow the start height to be the next chain height
+	if startHeight > currentBestChainHeight+1 {
+		return fmt.Errorf("start height %d is more than the next chain tip height %d", startHeight, currentBestChainHeight+1)
 	}
 
-	return initialBlockToGet, nil
+	return nil
 }
 
 func (cp *ChainPoller) pollChain(initialState PollerState) {
