@@ -210,6 +210,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 
 func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Config {
 	cfg := valcfg.DefaultConfig()
+
+	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	// babylon configs for sending transactions
 	cfg.BabylonConfig.KeyDirectory = keyringDir
 	// need to use this one to send otherwise we will have account sequence mismatch
