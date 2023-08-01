@@ -313,7 +313,7 @@ func TestDoubleSigning(t *testing.T) {
 	// check there's a block finalized
 	var blocks []*types.IndexedBlock
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BabylonClient.QueryFinalizedBlocks()
+		blocks, err = tm.BabylonClient.QueryLatestFinalisedBlocks(100)
 		if err != nil {
 			return false
 		}

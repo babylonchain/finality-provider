@@ -3,9 +3,9 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/avast/retry-go/v4"
 	"sync"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
