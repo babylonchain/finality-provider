@@ -222,7 +222,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			continue
 		}
 
-		if v.Status == proto.ValidatorStatus_INACTIVE {
+		if v.Status == proto.ValidatorStatus_REGISTERED || v.Status == proto.ValidatorStatus_INACTIVE {
 			if err := app.vs.SetValidatorStatus(v, proto.ValidatorStatus_ACTIVE); err != nil {
 				return nil, fmt.Errorf("cannot save the validator object %s into DB: %w", v.GetBabylonPkHexString(), err)
 			}
@@ -719,8 +719,4 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		BtcValidatorPk:     *btcPubKey,
 		BabylonValidatorPk: *babylonPubKey,
 	}, nil
-}
-
-func (app *ValidatorApp) GetPendingDelegationsForAll() ([]*bstypes.BTCDelegation, error) {
-	return app.bc.QueryPendingBTCDelegations()
 }
