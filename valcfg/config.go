@@ -64,6 +64,8 @@ type Config struct {
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
+	ValidatorModeConfig *ValidatorConfig `group:"validator" namespace:"validator"`
+
 	JuryModeConfig *JuryConfig `group:"jury" namespace:"jury"`
 
 	GRpcServerConfig *GRpcServerConfig
@@ -76,6 +78,7 @@ func DefaultConfig() Config {
 	dbCfg := DefaultDatabaseConfig()
 	juryCfg := DefaultJuryConfig()
 	pollerCfg := DefaultChainPollerConfig()
+	valCfg := DefaultValidatorConfig()
 	return Config{
 		ValdDir:                  DefaultValdDir,
 		ConfigFile:               DefaultConfigFile,
@@ -84,6 +87,7 @@ func DefaultConfig() Config {
 		LogDir:                   defaultLogDir,
 		DatabaseConfig:           &dbCfg,
 		BabylonConfig:            &bbnCfg,
+		ValidatorModeConfig:      &valCfg,
 		JuryModeConfig:           &juryCfg,
 		PollerConfig:             &pollerCfg,
 		NumPubRand:               defaultNumPubRand,

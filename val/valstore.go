@@ -2,6 +2,7 @@ package val
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
@@ -174,6 +175,40 @@ func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error)
 	}
 
 	return valsList, nil
+}
+
+func (vs *ValidatorStore) GetEarliestActiveValidatorVotedHeight() (uint64, error) {
+	registeredValidators, err := vs.ListRegisteredValidators()
+	if err != nil {
+		return 0, err
+	}
+
+	if len(registeredValidators) == 0 {
+		return 0, nil
+	}
+
+	earliestHeight := uint64(math.MaxUint64)
+	activeValsCnt := 0
+	for _, val := range registeredValidators {
+		// Note there might be a delay between the validator being active on Babylon
+		// and this program capturing that. However, given that we only care
+		// about the `LastVotedHeight` of the validator, other parts of the program
+		// ensure that when this value is set, the validator is stored as ACTIVE.
+		// TODO: Another option would be to query here for the
+		// active status of each validator although this might prove inefficient.
+		if val.Status != proto.ValidatorStatus_ACTIVE {
+			activeValsCnt += 1
+			continue
+		}
+		if earliestHeight > val.LastVotedHeight {
+			earliestHeight = val.LastVotedHeight
+		}
+	}
+	// If there are no active validators, return 0
+	if activeValsCnt == 0 {
+		return 0, nil
+	}
+	return earliestHeight, nil
 }
 
 func (vs *ValidatorStore) Close() error {
