@@ -8,7 +8,7 @@ var (
 )
 
 type ChainPollerConfig struct {
-	BufferSize   uint32        `long:"buffersize" desciption:"The maximum number of Babylon blocks that can be stored in the buffer"`
+	BufferSize   uint32        `long:"buffersize" description:"The maximum number of Babylon blocks that can be stored in the buffer"`
 	PollInterval time.Duration `long:"pollinterval" description:"The interval between each polling of Babylon blocks"`
 }
 
