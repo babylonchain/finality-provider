@@ -123,10 +123,7 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 			// return to the caller
-			ev.successResponse <- &addFinalitySigResponse{
-				extractedPrivKey: ev.extractedPrivKey,
-				txHash:           ev.txHash,
-			}
+			ev.successResponse <- struct{}{}
 
 		case ev := <-app.validatorRegisteredEventChan:
 			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)

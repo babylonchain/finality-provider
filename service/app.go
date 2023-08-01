@@ -262,7 +262,6 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			if err != nil {
 				responses = append(responses, &addFinalitySigResponse{
 					txHash:    nil,
-					height:    req.blockHeight,
 					err:       err,
 					bbnPubKey: req.bbnPubKey,
 				})
@@ -301,7 +300,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			continue
 		}
 
-		respChannel := make(chan *addFinalitySigResponse, 1)
+		respChannel := make(chan struct{}, 1)
 
 		app.finalitySigAddedEventChan <- &finalitySigAddedEvent{
 			bbnPubKey: res.bbnPubKey,
@@ -360,37 +359,15 @@ func (app *ValidatorApp) buildFinalitySigRequest(v *proto.Validator, b *BlockInf
 }
 
 // SubmitFinalitySignatureForValidator submits a finality signature for a given validator
-// NOTE: this function is only called for testing double-signing
+// NOTE: this function is only called for testing double-signing so we don't want it to change
+// the status of the validator
 func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
 	req, err := app.buildFinalitySigRequest(validator, b)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build finality sig request: %w", err)
 	}
 
-	txHash, extractedPrivKey, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to submit finality signature: %w", err)
-	}
-
-	respChannel := make(chan *addFinalitySigResponse, 1)
-
-	app.finalitySigAddedEventChan <- &finalitySigAddedEvent{
-		bbnPubKey:        req.bbnPubKey,
-		extractedPrivKey: extractedPrivKey,
-		height:           req.blockHeight,
-		txHash:           txHash,
-		// pass the channel to the event so that we can send the response to the user which requested
-		// the registration
-		successResponse: respChannel,
-	}
-
-	select {
-	case resp := <-respChannel:
-		return resp.txHash, extractedPrivKey, nil
-
-	case <-app.quit:
-		return nil, nil, fmt.Errorf("validator app is shutting down")
-	}
+	return app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
