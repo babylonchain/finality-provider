@@ -155,6 +155,7 @@ func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
 	return valsList, nil
 }
 
+// ListRegisteredValidators returns a list of validators whose status is more than CREATED
 func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error) {
 	k := vs.getValidatorListKey()
 	valsBytes, err := vs.s.List(k)
@@ -169,7 +170,7 @@ func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
 		}
-		if val.Status != proto.ValidatorStatus_CREATED {
+		if val.Status > proto.ValidatorStatus_CREATED {
 			valsList = append(valsList, val)
 		}
 	}
@@ -196,7 +197,7 @@ func (vs *ValidatorStore) GetEarliestActiveValidatorVotedHeight() (uint64, error
 		// ensure that when this value is set, the validator is stored as ACTIVE.
 		// TODO: Another option would be to query here for the
 		// active status of each validator although this might prove inefficient.
-		if val.Status != proto.ValidatorStatus_ACTIVE {
+		if val.Status == proto.ValidatorStatus_ACTIVE {
 			activeValsCnt += 1
 			continue
 		}
