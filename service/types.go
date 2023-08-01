@@ -93,8 +93,11 @@ type addFinalitySigRequest struct {
 }
 
 type addFinalitySigResponse struct {
+	bbnPubKey        *secp256k1.PubKey
+	height           uint64
 	extractedPrivKey *btcec.PrivateKey
 	txHash           []byte
+	err              error
 }
 
 type finalitySigAddedEvent struct {
@@ -103,6 +106,7 @@ type finalitySigAddedEvent struct {
 	height           uint64
 	txHash           []byte
 	successResponse  chan *addFinalitySigResponse
+	err              error
 }
 
 type CreateValidatorResult struct {
