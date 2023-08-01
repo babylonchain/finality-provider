@@ -197,9 +197,9 @@ func (vs *ValidatorStore) GetEarliestActiveValidatorVotedHeight() (uint64, error
 		// TODO: Another option would be to query here for the
 		// active status of each validator although this might prove inefficient.
 		if val.Status != proto.ValidatorStatus_ACTIVE {
-			activeValsCnt += 1
 			continue
 		}
+		activeValsCnt += 1
 		if earliestHeight > val.LastVotedHeight {
 			earliestHeight = val.LastVotedHeight
 		}
