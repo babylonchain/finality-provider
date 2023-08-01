@@ -164,7 +164,19 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 // QueryValidator queries the information of the validator
 func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidatorRequest) (
 	*proto.QueryValidatorResponse, error) {
-	panic("implement me")
+	bbnPkBytes, err := hex.DecodeString(req.BabylonPkHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode the hex string of Babylon public key: %w", err)
+	}
+
+	val, err := r.app.GetValidator(bbnPkBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	valInfo := proto.NewValidatorInfo(val)
+
+	return &proto.QueryValidatorResponse{Validator: valInfo}, nil
 }
 
 // QueryValidatorList queries the information of a list of validators
@@ -176,5 +188,11 @@ func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryVali
 		return nil, err
 	}
 
-	return &proto.QueryValidatorListResponse{Validators: vals}, nil
+	valsInfo := make([]*proto.ValidatorInfo, len(vals))
+	for i, v := range vals {
+		valInfo := proto.NewValidatorInfo(v)
+		valsInfo[i] = valInfo
+	}
+
+	return &proto.QueryValidatorListResponse{Validators: valsInfo}, nil
 }
