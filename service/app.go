@@ -47,7 +47,6 @@ type ValidatorApp struct {
 	registerValidatorRequestChan chan *registerValidatorRequest
 	commitPubRandRequestChan     chan *commitPubRandRequest
 	addJurySigRequestChan        chan *addJurySigRequest
-	addFinalitySigRequestChan    chan *addFinalitySigRequest
 
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
 	pubRandCommittedEventChan    chan *pubRandCommittedEvent
@@ -96,7 +95,6 @@ func NewValidatorAppFromConfig(
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
 		commitPubRandRequestChan:     make(chan *commitPubRandRequest),
 		addJurySigRequestChan:        make(chan *addJurySigRequest),
-		addFinalitySigRequestChan:    make(chan *addFinalitySigRequest),
 		pubRandCommittedEventChan:    make(chan *pubRandCommittedEvent),
 		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
 		jurySigAddedEventChan:        make(chan *jurySigAddedEvent),
@@ -240,34 +238,9 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 		}
 
 		// build proper finality signature request
-		privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
+		request, err := app.buildFinalitySigRequest(v, b)
 		if err != nil {
-			return nil, err
-		}
-
-		btcPrivKey, err := app.getBtcPrivKey(v.KeyName)
-		if err != nil {
-			return nil, err
-		}
-
-		msg := &ftypes.MsgAddFinalitySig{
-			ValBtcPk:            v.MustGetBIP340BTCPK(),
-			BlockHeight:         b.Height,
-			BlockLastCommitHash: b.LastCommitHash,
-		}
-		msgToSign := msg.MsgToSign()
-		sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
-		if err != nil {
-			return nil, err
-		}
-		eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
-
-		request := &addFinalitySigRequest{
-			bbnPubKey:           v.GetBabylonPK(),
-			valBtcPk:            v.MustGetBIP340BTCPK(),
-			blockHeight:         b.Height,
-			blockLastCommitHash: b.LastCommitHash,
-			sig:                 eotsSig,
+			return nil, fmt.Errorf("failed to build finality signature request: %w", err)
 		}
 
 		finalitySigRequests = append(finalitySigRequests, request)
@@ -289,6 +262,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 			if err != nil {
 				responses = append(responses, &addFinalitySigResponse{
 					txHash:    nil,
+					height:    req.blockHeight,
 					err:       err,
 					bbnPubKey: req.bbnPubKey,
 				})
@@ -353,46 +327,67 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	return txHashes, nil
 }
 
-func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
-	privRand, err := app.GetCommittedPrivPubRand(validator.BabylonPk, b.Height)
+func (app *ValidatorApp) buildFinalitySigRequest(v *proto.Validator, b *BlockInfo) (*addFinalitySigRequest, error) {
+	privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	btcPrivKey, err := app.getBtcPrivKey(validator.KeyName)
+	btcPrivKey, err := app.getBtcPrivKey(v.KeyName)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	msg := &ftypes.MsgAddFinalitySig{
-		ValBtcPk:            validator.MustGetBIP340BTCPK(),
+		ValBtcPk:            v.MustGetBIP340BTCPK(),
 		BlockHeight:         b.Height,
 		BlockLastCommitHash: b.LastCommitHash,
 	}
 	msgToSign := msg.MsgToSign()
 	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
-	request := &addFinalitySigRequest{
-		bbnPubKey:           validator.GetBabylonPK(),
-		valBtcPk:            validator.MustGetBIP340BTCPK(),
+	return &addFinalitySigRequest{
+		bbnPubKey:           v.GetBabylonPK(),
+		valBtcPk:            v.MustGetBIP340BTCPK(),
 		blockHeight:         b.Height,
 		blockLastCommitHash: b.LastCommitHash,
 		sig:                 eotsSig,
-		errResponse:         make(chan error, 1),
-		successResponse:     make(chan *addFinalitySigResponse, 1),
+	}, nil
+}
+
+// SubmitFinalitySignatureForValidator submits a finality signature for a given validator
+// NOTE: this function is only called for testing double-signing
+func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
+	req, err := app.buildFinalitySigRequest(validator, b)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to build finality sig request: %w", err)
 	}
 
-	app.addFinalitySigRequestChan <- request
+	txHash, extractedPrivKey, err := app.bc.SubmitFinalitySig(req.valBtcPk, req.blockHeight, req.blockLastCommitHash, req.sig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to submit finality signature: %w", err)
+	}
+
+	respChannel := make(chan *addFinalitySigResponse, 1)
+
+	app.finalitySigAddedEventChan <- &finalitySigAddedEvent{
+		bbnPubKey:        req.bbnPubKey,
+		extractedPrivKey: extractedPrivKey,
+		height:           req.blockHeight,
+		txHash:           txHash,
+		// pass the channel to the event so that we can send the response to the user which requested
+		// the registration
+		successResponse: respChannel,
+	}
 
 	select {
-	case err := <-request.errResponse:
-		return nil, nil, err
-	case successResponse := <-request.successResponse:
-		return successResponse.txHash, successResponse.extractedPrivKey, nil
+	case resp := <-respChannel:
+		return resp.txHash, extractedPrivKey, nil
+
 	case <-app.quit:
 		return nil, nil, fmt.Errorf("validator app is shutting down")
 	}
