@@ -4,7 +4,6 @@
 package e2etest
 
 import (
-	"encoding/hex"
 	"math/rand"
 	"os"
 	"testing"
@@ -332,10 +331,10 @@ func TestDoubleSigning(t *testing.T) {
 	}
 	_, extractedKey, err := app.SubmitFinalitySignatureForValidator(b, validator)
 	require.NoError(t, err)
+	require.NotNil(t, extractedKey)
 	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(validator.KeyName))
 	require.NoError(t, err)
-	require.Equal(t, hex.EncodeToString(localKey.Serialize()),
-		hex.EncodeToString(extractedKey.Serialize()))
+	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 }
 
 func getBtcPrivKey(kr keyring.Keyring, keyName val.KeyName) (*btcec.PrivateKey, error) {
