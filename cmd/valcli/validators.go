@@ -128,7 +128,13 @@ func lsVal(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJSON(&proto.QueryValidatorListResponse{Validators: valList})
+	valsInfo := make([]*proto.ValidatorInfo, len(valList))
+	for i, v := range valList {
+		valInfo := proto.NewValidatorInfo(v)
+		valsInfo[i] = valInfo
+	}
+
+	printRespJSON(&proto.QueryValidatorListResponse{Validators: valsInfo})
 
 	return nil
 }
