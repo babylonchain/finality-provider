@@ -106,7 +106,6 @@ type finalitySigAddedEvent struct {
 	height           uint64
 	txHash           []byte
 	successResponse  chan *addFinalitySigResponse
-	err              error
 }
 
 type CreateValidatorResult struct {
