@@ -154,12 +154,24 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		}
 	}
 
-	return &proto.AddFinalitySignatureResponse{
-		TxHash:           txHash,
-		ExtractedSkHex:   privKey.Key.String(),
-		LocalSkHex:       localPrivKey.Key.String(),
-		LocalSkNegateHex: localPrivKey.Key.Negate().String(),
-	}, nil
+	res := &proto.AddFinalitySignatureResponse{
+		TxHash:         txHash,
+		ExtractedSkHex: privKey.Key.String(),
+	}
+
+	localSkHex := localPrivKey.Key.String()
+	localSkNegateHex := localPrivKey.Key.Negate().String()
+	if res.ExtractedSkHex == localSkHex {
+		res.LocalSkHex = localSkHex
+	} else if res.ExtractedSkHex == localSkNegateHex {
+		res.LocalSkHex = localSkNegateHex
+	} else {
+		return nil, fmt.Errorf("the validator's BTC private key is extracted but does not match the local key,"+
+			"extrated: %s, local: %s, local-negated: %s",
+			res.ExtractedSkHex, localSkHex, localSkNegateHex)
+	}
+
+	return res, nil
 }
 
 // QueryValidator queries the information of the validator
