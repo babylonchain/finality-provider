@@ -72,8 +72,12 @@ message AddFinalitySignatureRequest {
 message AddFinalitySignatureResponse {
     // hash of the successful Babylon finality signature submission transaction
     bytes tx_hash = 1;
+    // the hex string of the extracted Bitcoin secp256k1 private key
     string extracted_sk_hex = 2;
+    // the hex string of the local Bitcoin secp256k1 private key
     string local_sk_hex = 3;
+    // the hex string of the local Bitcoin secp256k1 private key, negated
+    string local_sk_negate_hex = 4;
 }
 
 message QueryValidatorRequest {
