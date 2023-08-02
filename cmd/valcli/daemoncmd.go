@@ -234,7 +234,7 @@ var addFinalitySigDaemonCmd = cli.Command{
 	Name:      "add-finality-sig",
 	ShortName: "afs",
 	Usage:     "Send a finality signature to Babylon.",
-	UsageText: fmt.Sprintf("add-finality-sig --%s []", keyNameFlag),
+	UsageText: fmt.Sprintf("add-finality-sig --%s [babylon_pk_hex]", valBabylonPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,

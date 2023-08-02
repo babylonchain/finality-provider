@@ -154,13 +154,11 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		}
 	}
 
-	localPrivKeyNegate := btcec.PrivKeyFromScalar(localPrivKey.Key.Negate())
-
 	return &proto.AddFinalitySignatureResponse{
 		TxHash:           txHash,
-		ExtractedSkHex:   hex.EncodeToString(privKey.Serialize()),
-		LocalSkHex:       hex.EncodeToString(localPrivKey.Serialize()),
-		LocalSkNegateHex: hex.EncodeToString(localPrivKeyNegate.Serialize()),
+		ExtractedSkHex:   privKey.Key.String(),
+		LocalSkHex:       localPrivKey.Key.String(),
+		LocalSkNegateHex: localPrivKey.Key.Negate().String(),
 	}, nil
 }
 
