@@ -154,17 +154,37 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		}
 	}
 
-	return &proto.AddFinalitySignatureResponse{
+	res := &proto.AddFinalitySignatureResponse{
 		TxHash:         txHash,
-		ExtractedSkHex: hex.EncodeToString(privKey.Serialize()),
-		LocalSkHex:     hex.EncodeToString(localPrivKey.Serialize()),
-	}, nil
+		ExtractedSkHex: privKey.Key.String(),
+	}
+
+	localSkHex := localPrivKey.Key.String()
+	localSkNegateHex := localPrivKey.Key.Negate().String()
+	if res.ExtractedSkHex == localSkHex {
+		res.LocalSkHex = localSkHex
+	} else if res.ExtractedSkHex == localSkNegateHex {
+		res.LocalSkHex = localSkNegateHex
+	} else {
+		return nil, fmt.Errorf("the validator's BTC private key is extracted but does not match the local key,"+
+			"extrated: %s, local: %s, local-negated: %s",
+			res.ExtractedSkHex, localSkHex, localSkNegateHex)
+	}
+
+	return res, nil
 }
 
 // QueryValidator queries the information of the validator
 func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidatorRequest) (
 	*proto.QueryValidatorResponse, error) {
-	panic("implement me")
+	val, err := r.app.GetValidator(req.BabylonPk)
+	if err != nil {
+		return nil, err
+	}
+
+	valInfo := proto.NewValidatorInfo(val)
+
+	return &proto.QueryValidatorResponse{Validator: valInfo}, nil
 }
 
 // QueryValidatorList queries the information of a list of validators
@@ -176,5 +196,11 @@ func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryVali
 		return nil, err
 	}
 
-	return &proto.QueryValidatorListResponse{Validators: vals}, nil
+	valsInfo := make([]*proto.ValidatorInfo, len(vals))
+	for i, v := range vals {
+		valInfo := proto.NewValidatorInfo(v)
+		valsInfo[i] = valInfo
+	}
+
+	return &proto.QueryValidatorListResponse{Validators: valsInfo}, nil
 }

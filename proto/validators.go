@@ -41,3 +41,13 @@ func (v *Validator) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
 	btcPK := v.MustGetBTCPK()
 	return bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 }
+
+func NewValidatorInfo(v *Validator) *ValidatorInfo {
+	return &ValidatorInfo{
+		BabylonPkHex:        v.GetBabylonPkHexString(),
+		BtcPkHex:            v.MustGetBIP340BTCPK().MarshalHex(),
+		LastVotedHeight:     v.LastVotedHeight,
+		LastCommittedHeight: v.LastCommittedHeight,
+		Status:              v.Status,
+	}
+}

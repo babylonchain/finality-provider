@@ -72,18 +72,19 @@ message AddFinalitySignatureRequest {
 message AddFinalitySignatureResponse {
     // hash of the successful Babylon finality signature submission transaction
     bytes tx_hash = 1;
+    // the hex string of the extracted Bitcoin secp256k1 private key
     string extracted_sk_hex = 2;
+    // the hex string of the local Bitcoin secp256k1 private key
     string local_sk_hex = 3;
 }
 
 message QueryValidatorRequest {
     // babylon_pk is the Babylon secp256k1 PK of this BTC validator
-    // used as the identifier of the created validator
     bytes babylon_pk = 1;
 }
 
 message QueryValidatorResponse {
-    Validator validator = 1;
+    ValidatorInfo validator = 1;
 }
 
 message QueryValidatorListRequest {
@@ -91,22 +92,34 @@ message QueryValidatorListRequest {
 }
 
 message QueryValidatorListResponse {
-    repeated Validator validators = 1;
+    repeated ValidatorInfo validators = 1;
     // TODO add pagination in case the list gets large
 }
 
 message Validator {
-    // TODO: Use Babylon types to replace this
     // babylon_pk is the Babylon secp256k1 PK of this BTC validator
     bytes babylon_pk = 1;
-    // TODO: Use Babylon types to replace this
     // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
     bytes btc_pk = 2;
     // pop is the proof of possession of babylon_pk and btc_pk
-    // TODO: will use btcstaking types to replace this
     ProofOfPossession pop = 3;
     // key_name is the identifier of the keyring
     string key_name = 4;
+    // last_voted_height defines the height of the last voted Babylon block
+    uint64 last_voted_height = 5;
+    // last_committed_height defines the height of the last Babylon block
+    // to which the validator committed a randomness pair
+    uint64 last_committed_height = 6;
+    // status defines the current validator status
+    ValidatorStatus status = 7;
+}
+
+// ValidatorInfo is the basic information of a validator mainly for external usage
+message ValidatorInfo {
+    // babylon_pk_hex is the hex string of the Babylon secp256k1 PK of this BTC validator
+    string babylon_pk_hex = 1;
+    // btc_pk_hex is the hex string of the BTC secp256k1 PK of the validator encoded in BIP-340 spec
+    string btc_pk_hex = 2;
     // last_voted_height defines the height of the last voted Babylon block
     uint64 last_voted_height = 5;
     // last_committed_height defines the height of the last Babylon block

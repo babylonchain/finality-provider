@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
@@ -23,6 +24,7 @@ var daemonCommands = []cli.Command{
 			getDaemonInfoCmd,
 			createValDaemonCmd,
 			lsValDaemonCmd,
+			valInfoDaemonCmd,
 			registerValDaemonCmd,
 			addFinalitySigDaemonCmd,
 		},
@@ -146,6 +148,48 @@ func lsValDaemon(ctx *cli.Context) error {
 	return nil
 }
 
+var valInfoDaemonCmd = cli.Command{
+	Name:      "validator-info",
+	ShortName: "vi",
+	Usage:     "Show the information of the validator.",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  valdDaemonAddressFlag,
+			Usage: "Full address of the validator daemon in format tcp://<host>:<port>",
+			Value: defaultValdDaemonAddress,
+		},
+		cli.StringFlag{
+			Name:     valBabylonPkFlag,
+			Usage:    "The hex string of the Babylon public key",
+			Required: true,
+		},
+	},
+	Action: valInfoDaemon,
+}
+
+func valInfoDaemon(ctx *cli.Context) error {
+	daemonAddress := ctx.String(valdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	bbnPkBytes, err := hex.DecodeString(ctx.String(valBabylonPkFlag))
+	if err != nil {
+		return err
+	}
+
+	resp, err := rpcClient.QueryValidatorInfo(context.Background(), bbnPkBytes)
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(resp)
+
+	return nil
+}
+
 var registerValDaemonCmd = cli.Command{
 	Name:      "register-validator",
 	ShortName: "rv",
@@ -190,7 +234,7 @@ var addFinalitySigDaemonCmd = cli.Command{
 	Name:      "add-finality-sig",
 	ShortName: "afs",
 	Usage:     "Send a finality signature to Babylon.",
-	UsageText: fmt.Sprintf("add-finality-sig --%s []", keyNameFlag),
+	UsageText: fmt.Sprintf("add-finality-sig --%s [babylon_pk_hex]", valBabylonPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
