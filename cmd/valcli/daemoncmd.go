@@ -24,6 +24,7 @@ var daemonCommands = []cli.Command{
 			getDaemonInfoCmd,
 			createValDaemonCmd,
 			lsValDaemonCmd,
+			valInfoDaemonCmd,
 			registerValDaemonCmd,
 			addFinalitySigDaemonCmd,
 		},
