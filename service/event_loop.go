@@ -247,7 +247,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			}
 		case req := <-app.addJurySigRequestChan:
 			// TODO: we should add some retry mechanism or we can have a health checker to check the connection periodically
-			txHash, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.sig)
+			txHash, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.stakingTxHash, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err":          err,

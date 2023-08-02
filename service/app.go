@@ -404,6 +404,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 		bbnPubKey:       btcDel.BabylonPk,
 		valBtcPk:        btcDel.ValBtcPk,
 		delBtcPk:        btcDel.BtcPk,
+		stakingTxHash:   stakingMsgTx.TxHash().String(),
 		sig:             jurySig,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *addJurySigResponse, 1),

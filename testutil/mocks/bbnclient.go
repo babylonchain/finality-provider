@@ -221,16 +221,16 @@ func (mr *MockBabylonClientMockRecorder) SubmitFinalitySig(btcPubKey, blockHeigh
 }
 
 // SubmitJurySig mocks base method.
-func (m *MockBabylonClient) SubmitJurySig(btcPubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error) {
+func (m *MockBabylonClient) SubmitJurySig(btcPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitJurySig", btcPubKey, delPubKey, sig)
+	ret := m.ctrl.Call(m, "SubmitJurySig", btcPubKey, delPubKey, stakingTxHash, sig)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitJurySig indicates an expected call of SubmitJurySig.
-func (mr *MockBabylonClientMockRecorder) SubmitJurySig(btcPubKey, delPubKey, sig interface{}) *gomock.Call {
+func (mr *MockBabylonClientMockRecorder) SubmitJurySig(btcPubKey, delPubKey, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockBabylonClient)(nil).SubmitJurySig), btcPubKey, delPubKey, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockBabylonClient)(nil).SubmitJurySig), btcPubKey, delPubKey, stakingTxHash, sig)
 }

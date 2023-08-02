@@ -69,6 +69,7 @@ type addJurySigRequest struct {
 	valBtcPk        *types.BIP340PubKey
 	delBtcPk        *types.BIP340PubKey
 	sig             *types.BIP340Signature
+	stakingTxHash   string
 	errResponse     chan error
 	successResponse chan *addJurySigResponse
 }
