@@ -188,9 +188,8 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 			// return to the caller
-			ev.successResponse <- &commitPubRandResponse{
-				txHash: ev.txHash,
-			}
+			ev.successResponse <- struct{}{}
+
 		case ev := <-app.jurySigAddedEventChan:
 			// TODO do we assume the delegator is also a BTC validator?
 			// if so, do we want to change its status to ACTIVE here?
@@ -244,35 +243,6 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				txHash:    txHash,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
-				successResponse: req.successResponse,
-			}
-		case req := <-app.commitPubRandRequestChan:
-			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			txHash, err := app.bc.CommitPubRandList(req.valBtcPk, req.startingHeight, req.pubRandList, req.sig)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err":         err,
-					"btcPubKey":   req.valBtcPk,
-					"startHeight": req.startingHeight,
-				}).Error("failed to commit public randomness")
-				req.errResponse <- err
-				continue
-			}
-
-			app.logger.WithFields(logrus.Fields{
-				"btcPk":  req.valBtcPk.MarshalHex(),
-				"txHash": string(txHash),
-			}).Info("successfully committed public rand list on babylon")
-
-			app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
-				startingHeight: req.startingHeight,
-				bbnPubKey:      req.bbnPubKey,
-				valBtcPk:       req.valBtcPk,
-				privRandList:   req.privRandList,
-				pubRandList:    req.pubRandList,
-				txHash:         txHash,
-				// pass the channel to the event so that we can send the response to the user which requested
-				// the commit
 				successResponse: req.successResponse,
 			}
 		case req := <-app.addJurySigRequestChan:

@@ -46,7 +46,6 @@ type ValidatorApp struct {
 
 	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
-	commitPubRandRequestChan     chan *commitPubRandRequest
 	addJurySigRequestChan        chan *addJurySigRequest
 
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
@@ -94,7 +93,6 @@ func NewValidatorAppFromConfig(
 		eventQuit:                    make(chan struct{}),
 		createValidatorRequestChan:   make(chan *createValidatorRequest),
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
-		commitPubRandRequestChan:     make(chan *commitPubRandRequest),
 		addJurySigRequestChan:        make(chan *addJurySigRequest),
 		pubRandCommittedEventChan:    make(chan *pubRandCommittedEvent),
 		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
@@ -319,6 +317,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 				"bbn_pk":     res.bbnPubKey,
 			}).Debug("successfully updated last voted height in db")
 		case <-app.quit:
+			return nil, fmt.Errorf("validator app is shutting down")
 		}
 
 		txHashes = append(txHashes, res.txHash)
@@ -448,112 +447,164 @@ func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
 // CommitPubRandForAll generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
-func (app *ValidatorApp) CommitPubRandForAll(b *BlockInfo) ([][]byte, error) {
+func (app *ValidatorApp) CommitPubRandForAll(latestBbnBlock *BlockInfo) ([][]byte, error) {
+	// get all the registered validators from the local storage
 	var txHashes [][]byte
-	validators, err := app.vs.ListValidators()
+	validators, err := app.vs.ListRegisteredValidators()
 	if err != nil {
 		return nil, err
 	}
 
+	var commitPubRandRequests []*commitPubRandRequest
+	// 1. Fist build all the requests, based on local and babylon data
 	for _, v := range validators {
-		// skip validators whose status is still CREATED
-		if v.Status == proto.ValidatorStatus_CREATED {
-			continue
-		}
-		txHash, err := app.commitPubRandForValidator(b, v)
+		bip340BTCPK := v.MustGetBIP340BTCPK()
+		lastCommittedHeight, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
 		if err != nil {
 			return nil, err
 		}
-		if txHash != nil {
-			txHashes = append(txHashes, txHash)
-		} else {
-			app.logger.WithFields(logrus.Fields{
-				"btc_pub_key":           v.MustGetBIP340BTCPK().MarshalHex(),
-				"block_height":          b.Height,
-				"last_committed_height": v.LastCommittedHeight,
-			}).Debug("the validator has sufficient committed randomness, skip commitment")
+
+		if v.LastCommittedHeight != lastCommittedHeight {
+			// for some reason number of random numbers locally does not match babylon node
+			// log it and try to recover somehow
+			return nil, fmt.Errorf("the local last committed height %v does not match the remote last committed height %v",
+				v.LastCommittedHeight, lastCommittedHeight)
 		}
+
+		var startHeight uint64
+		// the validator has never submitted public rand before
+		if lastCommittedHeight == uint64(0) {
+			startHeight = latestBbnBlock.Height + 1
+		} else if lastCommittedHeight-latestBbnBlock.Height < app.config.MinRandHeightGap {
+			startHeight = lastCommittedHeight + 1
+		} else {
+			return nil, nil
+		}
+
+		// generate a list of Schnorr randomness pairs
+		privRandList, pubRandList, err := GenerateRandPairList(app.config.NumPubRand)
+		if err != nil {
+			return nil, err
+		}
+
+		// get the message hash for signing
+		msg := &ftypes.MsgCommitPubRandList{
+			ValBtcPk:    bip340BTCPK,
+			StartHeight: startHeight,
+			PubRandList: pubRandList,
+		}
+		hash, err := msg.HashToSign()
+		if err != nil {
+			return nil, err
+		}
+
+		// sign the message hash using the validator's BTC private key
+		kc, err := val.NewKeyringControllerWithKeyring(app.kr, v.KeyName)
+		if err != nil {
+			return nil, err
+		}
+		schnorrSig, err := kc.SchnorrSign(hash)
+		if err != nil {
+			return nil, err
+		}
+		sig := types.NewBIP340SignatureFromBTCSig(schnorrSig)
+
+		request := &commitPubRandRequest{
+			startingHeight: startHeight,
+			bbnPubKey:      v.GetBabylonPK(),
+			valBtcPk:       v.MustGetBIP340BTCPK(),
+			privRandList:   privRandList,
+			pubRandList:    pubRandList,
+			sig:            &sig,
+		}
+
+		commitPubRandRequests = append(commitPubRandRequests, request)
+	}
+
+	// 2. Then submit all the requests
+	var eg errgroup.Group
+	var responses []*commitPubRandResponse
+	var mu sync.Mutex
+
+	for _, request := range commitPubRandRequests {
+		req := request
+		eg.Go(func() error {
+			txHash, err := app.bc.CommitPubRandList(req.valBtcPk, req.startingHeight, req.pubRandList, req.sig)
+			mu.Lock()
+			defer mu.Unlock()
+
+			// Do not return errors, as errgroup cancels other requests in case of errors.
+			if err != nil {
+				responses = append(responses, &commitPubRandResponse{
+					txHash:    nil,
+					err:       err,
+					bbnPubKey: req.bbnPubKey,
+				})
+			} else {
+				responses = append(responses, &commitPubRandResponse{
+					txHash:       txHash,
+					startHeight:  req.startingHeight,
+					privRandList: req.privRandList,
+					pubRandList:  req.pubRandList,
+					err:          nil,
+					bbnPubKey:    req.bbnPubKey,
+				})
+			}
+			return nil
+		})
+	}
+
+	// should not happen as we do not return errors from our go routines
+	if err := eg.Wait(); err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Unexpected error when waiting for public randomness commitment")
+	}
+
+	// 3. Check which requests succeed and bump the LastCommittedHeight for each succeed one
+	// report errors for failed ones.
+	for _, response := range responses {
+		res := response
+
+		if res.err != nil {
+			// we got the error, log it and continue.
+			// TODO. this is of course not correct. check issue: https://github.com/babylonchain/btc-validator/issues/34
+			app.logger.WithFields(logrus.Fields{
+				"err":          res.err,
+				"bbn_pk":       res.bbnPubKey,
+				"start_height": res.startHeight,
+			}).Error("failed to commit public randomness")
+			continue
+		}
+
+		respChannel := make(chan struct{}, 1)
+
+		app.pubRandCommittedEventChan <- &pubRandCommittedEvent{
+			bbnPubKey:      res.bbnPubKey,
+			startingHeight: res.startHeight,
+			privRandList:   res.privRandList,
+			pubRandList:    res.pubRandList,
+			txHash:         res.txHash,
+			// pass the channel to the event so that we can send the response to the user which requested
+			// the registration
+			successResponse: respChannel,
+		}
+
+		select {
+		case <-respChannel:
+			app.logger.WithFields(logrus.Fields{
+				"start_height":   res.startHeight,
+				"bbn_pk":         res.bbnPubKey,
+				"num_randomness": len(res.pubRandList),
+			}).Debug("successfully updated public randomness list in db")
+		case <-app.quit:
+			return nil, fmt.Errorf("validator app is shutting down")
+		}
+
+		txHashes = append(txHashes, res.txHash)
 	}
 
 	return txHashes, nil
-}
-
-// commitPubRandForValidator asks Babylon whether the given
-// validator's public randomness has run out
-// if so, generates commit public randomness request
-func (app *ValidatorApp) commitPubRandForValidator(latestBbnBlock *BlockInfo, validator *proto.Validator) ([]byte, error) {
-	bip340BTCPK := validator.MustGetBIP340BTCPK()
-	lastCommittedHeight, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
-	if err != nil {
-		return nil, err
-	}
-
-	if validator.LastCommittedHeight != lastCommittedHeight {
-		// for some reason number of random numbers locally does not match babylon node
-		// log it and try to recover somehow
-		return nil, fmt.Errorf("the local last committed height %v does not match the remote last committed height %v",
-			validator.LastCommittedHeight, lastCommittedHeight)
-	}
-
-	var startHeight uint64
-	// the validator has never submitted public rand before
-	if lastCommittedHeight == uint64(0) {
-		startHeight = latestBbnBlock.Height + 1
-	} else if lastCommittedHeight-latestBbnBlock.Height < app.config.MinRandHeightGap {
-		startHeight = lastCommittedHeight + 1
-	} else {
-		return nil, nil
-	}
-
-	// generate a list of Schnorr randomness pairs
-	privRandList, pubRandList, err := GenerateRandPairList(app.config.NumPubRand)
-	if err != nil {
-		return nil, err
-	}
-
-	// get the message hash for signing
-	msg := &ftypes.MsgCommitPubRandList{
-		ValBtcPk:    bip340BTCPK,
-		StartHeight: startHeight,
-		PubRandList: pubRandList,
-	}
-	hash, err := msg.HashToSign()
-	if err != nil {
-		return nil, err
-	}
-
-	// sign the message hash using the validator's BTC private key
-	kc, err := val.NewKeyringControllerWithKeyring(app.kr, validator.KeyName)
-	if err != nil {
-		return nil, err
-	}
-	schnorrSig, err := kc.SchnorrSign(hash)
-	if err != nil {
-		return nil, err
-	}
-	sig := types.NewBIP340SignatureFromBTCSig(schnorrSig)
-
-	request := &commitPubRandRequest{
-		startingHeight:  startHeight,
-		bbnPubKey:       validator.GetBabylonPK(),
-		valBtcPk:        validator.MustGetBIP340BTCPK(),
-		privRandList:    privRandList,
-		pubRandList:     pubRandList,
-		errResponse:     make(chan error, 1),
-		successResponse: make(chan *commitPubRandResponse, 1),
-		sig:             &sig,
-	}
-
-	app.commitPubRandRequestChan <- request
-
-	select {
-	case err := <-request.errResponse:
-		return nil, err
-	case successResponse := <-request.successResponse:
-		return successResponse.txHash, nil
-	case <-app.quit:
-		return nil, fmt.Errorf("validator app is shutting down")
-	}
 }
 
 func (app *ValidatorApp) latestFinalisedBlocksWithRetry(count uint64) ([]*ftypes.IndexedBlock, error) {
