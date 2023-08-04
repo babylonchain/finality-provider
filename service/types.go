@@ -44,23 +44,24 @@ type commitPubRandRequest struct {
 	privRandList   []*eots.PrivateRand
 	pubRandList    []types.SchnorrPubRand
 	sig            *types.BIP340Signature
-
-	errResponse     chan error
-	successResponse chan *commitPubRandResponse
 }
 
 type commitPubRandResponse struct {
-	txHash []byte
+	bbnPubKey    *secp256k1.PubKey
+	privRandList []*eots.PrivateRand
+	pubRandList  []types.SchnorrPubRand
+	startHeight  uint64
+	txHash       []byte
+	err          error
 }
 
 type pubRandCommittedEvent struct {
 	startingHeight  uint64
 	bbnPubKey       *secp256k1.PubKey
-	valBtcPk        *types.BIP340PubKey
 	pubRandList     []types.SchnorrPubRand
 	privRandList    []*eots.PrivateRand
 	txHash          []byte
-	successResponse chan *commitPubRandResponse
+	successResponse chan struct{}
 }
 
 type addJurySigRequest struct {
