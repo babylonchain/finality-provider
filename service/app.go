@@ -472,12 +472,14 @@ func (app *ValidatorApp) CommitPubRandForAll(latestBbnBlock *BlockInfo) ([][]byt
 		}
 
 		var startHeight uint64
-		// the validator has never submitted public rand before
 		if lastCommittedHeight == uint64(0) {
+			// the validator has never submitted public rand before
 			startHeight = latestBbnBlock.Height + 1
 		} else if lastCommittedHeight-latestBbnBlock.Height < app.config.MinRandHeightGap {
+			// we are running out of the randomness
 			startHeight = lastCommittedHeight + 1
 		} else {
+			// we have sufficient randomness, skip committing more
 			return nil, nil
 		}
 
