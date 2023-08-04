@@ -200,10 +200,12 @@ func FuzzAddJurySig(f *testing.F) {
 			SlashingTx: slashingTx,
 		}
 
+		stakingMsgTx, err := stakingTx.ToMsgTx()
+		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, gomock.Any()).
+		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
 		txHash, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)

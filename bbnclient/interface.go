@@ -12,9 +12,9 @@ import (
 
 type StakingParams struct {
 	// K-deep
-	ComfirmationTimeBlocks uint32
+	ComfirmationTimeBlocks uint64
 	// W-deep
-	FinalizationTimeoutBlocks uint32
+	FinalizationTimeoutBlocks uint64
 
 	// Minimum amount of satoshis required for slashing transaction
 	MinSlashingTxFeeSat btcutil.Amount
@@ -36,7 +36,7 @@ type BabylonClient interface {
 	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error)
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
-	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error)
+	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) ([]byte, error)
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 	// validator's BTC private key will be returned if the validator is slashed due to double signing
 	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error)

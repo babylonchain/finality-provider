@@ -156,9 +156,8 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 	}
 
 	return &StakingParams{
-		ComfirmationTimeBlocks:    uint32(ckptParamRes.Params.BtcConfirmationDepth),
-		FinalizationTimeoutBlocks: uint32(ckptParamRes.Params.CheckpointFinalizationTimeout),
-		// TODO: Currently hardcoded on babylon level.
+		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
+		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
 		MinSlashingTxFeeSat: btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		JuryPk:              juryPk,
 		SlashingAddress:     stakingParamRes.Params.SlashingAddress,
@@ -204,12 +203,13 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, sig *types.BIP340Signature) ([]byte, error) {
+func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) ([]byte, error) {
 	msg := &btcstakingtypes.MsgAddJurySig{
-		Signer: bc.MustGetTxSigner(),
-		ValPk:  btcPubKey,
-		DelPk:  delPubKey,
-		Sig:    sig,
+		Signer:        bc.MustGetTxSigner(),
+		ValPk:         btcPubKey,
+		DelPk:         delPubKey,
+		StakingTxHash: stakingTxHash,
+		Sig:           sig,
 	}
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
@@ -450,7 +450,7 @@ func (bc *BabylonController) QueryLatestFinalisedBlocks(count uint64) ([]*finali
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 	pagination := &sdkquery.PageRequest{
 		Limit: 100,
@@ -466,49 +466,15 @@ func (bc *BabylonController) QueryActiveBTCValidatorDelegations(valBtcPk *types.
 	for {
 		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
 			ValBtcPkHex: valBtcPk.MarshalHex(),
-			DelStatus:   btcstakingtypes.BTCDelegationStatus_ACTIVE,
 			Pagination:  pagination,
 		}
 		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
-		delegations = append(delegations, res.BtcDelegations...)
-		if res.Pagination == nil || res.Pagination.NextKey == nil {
-			break
+		for _, dels := range res.BtcDelegatorDelegations {
+			delegations = append(delegations, dels.Dels...)
 		}
-
-		pagination.Key = res.Pagination.NextKey
-	}
-
-	return delegations, nil
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryPendingBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
-	pagination := &sdkquery.PageRequest{
-		Limit: 100,
-	}
-
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
-	for {
-		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
-			ValBtcPkHex: valBtcPk.MarshalHex(),
-			DelStatus:   btcstakingtypes.BTCDelegationStatus_PENDING,
-			Pagination:  pagination,
-		}
-		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
-		}
-		delegations = append(delegations, res.BtcDelegations...)
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
 			break
 		}
