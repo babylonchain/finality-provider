@@ -158,7 +158,6 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 	return &StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
-		// TODO: Currently hardcoded on babylon level.
 		MinSlashingTxFeeSat: btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		JuryPk:              juryPk,
 		SlashingAddress:     stakingParamRes.Params.SlashingAddress,
