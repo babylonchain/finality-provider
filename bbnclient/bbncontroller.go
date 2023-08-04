@@ -473,10 +473,8 @@ func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *types.BIP340
 		if err != nil {
 			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 		}
-		for _, delMap := range res.BtcDelegationMaps {
-			for _, btcDel := range delMap.DelMap {
-				delegations = append(delegations, btcDel)
-			}
+		for _, dels := range res.BtcDelegatorDelegations {
+			delegations = append(delegations, dels.Dels...)
 		}
 		if res.Pagination == nil || res.Pagination.NextKey == nil {
 			break
