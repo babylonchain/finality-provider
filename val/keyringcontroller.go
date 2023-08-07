@@ -73,7 +73,7 @@ func NewKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*KeyringC
 }
 
 // CreateBTCValidator creates a BTC validator object using the keyring
-func (kc *KeyringController) CreateBTCValidator() (*proto.Validator, error) {
+func (kc *KeyringController) CreateBTCValidator() (*proto.ValidatorStored, error) {
 	// create babylon key pair stored in the keyring
 	babylonPubKey, err := kc.createBabylonKeyPair()
 	if err != nil {
@@ -207,23 +207,40 @@ func (kc *KeyringController) createPop() (*bstypes.ProofOfPossession, error) {
 		return nil, fmt.Errorf("the keys do not exist")
 	}
 
-	bbnName := kc.name.GetBabylonKeyName()
-	btcName := kc.name.GetBtcKeyName()
+	btcPrivKey, err := kc.GetBtcPrivKey()
+	if err != nil {
+		return nil, err
+	}
 
-	// retrieve Babylon private key from keyring
+	bbnPrivKey, err := kc.GetBabylonPrivKey()
+	if err != nil {
+		return nil, err
+	}
+	return bstypes.NewPoP(bbnPrivKey, btcPrivKey)
+}
+
+func (kc *KeyringController) GetBabylonPrivKey() (*secp256k1.PrivKey, error) {
+	bbnName := kc.name.GetBabylonKeyName()
+
 	bbnPrivKey, _, err := kc.getKey(bbnName)
 	if err != nil {
 		return nil, err
 	}
 
-	// retrieve BTC private key from keyring
+	sdkPrivKey := &secp256k1.PrivKey{Key: bbnPrivKey.Serialize()}
+
+	return sdkPrivKey, nil
+}
+
+func (kc *KeyringController) GetBtcPrivKey() (*btcec.PrivateKey, error) {
+	btcName := kc.name.GetBtcKeyName()
+
 	btcPrivKey, _, err := kc.getKey(btcName)
 	if err != nil {
 		return nil, err
 	}
 
-	sdkPrivKey := &secp256k1.PrivKey{Key: bbnPrivKey.Serialize()}
-	return bstypes.NewPoP(sdkPrivKey, btcPrivKey)
+	return btcPrivKey, nil
 }
 
 func (kc *KeyringController) getKey(name string) (*btcec.PrivateKey, *btcec.PublicKey, error) {

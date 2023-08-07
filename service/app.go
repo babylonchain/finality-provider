@@ -141,7 +141,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	validator, err := app.vs.GetValidator(babylonPublicKeyBytes)
+	validator, err := app.vs.GetValidatorStored(babylonPublicKeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	return txHashes, nil
 }
 
-func (app *ValidatorApp) buildFinalitySigRequest(v *proto.Validator, b *BlockInfo) (*addFinalitySigRequest, error) {
+func (app *ValidatorApp) buildFinalitySigRequest(v *proto.ValidatorStored, b *BlockInfo) (*addFinalitySigRequest, error) {
 	privRand, err := app.GetCommittedPrivPubRand(v.BabylonPk, b.Height)
 	if err != nil {
 		return nil, err
@@ -361,7 +361,7 @@ func (app *ValidatorApp) buildFinalitySigRequest(v *proto.Validator, b *BlockInf
 // SubmitFinalitySignatureForValidator submits a finality signature for a given validator
 // NOTE: this function is only called for testing double-signing so we don't want it to change
 // the status of the validator
-func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.Validator) ([]byte, *btcec.PrivateKey, error) {
+func (app *ValidatorApp) SubmitFinalitySignatureForValidator(b *BlockInfo, validator *proto.ValidatorStored) ([]byte, *btcec.PrivateKey, error) {
 	req, err := app.buildFinalitySigRequest(validator, b)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build finality sig request: %w", err)
@@ -773,12 +773,12 @@ func (app *ValidatorApp) IsJury() bool {
 	return app.config.JuryMode
 }
 
-func (app *ValidatorApp) ListValidators() ([]*proto.Validator, error) {
+func (app *ValidatorApp) ListValidators() ([]*proto.ValidatorStored, error) {
 	return app.vs.ListValidators()
 }
 
-func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.Validator, error) {
-	return app.vs.GetValidator(pkBytes)
+func (app *ValidatorApp) GetValidator(pkBytes []byte) (*proto.ValidatorStored, error) {
+	return app.vs.GetValidatorStored(pkBytes)
 }
 
 // GetCommittedPubRandPairList gets all the public randomness pairs from DB with the descending order

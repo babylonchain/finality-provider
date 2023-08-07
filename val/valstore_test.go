@@ -5,8 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/btc-validator/testutil"
 )
 
 // FuzzValidators tests save and list validators properly
@@ -32,7 +33,7 @@ func FuzzValidatorStore(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, valList[0].BabylonPk)
 
-		actualVal, err := vs.GetValidator(validator.BabylonPk)
+		actualVal, err := vs.GetValidatorStored(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, actualVal.BabylonPk)
 		require.Equal(t, validator.BtcPk, actualVal.BtcPk)

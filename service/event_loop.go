@@ -103,7 +103,7 @@ func (app *ValidatorApp) eventLoop() {
 			req.successResponse <- resp
 
 		case ev := <-app.finalitySigAddedEventChan:
-			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)
+			val, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
 
 			if err != nil {
 				// we always check if the validator is in the DB before sending the registration request
@@ -126,7 +126,7 @@ func (app *ValidatorApp) eventLoop() {
 			ev.successResponse <- struct{}{}
 
 		case ev := <-app.validatorRegisteredEventChan:
-			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)
+			val, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
 
 			if err != nil {
 				// we always check if the validator is in the DB before sending the registration request
@@ -150,7 +150,7 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 		case ev := <-app.pubRandCommittedEventChan:
-			val, err := app.vs.GetValidator(ev.bbnPubKey.Key)
+			val, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
 			if err != nil {
 				// we always check if the validator is in the DB before sending the registration request
 				app.logger.WithFields(logrus.Fields{
