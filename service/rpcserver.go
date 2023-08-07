@@ -147,6 +147,8 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 
 	res := &proto.AddFinalitySignatureResponse{TxHash: txHash}
 
+	// if privKey is not empty, then this BTC validator
+	// has voted for a fork and will be slashed
 	if privKey != nil {
 		res.ExtractedSkHex = privKey.Key.String()
 
