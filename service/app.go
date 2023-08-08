@@ -239,7 +239,13 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 		// build proper finality signature request
 		request, err := app.buildFinalitySigRequest(v, b)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build finality signature request: %w", err)
+			app.logger.WithFields(logrus.Fields{
+				"err":               err,
+				"val_btc_pk":        btcPk.MarshalHex(),
+				"bbn_height":        b.Height,
+				"last_voted_height": v.LastVotedHeight,
+			}).Debug("failed to build finality signature request")
+			continue
 		}
 
 		finalitySigRequests = append(finalitySigRequests, request)
@@ -449,8 +455,8 @@ func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
 func (app *ValidatorApp) CommitPubRandForAll(latestBbnBlock *BlockInfo) ([][]byte, error) {
-	// get all the registered validators from the local storage
 	var txHashes [][]byte
+	// get all the registered validators from the local storage
 	validators, err := app.vs.ListRegisteredValidators()
 	if err != nil {
 		return nil, err
@@ -462,14 +468,25 @@ func (app *ValidatorApp) CommitPubRandForAll(latestBbnBlock *BlockInfo) ([][]byt
 		bip340BTCPK := v.MustGetBIP340BTCPK()
 		lastCommittedHeight, err := app.bc.QueryHeightWithLastPubRand(bip340BTCPK)
 		if err != nil {
-			return nil, err
+			app.logger.WithFields(logrus.Fields{
+				"err":                  err,
+				"current_block_height": latestBbnBlock.Height,
+				"btc_pk_hex":           bip340BTCPK.MustToBTCPK(),
+			}).Debug("failed to query last committed height")
+			continue
 		}
 
 		if v.LastCommittedHeight != lastCommittedHeight {
 			// for some reason number of random numbers locally does not match babylon node
 			// log it and try to recover somehow
-			return nil, fmt.Errorf("the local last committed height %v does not match the remote last committed height %v",
-				v.LastCommittedHeight, lastCommittedHeight)
+			app.logger.WithFields(logrus.Fields{
+				"err":                          err,
+				"current_block_height":         latestBbnBlock.Height,
+				"remote_last_committed_height": lastCommittedHeight,
+				"local_last_committed_height":  v.LastCommittedHeight,
+				"btc_pk_hex":                   bip340BTCPK.MustToBTCPK(),
+			}).Debug("the validator's local last committed height does not match the remote last committed height")
+			continue
 		}
 
 		var startHeight uint64
@@ -480,14 +497,21 @@ func (app *ValidatorApp) CommitPubRandForAll(latestBbnBlock *BlockInfo) ([][]byt
 			// we are running out of the randomness
 			startHeight = lastCommittedHeight + 1
 		} else {
-			// we have sufficient randomness, skip committing more
-			return nil, nil
+			app.logger.WithFields(logrus.Fields{
+				"last_committed_height": lastCommittedHeight,
+				"current_block_height":  latestBbnBlock.Height,
+				"btc_pk_hex":            bip340BTCPK.MustToBTCPK(),
+			}).Debug("the validator has sufficient public randomness, skip committing more")
+			continue
 		}
 
 		// generate a list of Schnorr randomness pairs
 		privRandList, pubRandList, err := GenerateRandPairList(app.config.NumPubRand)
 		if err != nil {
-			return nil, err
+			app.logger.WithFields(logrus.Fields{
+				"btc_pk_hex": bip340BTCPK.MustToBTCPK(),
+			}).Debug("failed to generate randomness")
+			continue
 		}
 
 		// get the message hash for signing
@@ -498,17 +522,26 @@ func (app *ValidatorApp) CommitPubRandForAll(latestBbnBlock *BlockInfo) ([][]byt
 		}
 		hash, err := msg.HashToSign()
 		if err != nil {
-			return nil, err
+			app.logger.WithFields(logrus.Fields{
+				"btc_pk_hex": bip340BTCPK.MustToBTCPK(),
+			}).Debug("failed to sign the commit randomness message")
+			continue
 		}
 
 		// sign the message hash using the validator's BTC private key
 		kc, err := val.NewKeyringControllerWithKeyring(app.kr, v.KeyName)
 		if err != nil {
-			return nil, err
+			app.logger.WithFields(logrus.Fields{
+				"btc_pk_hex": bip340BTCPK.MustToBTCPK(),
+			}).Debug("failed to get keyring")
+			continue
 		}
 		schnorrSig, err := kc.SchnorrSign(hash)
 		if err != nil {
-			return nil, err
+			app.logger.WithFields(logrus.Fields{
+				"btc_pk_hex": bip340BTCPK.MustToBTCPK(),
+			}).Debug("failed to sign Schnorr signature")
+			continue
 		}
 		sig := types.NewBIP340SignatureFromBTCSig(schnorrSig)
 
