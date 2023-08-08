@@ -199,6 +199,17 @@ func (app *ValidatorApp) SubmitFinalitySignaturesForAll(b *BlockInfo) ([][]byte,
 	// 1. Fist build all the requests, based on local and babylon data
 	for _, v := range validators {
 		btcPk := v.MustGetBIP340BTCPK()
+
+		if v.LastCommittedHeight < b.Height {
+			app.logger.WithFields(logrus.Fields{
+				"err":                   err,
+				"val_btc_pk":            btcPk.MarshalHex(),
+				"bbn_height":            b.Height,
+				"last_committed_height": v.LastCommittedHeight,
+			}).Error("the validator does not have public randomness for the current block height")
+			continue
+		}
+
 		power, err := app.bc.QueryValidatorVotingPower(btcPk, b.Height)
 		if err != nil {
 			app.logger.WithFields(logrus.Fields{
