@@ -383,8 +383,8 @@ func (app *ValidatorApp) Start() error {
 
 		// Start submission loop last, as at this point both eventLoop and sentToBabylonLoop
 		// are already running
+		app.wg.Add(1)
 		if app.IsJury() {
-			app.wg.Add(1)
 			go app.jurySigSubmissionLoop()
 		} else {
 			for _, v := range app.vals {
@@ -393,6 +393,7 @@ func (app *ValidatorApp) Start() error {
 					return
 				}
 			}
+			go app.validatorSubmissionLoop()
 		}
 	})
 

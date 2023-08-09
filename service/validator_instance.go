@@ -196,6 +196,10 @@ func (v *ValidatorInstance) submissionLoop() {
 	for {
 		select {
 		case b := <-v.GetBlockInfoChan():
+			v.logger.WithFields(logrus.Fields{
+				"babylon_pk_hex": v.GetBabylonPkHex(),
+				"block_height":   b.Height,
+			}).Debug("received a new block, the validator is going to vote")
 			txHash, _, err := v.SubmitFinalitySignature(b)
 			if err != nil {
 				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34

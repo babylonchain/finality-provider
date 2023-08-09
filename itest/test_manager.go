@@ -45,7 +45,7 @@ type TestDelegationData struct {
 	StakingAmount int64
 }
 
-func StartManager(t *testing.T, isJury bool) *TestManager {
+func StartManagerWithoutValidator(t *testing.T, isJury bool) *TestManager {
 	bh := NewBabylonNodeHandler(t)
 
 	err := bh.Start()
