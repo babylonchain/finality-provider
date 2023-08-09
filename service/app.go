@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
@@ -26,8 +25,8 @@ type ValidatorApp struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 
-	// wg and quit are responsible for submissions go routines
 	wg   sync.WaitGroup
+	mu   sync.Mutex
 	quit chan struct{}
 
 	sentWg   sync.WaitGroup
@@ -133,6 +132,45 @@ func (app *ValidatorApp) GetJuryPk() (*btcec.PublicKey, error) {
 	return juryPrivKey.PubKey(), nil
 }
 
+func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	valsList := make([]*ValidatorInstance, 0, len(app.vals))
+	for _, v := range app.vals {
+		valsList = append(valsList, v)
+	}
+
+	return valsList
+}
+
+// GetValidatorInstance returns the validator instance with the given Babylon public key
+func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	keyHex := hex.EncodeToString(babylonPk.Key)
+	v, exists := app.vals[keyHex]
+	if !exists {
+		return nil, fmt.Errorf("cannot find the validator instance with PK: %s", keyHex)
+	}
+
+	return v, nil
+}
+
+func (app *ValidatorApp) AddValidatorInstance(valIns *ValidatorInstance) error {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	k := valIns.GetBabylonPkHex()
+	if _, exists := app.vals[k]; exists {
+		return fmt.Errorf("validator instance already exists")
+	}
+	app.vals[k] = valIns
+
+	return nil
+}
+
 func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
 	header, err := app.bc.QueryBestHeader()
 	if err != nil {
@@ -207,16 +245,6 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 	case <-app.quit:
 		return nil, fmt.Errorf("validator app is shutting down")
 	}
-}
-
-func (app *ValidatorApp) AddValidatorInstance(valIns *ValidatorInstance) error {
-	k := valIns.GetBabylonPkHex()
-	if _, exists := app.vals[k]; exists {
-		return fmt.Errorf("validator instance already exists")
-	}
-	app.vals[k] = valIns
-
-	return nil
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
@@ -469,51 +497,6 @@ func (app *ValidatorApp) CreateValidator(keyName string) (*CreateValidatorResult
 
 func (app *ValidatorApp) IsJury() bool {
 	return app.config.JuryMode
-}
-
-func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
-	valsList := make([]*ValidatorInstance, 0, len(app.vals))
-	for _, v := range app.vals {
-		valsList = append(valsList, v)
-	}
-
-	return valsList
-}
-
-// GetValidatorInstance returns the validator instance with the given Babylon public key
-func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
-	keyHex := hex.EncodeToString(babylonPk.Key)
-	v, exists := app.vals[keyHex]
-	if !exists {
-		return nil, fmt.Errorf("cannot find the validator instance with PK: %s", keyHex)
-	}
-
-	return v, nil
-}
-
-// GetCommittedPubRandPairList gets all the public randomness pairs from DB with the descending order
-func (app *ValidatorApp) GetCommittedPubRandPairList(pkBytes []byte) ([]*proto.SchnorrRandPair, error) {
-	return app.vs.GetRandPairList(pkBytes)
-}
-
-func (app *ValidatorApp) GetCommittedPubRandPair(pkBytes []byte, height uint64) (*proto.SchnorrRandPair, error) {
-	return app.vs.GetRandPair(pkBytes, height)
-}
-
-func (app *ValidatorApp) GetCommittedPrivPubRand(pkBytes []byte, height uint64) (*eots.PrivateRand, error) {
-	randPair, err := app.vs.GetRandPair(pkBytes, height)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(randPair.SecRand) != 32 {
-		return nil, fmt.Errorf("the private randomness should be 32 bytes")
-	}
-
-	privRand := new(eots.PrivateRand)
-	privRand.SetByteSlice(randPair.SecRand)
-
-	return privRand, nil
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {

@@ -440,38 +440,6 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btce
 	return txHash, privKey, nil
 }
 
-func (v *ValidatorInstance) buildFinalitySigRequest(b *BlockInfo) (*addFinalitySigRequest, error) {
-	privRand, err := v.getCommittedPrivPubRand(b.Height)
-	if err != nil {
-		return nil, err
-	}
-
-	btcPrivKey, err := v.kc.GetBtcPrivKey()
-	if err != nil {
-		return nil, err
-	}
-
-	msg := &ftypes.MsgAddFinalitySig{
-		ValBtcPk:            v.btcPk,
-		BlockHeight:         b.Height,
-		BlockLastCommitHash: b.LastCommitHash,
-	}
-	msgToSign := msg.MsgToSign()
-	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
-	if err != nil {
-		return nil, err
-	}
-	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
-
-	return &addFinalitySigRequest{
-		bbnPubKey:           v.bbnPk,
-		valBtcPk:            v.btcPk,
-		blockHeight:         b.Height,
-		blockLastCommitHash: b.LastCommitHash,
-		sig:                 eotsSig,
-	}, nil
-}
-
 func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
 	randPair, err := v.state.s.GetRandPair(v.bbnPk.Key, height)
 	if err != nil {
