@@ -113,6 +113,10 @@ func NewValidatorAppFromConfig(
 	}, nil
 }
 
+func (app *ValidatorApp) GetConfig() *valcfg.Config {
+	return app.config
+}
+
 func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
 	return app.vs
 }
@@ -191,16 +195,28 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 		if err != nil {
 			return successResponse.txHash, fmt.Errorf("unable to create the validator instance %s: %w", validator.GetBabylonPkHexString(), err)
 		}
+		err = app.AddValidatorInstance(valIns)
+		if err != nil {
+			return successResponse.txHash, err
+		}
 		err = valIns.Start()
 		if err != nil {
 			return successResponse.txHash, fmt.Errorf("unable to start the validator instance %s: %w", validator.GetBabylonPkHexString(), err)
 		}
-		app.vals[validator.GetBabylonPkHexString()] = valIns
-
 		return successResponse.txHash, nil
 	case <-app.quit:
 		return nil, fmt.Errorf("validator app is shutting down")
 	}
+}
+
+func (app *ValidatorApp) AddValidatorInstance(valIns *ValidatorInstance) error {
+	k := valIns.GetBabylonPkHex()
+	if _, exists := app.vals[k]; exists {
+		return fmt.Errorf("validator instance already exists")
+	}
+	app.vals[k] = valIns
+
+	return nil
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon

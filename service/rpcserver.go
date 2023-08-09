@@ -122,8 +122,12 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	*proto.RegisterValidatorResponse, error) {
 
 	txHash, err := r.app.RegisterValidator(req.KeyName)
-	if err != nil {
-		return nil, err
+	if err != nil && txHash == nil {
+		return nil, fmt.Errorf("failed to register the validator to Babylon: %w", err)
+	}
+	if err != nil && txHash != nil {
+		return &proto.RegisterValidatorResponse{TxHash: txHash},
+			fmt.Errorf("successfully registered the validator to Babylon but error when starting the validator instance: %w", err)
 	}
 
 	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil

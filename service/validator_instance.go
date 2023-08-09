@@ -124,6 +124,30 @@ func (v *ValidatorInstance) GetLastCommittedHeight() uint64 {
 	return v.state.v.LastCommittedHeight
 }
 
+func (v *ValidatorInstance) GetCommittedPubRandPairList() ([]*proto.SchnorrRandPair, error) {
+	return v.state.s.GetRandPairList(v.bbnPk.Key)
+}
+
+func (v *ValidatorInstance) GetCommittedPubRandPair(height uint64) (*proto.SchnorrRandPair, error) {
+	return v.state.s.GetRandPair(v.bbnPk.Key, height)
+}
+
+func (v *ValidatorInstance) GetCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
+	randPair, err := v.state.s.GetRandPair(v.bbnPk.Key, height)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(randPair.SecRand) != 32 {
+		return nil, fmt.Errorf("the private randomness should be 32 bytes")
+	}
+
+	privRand := new(eots.PrivateRand)
+	privRand.SetByteSlice(randPair.SecRand)
+
+	return privRand, nil
+}
+
 func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
 	v.state.v.Status = s
 	return v.state.s.SaveValidator(v.state.v)
@@ -199,7 +223,7 @@ func (v *ValidatorInstance) submissionLoop() {
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 				}).Fatal("failed to get the current Babylon block")
 			}
-			txHash, err := v.commitPubRand(tipBlock)
+			txHash, err := v.CommitPubRand(tipBlock)
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":            err,
@@ -223,10 +247,10 @@ func (v *ValidatorInstance) submissionLoop() {
 	}
 }
 
-// commitPubRand generates a list of Schnorr rand pairs,
+// CommitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
-func (v *ValidatorInstance) commitPubRand(tipBlock *BlockInfo) ([]byte, error) {
+func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 	lastCommittedHeight, err := v.bc.QueryHeightWithLastPubRand(v.btcPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Babylon for the last committed height: %w", err)

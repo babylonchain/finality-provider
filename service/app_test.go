@@ -8,10 +8,7 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/chaincfg"
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	cometbfttypes "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -20,7 +17,6 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
-	"github.com/babylonchain/btc-validator/testutil/mocks"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -39,7 +35,7 @@ func FuzzRegisterValidator(f *testing.F) {
 			require.NoError(t, err)
 		}()
 		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := PrepareMockedBabylonClient(t, startingBlock)
+		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
@@ -51,7 +47,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		}()
 
 		// create a validator object and save it to db
-		validator := createValidator(r, t, app)
+		validator := testutil.GenStoredValidator(r, t, app)
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
@@ -91,7 +87,7 @@ func FuzzAddJurySig(f *testing.F) {
 			require.NoError(t, err)
 		}()
 		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := PrepareMockedBabylonClient(t, startingBlock)
+		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
@@ -103,7 +99,7 @@ func FuzzAddJurySig(f *testing.F) {
 		}()
 
 		// create a validator object and save it to db
-		validator := createValidator(r, t, app)
+		validator := testutil.GenStoredValidator(r, t, app)
 		btcPkBIP340 := validator.MustGetBIP340BTCPK()
 		btcPk := validator.MustGetBTCPK()
 
@@ -149,34 +145,6 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, txHash)
 	})
-}
-
-func PrepareMockedBabylonClient(t *testing.T, startingBlock *service.BlockInfo) *mocks.MockBabylonClient {
-	ctl := gomock.NewController(t)
-	mockBabylonClient := mocks.NewMockBabylonClient(ctl)
-	status := &coretypes.ResultStatus{
-		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(startingBlock.Height + 1)},
-	}
-	resHeader := &coretypes.ResultHeader{
-		Header: &cometbfttypes.Header{
-			Height:         int64(startingBlock.Height),
-			LastCommitHash: startingBlock.LastCommitHash,
-		},
-	}
-	finalizedBlocks := make([]*finalitytypes.IndexedBlock, 0)
-	finalizedBlock := &finalitytypes.IndexedBlock{
-		Height:         startingBlock.Height,
-		LastCommitHash: startingBlock.LastCommitHash,
-		Finalized:      true,
-	}
-	finalizedBlocks = append(finalizedBlocks, finalizedBlock)
-
-	mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
-	mockBabylonClient.EXPECT().QueryHeader(int64(startingBlock.Height)).Return(resHeader, nil).AnyTimes()
-	mockBabylonClient.EXPECT().QueryLatestFinalisedBlocks(uint64(1)).Return(finalizedBlocks, nil).AnyTimes()
-	mockBabylonClient.EXPECT().Close().Return(nil).AnyTimes()
-
-	return mockBabylonClient
 }
 
 // create a random validator object and save it to db

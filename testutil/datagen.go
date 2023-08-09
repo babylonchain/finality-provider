@@ -15,6 +15,8 @@ import (
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -64,6 +66,25 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.ValidatorStored {
 			BtcSig:     pop.BtcSig.MustMarshal(),
 		},
 	}
+}
+
+// GenStoredValidator generates a random validator from the keyring and store it in DB
+func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.ValidatorStored {
+	// generate keyring
+	keyName := GenRandomHexStr(r, 4)
+	kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+	require.NoError(t, err)
+
+	// create validator using the keyring
+	validator, err := kc.CreateBTCValidator()
+	require.NoError(t, err)
+
+	// save the validator
+	s := app.GetValidatorStore()
+	err = s.SaveValidator(validator)
+	require.NoError(t, err)
+
+	return validator
 }
 
 func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
