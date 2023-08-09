@@ -31,9 +31,9 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
-			CommitPubRandList(valIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPk()).
+		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		actualTxHash, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
@@ -66,9 +66,9 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
-			CommitPubRandList(valIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPk()).
+		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		actualTxHash, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
@@ -81,9 +81,9 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		}
 		expectedTxHash = testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
-			SubmitFinalitySig(valIns.GetBtcPk(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
+			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(expectedTxHash, nil, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPk(), nextBlock.Height).
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), nextBlock.Height).
 			Return(uint64(1), nil).AnyTimes()
 		actualTxHash, _, err = valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)

@@ -104,8 +104,12 @@ func (v *ValidatorInstance) GetBabylonPkHex() string {
 	return hex.EncodeToString(v.bbnPk.Key)
 }
 
-func (v *ValidatorInstance) GetBtcPk() *types.BIP340PubKey {
+func (v *ValidatorInstance) GetBtcPkBIP340() *types.BIP340PubKey {
 	return v.btcPk
+}
+
+func (v *ValidatorInstance) MustGetBtcPk() *btcec.PublicKey {
+	return v.btcPk.MustToBTCPK()
 }
 
 func (v *ValidatorInstance) GetBtcPkHex() string {
@@ -352,7 +356,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 // does not need to send finality signature over this block
 // 3. the validator does not have voting power on the given block
 func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btcec.PrivateKey, error) {
-	btcPk := v.GetBtcPk()
+	btcPk := v.GetBtcPkBIP340()
 
 	// check last committed height
 	if v.GetLastCommittedHeight() < b.Height {
@@ -423,7 +427,7 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btce
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
 	// send finality signature to Babylon
-	txHash, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPk(), b.Height, b.LastCommitHash, eotsSig)
+	txHash, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
 	}
