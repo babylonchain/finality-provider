@@ -146,22 +146,3 @@ func FuzzAddJurySig(f *testing.F) {
 		require.Equal(t, expectedTxHash, txHash)
 	})
 }
-
-// create a random validator object and save it to db
-func createValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.ValidatorStored {
-	// generate keyring
-	keyName := testutil.GenRandomHexStr(r, 4)
-	kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
-	require.NoError(t, err)
-
-	// create validator using the keyring
-	validator, err := kc.CreateBTCValidator()
-	require.NoError(t, err)
-
-	// save the validator
-	s := app.GetValidatorStore()
-	err = s.SaveValidator(validator)
-	require.NoError(t, err)
-
-	return validator
-}
