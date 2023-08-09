@@ -70,7 +70,7 @@ func NewValidatorInstance(
 	}
 
 	// TODO load unvoted blocks from WAL and insert them into the channel
-	blocksToVote := make(chan *BlockInfo, 0)
+	blocksToVote := make(chan *BlockInfo)
 
 	return &ValidatorInstance{
 		bbnPk: bbnPk,

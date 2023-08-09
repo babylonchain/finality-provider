@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -37,33 +36,6 @@ type registerValidatorResponse struct {
 	txHash []byte
 }
 
-type commitPubRandRequest struct {
-	startingHeight uint64
-	bbnPubKey      *secp256k1.PubKey
-	valBtcPk       *types.BIP340PubKey
-	privRandList   []*eots.PrivateRand
-	pubRandList    []types.SchnorrPubRand
-	sig            *types.BIP340Signature
-}
-
-type commitPubRandResponse struct {
-	bbnPubKey    *secp256k1.PubKey
-	privRandList []*eots.PrivateRand
-	pubRandList  []types.SchnorrPubRand
-	startHeight  uint64
-	txHash       []byte
-	err          error
-}
-
-type pubRandCommittedEvent struct {
-	startingHeight  uint64
-	bbnPubKey       *secp256k1.PubKey
-	pubRandList     []types.SchnorrPubRand
-	privRandList    []*eots.PrivateRand
-	txHash          []byte
-	successResponse chan struct{}
-}
-
 type addJurySigRequest struct {
 	bbnPubKey       *secp256k1.PubKey
 	valBtcPk        *types.BIP340PubKey
@@ -90,20 +62,6 @@ type addFinalitySigRequest struct {
 	blockHeight         uint64
 	blockLastCommitHash []byte
 	sig                 *types.SchnorrEOTSSig
-}
-
-type addFinalitySigResponse struct {
-	bbnPubKey *secp256k1.PubKey
-	height    uint64
-	txHash    []byte
-	err       error
-}
-
-type finalitySigAddedEvent struct {
-	bbnPubKey       *secp256k1.PubKey
-	height          uint64
-	txHash          []byte
-	successResponse chan struct{}
 }
 
 type CreateValidatorResult struct {

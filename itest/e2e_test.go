@@ -161,6 +161,84 @@ func TestValidatorLifeCycle(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
+// TestMultipleValidators tests starting with multiple validators
+func TestMultipleValidators(t *testing.T) {
+	n := 3
+	tm := StartManagerWithValidator(t, n, false)
+	defer tm.Stop(t)
+
+	app := tm.Va
+	valInstances := app.ListValidatorInstances()
+
+	// submit BTC delegations for each validator
+	for _, valIns := range valInstances {
+		go func(v *service.ValidatorInstance) {
+			// check the public randomness is committed
+			require.Eventually(t, func() bool {
+				randPairs, err := v.GetCommittedPubRandPairList()
+				if err != nil {
+					return false
+				}
+				return int(tm.Config.NumPubRand) == len(randPairs)
+			}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+			// send a BTC delegation
+			_ = tm.InsertBTCDelegation(t, v.MustGetBtcPk(), stakingTime, stakingAmount)
+		}(valIns)
+	}
+
+	// check the BTC delegation is pending
+	var (
+		dels []*btcstakingtypes.BTCDelegation
+		err  error
+	)
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		if err != nil {
+			return false
+		}
+		return len(dels) == 3
+	}, eventuallyWaitTimeOut*2, eventuallyPollTime)
+
+	// submit Jury sigs for each delegation
+	for _, del := range dels {
+		go func(btcDel *btcstakingtypes.BTCDelegation) {
+			_ = tm.AddJurySignature(t, btcDel)
+		}(del)
+	}
+
+	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	params, err := tm.BabylonClient.GetStakingParams()
+	require.NoError(t, err)
+
+	for _, valIns := range valInstances {
+		go func(v *service.ValidatorInstance) {
+			// check the BTC delegation is active
+			require.Eventually(t, func() bool {
+				dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(v.GetBtcPkBIP340())
+				if err != nil {
+					return false
+				}
+				status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
+				return len(dels) == 1 && status == btcstakingtypes.BTCDelegationStatus_ACTIVE
+			}, eventuallyWaitTimeOut, eventuallyPollTime)
+		}(valIns)
+	}
+
+	// check there's a block finalized
+	require.Eventually(t, func() bool {
+		blocks, err := tm.BabylonClient.QueryLatestFinalisedBlocks(100)
+		if err != nil {
+			return false
+		}
+		if len(blocks) == 1 {
+			return true
+		}
+		return false
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
 func TestJurySigSubmission(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, true)
 	defer tm.Stop(t)
