@@ -56,14 +56,6 @@ type jurySigAddedEvent struct {
 	successResponse chan *addJurySigResponse
 }
 
-type addFinalitySigRequest struct {
-	bbnPubKey           *secp256k1.PubKey
-	valBtcPk            *types.BIP340PubKey
-	blockHeight         uint64
-	blockLastCommitHash []byte
-	sig                 *types.SchnorrEOTSSig
-}
-
 type CreateValidatorResult struct {
 	BtcValidatorPk     btcec.PublicKey
 	BabylonValidatorPk secp256k1.PubKey
