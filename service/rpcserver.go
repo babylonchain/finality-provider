@@ -7,7 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/lightningnetwork/lnd/signal"
@@ -152,29 +151,27 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		return nil, err
 	}
 
-	var localPrivKey *btcec.PrivateKey
+	res := &proto.AddFinalitySignatureResponse{TxHash: txHash}
+
+	// if privKey is not empty, then this BTC validator
+	// has voted for a fork and will be slashed
 	if privKey != nil {
-		localPrivKey, err = r.app.getBtcPrivKey(v.GetValidatorStored().KeyName)
+		localPrivKey, err := r.app.getBtcPrivKey(v.GetValidatorStored().KeyName)
+		res.ExtractedSkHex = privKey.Key.String()
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	res := &proto.AddFinalitySignatureResponse{
-		TxHash:         txHash,
-		ExtractedSkHex: privKey.Key.String(),
-	}
-
-	localSkHex := localPrivKey.Key.String()
-	localSkNegateHex := localPrivKey.Key.Negate().String()
-	if res.ExtractedSkHex == localSkHex {
-		res.LocalSkHex = localSkHex
-	} else if res.ExtractedSkHex == localSkNegateHex {
-		res.LocalSkHex = localSkNegateHex
-	} else {
-		return nil, fmt.Errorf("the validator's BTC private key is extracted but does not match the local key,"+
-			"extrated: %s, local: %s, local-negated: %s",
-			res.ExtractedSkHex, localSkHex, localSkNegateHex)
+		localSkHex := localPrivKey.Key.String()
+		localSkNegateHex := localPrivKey.Key.Negate().String()
+		if res.ExtractedSkHex == localSkHex {
+			res.LocalSkHex = localSkHex
+		} else if res.ExtractedSkHex == localSkNegateHex {
+			res.LocalSkHex = localSkNegateHex
+		} else {
+			return nil, fmt.Errorf("the validator's BTC private key is extracted but does not match the local key,"+
+				"extrated: %s, local: %s, local-negated: %s",
+				res.ExtractedSkHex, localSkHex, localSkNegateHex)
+		}
 	}
 
 	return res, nil
