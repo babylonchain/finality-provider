@@ -52,32 +52,11 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 func (app *ValidatorApp) validatorSubmissionLoop() {
 	defer app.wg.Done()
 
-	commitRandTicker := time.NewTicker(app.config.RandomnessCommitInterval)
-
 	for {
 		select {
 		case b := <-app.poller.GetBlockInfoChan():
-			_, err := app.SubmitFinalitySignaturesForAll(b)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err":        err,
-					"bbn_height": b.Height,
-				}).Error("failed to submit finality signature to Babylon")
-			}
-		case <-commitRandTicker.C:
-			lastBlock, err := app.GetCurrentBbnBlock()
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Fatal("failed to get the current Babylon block")
-			}
-			_, err = app.CommitPubRandForAll(lastBlock)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"block_height": lastBlock.Height,
-					"err":          err,
-				}).Error("failed to commit public randomness")
-				continue
+			for _, v := range app.vals {
+				v.GetBlockInfoChan() <- b
 			}
 		case <-app.quit:
 			app.logger.Debug("exiting validatorSubmissionLoop")
@@ -102,31 +81,8 @@ func (app *ValidatorApp) eventLoop() {
 
 			req.successResponse <- resp
 
-		case ev := <-app.finalitySigAddedEventChan:
-			val, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
-
-			if err != nil {
-				// we always check if the validator is in the DB before sending the registration request
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Error("finality signature added validator not found in DB")
-			}
-
-			// update the last_voted_height
-			err = app.vs.SetValidatorLastVotedHeight(val, ev.height)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk":            ev.bbnPubKey,
-					"block_height":      ev.height,
-					"last_voted_height": val.LastVotedHeight,
-				}).Fatal("err while updating the validator last voted height to DB")
-			}
-
-			// return to the caller
-			ev.successResponse <- struct{}{}
-
 		case ev := <-app.validatorRegisteredEventChan:
-			val, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
+			valStored, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
 
 			if err != nil {
 				// we always check if the validator is in the DB before sending the registration request
@@ -136,7 +92,7 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 			// change the status of the validator to registered
-			err = app.vs.SetValidatorStatus(val, proto.ValidatorStatus_REGISTERED)
+			err = app.vs.SetValidatorStatus(valStored, proto.ValidatorStatus_REGISTERED)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -148,47 +104,6 @@ func (app *ValidatorApp) eventLoop() {
 			ev.successResponse <- &registerValidatorResponse{
 				txHash: ev.txHash,
 			}
-
-		case ev := <-app.pubRandCommittedEventChan:
-			val, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
-			if err != nil {
-				// we always check if the validator is in the DB before sending the registration request
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("Public randomness committed validator not found in DB")
-			}
-
-			val.LastCommittedHeight = ev.startingHeight + uint64(len(ev.pubRandList)-1)
-
-			// save the updated validator object to DB
-			err = app.vs.SaveValidator(val)
-
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("err while saving validator to DB")
-			}
-
-			// save the committed random list to DB
-			// TODO 1: Optimize the db interface to batch the saving operations
-			// TODO 2: Consider safety after recovery
-			for i, pr := range ev.privRandList {
-				height := ev.startingHeight + uint64(i)
-				privRand := pr.Bytes()
-				randPair := &proto.SchnorrRandPair{
-					SecRand: privRand[:],
-					PubRand: ev.pubRandList[i].MustMarshal(),
-				}
-				err = app.vs.SaveRandPair(ev.bbnPubKey.Key, height, randPair)
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"bbn_pk": ev.bbnPubKey,
-					}).Fatal("err while saving committed random pair to DB")
-				}
-			}
-
-			// return to the caller
-			ev.successResponse <- struct{}{}
 
 		case ev := <-app.jurySigAddedEventChan:
 			// TODO do we assume the delegator is also a BTC validator?

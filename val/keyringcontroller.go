@@ -92,7 +92,7 @@ func (kc *KeyringController) CreateBTCValidator() (*proto.ValidatorStored, error
 		return nil, err
 	}
 
-	return NewValidator(babylonPubKey, btcPubKey, kc.GetKeyName(), pop), nil
+	return NewValidatorStored(babylonPubKey, btcPubKey, kc.GetKeyName(), pop), nil
 }
 
 func (kc *KeyringController) GetKeyName() string {

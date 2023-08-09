@@ -9,6 +9,7 @@ import (
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -24,7 +25,7 @@ type State struct {
 	s *val.ValidatorStore
 }
 
-type Validator struct {
+type ValidatorInstance struct {
 	bbnPk *secp256k1.PubKey
 	btcPk *types.BIP340PubKey
 
@@ -39,21 +40,20 @@ type Validator struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 
-	// wg and quit are responsible for submissions go routines
 	wg   sync.WaitGroup
 	quit chan struct{}
 }
 
-// NewValidator returns a Validator instance with the given Babylon public key
+// NewValidatorInstance returns a ValidatorInstance instance with the given Babylon public key
 // the validator should be registered before
-func NewValidator(
+func NewValidatorInstance(
 	bbnPk *secp256k1.PubKey,
 	cfg *valcfg.Config,
 	s *val.ValidatorStore,
 	kr keyring.Keyring,
 	bc bbncli.BabylonClient,
 	logger *logrus.Logger,
-) (*Validator, error) {
+) (*ValidatorInstance, error) {
 	v, err := s.GetValidatorStored(bbnPk.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrive the validator %s from DB: %w", v.GetBabylonPkHexString(), err)
@@ -72,7 +72,7 @@ func NewValidator(
 	// TODO load unvoted blocks from WAL and insert them into the channel
 	blocksToVote := make(chan *BlockInfo, 0)
 
-	return &Validator{
+	return &ValidatorInstance{
 		bbnPk: bbnPk,
 		btcPk: v.MustGetBIP340BTCPK(),
 		state: &State{
@@ -88,54 +88,58 @@ func NewValidator(
 	}, nil
 }
 
-func (v *Validator) GetBlockInfoChan() chan *BlockInfo {
+func (v *ValidatorInstance) GetValidatorStored() *proto.ValidatorStored {
+	return v.state.v
+}
+
+func (v *ValidatorInstance) GetBlockInfoChan() chan *BlockInfo {
 	return v.blocksToVote
 }
 
-func (v *Validator) GetBabylonPk() *secp256k1.PubKey {
+func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
 	return v.bbnPk
 }
 
-func (v *Validator) GetBabylonPkHex() string {
+func (v *ValidatorInstance) GetBabylonPkHex() string {
 	return hex.EncodeToString(v.bbnPk.Key)
 }
 
-func (v *Validator) GetBtcPk() *types.BIP340PubKey {
+func (v *ValidatorInstance) GetBtcPk() *types.BIP340PubKey {
 	return v.btcPk
 }
 
-func (v *Validator) GetBtcPkHex() string {
+func (v *ValidatorInstance) GetBtcPkHex() string {
 	return v.btcPk.MarshalHex()
 }
 
-func (v *Validator) GetStatus() proto.ValidatorStatus {
+func (v *ValidatorInstance) GetStatus() proto.ValidatorStatus {
 	return v.state.v.Status
 }
 
-func (v *Validator) GetLastVotedHeight() uint64 {
+func (v *ValidatorInstance) GetLastVotedHeight() uint64 {
 	return v.state.v.LastVotedHeight
 }
 
-func (v *Validator) GetLastCommittedHeight() uint64 {
+func (v *ValidatorInstance) GetLastCommittedHeight() uint64 {
 	return v.state.v.LastCommittedHeight
 }
 
-func (v *Validator) SetStatus(s proto.ValidatorStatus) error {
+func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
 	v.state.v.Status = s
 	return v.state.s.SaveValidator(v.state.v)
 }
 
-func (v *Validator) SetLastVotedHeight(height uint64) error {
+func (v *ValidatorInstance) SetLastVotedHeight(height uint64) error {
 	v.state.v.LastVotedHeight = height
 	return v.state.s.SaveValidator(v.state.v)
 }
 
-func (v *Validator) SetLastCommittedHeight(height uint64) error {
+func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 	v.state.v.LastCommittedHeight = height
 	return v.state.s.SaveValidator(v.state.v)
 }
 
-func (v *Validator) Start() error {
+func (v *ValidatorInstance) Start() error {
 	var startErr error
 	v.startOnce.Do(func() {
 		v.logger.Infof("Starting thread handling validator %s", v.GetBabylonPkHex())
@@ -147,7 +151,7 @@ func (v *Validator) Start() error {
 	return startErr
 }
 
-func (v *Validator) Stop() error {
+func (v *ValidatorInstance) Stop() error {
 	var stopErr error
 	v.stopOnce.Do(func() {
 		v.logger.Infof("Stopping thread handling validator %s", v.GetBabylonPkHex())
@@ -160,7 +164,7 @@ func (v *Validator) Stop() error {
 	return stopErr
 }
 
-func (v *Validator) submissionLoop() {
+func (v *ValidatorInstance) submissionLoop() {
 	defer v.wg.Done()
 
 	commitRandTicker := time.NewTicker(v.cfg.RandomnessCommitInterval)
@@ -168,7 +172,7 @@ func (v *Validator) submissionLoop() {
 	for {
 		select {
 		case b := <-v.GetBlockInfoChan():
-			txHash, err := v.SubmitFinalitySignature(b)
+			txHash, _, err := v.SubmitFinalitySignature(b)
 			if err != nil {
 				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
@@ -222,7 +226,7 @@ func (v *Validator) submissionLoop() {
 // commitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
-func (v *Validator) commitPubRand(tipBlock *BlockInfo) ([]byte, error) {
+func (v *ValidatorInstance) commitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 	lastCommittedHeight, err := v.bc.QueryHeightWithLastPubRand(v.btcPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Babylon for the last committed height: %w", err)
@@ -319,12 +323,12 @@ func (v *Validator) commitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 // 2. the block height is lower than the last voted height as this indicates that the validator
 // does not need to send finality signature over this block
 // 3. the validator does not have voting power on the given block
-func (v *Validator) SubmitFinalitySignature(b *BlockInfo) ([]byte, error) {
+func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btcec.PrivateKey, error) {
 	btcPk := v.GetBtcPk()
 
 	// check last committed height
 	if v.GetLastCommittedHeight() < b.Height {
-		return nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
+		return nil, nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
 			v.GetLastCommittedHeight(), b.Height)
 	}
 
@@ -339,19 +343,19 @@ func (v *Validator) SubmitFinalitySignature(b *BlockInfo) ([]byte, error) {
 		// TODO: this could happen if the Babylon node is in recovery
 		//  need to double check this case in the future, but currently,
 		//  we do not need to return an error as it does not affect finalization
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// check voting power
 	power, err := v.bc.QueryValidatorVotingPower(btcPk, b.Height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query Babylon for the validator's voting power: %w", err)
+		return nil, nil, fmt.Errorf("failed to query Babylon for the validator's voting power: %w", err)
 	}
 	if power == 0 {
 		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
 			// the validator is slashed or unbonded from Babylon side
 			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
-				return nil, fmt.Errorf("cannot set the validator status: %w", err)
+				return nil, nil, fmt.Errorf("cannot set the validator status: %w", err)
 			}
 		}
 		v.logger.WithFields(logrus.Fields{
@@ -359,24 +363,24 @@ func (v *Validator) SubmitFinalitySignature(b *BlockInfo) ([]byte, error) {
 			"block_height": b.Height,
 		}).Debug("the validator's voting power is 0, skip voting")
 
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// update the status
 	if v.GetStatus() == proto.ValidatorStatus_REGISTERED || v.GetStatus() == proto.ValidatorStatus_INACTIVE {
 		if err := v.SetStatus(proto.ValidatorStatus_ACTIVE); err != nil {
-			return nil, fmt.Errorf("cannot set the validator status: %w", err)
+			return nil, nil, fmt.Errorf("cannot set the validator status: %w", err)
 		}
 	}
 
 	// build proper finality signature request
 	privRand, err := v.getCommittedPrivPubRand(b.Height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
+		return nil, nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
 	}
 	btcPrivKey, err := v.kc.GetBtcPrivKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
+		return nil, nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
 	}
 	msg := &ftypes.MsgAddFinalitySig{
 		ValBtcPk:            v.btcPk,
@@ -386,25 +390,25 @@ func (v *Validator) SubmitFinalitySignature(b *BlockInfo) ([]byte, error) {
 	msgToSign := msg.MsgToSign()
 	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
+		return nil, nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
 	// send finality signature to Babylon
-	txHash, _, err := v.bc.SubmitFinalitySig(v.GetBtcPk(), b.Height, b.LastCommitHash, eotsSig)
+	txHash, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPk(), b.Height, b.LastCommitHash, eotsSig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
+		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
 	}
 
 	// update DB
 	if err := v.SetLastVotedHeight(b.Height); err != nil {
-		return nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", b.Height, err)
+		return nil, nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", b.Height, err)
 	}
 
-	return txHash, nil
+	return txHash, privKey, nil
 }
 
-func (v *Validator) buildFinalitySigRequest(b *BlockInfo) (*addFinalitySigRequest, error) {
+func (v *ValidatorInstance) buildFinalitySigRequest(b *BlockInfo) (*addFinalitySigRequest, error) {
 	privRand, err := v.getCommittedPrivPubRand(b.Height)
 	if err != nil {
 		return nil, err
@@ -436,7 +440,7 @@ func (v *Validator) buildFinalitySigRequest(b *BlockInfo) (*addFinalitySigReques
 	}, nil
 }
 
-func (v *Validator) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
+func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
 	randPair, err := v.state.s.GetRandPair(v.bbnPk.Key, height)
 	if err != nil {
 		return nil, err
@@ -452,7 +456,7 @@ func (v *Validator) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, e
 	return privRand, nil
 }
 
-func (v *Validator) getTipBabylonBlock() (*BlockInfo, error) {
+func (v *ValidatorInstance) getTipBabylonBlock() (*BlockInfo, error) {
 	header, err := v.bc.QueryBestHeader()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Babylon for the tip block: %w", err)

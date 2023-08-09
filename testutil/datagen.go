@@ -38,7 +38,7 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	}
 }
 
-func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.Validator {
+func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.ValidatorStored {
 	// generate BTC key pair
 	btcSK, btcPK, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.Validator {
 	err = pop.Verify(babylonPK, bip340PK)
 	require.NoError(t, err)
 
-	return &proto.Validator{
+	return &proto.ValidatorStored{
 		KeyName:   GenRandomHexStr(r, 4),
 		BabylonPk: babylonPK.Bytes(),
 		BtcPk:     bip340PK.MustMarshal(),

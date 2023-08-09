@@ -117,14 +117,14 @@ func TestValidatorLifeCycle(t *testing.T) {
 	// create a validator object
 	valResult, err := app.CreateValidator(newValName)
 	require.NoError(t, err)
-	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	validator, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, newValName, validator.KeyName)
 
 	// register the validator to Babylon
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
-	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	validatorAfterReg, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 	var queriedValidators []*btcstakingtypes.BTCValidator
@@ -200,7 +200,7 @@ func TestJurySigSubmission(t *testing.T) {
 	valResult, err := app.CreateValidator(newValName)
 	require.NoError(t, err)
 
-	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	validator, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 
 	require.Equal(t, newValName, validator.KeyName)
@@ -208,7 +208,7 @@ func TestJurySigSubmission(t *testing.T) {
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
 
-	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	validatorAfterReg, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 
@@ -263,14 +263,14 @@ func TestDoubleSigning(t *testing.T) {
 	// create a validator object
 	valResult, err := app.CreateValidator(newValName)
 	require.NoError(t, err)
-	validator, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	validator, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, newValName, validator.KeyName)
 
 	// register the validator to Babylon
 	_, err = app.RegisterValidator(validator.KeyName)
 	require.NoError(t, err)
-	validatorAfterReg, err := app.GetValidator(valResult.BabylonValidatorPk.Key)
+	validatorAfterReg, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
 	require.NoError(t, err)
 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
 	var queriedValidators []*btcstakingtypes.BTCValidator

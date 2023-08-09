@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/babylonchain/babylon/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -16,6 +19,19 @@ const (
 	validatorPrefix = "validator"
 	randPairPrefix  = "rand-pair"
 )
+
+func NewValidatorStored(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession) *proto.ValidatorStored {
+	return &proto.ValidatorStored{
+		KeyName:   keyName,
+		BabylonPk: babylonPk.Bytes(),
+		BtcPk:     btcPk.MustMarshal(),
+		Pop: &proto.ProofOfPossession{
+			BabylonSig: pop.BabylonSig,
+			BtcSig:     pop.BtcSig.MustMarshal(),
+		},
+		Status: proto.ValidatorStatus_CREATED,
+	}
+}
 
 type ValidatorStore struct {
 	s store.Store
@@ -39,7 +55,7 @@ func (vs *ValidatorStore) getValidatorListKey() []byte {
 }
 
 func (vs *ValidatorStore) getRandPairKey(pk []byte, height uint64) []byte {
-	return append(vs.getRandPairListKey(pk), types.Uint64ToBigEndian(height)...)
+	return append(vs.getRandPairListKey(pk), sdktypes.Uint64ToBigEndian(height)...)
 }
 
 func (vs *ValidatorStore) getRandPairListKey(pk []byte) []byte {

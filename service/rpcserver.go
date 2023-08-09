@@ -9,6 +9,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -131,24 +132,25 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFinalitySignatureRequest) (
 	*proto.AddFinalitySignatureResponse, error) {
 
+	bbnPk := &secp256k1.PubKey{Key: req.BabylonPk}
+	v, err := r.app.GetValidatorInstance(bbnPk)
+	if err != nil {
+		return nil, err
+	}
+
 	b := &BlockInfo{
 		Height:         req.Height,
 		LastCommitHash: req.LastCommitHash,
 	}
 
-	v, err := r.app.GetValidator(req.BabylonPk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fet the validator %w", err)
-	}
-
-	txHash, privKey, err := r.app.SubmitFinalitySignatureForValidator(b, v)
+	txHash, privKey, err := v.SubmitFinalitySignature(b)
 	if err != nil {
 		return nil, err
 	}
 
 	var localPrivKey *btcec.PrivateKey
 	if privKey != nil {
-		localPrivKey, err = r.app.getBtcPrivKey(v.KeyName)
+		localPrivKey, err = r.app.getBtcPrivKey(v.GetValidatorStored().KeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -177,12 +179,14 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 // QueryValidator queries the information of the validator
 func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidatorRequest) (
 	*proto.QueryValidatorResponse, error) {
-	val, err := r.app.GetValidator(req.BabylonPk)
+
+	bbnPk := &secp256k1.PubKey{Key: req.BabylonPk}
+	val, err := r.app.GetValidatorInstance(bbnPk)
 	if err != nil {
 		return nil, err
 	}
 
-	valInfo := proto.NewValidatorInfo(val)
+	valInfo := proto.NewValidatorInfo(val.GetValidatorStored())
 
 	return &proto.QueryValidatorResponse{Validator: valInfo}, nil
 }
@@ -191,14 +195,11 @@ func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidato
 func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryValidatorListRequest) (
 	*proto.QueryValidatorListResponse, error) {
 
-	vals, err := r.app.ListValidators()
-	if err != nil {
-		return nil, err
-	}
+	vals := r.app.ListValidatorInstances()
 
 	valsInfo := make([]*proto.ValidatorInfo, len(vals))
 	for i, v := range vals {
-		valInfo := proto.NewValidatorInfo(v)
+		valInfo := proto.NewValidatorInfo(v.GetValidatorStored())
 		valsInfo[i] = valInfo
 	}
 
