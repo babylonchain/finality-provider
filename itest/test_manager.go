@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -76,6 +77,24 @@ func StartManagerWithoutValidator(t *testing.T, isJury bool) *TestManager {
 		Va:             valApp,
 		BabylonClient:  bl,
 	}
+}
+
+func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
+	tm := StartManagerWithoutValidator(t, isJury)
+	app := tm.Va
+
+	var newValName = "test-val-"
+	for i := 0; i < n; i++ {
+		newValName += strconv.Itoa(i)
+		_, err := app.CreateValidator(newValName)
+		require.NoError(t, err)
+		_, err = app.RegisterValidator(newValName)
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, n, len(app.ListValidatorInstances()))
+
+	return tm
 }
 
 func (tm *TestManager) Stop(t *testing.T) {

@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
@@ -22,11 +19,10 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
-// bitcoin params used for testing
 var (
 	stakingTime           = uint16(100)
 	stakingAmount         = int64(20000)
-	eventuallyWaitTimeOut = 20 * time.Second
+	eventuallyWaitTimeOut = 10 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
@@ -179,64 +175,43 @@ func TestValidatorLifeCycle(t *testing.T) {
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-// func TestJurySigSubmission(t *testing.T) {
-// 	tm := StartManagerWithoutValidator(t, true)
-// 	defer tm.Stop(t)
-//
-// 	app := tm.Va
-// 	newValName := "testingValidator"
-// 	valResult, err := app.CreateValidator(newValName)
-// 	require.NoError(t, err)
-//
-// 	validator, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
-// 	require.NoError(t, err)
-//
-// 	require.Equal(t, newValName, validator.KeyName)
-//
-// 	_, err = app.RegisterValidator(validator.KeyName)
-// 	require.NoError(t, err)
-//
-// 	validatorAfterReg, err := app.GetValidatorInstance(valResult.BabylonValidatorPk.Key)
-// 	require.NoError(t, err)
-// 	require.Equal(t, validatorAfterReg.Status, proto.ValidatorStatus_REGISTERED)
-//
-// 	var queriedValidators []*btcstakingtypes.BTCValidator
-// 	require.Eventually(t, func() bool {
-// 		queriedValidators, err = tm.BabylonClient.QueryValidators()
-// 		if err != nil {
-// 			return false
-// 		}
-// 		return len(queriedValidators) == 1
-// 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-// 	require.True(t, queriedValidators[0].BabylonPk.Equals(validator.GetBabylonPK()))
-//
-// 	// send BTC delegation and make sure it's deep enough in btclightclient module
-// 	delData := tm.InsertBTCDelegation(t, validator.MustGetBTCPK(), stakingTime, stakingAmount)
-//
-// 	var dels []*btcstakingtypes.BTCDelegation
-// 	require.Eventually(t, func() bool {
-// 		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
-// 		if err != nil {
-// 			return false
-// 		}
-// 		return len(dels) == 1
-// 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-// 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
-//
-// 	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
-// 	require.NoError(t, err)
-// 	params, err := tm.BabylonClient.GetStakingParams()
-// 	require.NoError(t, err)
-// 	require.Eventually(t, func() bool {
-// 		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(validator.MustGetBIP340BTCPK())
-// 		if err != nil {
-// 			return false
-// 		}
-// 		status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
-// 		return len(dels) == 1 && status == btcstakingtypes.BTCDelegationStatus_ACTIVE
-// 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-// 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
-// }
+func TestJurySigSubmission(t *testing.T) {
+	tm := StartManagerWithValidator(t, 1, true)
+	defer tm.Stop(t)
+	app := tm.Va
+	valIns := app.ListValidatorInstances()[0]
+
+	// send BTC delegation and make sure it's deep enough in btclightclient module
+	delData := tm.InsertBTCDelegation(t, valIns.GetBtcPk().MustToBTCPK(), stakingTime, stakingAmount)
+
+	var (
+		dels []*btcstakingtypes.BTCDelegation
+		err  error
+	)
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	params, err := tm.BabylonClient.GetStakingParams()
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPk())
+		if err != nil {
+			return false
+		}
+		status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
+		return len(dels) == 1 && status == btcstakingtypes.BTCDelegationStatus_ACTIVE
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+}
+
 //
 //
 // // TestDoubleSigning tests the attack scenario where the validator
