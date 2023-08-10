@@ -55,13 +55,17 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 	for {
 		select {
 		case b := <-app.poller.GetBlockInfoChan():
-			for _, v := range app.vals {
-				v.GetBlockInfoChan() <- b
-			}
+			app.sendBlockToValidators(b)
 		case <-app.quit:
 			app.logger.Debug("exiting validatorSubmissionLoop")
 			return
 		}
+	}
+}
+
+func (app *ValidatorApp) sendBlockToValidators(b *BlockInfo) {
+	for _, v := range app.vals {
+		v.GetBlockInfoChan() <- b
 	}
 }
 

@@ -46,7 +46,7 @@ type TestDelegationData struct {
 	StakingAmount int64
 }
 
-func StartManagerWithoutValidator(t *testing.T, isJury bool) *TestManager {
+func StartManager(t *testing.T, isJury bool) *TestManager {
 	bh := NewBabylonNodeHandler(t)
 
 	err := bh.Start()
@@ -80,7 +80,7 @@ func StartManagerWithoutValidator(t *testing.T, isJury bool) *TestManager {
 }
 
 func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
-	tm := StartManagerWithoutValidator(t, isJury)
+	tm := StartManager(t, isJury)
 	app := tm.Va
 
 	var newValName = "test-val-"

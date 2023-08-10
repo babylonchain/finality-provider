@@ -154,17 +154,17 @@ func (v *ValidatorInstance) GetCommittedPrivPubRand(height uint64) (*eots.Privat
 
 func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
 	v.state.v.Status = s
-	return v.state.s.SaveValidator(v.state.v)
+	return v.state.s.UpdateValidator(v.state.v)
 }
 
 func (v *ValidatorInstance) SetLastVotedHeight(height uint64) error {
 	v.state.v.LastVotedHeight = height
-	return v.state.s.SaveValidator(v.state.v)
+	return v.state.s.UpdateValidator(v.state.v)
 }
 
 func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 	v.state.v.LastCommittedHeight = height
-	return v.state.s.SaveValidator(v.state.v)
+	return v.state.s.UpdateValidator(v.state.v)
 }
 
 func (v *ValidatorInstance) Start() error {

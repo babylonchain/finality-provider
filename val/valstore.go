@@ -76,14 +76,31 @@ func (vs *ValidatorStore) SaveValidator(val *proto.ValidatorStored) error {
 	return nil
 }
 
-func (vs *ValidatorStore) SetValidatorLastVotedHeight(val *proto.ValidatorStored, height uint64) error {
-	val.LastVotedHeight = height
-	return vs.SaveValidator(val)
+func (vs *ValidatorStore) UpdateValidator(val *proto.ValidatorStored) error {
+	k := vs.getValidatorKey(val.BabylonPk)
+	exists, err := vs.s.Exists(k)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the validator does not exist")
+	}
+
+	v, err := gproto.Marshal(val)
+	if err != nil {
+		return err
+	}
+
+	if err := vs.s.Put(k, v); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (vs *ValidatorStore) SetValidatorStatus(val *proto.ValidatorStored, status proto.ValidatorStatus) error {
 	val.Status = status
-	return vs.SaveValidator(val)
+	return vs.UpdateValidator(val)
 }
 
 func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto.SchnorrRandPair) error {

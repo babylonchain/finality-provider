@@ -60,7 +60,6 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.ValidatorStored {
 		KeyName:   GenRandomHexStr(r, 4),
 		BabylonPk: babylonPK.Bytes(),
 		BtcPk:     bip340PK.MustMarshal(),
-		// TODO use btcstaking types directly to avoid conversion
 		Pop: &proto.ProofOfPossession{
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig.MustMarshal(),

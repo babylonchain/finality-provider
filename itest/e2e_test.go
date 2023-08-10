@@ -87,7 +87,7 @@ func TestPoller(t *testing.T) {
 // activation with BTC delegation and Jury sig ->
 // vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
-	tm := StartManagerWithoutValidator(t, false)
+	tm := StartManager(t, false)
 	defer tm.Stop(t)
 
 	app := tm.Va
