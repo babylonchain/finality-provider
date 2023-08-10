@@ -40,7 +40,7 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	}
 }
 
-func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.ValidatorStored {
+func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 	// generate BTC key pair
 	btcSK, btcPK, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.ValidatorStored {
 	err = pop.Verify(babylonPK, bip340PK)
 	require.NoError(t, err)
 
-	return &proto.ValidatorStored{
+	return &proto.StoreValidator{
 		KeyName:   GenRandomHexStr(r, 4),
 		BabylonPk: babylonPK.Bytes(),
 		BtcPk:     bip340PK.MustMarshal(),
@@ -68,7 +68,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.ValidatorStored {
 }
 
 // GenStoredValidator generates a random validator from the keyring and store it in DB
-func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.ValidatorStored {
+func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.StoreValidator {
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
 	kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)

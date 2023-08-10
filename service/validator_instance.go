@@ -20,8 +20,8 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
-type State struct {
-	v *proto.ValidatorStored
+type state struct {
+	v *proto.StoreValidator
 	s *val.ValidatorStore
 }
 
@@ -29,7 +29,7 @@ type ValidatorInstance struct {
 	bbnPk *secp256k1.PubKey
 	btcPk *types.BIP340PubKey
 
-	state *State
+	state *state
 	cfg   *valcfg.Config
 
 	blocksToVote chan *BlockInfo
@@ -54,12 +54,13 @@ func NewValidatorInstance(
 	bc bbncli.BabylonClient,
 	logger *logrus.Logger,
 ) (*ValidatorInstance, error) {
-	v, err := s.GetValidatorStored(bbnPk.Key)
+	v, err := s.GetStoreValidator(bbnPk.Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrive the validator %s from DB: %w", v.GetBabylonPkHexString(), err)
 	}
 
 	// ensure the validator has been registered
+	// TODO refactor this by getting the constants from Babylon
 	if v.Status < proto.ValidatorStatus_REGISTERED {
 		return nil, fmt.Errorf("the validator %s has not been registered", v.KeyName)
 	}
@@ -70,12 +71,13 @@ func NewValidatorInstance(
 	}
 
 	// TODO load unvoted blocks from WAL and insert them into the channel
-	blocksToVote := make(chan *BlockInfo)
+	// TODO parameterize the buffer
+	blocksToVote := make(chan *BlockInfo, 100)
 
 	return &ValidatorInstance{
 		bbnPk: bbnPk,
 		btcPk: v.MustGetBIP340BTCPK(),
-		state: &State{
+		state: &state{
 			v: v,
 			s: s,
 		},
@@ -88,12 +90,16 @@ func NewValidatorInstance(
 	}, nil
 }
 
-func (v *ValidatorInstance) GetValidatorStored() *proto.ValidatorStored {
+func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
 	return v.state.v
 }
 
-func (v *ValidatorInstance) GetBlockInfoChan() chan *BlockInfo {
+func (v *ValidatorInstance) GetNextBlockChan() <-chan *BlockInfo {
 	return v.blocksToVote
+}
+
+func (v *ValidatorInstance) ReceiveBlock(b *BlockInfo) {
+	v.blocksToVote <- b
 }
 
 func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
@@ -199,7 +205,7 @@ func (v *ValidatorInstance) submissionLoop() {
 
 	for {
 		select {
-		case b := <-v.GetBlockInfoChan():
+		case b := <-v.GetNextBlockChan():
 			v.logger.WithFields(logrus.Fields{
 				"babylon_pk_hex": v.GetBabylonPkHex(),
 				"block_height":   b.Height,
@@ -233,6 +239,7 @@ func (v *ValidatorInstance) submissionLoop() {
 			}
 			txHash, err := v.CommitPubRand(tipBlock)
 			if err != nil {
+				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
 					"err":            err,
 					"babylon_pk_hex": v.GetBabylonPkHex(),

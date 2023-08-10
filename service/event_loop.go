@@ -65,7 +65,7 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 
 func (app *ValidatorApp) sendBlockToValidators(b *BlockInfo) {
 	for _, v := range app.vals {
-		v.GetBlockInfoChan() <- b
+		v.ReceiveBlock(b)
 	}
 }
 
@@ -86,7 +86,7 @@ func (app *ValidatorApp) eventLoop() {
 			req.successResponse <- resp
 
 		case ev := <-app.validatorRegisteredEventChan:
-			valStored, err := app.vs.GetValidatorStored(ev.bbnPubKey.Key)
+			valStored, err := app.vs.GetStoreValidator(ev.bbnPubKey.Key)
 
 			if err != nil {
 				// we always check if the validator is in the DB before sending the registration request
@@ -154,7 +154,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			app.logger.WithFields(logrus.Fields{
 				"bbnPk":  hex.EncodeToString(req.bbnPubKey.Key),
-				"txHash": string(txHash),
+				"txHash": txHash,
 			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
@@ -180,7 +180,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			app.logger.WithFields(logrus.Fields{
 				"delBtcPk":     req.delBtcPk.MarshalHex(),
 				"valBtcPubKey": req.valBtcPk.MarshalHex(),
-				"txHash":       string(txHash),
+				"txHash":       txHash,
 			}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
 
 			app.jurySigAddedEventChan <- &jurySigAddedEvent{

@@ -43,6 +43,7 @@ type ValidatorApp struct {
 	poller *ChainPoller
 
 	// validator instances map keyed by the hex string of the Babylon public key
+	// TODO use a ValidatorManager to avoid low-level management
 	vals map[string]*ValidatorInstance
 
 	createValidatorRequestChan   chan *createValidatorRequest
@@ -183,30 +184,30 @@ func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
 	}, nil
 }
 
-func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
+func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, *secp256k1.PubKey, error) {
 	kc, err := val.NewKeyringControllerWithKeyring(app.kr, keyName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !kc.ValidatorKeyExists() {
-		return nil, fmt.Errorf("key name %s does not exist", keyName)
+		return nil, nil, fmt.Errorf("key name %s does not exist", keyName)
 	}
 	babylonPublicKeyBytes, err := kc.GetBabylonPublicKeyBytes()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	validator, err := app.vs.GetValidatorStored(babylonPublicKeyBytes)
+	validator, err := app.vs.GetStoreValidator(babylonPublicKeyBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if validator.Status != proto.ValidatorStatus_CREATED {
-		return nil, fmt.Errorf("validator is already registered")
+		return nil, nil, fmt.Errorf("validator is already registered")
 	}
 
 	btcSig, err := types.NewBIP340Signature(validator.Pop.BtcSig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pop := &bstypes.ProofOfPossession{
@@ -226,25 +227,33 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, error) {
 
 	select {
 	case err := <-request.errResponse:
-		return nil, err
+		return nil, nil, err
 	case successResponse := <-request.successResponse:
-		// start the validator right away
-		valIns, err := NewValidatorInstance(validator.GetBabylonPK(), app.config, app.vs, app.kr, app.bc, app.logger)
-		if err != nil {
-			return successResponse.txHash, fmt.Errorf("unable to create the validator instance %s: %w", validator.GetBabylonPkHexString(), err)
-		}
-		err = app.AddValidatorInstance(valIns)
-		if err != nil {
-			return successResponse.txHash, err
-		}
-		err = valIns.Start()
-		if err != nil {
-			return successResponse.txHash, fmt.Errorf("unable to start the validator instance %s: %w", validator.GetBabylonPkHexString(), err)
-		}
-		return successResponse.txHash, nil
+		return successResponse.txHash, validator.GetBabylonPK(), nil
 	case <-app.quit:
-		return nil, fmt.Errorf("validator app is shutting down")
+		return nil, nil, fmt.Errorf("validator app is shutting down")
 	}
+}
+
+// StartValidatorInstance starts a validator instance with the given Babylon public key
+// and add the instance to the Validator application
+// Note: this should be called right after the validator is registered
+func (app *ValidatorApp) StartValidatorInstance(bbnPk *secp256k1.PubKey) error {
+	pkHex := hex.EncodeToString(bbnPk.Key)
+	valIns, err := NewValidatorInstance(bbnPk, app.config, app.vs, app.kr, app.bc, app.logger)
+	if err != nil {
+		return fmt.Errorf("unable to create the validator instance %s: %w", pkHex, err)
+	}
+	err = app.AddValidatorInstance(valIns)
+	if err != nil {
+		return err
+	}
+	err = valIns.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start the validator instance %s: %w", pkHex, err)
+	}
+
+	return nil
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
@@ -443,14 +452,6 @@ func (app *ValidatorApp) Stop() error {
 		close(app.quit)
 		app.wg.Wait()
 
-		app.logger.Debug("Sent to Babylon loop stopped")
-		close(app.sentQuit)
-		app.sentWg.Wait()
-
-		app.logger.Debug("Stopping main eventLoop")
-		close(app.eventQuit)
-		app.eventWg.Wait()
-
 		app.logger.Debug("Stopping validators")
 		for _, v := range app.vals {
 			if err := v.Stop(); err != nil {
@@ -458,6 +459,14 @@ func (app *ValidatorApp) Stop() error {
 				return
 			}
 		}
+
+		app.logger.Debug("Sent to Babylon loop stopped")
+		close(app.sentQuit)
+		app.sentWg.Wait()
+
+		app.logger.Debug("Stopping main eventLoop")
+		close(app.eventQuit)
+		app.eventWg.Wait()
 
 		// Closing db as last to avoid anybody to write do db
 		app.logger.Debug("Stopping data store")

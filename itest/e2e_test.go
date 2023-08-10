@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
@@ -93,13 +90,15 @@ func TestValidatorLifeCycle(t *testing.T) {
 	app := tm.Va
 	newValName := "testingValidator"
 
-	valResult, err := app.CreateValidator(newValName)
+	_, err := app.CreateValidator(newValName)
 	require.NoError(t, err)
-	_, err = app.RegisterValidator(newValName)
+	_, bbnPk, err := app.RegisterValidator(newValName)
 	require.NoError(t, err)
-	valIns, err := app.GetValidatorInstance(&valResult.BabylonValidatorPk)
+	err = app.StartValidatorInstance(bbnPk)
 	require.NoError(t, err)
-	require.Equal(t, valIns.GetValidatorStored().Status, proto.ValidatorStatus_REGISTERED)
+	valIns, err := app.GetValidatorInstance(bbnPk)
+	require.NoError(t, err)
+	require.Equal(t, valIns.GetStoreValidator().Status, proto.ValidatorStatus_REGISTERED)
 	var queriedValidators []*btcstakingtypes.BTCValidator
 	require.Eventually(t, func() bool {
 		queriedValidators, err = tm.BabylonClient.QueryValidators()
@@ -353,7 +352,7 @@ func TestDoubleSigning(t *testing.T) {
 	_, extractedKey, err := valIns.SubmitFinalitySignature(b)
 	require.NoError(t, err)
 	require.NotNil(t, extractedKey)
-	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(valIns.GetValidatorStored().KeyName))
+	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(valIns.GetStoreValidator().KeyName))
 	require.NoError(t, err)
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 }

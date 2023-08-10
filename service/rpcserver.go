@@ -120,13 +120,14 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterValidatorRequest) (
 	*proto.RegisterValidatorResponse, error) {
 
-	txHash, err := r.app.RegisterValidator(req.KeyName)
-	if err != nil && txHash == nil {
+	txHash, bbnPk, err := r.app.RegisterValidator(req.KeyName)
+	if err != nil {
 		return nil, fmt.Errorf("failed to register the validator to Babylon: %w", err)
 	}
-	if err != nil && txHash != nil {
-		return &proto.RegisterValidatorResponse{TxHash: txHash},
-			fmt.Errorf("successfully registered the validator to Babylon but error when starting the validator instance: %w", err)
+
+	// the validator instance should be started right after registration
+	if err := r.app.StartValidatorInstance(bbnPk); err != nil {
+		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(bbnPk.Key), err)
 	}
 
 	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil
@@ -156,7 +157,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 	// if privKey is not empty, then this BTC validator
 	// has voted for a fork and will be slashed
 	if privKey != nil {
-		localPrivKey, err := r.app.getBtcPrivKey(v.GetValidatorStored().KeyName)
+		localPrivKey, err := r.app.getBtcPrivKey(v.GetStoreValidator().KeyName)
 		res.ExtractedSkHex = privKey.Key.String()
 		if err != nil {
 			return nil, err
@@ -187,7 +188,7 @@ func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidato
 		return nil, err
 	}
 
-	valInfo := proto.NewValidatorInfo(val.GetValidatorStored())
+	valInfo := proto.NewValidatorInfo(val.GetStoreValidator())
 
 	return &proto.QueryValidatorResponse{Validator: valInfo}, nil
 }
@@ -200,7 +201,7 @@ func (r *rpcServer) QueryValidatorList(ctx context.Context, req *proto.QueryVali
 
 	valsInfo := make([]*proto.ValidatorInfo, len(vals))
 	for i, v := range vals {
-		valInfo := proto.NewValidatorInfo(v.GetValidatorStored())
+		valInfo := proto.NewValidatorInfo(v.GetStoreValidator())
 		valsInfo[i] = valInfo
 	}
 

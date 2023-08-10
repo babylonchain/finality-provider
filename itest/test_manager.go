@@ -88,7 +88,9 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		newValName += strconv.Itoa(i)
 		_, err := app.CreateValidator(newValName)
 		require.NoError(t, err)
-		_, err = app.RegisterValidator(newValName)
+		_, bbnPk, err := app.RegisterValidator(newValName)
+		require.NoError(t, err)
+		err = app.StartValidatorInstance(bbnPk)
 		require.NoError(t, err)
 	}
 

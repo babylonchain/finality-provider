@@ -34,7 +34,7 @@ func FuzzValidatorStore(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, valList[0].BabylonPk)
 
-		actualVal, err := vs.GetValidatorStored(validator.BabylonPk)
+		actualVal, err := vs.GetStoreValidator(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, actualVal.BabylonPk)
 		require.Equal(t, validator.BtcPk, actualVal.BtcPk)

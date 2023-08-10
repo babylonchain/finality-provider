@@ -60,13 +60,13 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			RegisterValidator(validator.GetBabylonPK(), validator.MustGetBIP340BTCPK(), pop).Return(txHash, nil).AnyTimes()
 
-		actualTxHash, err := app.RegisterValidator(validator.KeyName)
+		actualTxHash, _, err := app.RegisterValidator(validator.KeyName)
 		require.NoError(t, err)
 		require.Equal(t, txHash, actualTxHash)
 
 		valAfterReg, err := app.GetValidatorInstance(validator.GetBabylonPK())
 		require.NoError(t, err)
-		require.Equal(t, valAfterReg.GetValidatorStored().Status, proto.ValidatorStatus_REGISTERED)
+		require.Equal(t, valAfterReg.GetStoreValidator().Status, proto.ValidatorStatus_REGISTERED)
 	})
 }
 

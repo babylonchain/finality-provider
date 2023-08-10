@@ -35,13 +35,15 @@ func FuzzCommitPubRandList(f *testing.F) {
 			Return(expectedTxHash, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
+			Return(uint64(1), nil).AnyTimes()
 		actualTxHash, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, actualTxHash)
 
 		// check the last_committed_height
 		numPubRand := app.GetConfig().NumPubRand
-		require.Equal(t, startingBlock.Height+numPubRand, valIns.GetValidatorStored().LastCommittedHeight)
+		require.Equal(t, startingBlock.Height+numPubRand, valIns.GetStoreValidator().LastCommittedHeight)
 
 		// check the committed pub rand
 		randPairs, err := valIns.GetCommittedPubRandPairList()

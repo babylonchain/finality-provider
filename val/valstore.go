@@ -20,8 +20,8 @@ const (
 	randPairPrefix  = "rand-pair"
 )
 
-func NewValidatorStored(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession) *proto.ValidatorStored {
-	return &proto.ValidatorStored{
+func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession) *proto.StoreValidator {
+	return &proto.StoreValidator{
 		KeyName:   keyName,
 		BabylonPk: babylonPk.Bytes(),
 		BtcPk:     btcPk.MustMarshal(),
@@ -62,7 +62,7 @@ func (vs *ValidatorStore) getRandPairListKey(pk []byte) []byte {
 	return append([]byte(randPairPrefix), pk...)
 }
 
-func (vs *ValidatorStore) SaveValidator(val *proto.ValidatorStored) error {
+func (vs *ValidatorStore) SaveValidator(val *proto.StoreValidator) error {
 	k := vs.getValidatorKey(val.BabylonPk)
 	v, err := gproto.Marshal(val)
 	if err != nil {
@@ -76,7 +76,7 @@ func (vs *ValidatorStore) SaveValidator(val *proto.ValidatorStored) error {
 	return nil
 }
 
-func (vs *ValidatorStore) UpdateValidator(val *proto.ValidatorStored) error {
+func (vs *ValidatorStore) UpdateValidator(val *proto.StoreValidator) error {
 	k := vs.getValidatorKey(val.BabylonPk)
 	exists, err := vs.s.Exists(k)
 	if err != nil {
@@ -98,7 +98,7 @@ func (vs *ValidatorStore) UpdateValidator(val *proto.ValidatorStored) error {
 	return nil
 }
 
-func (vs *ValidatorStore) SetValidatorStatus(val *proto.ValidatorStored, status proto.ValidatorStatus) error {
+func (vs *ValidatorStore) SetValidatorStatus(val *proto.StoreValidator, status proto.ValidatorStatus) error {
 	val.Status = status
 	return vs.UpdateValidator(val)
 }
@@ -152,14 +152,14 @@ func (vs *ValidatorStore) GetRandPair(pk []byte, height uint64) (*proto.SchnorrR
 	return pair, nil
 }
 
-func (vs *ValidatorStore) GetValidatorStored(pk []byte) (*proto.ValidatorStored, error) {
+func (vs *ValidatorStore) GetStoreValidator(pk []byte) (*proto.StoreValidator, error) {
 	k := vs.getValidatorKey(pk)
 	valsBytes, err := vs.s.Get(k)
 	if err != nil {
 		return nil, err
 	}
 
-	val := new(proto.ValidatorStored)
+	val := new(proto.StoreValidator)
 	err = gproto.Unmarshal(valsBytes, val)
 	if err != nil {
 		panic(fmt.Errorf("unable to unmarshal validator object: %w", err))
@@ -168,16 +168,16 @@ func (vs *ValidatorStore) GetValidatorStored(pk []byte) (*proto.ValidatorStored,
 	return val, nil
 }
 
-func (vs *ValidatorStore) ListValidators() ([]*proto.ValidatorStored, error) {
+func (vs *ValidatorStore) ListValidators() ([]*proto.StoreValidator, error) {
 	k := vs.getValidatorListKey()
 	valsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}
 
-	valsList := make([]*proto.ValidatorStored, len(valsBytes))
+	valsList := make([]*proto.StoreValidator, len(valsBytes))
 	for i := 0; i < len(valsBytes); i++ {
-		val := new(proto.ValidatorStored)
+		val := new(proto.StoreValidator)
 		err := gproto.Unmarshal(valsBytes[i].Value, val)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
@@ -189,16 +189,16 @@ func (vs *ValidatorStore) ListValidators() ([]*proto.ValidatorStored, error) {
 }
 
 // ListRegisteredValidators returns a list of validators whose status is more than CREATED
-func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.ValidatorStored, error) {
+func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.StoreValidator, error) {
 	k := vs.getValidatorListKey()
 	valsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}
 
-	valsList := make([]*proto.ValidatorStored, 0)
+	valsList := make([]*proto.StoreValidator, 0)
 	for i := 0; i < len(valsBytes); i++ {
-		val := new(proto.ValidatorStored)
+		val := new(proto.StoreValidator)
 		err := gproto.Unmarshal(valsBytes[i].Value, val)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
