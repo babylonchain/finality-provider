@@ -352,7 +352,7 @@ func TestDoubleSigning(t *testing.T) {
 		Height:         blocks[0].Height,
 		LastCommitHash: datagen.GenRandomLastCommitHash(r),
 	}
-	_, extractedKey, err := valIns.SubmitFinalitySignature(b)
+	_, extractedKey, err := valIns.DoubleSignAttack(b)
 	require.NoError(t, err)
 	require.NotNil(t, extractedKey)
 	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(valIns.GetStoreValidator().KeyName))
