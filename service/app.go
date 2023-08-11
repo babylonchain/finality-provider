@@ -26,7 +26,6 @@ type ValidatorApp struct {
 	stopOnce  sync.Once
 
 	wg   sync.WaitGroup
-	mu   sync.Mutex
 	quit chan struct{}
 
 	sentWg   sync.WaitGroup
@@ -42,9 +41,7 @@ type ValidatorApp struct {
 	logger *logrus.Logger
 	poller *ChainPoller
 
-	// validator instances map keyed by the hex string of the Babylon public key
-	// TODO use a ValidatorManager to avoid low-level management
-	vals map[string]*ValidatorInstance
+	validatorManager *ValidatorManager
 
 	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
@@ -81,17 +78,9 @@ func NewValidatorAppFromConfig(
 		}
 	}
 
-	storedVals, err := valStore.ListRegisteredValidators()
+	vm, err := NewValidatorManagerFromStore(valStore, config, kr, bc, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list registered validators: %w", err)
-	}
-	vals := make(map[string]*ValidatorInstance)
-	for _, sv := range storedVals {
-		validator, err := NewValidatorInstance(sv.GetBabylonPK(), config, valStore, kr, bc, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create validator %s instance: %w", sv.GetBabylonPkHexString(), err)
-		}
-		vals[sv.GetBabylonPkHexString()] = validator
+		return nil, err
 	}
 
 	return &ValidatorApp{
@@ -101,7 +90,7 @@ func NewValidatorAppFromConfig(
 		config:                       config,
 		logger:                       logger,
 		poller:                       poller,
-		vals:                         vals,
+		validatorManager:             vm,
 		quit:                         make(chan struct{}),
 		sentQuit:                     make(chan struct{}),
 		eventQuit:                    make(chan struct{}),
@@ -134,42 +123,16 @@ func (app *ValidatorApp) GetJuryPk() (*btcec.PublicKey, error) {
 }
 
 func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
-	valsList := make([]*ValidatorInstance, 0, len(app.vals))
-	for _, v := range app.vals {
-		valsList = append(valsList, v)
-	}
-
-	return valsList
+	return app.validatorManager.listValidatorInstances()
 }
 
 // GetValidatorInstance returns the validator instance with the given Babylon public key
 func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
-	keyHex := hex.EncodeToString(babylonPk.Key)
-	v, exists := app.vals[keyHex]
-	if !exists {
-		return nil, fmt.Errorf("cannot find the validator instance with PK: %s", keyHex)
-	}
-
-	return v, nil
+	return app.validatorManager.getValidatorInstance(babylonPk)
 }
 
 func (app *ValidatorApp) AddValidatorInstance(valIns *ValidatorInstance) error {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
-	k := valIns.GetBabylonPkHex()
-	if _, exists := app.vals[k]; exists {
-		return fmt.Errorf("validator instance already exists")
-	}
-	app.vals[k] = valIns
-
-	return nil
+	return app.validatorManager.addValidatorInstance(valIns)
 }
 
 func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
@@ -406,8 +369,7 @@ func (app *ValidatorApp) Start() error {
 			return
 		}
 
-		err = app.poller.Start(startHeight)
-		if err != nil {
+		if err := app.poller.Start(startHeight); err != nil {
 			startErr = err
 			return
 		}
@@ -424,11 +386,9 @@ func (app *ValidatorApp) Start() error {
 		if app.IsJury() {
 			go app.jurySigSubmissionLoop()
 		} else {
-			for _, v := range app.vals {
-				if err := v.Start(); err != nil {
-					startErr = err
-					return
-				}
+			if err := app.validatorManager.start(); err != nil {
+				startErr = err
+				return
 			}
 			go app.validatorSubmissionLoop()
 		}
@@ -441,8 +401,7 @@ func (app *ValidatorApp) Stop() error {
 	var stopErr error
 	app.stopOnce.Do(func() {
 		app.logger.Infof("Stopping ValidatorApp")
-		err := app.poller.Stop()
-		if err != nil {
+		if err := app.poller.Stop(); err != nil {
 			stopErr = err
 			return
 		}
@@ -453,11 +412,9 @@ func (app *ValidatorApp) Stop() error {
 		app.wg.Wait()
 
 		app.logger.Debug("Stopping validators")
-		for _, v := range app.vals {
-			if err := v.Stop(); err != nil {
-				stopErr = err
-				return
-			}
+		if err := app.validatorManager.stop(); err != nil {
+			stopErr = err
+			return
 		}
 
 		app.logger.Debug("Sent to Babylon loop stopped")
@@ -470,8 +427,7 @@ func (app *ValidatorApp) Stop() error {
 
 		// Closing db as last to avoid anybody to write do db
 		app.logger.Debug("Stopping data store")
-		err = app.vs.Close()
-		if err != nil {
+		if err := app.vs.Close(); err != nil {
 			stopErr = err
 			return
 		}
