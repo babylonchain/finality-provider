@@ -94,11 +94,11 @@ func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
 	return v.state.v
 }
 
-func (v *ValidatorInstance) GetNextBlockChan() <-chan *BlockInfo {
+func (v *ValidatorInstance) getNextBlockChan() <-chan *BlockInfo {
 	return v.blocksToVote
 }
 
-func (v *ValidatorInstance) ReceiveBlock(b *BlockInfo) {
+func (v *ValidatorInstance) receiveBlock(b *BlockInfo) {
 	v.blocksToVote <- b
 }
 
@@ -205,7 +205,7 @@ func (v *ValidatorInstance) submissionLoop() {
 
 	for {
 		select {
-		case b := <-v.GetNextBlockChan():
+		case b := <-v.getNextBlockChan():
 			v.logger.WithFields(logrus.Fields{
 				"babylon_pk_hex": v.GetBabylonPkHex(),
 				"block_height":   b.Height,

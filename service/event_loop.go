@@ -65,7 +65,7 @@ func (app *ValidatorApp) validatorSubmissionLoop() {
 
 func (app *ValidatorApp) sendBlockToValidators(b *BlockInfo) {
 	for _, v := range app.vals {
-		v.ReceiveBlock(b)
+		v.receiveBlock(b)
 	}
 }
 
