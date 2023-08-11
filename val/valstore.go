@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/babylonchain/babylon/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -16,6 +19,19 @@ const (
 	validatorPrefix = "validator"
 	randPairPrefix  = "rand-pair"
 )
+
+func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession) *proto.StoreValidator {
+	return &proto.StoreValidator{
+		KeyName:   keyName,
+		BabylonPk: babylonPk.Bytes(),
+		BtcPk:     btcPk.MustMarshal(),
+		Pop: &proto.ProofOfPossession{
+			BabylonSig: pop.BabylonSig,
+			BtcSig:     pop.BtcSig.MustMarshal(),
+		},
+		Status: proto.ValidatorStatus_CREATED,
+	}
+}
 
 type ValidatorStore struct {
 	s store.Store
@@ -39,14 +55,14 @@ func (vs *ValidatorStore) getValidatorListKey() []byte {
 }
 
 func (vs *ValidatorStore) getRandPairKey(pk []byte, height uint64) []byte {
-	return append(vs.getRandPairListKey(pk), types.Uint64ToBigEndian(height)...)
+	return append(vs.getRandPairListKey(pk), sdktypes.Uint64ToBigEndian(height)...)
 }
 
 func (vs *ValidatorStore) getRandPairListKey(pk []byte) []byte {
 	return append([]byte(randPairPrefix), pk...)
 }
 
-func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
+func (vs *ValidatorStore) SaveValidator(val *proto.StoreValidator) error {
 	k := vs.getValidatorKey(val.BabylonPk)
 	v, err := gproto.Marshal(val)
 	if err != nil {
@@ -60,14 +76,31 @@ func (vs *ValidatorStore) SaveValidator(val *proto.Validator) error {
 	return nil
 }
 
-func (vs *ValidatorStore) SetValidatorLastVotedHeight(val *proto.Validator, height uint64) error {
-	val.LastVotedHeight = height
-	return vs.SaveValidator(val)
+func (vs *ValidatorStore) UpdateValidator(val *proto.StoreValidator) error {
+	k := vs.getValidatorKey(val.BabylonPk)
+	exists, err := vs.s.Exists(k)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the validator does not exist")
+	}
+
+	v, err := gproto.Marshal(val)
+	if err != nil {
+		return err
+	}
+
+	if err := vs.s.Put(k, v); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (vs *ValidatorStore) SetValidatorStatus(val *proto.Validator, status proto.ValidatorStatus) error {
+func (vs *ValidatorStore) SetValidatorStatus(val *proto.StoreValidator, status proto.ValidatorStatus) error {
 	val.Status = status
-	return vs.SaveValidator(val)
+	return vs.UpdateValidator(val)
 }
 
 func (vs *ValidatorStore) SaveRandPair(pk []byte, height uint64, randPair *proto.SchnorrRandPair) error {
@@ -119,14 +152,14 @@ func (vs *ValidatorStore) GetRandPair(pk []byte, height uint64) (*proto.SchnorrR
 	return pair, nil
 }
 
-func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {
+func (vs *ValidatorStore) GetStoreValidator(pk []byte) (*proto.StoreValidator, error) {
 	k := vs.getValidatorKey(pk)
 	valsBytes, err := vs.s.Get(k)
 	if err != nil {
 		return nil, err
 	}
 
-	val := new(proto.Validator)
+	val := new(proto.StoreValidator)
 	err = gproto.Unmarshal(valsBytes, val)
 	if err != nil {
 		panic(fmt.Errorf("unable to unmarshal validator object: %w", err))
@@ -135,16 +168,16 @@ func (vs *ValidatorStore) GetValidator(pk []byte) (*proto.Validator, error) {
 	return val, nil
 }
 
-func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
+func (vs *ValidatorStore) ListValidators() ([]*proto.StoreValidator, error) {
 	k := vs.getValidatorListKey()
 	valsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}
 
-	valsList := make([]*proto.Validator, len(valsBytes))
+	valsList := make([]*proto.StoreValidator, len(valsBytes))
 	for i := 0; i < len(valsBytes); i++ {
-		val := new(proto.Validator)
+		val := new(proto.StoreValidator)
 		err := gproto.Unmarshal(valsBytes[i].Value, val)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))
@@ -156,16 +189,16 @@ func (vs *ValidatorStore) ListValidators() ([]*proto.Validator, error) {
 }
 
 // ListRegisteredValidators returns a list of validators whose status is more than CREATED
-func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.Validator, error) {
+func (vs *ValidatorStore) ListRegisteredValidators() ([]*proto.StoreValidator, error) {
 	k := vs.getValidatorListKey()
 	valsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}
 
-	valsList := make([]*proto.Validator, 0)
+	valsList := make([]*proto.StoreValidator, 0)
 	for i := 0; i < len(valsBytes); i++ {
-		val := new(proto.Validator)
+		val := new(proto.StoreValidator)
 		err := gproto.Unmarshal(valsBytes[i].Value, val)
 		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal validator from the database: %w", err))

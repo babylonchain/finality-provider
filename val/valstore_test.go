@@ -1,12 +1,14 @@
-package val
+package val_test
 
 import (
 	"math/rand"
 	"os"
 	"testing"
 
-	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/stretchr/testify/require"
+
+	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/val"
 )
 
 // FuzzValidators tests save and list validators properly
@@ -16,7 +18,7 @@ func FuzzValidatorStore(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		dbcfg := testutil.GenDBConfig(r, t)
-		vs, err := NewValidatorStore(dbcfg)
+		vs, err := val.NewValidatorStore(dbcfg)
 		require.NoError(t, err)
 
 		defer func() {
@@ -32,7 +34,7 @@ func FuzzValidatorStore(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, valList[0].BabylonPk)
 
-		actualVal, err := vs.GetValidator(validator.BabylonPk)
+		actualVal, err := vs.GetStoreValidator(validator.BabylonPk)
 		require.NoError(t, err)
 		require.Equal(t, validator.BabylonPk, actualVal.BabylonPk)
 		require.Equal(t, validator.BtcPk, actualVal.BtcPk)
