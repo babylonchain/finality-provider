@@ -44,9 +44,6 @@ func NewValidatorManagerFromStore(
 }
 
 func (vm *ValidatorManager) start() error {
-	vm.mu.Lock()
-	defer vm.mu.Unlock()
-
 	var startErr error
 	for _, v := range vm.vals {
 		if err := v.Start(); err != nil {
@@ -59,9 +56,6 @@ func (vm *ValidatorManager) start() error {
 }
 
 func (vm *ValidatorManager) stop() error {
-	vm.mu.Lock()
-	defer vm.mu.Unlock()
-
 	var stopErr error
 	for _, v := range vm.vals {
 		if err := v.Stop(); err != nil {
