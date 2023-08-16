@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -40,7 +39,6 @@ type ValidatorInstance struct {
 
 	startOnce sync.Once
 	stopOnce  sync.Once
-	started   atomic.Bool
 
 	wg   sync.WaitGroup
 	quit chan struct{}
@@ -177,9 +175,6 @@ func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 
 func (v *ValidatorInstance) Start() error {
 	var startErr error
-	if v.started.Swap(true) {
-		return fmt.Errorf("the validator instance is already started")
-	}
 	v.startOnce.Do(func() {
 		v.logger.Infof("Starting thread handling validator %s", v.GetBabylonPkHex())
 
@@ -192,9 +187,6 @@ func (v *ValidatorInstance) Start() error {
 
 func (v *ValidatorInstance) Stop() error {
 	var stopErr error
-	if !v.started.Swap(false) {
-		return fmt.Errorf("the validator instance is already stopped")
-	}
 	v.stopOnce.Do(func() {
 		v.logger.Infof("Stopping thread handling validator %s", v.GetBabylonPkHex())
 

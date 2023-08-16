@@ -29,9 +29,6 @@ func NewValidatorManager() *ValidatorManager {
 func (vm *ValidatorManager) stop() error {
 	var stopErr error
 	for _, v := range vm.vals {
-		if !v.started.Load() {
-			continue
-		}
 		if err := v.Stop(); err != nil {
 			stopErr = err
 			break

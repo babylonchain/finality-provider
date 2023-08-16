@@ -77,6 +77,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			Return(expectedTxHash, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
+			Return(uint64(1), nil).AnyTimes()
 		actualTxHash, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, actualTxHash)
@@ -90,8 +92,6 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		mockBabylonClient.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(expectedTxHash, nil, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), nextBlock.Height).
-			Return(uint64(1), nil).AnyTimes()
 		actualTxHash, _, err = valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, actualTxHash)
