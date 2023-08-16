@@ -509,68 +509,6 @@ func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) (string, *btcec.Priva
 	return txHash, privKey, nil
 }
 
-// DoubleSignAttack is exposed for presentation/testing purpose to allow manual sending finality signature
-// this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
-// Note: this should not be used in the submission loop
-func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) ([]byte, *btcec.PrivateKey, error) {
-	btcPk := v.GetBtcPkBIP340()
-
-	// check last committed height
-	if v.GetLastCommittedHeight() < b.Height {
-		return nil, nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
-			v.GetLastCommittedHeight(), b.Height)
-	}
-
-	// check voting power
-	power, err := v.bc.QueryValidatorVotingPower(btcPk, b.Height)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query Babylon for the validator's voting power: %w", err)
-	}
-	if power == 0 {
-		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
-			// the validator is slashed or unbonded from Babylon side
-			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
-				return nil, nil, fmt.Errorf("cannot set the validator status: %w", err)
-			}
-		}
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   btcPk.MarshalHex(),
-			"block_height": b.Height,
-		}).Debug("the validator's voting power is 0, skip voting")
-
-		return nil, nil, nil
-	}
-
-	// build proper finality signature request
-	privRand, err := v.getCommittedPrivPubRand(b.Height)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
-	}
-	btcPrivKey, err := v.kc.GetBtcPrivKey()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
-	}
-	msg := &ftypes.MsgAddFinalitySig{
-		ValBtcPk:            v.btcPk,
-		BlockHeight:         b.Height,
-		BlockLastCommitHash: b.LastCommitHash,
-	}
-	msgToSign := msg.MsgToSign()
-	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to sign EOTS: %w", err)
-	}
-	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
-
-	// send finality signature to Babylon
-	txHash, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
-	}
-
-	return txHash, privKey, nil
-}
-
 func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
 	randPair, err := v.state.s.GetRandPair(v.bbnPk.Key, height)
 	if err != nil {
