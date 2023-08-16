@@ -2,8 +2,8 @@ package babylonclient
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -158,9 +158,9 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 	return &StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
-		MinSlashingTxFeeSat: btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
-		JuryPk:              juryPk,
-		SlashingAddress:     stakingParamRes.Params.SlashingAddress,
+		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
+		JuryPk:                    juryPk,
+		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
 	}, nil
 }
 
@@ -238,15 +238,24 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	var privKey *btcec.PrivateKey
 	for _, ev := range res.Events {
 		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
-			// add this trim because the attribute is a string with quotation marks
-			extractedBtcSk := strings.Trim(ev.Attributes["extracted_btc_sk"], `'"`)
-			privKeyBytes, err := base64.StdEncoding.DecodeString(extractedBtcSk)
+			evidenceStr := ev.Attributes["evidence"]
+			evidenceBytes, err := json.Marshal(evidenceStr)
 			if err != nil {
-				bc.logger.Errorf("failed to decode extracted BTC SK: %s", err.Error())
+				bc.logger.Errorf("failed to decode evidence to bytes: %s", err.Error())
 				break
 			}
-			bc.logger.Debugf("extracted BTC SK: %s", hex.EncodeToString(privKeyBytes))
-			privKey, _ = btcec.PrivKeyFromBytes(privKeyBytes)
+			var evidence *finalitytypes.Evidence
+			err = bc.provider.Cdc.Marshaler.UnmarshalJSON(evidenceBytes, evidence)
+			if err != nil {
+				bc.logger.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+				break
+			}
+			privKey, err = evidence.ExtractBTCSK()
+			if err != nil {
+				bc.logger.Errorf("failed to extract private key from evidence: %s", err.Error())
+				break
+			}
+			bc.logger.Debugf("extracted BTC SK: %s", hex.EncodeToString(privKey.Serialize()))
 			break
 		}
 	}

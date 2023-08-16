@@ -230,6 +230,8 @@ func registerVal(ctx *cli.Context) error {
 	return nil
 }
 
+// addFinalitySigDaemonCmd allows manual submission of finality signatures
+// NOTE: should only be used for presentation/testing purposes
 var addFinalitySigDaemonCmd = cli.Command{
 	Name:      "add-finality-sig",
 	ShortName: "afs",
