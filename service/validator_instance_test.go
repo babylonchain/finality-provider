@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -24,11 +25,13 @@ func FuzzCommitPubRandList(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, valIns, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		app, bbnPk, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
 		defer cleanUp()
 		err := app.Start()
 		require.NoError(t, err)
 
+		valIns, err := app.GetValidatorInstance(bbnPk)
+		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomByteArray(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
@@ -60,9 +63,11 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, valIns, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		app, bbnPk, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
 		defer cleanUp()
 		err := app.Start()
+		require.NoError(t, err)
+		valIns, err := app.GetValidatorInstance(bbnPk)
 		require.NoError(t, err)
 
 		// commit public randomness
@@ -96,7 +101,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babylonclient.BabylonClient) (*service.ValidatorApp, *service.ValidatorInstance, func()) {
+func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babylonclient.BabylonClient) (*service.ValidatorApp, *secp256k1.PubKey, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
@@ -111,12 +116,6 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babyl
 	err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 	require.NoError(t, err)
 	config := app.GetConfig()
-	err = app.StartHandlingValidator(validator.GetBabylonPK())
-	require.NoError(t, err)
-
-	valIns, err := app.GetValidatorInstance(validator.GetBabylonPK())
-	require.NoError(t, err)
-	require.True(t, valIns.GetBabylonPk().Equals(validator.GetBabylonPK()))
 
 	cleanUp := func() {
 		err = app.Stop()
@@ -127,5 +126,5 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babyl
 		require.NoError(t, err)
 	}
 
-	return app, valIns, cleanUp
+	return app, validator.GetBabylonPK(), cleanUp
 }
