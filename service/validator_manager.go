@@ -26,21 +26,12 @@ func NewValidatorManager() *ValidatorManager {
 	}
 }
 
-func (vm *ValidatorManager) start() error {
-	var startErr error
-	for _, v := range vm.vals {
-		if err := v.Start(); err != nil {
-			startErr = err
-			break
-		}
-	}
-
-	return startErr
-}
-
 func (vm *ValidatorManager) stop() error {
 	var stopErr error
 	for _, v := range vm.vals {
+		if !v.started.Load() {
+			continue
+		}
 		if err := v.Stop(); err != nil {
 			stopErr = err
 			break
