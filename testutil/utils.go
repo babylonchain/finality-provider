@@ -33,6 +33,7 @@ func PrepareMockedBabylonClient(t *testing.T, blockHeight uint64, lastCommitHash
 
 	mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 	mockBabylonClient.EXPECT().QueryHeader(int64(blockHeight)).Return(resHeader, nil).AnyTimes()
+	mockBabylonClient.EXPECT().QueryBestHeader().Return(resHeader, nil).AnyTimes()
 	mockBabylonClient.EXPECT().QueryLatestFinalisedBlocks(uint64(1)).Return(finalizedBlocks, nil).AnyTimes()
 	mockBabylonClient.EXPECT().Close().Return(nil).AnyTimes()
 
