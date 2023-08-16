@@ -28,12 +28,12 @@ type registerValidatorRequest struct {
 
 type validatorRegisteredEvent struct {
 	bbnPubKey       *secp256k1.PubKey
-	txHash          []byte
+	txHash          string
 	successResponse chan *registerValidatorResponse
 }
 
 type registerValidatorResponse struct {
-	txHash []byte
+	txHash string
 }
 
 type addJurySigRequest struct {
@@ -47,12 +47,12 @@ type addJurySigRequest struct {
 }
 
 type addJurySigResponse struct {
-	txHash []byte
+	txHash string
 }
 
 type jurySigAddedEvent struct {
 	bbnPubKey       *secp256k1.PubKey
-	txHash          []byte
+	txHash          string
 	successResponse chan *addJurySigResponse
 }
 

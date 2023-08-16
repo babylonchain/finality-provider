@@ -56,7 +56,7 @@ func FuzzRegisterValidator(f *testing.F) {
 			BtcSig:     btcSig,
 		}
 
-		txHash := testutil.GenRandomByteArray(r, 32)
+		txHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			RegisterValidator(validator.GetBabylonPK(), validator.MustGetBIP340BTCPK(), pop).Return(txHash, nil).AnyTimes()
 
@@ -139,7 +139,7 @@ func FuzzAddJurySig(f *testing.F) {
 
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
-		expectedTxHash := testutil.GenRandomByteArray(r, 32)
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).

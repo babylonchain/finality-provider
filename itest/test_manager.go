@@ -110,7 +110,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) []byte {
+func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) string {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
