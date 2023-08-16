@@ -111,10 +111,12 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babyl
 	err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 	require.NoError(t, err)
 	config := app.GetConfig()
-	valIns, err := service.NewValidatorInstance(validator.GetBabylonPK(), config, app.GetValidatorStore(), app.GetKeyring(), bc, logger)
+	err = app.StartHandlingValidator(validator.GetBabylonPK())
 	require.NoError(t, err)
-	err = app.AddValidatorInstance(valIns)
+
+	valIns, err := app.GetValidatorInstance(validator.GetBabylonPK())
 	require.NoError(t, err)
+	require.True(t, valIns.GetBabylonPk().Equals(validator.GetBabylonPK()))
 
 	cleanUp := func() {
 		err = app.Stop()

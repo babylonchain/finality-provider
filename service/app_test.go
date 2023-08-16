@@ -64,7 +64,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, txHash, actualTxHash)
 
-		err = app.StartValidatorInstance(validator.GetBabylonPK())
+		err = app.StartHandlingValidator(validator.GetBabylonPK())
 		require.NoError(t, err)
 
 		valAfterReg, err := app.GetValidatorInstance(validator.GetBabylonPK())

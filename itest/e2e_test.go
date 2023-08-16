@@ -97,7 +97,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.NoError(t, err)
 	_, bbnPk, err := app.RegisterValidator(newValName)
 	require.NoError(t, err)
-	err = app.StartValidatorInstance(bbnPk)
+	err = app.StartHandlingValidator(bbnPk)
 	require.NoError(t, err)
 	valIns, err := app.GetValidatorInstance(bbnPk)
 	require.NoError(t, err)

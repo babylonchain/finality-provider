@@ -78,11 +78,6 @@ func NewValidatorAppFromConfig(
 		}
 	}
 
-	vm, err := NewValidatorManagerFromStore(valStore, config, kr, bc, logger)
-	if err != nil {
-		return nil, err
-	}
-
 	return &ValidatorApp{
 		bc:                           bc,
 		vs:                           valStore,
@@ -90,7 +85,7 @@ func NewValidatorAppFromConfig(
 		config:                       config,
 		logger:                       logger,
 		poller:                       poller,
-		validatorManager:             vm,
+		validatorManager:             NewValidatorManager(),
 		quit:                         make(chan struct{}),
 		sentQuit:                     make(chan struct{}),
 		eventQuit:                    make(chan struct{}),
@@ -129,10 +124,6 @@ func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
 // GetValidatorInstance returns the validator instance with the given Babylon public key
 func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
 	return app.validatorManager.getValidatorInstance(babylonPk)
-}
-
-func (app *ValidatorApp) AddValidatorInstance(valIns *ValidatorInstance) error {
-	return app.validatorManager.addValidatorInstance(valIns)
 }
 
 func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
@@ -198,22 +189,23 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, *secp256k1.P
 	}
 }
 
-// StartValidatorInstance starts a validator instance with the given Babylon public key
-// and add the instance to the Validator application
+// StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
-func (app *ValidatorApp) StartValidatorInstance(bbnPk *secp256k1.PubKey) error {
-	pkHex := hex.EncodeToString(bbnPk.Key)
-	valIns, err := NewValidatorInstance(bbnPk, app.config, app.vs, app.kr, app.bc, app.logger)
-	if err != nil {
-		return fmt.Errorf("unable to create the validator instance %s: %w", pkHex, err)
-	}
-	err = app.AddValidatorInstance(valIns)
+func (app *ValidatorApp) StartHandlingValidator(bbnPk *secp256k1.PubKey) error {
+	return app.validatorManager.addValidatorInstance(bbnPk, app.config, app.vs, app.kr, app.bc, app.logger)
+}
+
+func (app *ValidatorApp) StartHandlingValidators() error {
+	storedValidators, err := app.vs.ListRegisteredValidators()
 	if err != nil {
 		return err
 	}
-	err = valIns.Start()
-	if err != nil {
-		return fmt.Errorf("unable to start the validator instance %s: %w", pkHex, err)
+
+	for _, v := range storedValidators {
+		err = app.StartHandlingValidator(v.GetBabylonPK())
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -386,7 +378,7 @@ func (app *ValidatorApp) Start() error {
 		if app.IsJury() {
 			go app.jurySigSubmissionLoop()
 		} else {
-			if err := app.validatorManager.start(); err != nil {
+			if err := app.StartHandlingValidators(); err != nil {
 				startErr = err
 				return
 			}

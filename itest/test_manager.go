@@ -90,7 +90,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		require.NoError(t, err)
 		_, bbnPk, err := app.RegisterValidator(newValName)
 		require.NoError(t, err)
-		err = app.StartValidatorInstance(bbnPk)
+		err = app.StartHandlingValidator(bbnPk)
 		require.NoError(t, err)
 	}
 

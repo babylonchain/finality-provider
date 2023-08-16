@@ -20,27 +20,10 @@ type ValidatorManager struct {
 	vals map[string]*ValidatorInstance
 }
 
-func NewValidatorManagerFromStore(
-	valStore *val.ValidatorStore,
-	config *valcfg.Config,
-	kr keyring.Keyring,
-	bc bbncli.BabylonClient,
-	logger *logrus.Logger,
-) (*ValidatorManager, error) {
-	storedVals, err := valStore.ListRegisteredValidators()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list registered validators: %w", err)
+func NewValidatorManager() *ValidatorManager {
+	return &ValidatorManager{
+		vals: make(map[string]*ValidatorInstance),
 	}
-	vals := make(map[string]*ValidatorInstance)
-	for _, sv := range storedVals {
-		validator, err := NewValidatorInstance(sv.GetBabylonPK(), config, valStore, kr, bc, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create validator %s instance: %w", sv.GetBabylonPkHexString(), err)
-		}
-		vals[sv.GetBabylonPkHexString()] = validator
-	}
-
-	return &ValidatorManager{vals: vals}, nil
 }
 
 func (vm *ValidatorManager) start() error {
@@ -98,15 +81,33 @@ func (vm *ValidatorManager) getValidatorInstance(babylonPk *secp256k1.PubKey) (*
 	return v, nil
 }
 
-func (vm *ValidatorManager) addValidatorInstance(valIns *ValidatorInstance) error {
+// addValidatorInstance creates a validator instance, starts it and adds it into the validator manager
+func (vm *ValidatorManager) addValidatorInstance(
+	pk *secp256k1.PubKey,
+	config *valcfg.Config,
+	valStore *val.ValidatorStore,
+	kr keyring.Keyring,
+	bc bbncli.BabylonClient,
+	logger *logrus.Logger,
+) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	k := valIns.GetBabylonPkHex()
-	if _, exists := vm.vals[k]; exists {
+	pkHex := hex.EncodeToString(pk.Key)
+	if _, exists := vm.vals[pkHex]; exists {
 		return fmt.Errorf("validator instance already exists")
 	}
-	vm.vals[k] = valIns
+
+	valIns, err := NewValidatorInstance(pk, config, valStore, kr, bc, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create validator %s instance: %w", pkHex, err)
+	}
+
+	if err := valIns.Start(); err != nil {
+		return fmt.Errorf("failed to start validator %s instance: %w", pkHex, err)
+	}
+
+	vm.vals[pkHex] = valIns
 
 	return nil
 }
