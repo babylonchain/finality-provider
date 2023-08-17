@@ -133,6 +133,8 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil
 }
 
+// AddFinalitySignature adds a manually constructed finality signature to Babylon
+// NOTE: this is only used for presentation/testing purposes
 func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFinalitySignatureRequest) (
 	*proto.AddFinalitySignatureResponse, error) {
 

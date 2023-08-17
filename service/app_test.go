@@ -121,7 +121,7 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, delSK, btcPk, jurPk, stakingTimeBlocks, stakingValue, slashingAddr)
+		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, jurPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
 		require.NoError(t, err)
 		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
 		require.NoError(t, err)
