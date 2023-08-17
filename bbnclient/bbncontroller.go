@@ -241,11 +241,11 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 			bc.logger.Debugf("found slashing evidence %s", evidenceStr)
 			var evidence finalitytypes.Evidence
 			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
-				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+				return "", nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
 			}
 			privKey, err = evidence.ExtractBTCSK()
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
+				return "", nil, fmt.Errorf("failed to extract private key: %s", err.Error())
 			}
 			break
 		}
