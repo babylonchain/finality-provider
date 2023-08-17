@@ -138,30 +138,30 @@ func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
 	}, nil
 }
 
-func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, *secp256k1.PubKey, error) {
+func (app *ValidatorApp) RegisterValidator(keyName string) (string, *secp256k1.PubKey, error) {
 	kc, err := val.NewKeyringControllerWithKeyring(app.kr, keyName)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, err
 	}
 	if !kc.ValidatorKeyExists() {
-		return nil, nil, fmt.Errorf("key name %s does not exist", keyName)
+		return "", nil, fmt.Errorf("key name %s does not exist", keyName)
 	}
 	babylonPublicKeyBytes, err := kc.GetBabylonPublicKeyBytes()
 	if err != nil {
-		return nil, nil, err
+		return "", nil, err
 	}
 	validator, err := app.vs.GetStoreValidator(babylonPublicKeyBytes)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, err
 	}
 
 	if validator.Status != proto.ValidatorStatus_CREATED {
-		return nil, nil, fmt.Errorf("validator is already registered")
+		return "", nil, fmt.Errorf("validator is already registered")
 	}
 
 	btcSig, err := types.NewBIP340Signature(validator.Pop.BtcSig)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, err
 	}
 
 	pop := &bstypes.ProofOfPossession{
@@ -181,11 +181,11 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, *secp256k1.P
 
 	select {
 	case err := <-request.errResponse:
-		return nil, nil, err
+		return "", nil, err
 	case successResponse := <-request.successResponse:
 		return successResponse.txHash, validator.GetBabylonPK(), nil
 	case <-app.quit:
-		return nil, nil, fmt.Errorf("validator app is shutting down")
+		return "", nil, fmt.Errorf("validator app is shutting down")
 	}
 }
 
@@ -213,22 +213,22 @@ func (app *ValidatorApp) StartHandlingValidators() error {
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
 // Note: this should be only called when the program is running in Jury mode
-func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte, error) {
+func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (string, error) {
 	if btcDel.JurySig != nil {
-		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
+		return "", fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
 	}
 
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// get Jury private key from the keyring
 	juryPrivKey, err := app.getJuryPrivKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Jury private key: %w", err)
+		return "", fmt.Errorf("failed to get Jury private key: %w", err)
 	}
 
 	jurySig, err := slashingTx.Sign(
@@ -238,7 +238,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 		&app.config.JuryModeConfig.ActiveNetParams,
 	)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	request := &addJurySigRequest{
@@ -255,11 +255,11 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 
 	select {
 	case err := <-request.errResponse:
-		return nil, err
+		return "", err
 	case successResponse := <-request.successResponse:
 		return successResponse.txHash, nil
 	case <-app.quit:
-		return nil, fmt.Errorf("validator app is shutting down")
+		return "", fmt.Errorf("validator app is shutting down")
 	}
 }
 

@@ -30,16 +30,16 @@ type BabylonClient interface {
 	GetStakingParams() (*StakingParams, error)
 	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 	// it returns tx hash and error
-	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) ([]byte, error)
+	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (string, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error
-	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error)
+	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (string, error)
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
-	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) ([]byte, error)
+	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (string, error)
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 	// validator's BTC private key will be returned if the validator is slashed due to double signing
-	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error)
+	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (string, *btcec.PrivateKey, error)
 
 	// Note: the following queries are only for PoC
 

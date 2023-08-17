@@ -32,7 +32,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		valIns, err := app.GetValidatorInstance(bbnPk)
 		require.NoError(t, err)
-		expectedTxHash := testutil.GenRandomByteArray(r, 32)
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
@@ -71,7 +71,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		require.NoError(t, err)
 
 		// commit public randomness
-		expectedTxHash := testutil.GenRandomByteArray(r, 32)
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(expectedTxHash, nil).AnyTimes()
@@ -88,7 +88,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			Height:         startingBlock.Height + 1,
 			LastCommitHash: testutil.GenRandomByteArray(r, 32),
 		}
-		expectedTxHash = testutil.GenRandomByteArray(r, 32)
+		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(expectedTxHash, nil, nil).AnyTimes()
