@@ -2,8 +2,6 @@ package babylonclient
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -24,6 +22,7 @@ import (
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
+	"github.com/gogo/protobuf/jsonpb"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
@@ -239,23 +238,15 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	for _, ev := range res.Events {
 		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
 			evidenceStr := ev.Attributes["evidence"]
-			evidenceBytes, err := json.Marshal(evidenceStr)
-			if err != nil {
-				bc.logger.Errorf("failed to decode evidence to bytes: %s", err.Error())
-				break
-			}
-			var evidence *finalitytypes.Evidence
-			err = bc.provider.Cdc.Marshaler.UnmarshalJSON(evidenceBytes, evidence)
-			if err != nil {
-				bc.logger.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
-				break
+			bc.logger.Debugf("found slashing evidence %s", evidenceStr)
+			var evidence finalitytypes.Evidence
+			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
+				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
 			}
 			privKey, err = evidence.ExtractBTCSK()
 			if err != nil {
-				bc.logger.Errorf("failed to extract private key from evidence: %s", err.Error())
-				break
+				return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
 			}
-			bc.logger.Debugf("extracted BTC SK: %s", hex.EncodeToString(privKey.Serialize()))
 			break
 		}
 	}
