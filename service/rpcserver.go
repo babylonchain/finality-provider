@@ -149,7 +149,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		LastCommitHash: req.LastCommitHash,
 	}
 
-	txRes, privKey, err := v.DoubleSignAttack(b)
+	txRes, privKey, err := v.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	if err != nil {
 		return nil, err
 	}

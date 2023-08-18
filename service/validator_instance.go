@@ -450,10 +450,10 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*provider.Rel
 	return res, nil
 }
 
-// DoubleSignAttack is exposed for presentation/testing purpose to allow manual sending finality signature
+// TestSubmitFinalitySignatureAndExtractPrivKey is exposed for presentation/testing purpose to allow manual sending finality signature
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
-func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) (*provider.RelayerTxResponse, *btcec.PrivateKey, error) {
+func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *BlockInfo) (*provider.RelayerTxResponse, *btcec.PrivateKey, error) {
 	btcPk := v.GetBtcPkBIP340()
 
 	// check last committed height
