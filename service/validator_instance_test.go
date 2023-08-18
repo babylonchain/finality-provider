@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
@@ -74,7 +75,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
@@ -91,8 +92,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
-			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil, nil).AnyTimes()
-		res, _, err = valIns.SubmitFinalitySignature(nextBlock)
+			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		res, err = valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
 

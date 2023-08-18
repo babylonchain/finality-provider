@@ -16,6 +16,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -110,7 +111,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *babylonclient.TransactionResponse {
+func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *provider.RelayerTxResponse {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()

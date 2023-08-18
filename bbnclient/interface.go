@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 )
 
 type StakingParams struct {
@@ -26,24 +27,19 @@ type StakingParams struct {
 	SlashingAddress string
 }
 
-type TransactionResponse struct {
-	TxHash string
-}
-
 type BabylonClient interface {
 	GetStakingParams() (*StakingParams, error)
 	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 	// it returns tx hash and error
-	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*TransactionResponse, error)
+	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error
-	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*TransactionResponse, error)
+	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error)
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
-	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*TransactionResponse, error)
+	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error)
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-	// validator's BTC private key will be returned if the validator is slashed due to double signing
-	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*TransactionResponse, *btcec.PrivateKey, error)
+	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)
 
 	// Note: the following queries are only for PoC
 

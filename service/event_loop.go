@@ -103,8 +103,8 @@ func (app *ValidatorApp) eventLoop() {
 			}
 
 			// return to the caller
-			ev.successResponse <- &registerValidatorResponse{
-				txHash: ev.txHash,
+			ev.successResponse <- &RegisterValidatorResponse{
+				TxHash: ev.txHash,
 			}
 
 		case ev := <-app.jurySigAddedEventChan:
@@ -113,8 +113,8 @@ func (app *ValidatorApp) eventLoop() {
 			// if not, maybe we can remove the handler of this event
 
 			// return to the caller
-			ev.successResponse <- &addJurySigResponse{
-				txHash: ev.txHash,
+			ev.successResponse <- &AddJurySigResponse{
+				TxHash: ev.txHash,
 			}
 
 		case <-app.eventQuit:
