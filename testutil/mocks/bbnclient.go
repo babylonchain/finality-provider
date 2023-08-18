@@ -5,11 +5,11 @@
 package mocks
 
 import (
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	reflect "reflect"
 
 	types "github.com/babylonchain/babylon/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
+	types1 "github.com/babylonchain/babylon/x/finality/types"
 	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	btcec "github.com/btcsuite/btcd/btcec/v2"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -55,10 +55,10 @@ func (mr *MockBabylonClientMockRecorder) Close() *gomock.Call {
 }
 
 // CommitPubRandList mocks base method.
-func (m *MockBabylonClient) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) ([]byte, error) {
+func (m *MockBabylonClient) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*babylonclient.TransactionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CommitPubRandList", btcPubKey, startHeight, pubRandList, sig)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*babylonclient.TransactionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -130,10 +130,10 @@ func (mr *MockBabylonClientMockRecorder) QueryHeightWithLastPubRand(btcPubKey in
 }
 
 // QueryLatestFinalisedBlocks mocks base method.
-func (m *MockBabylonClient) QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error) {
+func (m *MockBabylonClient) QueryLatestFinalisedBlocks(count uint64) ([]*types1.IndexedBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryLatestFinalisedBlocks", count)
-	ret0, _ := ret[0].([]*finalitytypes.IndexedBlock)
+	ret0, _ := ret[0].([]*types1.IndexedBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -190,10 +190,10 @@ func (mr *MockBabylonClientMockRecorder) QueryValidatorVotingPower(btcPubKey, bl
 }
 
 // RegisterValidator mocks base method.
-func (m *MockBabylonClient) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession) ([]byte, error) {
+func (m *MockBabylonClient) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession) (*babylonclient.TransactionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*babylonclient.TransactionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -205,10 +205,10 @@ func (mr *MockBabylonClientMockRecorder) RegisterValidator(bbnPubKey, btcPubKey,
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockBabylonClient) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) ([]byte, *btcec.PrivateKey, error) {
+func (m *MockBabylonClient) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*babylonclient.TransactionResponse, *btcec.PrivateKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitFinalitySig", btcPubKey, blockHeight, blockHash, sig)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*babylonclient.TransactionResponse)
 	ret1, _ := ret[1].(*btcec.PrivateKey)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -221,10 +221,10 @@ func (mr *MockBabylonClientMockRecorder) SubmitFinalitySig(btcPubKey, blockHeigh
 }
 
 // SubmitJurySig mocks base method.
-func (m *MockBabylonClient) SubmitJurySig(btcPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) ([]byte, error) {
+func (m *MockBabylonClient) SubmitJurySig(btcPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*babylonclient.TransactionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitJurySig", btcPubKey, delPubKey, stakingTxHash, sig)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*babylonclient.TransactionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

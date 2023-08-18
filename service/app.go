@@ -138,7 +138,7 @@ func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
 	}, nil
 }
 
-func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, *secp256k1.PubKey, error) {
+func (app *ValidatorApp) RegisterValidator(keyName string) (*bbncli.TransactionResponse, *secp256k1.PubKey, error) {
 	kc, err := val.NewKeyringControllerWithKeyring(app.kr, keyName)
 	if err != nil {
 		return nil, nil, err
@@ -183,7 +183,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) ([]byte, *secp256k1.P
 	case err := <-request.errResponse:
 		return nil, nil, err
 	case successResponse := <-request.successResponse:
-		return successResponse.txHash, validator.GetBabylonPK(), nil
+		return &bbncli.TransactionResponse{TxHash: successResponse.txHash}, validator.GetBabylonPK(), nil
 	case <-app.quit:
 		return nil, nil, fmt.Errorf("validator app is shutting down")
 	}
@@ -213,7 +213,7 @@ func (app *ValidatorApp) StartHandlingValidators() error {
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
 // Note: this should be only called when the program is running in Jury mode
-func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte, error) {
+func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*bbncli.TransactionResponse, error) {
 	if btcDel.JurySig != nil {
 		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
 	}
@@ -257,7 +257,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) ([]byte
 	case err := <-request.errResponse:
 		return nil, err
 	case successResponse := <-request.successResponse:
-		return successResponse.txHash, nil
+		return &bbncli.TransactionResponse{TxHash: successResponse.txHash}, nil
 	case <-app.quit:
 		return nil, fmt.Errorf("validator app is shutting down")
 	}

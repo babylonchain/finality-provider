@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -56,13 +57,13 @@ func FuzzRegisterValidator(f *testing.F) {
 			BtcSig:     btcSig,
 		}
 
-		txHash := testutil.GenRandomByteArray(r, 32)
+		txHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
-			RegisterValidator(validator.GetBabylonPK(), validator.MustGetBIP340BTCPK(), pop).Return(txHash, nil).AnyTimes()
+			RegisterValidator(validator.GetBabylonPK(), validator.MustGetBIP340BTCPK(), pop).Return(&babylonclient.TransactionResponse{TxHash: txHash}, nil).AnyTimes()
 
-		actualTxHash, _, err := app.RegisterValidator(validator.KeyName)
+		res, _, err := app.RegisterValidator(validator.KeyName)
 		require.NoError(t, err)
-		require.Equal(t, txHash, actualTxHash)
+		require.Equal(t, txHash, res.TxHash)
 
 		err = app.StartHandlingValidator(validator.GetBabylonPK())
 		require.NoError(t, err)
@@ -139,13 +140,13 @@ func FuzzAddJurySig(f *testing.F) {
 
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
-		expectedTxHash := testutil.GenRandomByteArray(r, 32)
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
-			Return(expectedTxHash, nil).AnyTimes()
-		txHash, err := app.AddJurySignature(delegation)
+			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		res, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, txHash)
+		require.Equal(t, expectedTxHash, res.TxHash)
 	})
 }

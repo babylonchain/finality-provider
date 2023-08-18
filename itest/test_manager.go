@@ -110,7 +110,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) []byte {
+func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *babylonclient.TransactionResponse {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
@@ -127,10 +127,10 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 	)
 	require.NoError(t, err)
 
-	txHash, err := tm.BabylonClient.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingMsgTx.TxHash().String(), jurySig)
+	res, err := tm.BabylonClient.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingMsgTx.TxHash().String(), jurySig)
 	require.NoError(t, err)
 
-	return txHash
+	return res
 }
 
 func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {

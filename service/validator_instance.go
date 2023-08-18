@@ -210,7 +210,7 @@ func (v *ValidatorInstance) submissionLoop() {
 				"babylon_pk_hex": v.GetBabylonPkHex(),
 				"block_height":   b.Height,
 			}).Debug("received a new block, the validator is going to vote")
-			txHash, _, err := v.SubmitFinalitySignature(b)
+			res, _, err := v.SubmitFinalitySignature(b)
 			if err != nil {
 				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
@@ -220,12 +220,12 @@ func (v *ValidatorInstance) submissionLoop() {
 				}).Error("failed to submit finality signature to Babylon")
 				continue
 			}
-			if txHash != nil {
+			if res != nil {
 				v.logger.WithFields(logrus.Fields{
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 					"btc_pk_hex":     v.GetBtcPkHex(),
 					"block_height":   b.Height,
-					"tx_hash":        txHash,
+					"tx_hash":        res.TxHash,
 				}).Info("successfully submitted a finality signature to Babylon")
 			}
 
@@ -265,7 +265,7 @@ func (v *ValidatorInstance) submissionLoop() {
 // CommitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
-func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) ([]byte, error) {
+func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*bbncli.TransactionResponse, error) {
 	lastCommittedHeight, err := v.bc.QueryHeightWithLastPubRand(v.btcPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Babylon for the last committed height: %w", err)
@@ -319,7 +319,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 	}
 	sig := types.NewBIP340SignatureFromBTCSig(schnorrSig)
 
-	txHash, err := v.bc.CommitPubRandList(v.btcPk, startHeight, pubRandList, &sig)
+	res, err := v.bc.CommitPubRandList(v.btcPk, startHeight, pubRandList, &sig)
 	if err != nil {
 		// TODO Add retry. check issue: https://github.com/babylonchain/btc-validator/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to Babylon: %w", err)
@@ -352,7 +352,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 		}
 	}
 
-	return txHash, nil
+	return res, nil
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to Babylon
@@ -362,7 +362,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) ([]byte, error) {
 // 2. the block height is lower than the last voted height as this indicates that the validator
 // does not need to send finality signature over this block
 // 3. the validator does not have voting power on the given block
-func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btcec.PrivateKey, error) {
+func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*bbncli.TransactionResponse, *btcec.PrivateKey, error) {
 	btcPk := v.GetBtcPkBIP340()
 
 	// check last committed height
@@ -434,7 +434,7 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btce
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
 	// send finality signature to Babylon
-	txHash, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
+	res, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
 	}
@@ -444,13 +444,13 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) ([]byte, *btce
 		return nil, nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", b.Height, err)
 	}
 
-	return txHash, privKey, nil
+	return res, privKey, nil
 }
 
 // DoubleSignAttack is exposed for presentation/testing purpose to allow manual sending finality signature
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
-func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) ([]byte, *btcec.PrivateKey, error) {
+func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) (*bbncli.TransactionResponse, *btcec.PrivateKey, error) {
 	btcPk := v.GetBtcPkBIP340()
 
 	// check last committed height
@@ -501,12 +501,12 @@ func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) ([]byte, *btcec.Priva
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
 	// send finality signature to Babylon
-	txHash, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
+	res, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
 	}
 
-	return txHash, privKey, nil
+	return res, privKey, nil
 }
 
 func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
