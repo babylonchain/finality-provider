@@ -165,7 +165,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (string, error) {
+func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*TransactionResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:    bc.MustGetTxSigner(),
 		BabylonPk: bbnPubKey,
@@ -175,15 +175,15 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(registerMsg), "")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.TxHash, nil
+	return &TransactionResponse{TxHash: res.TxHash}, nil
 }
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (string, error) {
+func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*TransactionResponse, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
 		Signer:      bc.MustGetTxSigner(),
 		ValBtcPk:    btcPubKey,
@@ -194,15 +194,15 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.TxHash, nil
+	return &TransactionResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (string, error) {
+func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*TransactionResponse, error) {
 	msg := &btcstakingtypes.MsgAddJurySig{
 		Signer:        bc.MustGetTxSigner(),
 		ValPk:         btcPubKey,
@@ -213,14 +213,14 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.TxHash, nil
+	return &TransactionResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (string, *btcec.PrivateKey, error) {
+func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*TransactionResponse, *btcec.PrivateKey, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
 		Signer:              bc.MustGetTxSigner(),
 		ValBtcPk:            btcPubKey,
@@ -231,7 +231,7 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	var privKey *btcec.PrivateKey
@@ -241,17 +241,17 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 			bc.logger.Debugf("found slashing evidence %s", evidenceStr)
 			var evidence finalitytypes.Evidence
 			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
-				return "", nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
 			}
 			privKey, err = evidence.ExtractBTCSK()
 			if err != nil {
-				return "", nil, fmt.Errorf("failed to extract private key: %s", err.Error())
+				return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
 			}
 			break
 		}
 	}
 
-	return res.TxHash, privKey, nil
+	return &TransactionResponse{TxHash: res.TxHash}, privKey, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
@@ -262,7 +262,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *types.BIP340Signature,
-) ([]byte, error) {
+) (*TransactionResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
 		Signer:        bc.MustGetTxSigner(),
 		BabylonPk:     delBabylonPk,
@@ -279,12 +279,12 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
-	return []byte(res.TxHash), nil
+	return &TransactionResponse{TxHash: res.TxHash}, nil
 }
 
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
-func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) ([]byte, error) {
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*TransactionResponse, error) {
 	// convert to []sdk.Msg type
 	imsgs := []pv.RelayerMessage{}
 	for _, h := range headers {
@@ -302,7 +302,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 		return nil, err
 	}
 
-	return []byte(res.TxHash), nil
+	return &TransactionResponse{TxHash: res.TxHash}, nil
 }
 
 // Note: the following queries are only for PoC
