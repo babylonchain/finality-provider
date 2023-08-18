@@ -138,7 +138,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			// we won't do any retries here to not block the loop for more important messages.
 			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			txHash, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
+			res, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -152,19 +152,19 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			app.logger.WithFields(logrus.Fields{
 				"bbnPk":  hex.EncodeToString(req.bbnPubKey.Key),
-				"txHash": txHash,
+				"txHash": res.TxHash,
 			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
 				bbnPubKey: req.bbnPubKey,
-				txHash:    txHash,
+				txHash:    res.TxHash,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,
 			}
 		case req := <-app.addJurySigRequestChan:
 			// TODO: we should add some retry mechanism or we can have a health checker to check the connection periodically
-			txHash, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.stakingTxHash, req.sig)
+			res, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.stakingTxHash, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err":          err,
@@ -178,12 +178,12 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			app.logger.WithFields(logrus.Fields{
 				"delBtcPk":     req.delBtcPk.MarshalHex(),
 				"valBtcPubKey": req.valBtcPk.MarshalHex(),
-				"txHash":       txHash,
+				"txHash":       res.TxHash,
 			}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
 
 			app.jurySigAddedEventChan <- &jurySigAddedEvent{
 				bbnPubKey: req.bbnPubKey,
-				txHash:    txHash,
+				txHash:    res.TxHash,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,

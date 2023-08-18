@@ -35,14 +35,14 @@ func FuzzCommitPubRandList(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(expectedTxHash, nil).AnyTimes()
+			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		actualTxHash, err := valIns.CommitPubRand(startingBlock)
+		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, actualTxHash)
+		require.Equal(t, expectedTxHash, res.TxHash)
 
 		// check the last_committed_height
 		numPubRand := app.GetConfig().NumPubRand
@@ -74,14 +74,14 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(expectedTxHash, nil).AnyTimes()
+			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		actualTxHash, err := valIns.CommitPubRand(startingBlock)
+		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, actualTxHash)
+		require.Equal(t, expectedTxHash, res.TxHash)
 
 		// submit finality sig
 		nextBlock := &service.BlockInfo{
@@ -91,10 +91,10 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
-			Return(expectedTxHash, nil, nil).AnyTimes()
-		actualTxHash, _, err = valIns.SubmitFinalitySignature(nextBlock)
+			Return(&babylonclient.TransactionResponse{TxHash: expectedTxHash}, nil, nil).AnyTimes()
+		res, _, err = valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, actualTxHash)
+		require.Equal(t, expectedTxHash, res.TxHash)
 
 		// check the last_voted_height
 		require.Equal(t, nextBlock.Height, valIns.GetLastVotedHeight())

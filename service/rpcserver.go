@@ -120,7 +120,7 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterValidatorRequest) (
 	*proto.RegisterValidatorResponse, error) {
 
-	txHash, bbnPk, err := r.app.RegisterValidator(req.KeyName)
+	txRes, bbnPk, err := r.app.RegisterValidator(req.KeyName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register the validator to Babylon: %w", err)
 	}
@@ -130,7 +130,7 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(bbnPk.Key), err)
 	}
 
-	return &proto.RegisterValidatorResponse{TxHash: txHash}, nil
+	return &proto.RegisterValidatorResponse{TxHash: txRes.TxHash}, nil
 }
 
 func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFinalitySignatureRequest) (
@@ -147,12 +147,12 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		LastCommitHash: req.LastCommitHash,
 	}
 
-	txHash, privKey, err := v.SubmitFinalitySignature(b)
+	txRes, privKey, err := v.SubmitFinalitySignature(b)
 	if err != nil {
 		return nil, err
 	}
 
-	res := &proto.AddFinalitySignatureResponse{TxHash: txHash}
+	res := &proto.AddFinalitySignatureResponse{TxHash: txRes.TxHash}
 
 	// if privKey is not empty, then this BTC validator
 	// has voted for a fork and will be slashed
