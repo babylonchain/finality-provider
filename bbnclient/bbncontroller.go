@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	bbnapp "github.com/babylonchain/babylon/app"
@@ -13,7 +12,6 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -23,7 +21,6 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
-	"github.com/gogo/protobuf/jsonpb"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
@@ -236,34 +233,6 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	}
 
 	return res, nil
-}
-
-// TestSubmitFinalitySigAndExtractPrivKey submits the finality signature via a MsgAddVote to Babylon and extracts private key if evidence is available
-// NOTE: this is only used for presentation/testing purposes
-func (bc *BabylonController) TestSubmitFinalitySigAndExtractPrivKey(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, *btcec.PrivateKey, error) {
-	res, err := bc.SubmitFinalitySig(btcPubKey, blockHeight, blockHash, sig)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var privKey *btcec.PrivateKey
-	for _, ev := range res.Events {
-		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
-			evidenceStr := ev.Attributes["evidence"]
-			bc.logger.Debugf("found slashing evidence %s", evidenceStr)
-			var evidence finalitytypes.Evidence
-			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
-				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
-			}
-			privKey, err = evidence.ExtractBTCSK()
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
-			}
-			break
-		}
-	}
-
-	return res, privKey, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface

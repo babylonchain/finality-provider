@@ -25,6 +25,8 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+var btcNetworkParams = &chaincfg.SimNetParams
+
 type TestManager struct {
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
@@ -162,7 +164,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(
-		r, &chaincfg.SimNetParams, delBtcPrivKey, valBtcPk, juryPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
+		r, btcNetworkParams, delBtcPrivKey, valBtcPk, juryPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
 	require.NoError(t, err)
 
 	// get msgTx
@@ -206,7 +208,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 		stakingMsgTx,
 		stakingTx.StakingScript,
 		delBtcPrivKey,
-		&chaincfg.SimNetParams,
+		btcNetworkParams,
 	)
 	require.NoError(t, err)
 

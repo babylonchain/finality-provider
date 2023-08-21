@@ -235,7 +235,7 @@ func registerVal(ctx *cli.Context) error {
 var addFinalitySigDaemonCmd = cli.Command{
 	Name:      "add-finality-sig",
 	ShortName: "afs",
-	Usage:     "Send a finality signature to Babylon.",
+	Usage:     "Send a finality signature to Babylon. This command should only be used for presentation/testing purposes",
 	UsageText: fmt.Sprintf("add-finality-sig --%s [babylon_pk_hex]", valBabylonPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
