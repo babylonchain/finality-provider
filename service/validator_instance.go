@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/relayer/v2/relayer/provider"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/sirupsen/logrus"
 
 	bbncli "github.com/babylonchain/btc-validator/bbnclient"
@@ -210,7 +213,7 @@ func (v *ValidatorInstance) submissionLoop() {
 				"babylon_pk_hex": v.GetBabylonPkHex(),
 				"block_height":   b.Height,
 			}).Debug("received a new block, the validator is going to vote")
-			res, _, err := v.SubmitFinalitySignature(b)
+			res, err := v.SubmitFinalitySignature(b)
 			if err != nil {
 				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
@@ -237,7 +240,7 @@ func (v *ValidatorInstance) submissionLoop() {
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 				}).Fatal("failed to get the current Babylon block")
 			}
-			txHash, err := v.CommitPubRand(tipBlock)
+			txRes, err := v.CommitPubRand(tipBlock)
 			if err != nil {
 				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
@@ -247,12 +250,12 @@ func (v *ValidatorInstance) submissionLoop() {
 				}).Error("failed to commit public randomness")
 				continue
 			}
-			if txHash != nil {
+			if txRes != nil {
 				v.logger.WithFields(logrus.Fields{
 					"babylon_pk_hex":        v.GetBabylonPkHex(),
 					"btc_pk_hex":            v.GetBtcPkHex(),
 					"last_committed_height": v.GetLastCommittedHeight(),
-					"tx_hash":               txHash,
+					"tx_hash":               txRes.TxHash,
 				}).Info("successfully committed public randomness to Babylon")
 			}
 		case <-v.quit:
@@ -265,7 +268,7 @@ func (v *ValidatorInstance) submissionLoop() {
 // CommitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
-func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*bbncli.TransactionResponse, error) {
+func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*provider.RelayerTxResponse, error) {
 	lastCommittedHeight, err := v.bc.QueryHeightWithLastPubRand(v.btcPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Babylon for the last committed height: %w", err)
@@ -362,12 +365,12 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*bbncli.Transact
 // 2. the block height is lower than the last voted height as this indicates that the validator
 // does not need to send finality signature over this block
 // 3. the validator does not have voting power on the given block
-func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*bbncli.TransactionResponse, *btcec.PrivateKey, error) {
+func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*provider.RelayerTxResponse, error) {
 	btcPk := v.GetBtcPkBIP340()
 
 	// check last committed height
 	if v.GetLastCommittedHeight() < b.Height {
-		return nil, nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
+		return nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
 			v.GetLastCommittedHeight(), b.Height)
 	}
 
@@ -382,19 +385,19 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*bbncli.Trans
 		// TODO: this could happen if the Babylon node is in recovery
 		//  need to double check this case in the future, but currently,
 		//  we do not need to return an error as it does not affect finalization
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// check voting power
 	power, err := v.bc.QueryValidatorVotingPower(btcPk, b.Height)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query Babylon for the validator's voting power: %w", err)
+		return nil, fmt.Errorf("failed to query Babylon for the validator's voting power: %w", err)
 	}
 	if power == 0 {
 		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
 			// the validator is slashed or unbonded from Babylon side
 			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
-				return nil, nil, fmt.Errorf("cannot set the validator status: %w", err)
+				return nil, fmt.Errorf("cannot set the validator status: %w", err)
 			}
 		}
 		v.logger.WithFields(logrus.Fields{
@@ -402,24 +405,24 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*bbncli.Trans
 			"block_height": b.Height,
 		}).Debug("the validator's voting power is 0, skip voting")
 
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// update the status
 	if v.GetStatus() == proto.ValidatorStatus_REGISTERED || v.GetStatus() == proto.ValidatorStatus_INACTIVE {
 		if err := v.SetStatus(proto.ValidatorStatus_ACTIVE); err != nil {
-			return nil, nil, fmt.Errorf("cannot set the validator status: %w", err)
+			return nil, fmt.Errorf("cannot set the validator status: %w", err)
 		}
 	}
 
 	// build proper finality signature request
 	privRand, err := v.getCommittedPrivPubRand(b.Height)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
+		return nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
 	}
 	btcPrivKey, err := v.kc.GetBtcPrivKey()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
+		return nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
 	}
 	msg := &ftypes.MsgAddFinalitySig{
 		ValBtcPk:            v.btcPk,
@@ -429,28 +432,28 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*bbncli.Trans
 	msgToSign := msg.MsgToSign()
 	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to sign EOTS: %w", err)
+		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
 	// send finality signature to Babylon
-	res, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
+	res, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
+		return nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
 	}
 
 	// update DB
 	if err := v.SetLastVotedHeight(b.Height); err != nil {
-		return nil, nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", b.Height, err)
+		return nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", b.Height, err)
 	}
 
-	return res, privKey, nil
+	return res, nil
 }
 
-// DoubleSignAttack is exposed for presentation/testing purpose to allow manual sending finality signature
+// TestSubmitFinalitySignatureAndExtractPrivKey is exposed for presentation/testing purpose to allow manual sending finality signature
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
-func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) (*bbncli.TransactionResponse, *btcec.PrivateKey, error) {
+func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *BlockInfo) (*provider.RelayerTxResponse, *btcec.PrivateKey, error) {
 	btcPk := v.GetBtcPkBIP340()
 
 	// check last committed height
@@ -501,9 +504,27 @@ func (v *ValidatorInstance) DoubleSignAttack(b *BlockInfo) (*bbncli.TransactionR
 	eotsSig := types.NewSchnorrEOTSSigFromModNScalar(sig)
 
 	// send finality signature to Babylon
-	res, privKey, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
+	res, err := v.bc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to Babylon: %w", err)
+	}
+
+	// try to extract the private key
+	var privKey *btcec.PrivateKey
+	for _, ev := range res.Events {
+		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
+			evidenceStr := ev.Attributes["evidence"]
+			v.logger.Debugf("found slashing evidence %s", evidenceStr)
+			var evidence ftypes.Evidence
+			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
+				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+			}
+			privKey, err = evidence.ExtractBTCSK()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
+			}
+			break
+		}
 	}
 
 	return res, privKey, nil

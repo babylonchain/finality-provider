@@ -2,11 +2,8 @@ package babylonclient
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	bbnapp "github.com/babylonchain/babylon/app"
@@ -15,7 +12,6 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -23,6 +19,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"github.com/sirupsen/logrus"
@@ -166,7 +163,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*TransactionResponse, error) {
+func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
 	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:    bc.MustGetTxSigner(),
 		BabylonPk: bbnPubKey,
@@ -179,12 +176,12 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 		return nil, err
 	}
 
-	return &TransactionResponse{TxHash: res.TxHash}, nil
+	return res, nil
 }
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*TransactionResponse, error) {
+func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
 		Signer:      bc.MustGetTxSigner(),
 		ValBtcPk:    btcPubKey,
@@ -198,12 +195,12 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 		return nil, err
 	}
 
-	return &TransactionResponse{TxHash: res.TxHash}, nil
+	return res, nil
 }
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*TransactionResponse, error) {
+func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgAddJurySig{
 		Signer:        bc.MustGetTxSigner(),
 		ValPk:         btcPubKey,
@@ -217,11 +214,11 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 		return nil, err
 	}
 
-	return &TransactionResponse{TxHash: res.TxHash}, nil
+	return res, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*TransactionResponse, *btcec.PrivateKey, error) {
+func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
 		Signer:              bc.MustGetTxSigner(),
 		ValBtcPk:            btcPubKey,
@@ -232,26 +229,10 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 
 	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var privKey *btcec.PrivateKey
-	for _, ev := range res.Events {
-		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
-			// add this trim because the attribute is a string with quotation marks
-			extractedBtcSk := strings.Trim(ev.Attributes["extracted_btc_sk"], `'"`)
-			privKeyBytes, err := base64.StdEncoding.DecodeString(extractedBtcSk)
-			if err != nil {
-				bc.logger.Errorf("failed to decode extracted BTC SK: %s", err.Error())
-				break
-			}
-			bc.logger.Debugf("extracted BTC SK: %s", hex.EncodeToString(privKeyBytes))
-			privKey, _ = btcec.PrivKeyFromBytes(privKeyBytes)
-			break
-		}
-	}
-
-	return &TransactionResponse{TxHash: res.TxHash}, privKey, nil
+	return res, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
@@ -262,7 +243,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *types.BIP340Signature,
-) (*TransactionResponse, error) {
+) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
 		Signer:        bc.MustGetTxSigner(),
 		BabylonPk:     delBabylonPk,
@@ -279,12 +260,12 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
-	return &TransactionResponse{TxHash: res.TxHash}, nil
+	return res, nil
 }
 
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
-func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*TransactionResponse, error) {
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	// convert to []sdk.Msg type
 	imsgs := []pv.RelayerMessage{}
 	for _, h := range headers {
@@ -302,7 +283,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 		return nil, err
 	}
 
-	return &TransactionResponse{TxHash: res.TxHash}, nil
+	return res, nil
 }
 
 // Note: the following queries are only for PoC

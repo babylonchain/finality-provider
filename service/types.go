@@ -23,17 +23,17 @@ type registerValidatorRequest struct {
 	// TODO we should have our own representation of PoP
 	pop             *btcstakingtypes.ProofOfPossession
 	errResponse     chan error
-	successResponse chan *registerValidatorResponse
+	successResponse chan *RegisterValidatorResponse
 }
 
 type validatorRegisteredEvent struct {
 	bbnPubKey       *secp256k1.PubKey
 	txHash          string
-	successResponse chan *registerValidatorResponse
+	successResponse chan *RegisterValidatorResponse
 }
 
-type registerValidatorResponse struct {
-	txHash string
+type RegisterValidatorResponse struct {
+	TxHash string
 }
 
 type addJurySigRequest struct {
@@ -43,17 +43,17 @@ type addJurySigRequest struct {
 	sig             *types.BIP340Signature
 	stakingTxHash   string
 	errResponse     chan error
-	successResponse chan *addJurySigResponse
+	successResponse chan *AddJurySigResponse
 }
 
-type addJurySigResponse struct {
-	txHash string
+type AddJurySigResponse struct {
+	TxHash string
 }
 
 type jurySigAddedEvent struct {
 	bbnPubKey       *secp256k1.PubKey
 	txHash          string
-	successResponse chan *addJurySigResponse
+	successResponse chan *AddJurySigResponse
 }
 
 type CreateValidatorResult struct {
