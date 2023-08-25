@@ -54,9 +54,6 @@ type BabylonClient interface {
 	QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error)
 	// QueryIndexedBlock queries the Babylon indexed block at the given height
 	QueryIndexedBlock(height uint64) (*finalitytypes.IndexedBlock, error)
-	// QueryActivatedHeight queries Babylon the height when BTC staking protocol is activated, i.e., the first height when
-	// there exists 1 BTC validator with voting power
-	QueryActivatedHeight() (uint64, error)
 
 	// QueryNodeStatus returns current node status, with info about latest block
 	QueryNodeStatus() (*ctypes.ResultStatus, error)

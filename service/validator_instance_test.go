@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -26,12 +25,14 @@ func FuzzCommitPubRandList(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, bbnPk, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
 		defer cleanUp()
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+			Return(uint64(0), nil).AnyTimes()
 		err := app.Start()
 		require.NoError(t, err)
 
-		valIns, err := app.GetValidatorInstance(bbnPk)
+		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonClient.EXPECT().
@@ -39,8 +40,6 @@ func FuzzCommitPubRandList(f *testing.F) {
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
@@ -64,11 +63,13 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, bbnPk, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
 		defer cleanUp()
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+			Return(uint64(0), nil).AnyTimes()
 		err := app.Start()
 		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(bbnPk)
+		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
 
 		// commit public randomness
@@ -78,11 +79,11 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(valIns.GetBtcPkBIP340(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
+		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
 		nextBlock := &service.BlockInfo{
@@ -102,7 +103,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babylonclient.BabylonClient) (*service.ValidatorApp, *secp256k1.PubKey, func()) {
+func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babylonclient.BabylonClient) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
@@ -127,5 +128,5 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babyl
 		require.NoError(t, err)
 	}
 
-	return app, validator.GetBabylonPK(), cleanUp
+	return app, validator, cleanUp
 }

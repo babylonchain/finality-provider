@@ -47,8 +47,6 @@ type ValidatorInstance struct {
 	quit chan struct{}
 }
 
-type submitFunc func(b *BlockInfo) (*provider.RelayerTxResponse, error)
-
 // NewValidatorInstance returns a ValidatorInstance instance with the given Babylon public key
 // the validator should be registered before
 func NewValidatorInstance(
@@ -211,12 +209,23 @@ func (v *ValidatorInstance) submissionLoop() {
 	for {
 		select {
 		case b := <-v.getNextBlockChan():
-			res, err := v.RetrySubmissionUntilBlockFinalized(b, v.SubmitFinalitySignature)
+			should, err := v.shouldSubmitFinalitySignature(b)
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
-					"err":            err,
-					"babylon_pk_hex": v.GetBabylonPkHex(),
-					"block_height":   b.Height,
+					"err":          err,
+					"btc_pk_hex":   v.GetBtcPkHex(),
+					"block_height": b.Height,
+				}).Fatal("err when deciding if should send finality signature for the block")
+			}
+			if !should {
+				continue
+			}
+			res, err := v.RetrySubmitFinalitySignatureUntilBlockFinalized(b)
+			if err != nil {
+				v.logger.WithFields(logrus.Fields{
+					"err":          err,
+					"btc_pk_hex":   v.GetBtcPkHex(),
+					"block_height": b.Height,
 				}).Fatal("failed to submit finality signature to Babylon")
 			}
 			if res != nil {
@@ -236,7 +245,7 @@ func (v *ValidatorInstance) submissionLoop() {
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 				}).Fatal("failed to get the current Babylon block")
 			}
-			txRes, err := v.RetrySubmissionUntilBlockFinalized(tipBlock, v.CommitPubRand)
+			txRes, err := v.CommitPubRand(tipBlock)
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":            err,
@@ -259,7 +268,49 @@ func (v *ValidatorInstance) submissionLoop() {
 	}
 }
 
-func (v *ValidatorInstance) RetrySubmissionUntilBlockFinalized(b *BlockInfo, f submitFunc) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *BlockInfo) (bool, error) {
+	// TODO: add retry here or within the query
+	power, err := v.bc.QueryValidatorVotingPower(v.GetBtcPkBIP340(), b.Height)
+	if err != nil {
+		return false, err
+	}
+	if err = v.updateStatusWithPower(power); err != nil {
+		return false, err
+	}
+	if power == 0 {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":   v.GetBtcPkHex(),
+			"block_height": b.Height,
+		}).Debug("the validator does not have voting power, skip voting")
+		return false, nil
+	}
+	// check last committed height
+	if v.GetLastCommittedHeight() < b.Height {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":            v.GetBtcPkHex(),
+			"last_committed_height": v.GetLastCommittedHeight(),
+			"block_height":          b.Height,
+		}).Debug("public rand is not committed, skip voting")
+		return false, nil
+	}
+
+	// check last voted height
+	if v.GetLastVotedHeight() >= b.Height {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":        v.GetBtcPkHex(),
+			"block_height":      b.Height,
+			"last_voted_height": v.GetLastVotedHeight(),
+		}).Debug("the block's height should be higher than the last voted height, skip voting")
+		// TODO: this could happen if the Babylon node is in recovery
+		//  need to double check this case in the future, but currently,
+		//  we do not need to return an error as it does not affect finalization
+		return false, nil
+	}
+
+	return true, err
+}
+
+func (v *ValidatorInstance) RetrySubmitFinalitySignatureUntilBlockFinalized(b *BlockInfo) (*provider.RelayerTxResponse, error) {
 	var (
 		targetBlock  = b
 		failedCycles = uint64(0)
@@ -273,13 +324,13 @@ func (v *ValidatorInstance) RetrySubmissionUntilBlockFinalized(b *BlockInfo, f s
 			}).Debug("the block is already finalized, skip submission")
 			return nil, nil
 		}
-		res, err := f(targetBlock)
+		res, err := v.SubmitFinalitySignature(targetBlock)
 		if err != nil {
 			v.logger.WithFields(logrus.Fields{
 				"currFailures":        failedCycles,
 				"target_block_height": targetBlock.Height,
 				"error":               err,
-			}).Error("Failed to submit to Babylon")
+			}).Error("err submitting finality signature to Babylon")
 
 			failedCycles += 1
 			if failedCycles > v.cfg.MaxSubmissionRetries {
@@ -399,6 +450,28 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*provider.Relaye
 	return res, nil
 }
 
+func (v *ValidatorInstance) updateStatusWithPower(power uint64) error {
+	if power == 0 {
+		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
+			// the validator is slashed or unbonded from Babylon side
+			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
+				return fmt.Errorf("cannot set the validator status: %w", err)
+			}
+		}
+
+		return nil
+	}
+
+	// update the status
+	if v.GetStatus() == proto.ValidatorStatus_REGISTERED || v.GetStatus() == proto.ValidatorStatus_INACTIVE {
+		if err := v.SetStatus(proto.ValidatorStatus_ACTIVE); err != nil {
+			return fmt.Errorf("cannot set the validator status: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // SubmitFinalitySignature builds and sends a finality signature over the given block to Babylon
 // the signature will not be sent if
 // 1. the last committed height is lower than the block height as this indicates the validator
@@ -407,55 +480,6 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*provider.Relaye
 // does not need to send finality signature over this block
 // 3. the validator does not have voting power on the given block
 func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*provider.RelayerTxResponse, error) {
-	btcPk := v.GetBtcPkBIP340()
-
-	// check last committed height
-	if v.GetLastCommittedHeight() < b.Height {
-		return nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
-			v.GetLastCommittedHeight(), b.Height)
-	}
-
-	// check last voted height
-	if v.GetLastVotedHeight() >= b.Height {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":        btcPk.MarshalHex(),
-			"block_height":      b.Height,
-			"last_voted_height": v.GetLastVotedHeight(),
-		}).Debug("the block's height should be higher than the last voted height, skip voting")
-
-		// TODO: this could happen if the Babylon node is in recovery
-		//  need to double check this case in the future, but currently,
-		//  we do not need to return an error as it does not affect finalization
-		return nil, nil
-	}
-
-	// check voting power
-	power, err := v.bc.QueryValidatorVotingPower(btcPk, b.Height)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query Babylon for the validator's voting power: %w", err)
-	}
-	if power == 0 {
-		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
-			// the validator is slashed or unbonded from Babylon side
-			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
-				return nil, fmt.Errorf("cannot set the validator status: %w", err)
-			}
-		}
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   btcPk.MarshalHex(),
-			"block_height": b.Height,
-		}).Debug("the validator's voting power is 0, skip voting")
-
-		return nil, nil
-	}
-
-	// update the status
-	if v.GetStatus() == proto.ValidatorStatus_REGISTERED || v.GetStatus() == proto.ValidatorStatus_INACTIVE {
-		if err := v.SetStatus(proto.ValidatorStatus_ACTIVE); err != nil {
-			return nil, fmt.Errorf("cannot set the validator status: %w", err)
-		}
-	}
-
 	// build proper finality signature request
 	privRand, err := v.getCommittedPrivPubRand(b.Height)
 	if err != nil {
