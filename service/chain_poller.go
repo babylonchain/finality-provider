@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
 
@@ -15,7 +16,7 @@ import (
 
 var (
 	// TODO: Maybe configurable?
-	RtyAttNum = uint(5)
+	RtyAttNum = uint(10)
 	RtyAtt    = retry.Attempts(RtyAttNum)
 	RtyDel    = retry.Delay(time.Millisecond * 400)
 	RtyErr    = retry.LastErrorOnly(true)
@@ -39,13 +40,14 @@ type ChainPoller struct {
 }
 
 type PollerState struct {
-	HeaderToRetrieve uint64
-	FailedCycles     uint64
+	BlockToRetrieve uint64
+	FailedCycles    uint64
 }
 
 type BlockInfo struct {
 	Height         uint64
 	LastCommitHash []byte
+	Finalized      bool
 }
 
 func NewChainPoller(
@@ -75,8 +77,8 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 
 		cp.wg.Add(1)
 		go cp.pollChain(PollerState{
-			HeaderToRetrieve: startHeight,
-			FailedCycles:     0,
+			BlockToRetrieve: startHeight,
+			FailedCycles:    0,
 		})
 	})
 	return startErr
@@ -126,25 +128,33 @@ func (cp *ChainPoller) nodeStatusWithRetry() (*ctypes.ResultStatus, error) {
 	return response, nil
 }
 
-func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, error) {
-	var response *ctypes.ResultHeader
-	if err := retry.Do(func() error {
-		headerResult, err := cp.bc.QueryHeader(int64(height))
+func (cp *ChainPoller) blockWithRetry(height uint64) (*BlockInfo, error) {
+	var (
+		ib  *finalitytypes.IndexedBlock
+		err error
+	)
+
+	if err = retry.Do(func() error {
+		ib, err = cp.bc.QueryIndexedBlock(height)
 		if err != nil {
 			return err
 		}
-		response = headerResult
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		cp.logger.WithFields(logrus.Fields{
+			"height":       height,
 			"attempt":      n + 1,
 			"max_attempts": RtyAttNum,
 			"error":        err,
-		}).Debug("Failed to query babylon For the latest header")
+		}).Debug("Failed to query Babylon indexed block")
 	})); err != nil {
 		return nil, err
 	}
-	return response, nil
+	return &BlockInfo{
+		Height:         ib.Height,
+		LastCommitHash: ib.LastCommitHash,
+		Finalized:      ib.Finalized,
+	}, nil
 }
 
 func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
@@ -183,54 +193,38 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		result, err := cp.headerWithRetry(state.HeaderToRetrieve)
+		block, err := cp.blockWithRetry(state.BlockToRetrieve)
+		if err != nil {
+			cp.logger.WithFields(logrus.Fields{
+				"currFailures": state.FailedCycles,
+				"headerToGet":  state.BlockToRetrieve,
+				"error":        err,
+			}).Error("Failed to query Babylon For the indexed block")
 
-		if err == nil && result.Header != nil {
-			// no error and we got the header we wanted to get, bump the state and push
-			// notification about data
-			state.HeaderToRetrieve = state.HeaderToRetrieve + 1
+			state.FailedCycles = state.FailedCycles + 1
+			if state.FailedCycles > maxFailedCycles {
+				cp.logger.Fatal("Reached max failed cycles, exiting")
+			}
+		} else {
+			// no error, bump the state and push notification about data
+			state.BlockToRetrieve = state.BlockToRetrieve + 1
 			state.FailedCycles = 0
 
 			cp.logger.WithFields(logrus.Fields{
-				"height": result.Header.Height,
-			}).Info("Retrieved header from babylon")
+				"height": block.Height,
+			}).Info("Retrieved indexed block from Babylon")
 
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will
 			// stop retrieving data from the node.
-			cp.blockInfoChan <- &BlockInfo{
-				Height:         uint64(result.Header.Height),
-				LastCommitHash: result.Header.LastCommitHash,
-			}
-
-		} else if err == nil && result.Header == nil {
-			// no error but header is nil, means the header is not found on node
-			state.FailedCycles = state.FailedCycles + 1
-
-			cp.logger.WithFields(logrus.Fields{
-				"error":        err,
-				"currFailures": state.FailedCycles,
-				"headerToGet":  state.HeaderToRetrieve,
-			}).Error("Failed to retrieve header from babylon.Header did not produced yet")
-
-		} else {
-			state.FailedCycles = state.FailedCycles + 1
-
-			cp.logger.WithFields(logrus.Fields{
-				"error":        err,
-				"currFailures": state.FailedCycles,
-				"headerToGet":  state.HeaderToRetrieve,
-			}).Error("Failed to query babylon For the latest header")
-		}
-
-		if state.FailedCycles > maxFailedCycles {
-			cp.logger.Fatal("Reached max failed cycles, exiting")
+			cp.blockInfoChan <- block
 		}
 
 		select {
 		case <-time.After(cp.cfg.PollInterval):
 
 		case <-cp.quit:
+			cp.logger.Info("the poller is closing")
 			return
 		}
 	}

@@ -47,6 +47,8 @@ type ValidatorInstance struct {
 	quit chan struct{}
 }
 
+type submitFunc func(b *BlockInfo) (*provider.RelayerTxResponse, error)
+
 // NewValidatorInstance returns a ValidatorInstance instance with the given Babylon public key
 // the validator should be registered before
 func NewValidatorInstance(
@@ -209,19 +211,13 @@ func (v *ValidatorInstance) submissionLoop() {
 	for {
 		select {
 		case b := <-v.getNextBlockChan():
-			v.logger.WithFields(logrus.Fields{
-				"babylon_pk_hex": v.GetBabylonPkHex(),
-				"block_height":   b.Height,
-			}).Debug("received a new block, the validator is going to vote")
-			res, err := v.SubmitFinalitySignature(b)
+			res, err := v.RetrySubmissionUntilBlockFinalized(b, v.SubmitFinalitySignature)
 			if err != nil {
-				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
 					"err":            err,
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 					"block_height":   b.Height,
-				}).Error("failed to submit finality signature to Babylon")
-				continue
+				}).Fatal("failed to submit finality signature to Babylon")
 			}
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -240,15 +236,13 @@ func (v *ValidatorInstance) submissionLoop() {
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 				}).Fatal("failed to get the current Babylon block")
 			}
-			txRes, err := v.CommitPubRand(tipBlock)
+			txRes, err := v.RetrySubmissionUntilBlockFinalized(tipBlock, v.CommitPubRand)
 			if err != nil {
-				// TODO Add retry here until the block is finalized. check issue: https://github.com/babylonchain/btc-validator/issues/34
 				v.logger.WithFields(logrus.Fields{
 					"err":            err,
 					"babylon_pk_hex": v.GetBabylonPkHex(),
-					"block_height":   tipBlock.Height,
-				}).Error("failed to commit public randomness")
-				continue
+					"block_height":   tipBlock,
+				}).Fatal("failed to commit public randomness")
 			}
 			if txRes != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -261,6 +255,53 @@ func (v *ValidatorInstance) submissionLoop() {
 		case <-v.quit:
 			v.logger.Debug("exiting submissionLoop")
 			return
+		}
+	}
+}
+
+func (v *ValidatorInstance) RetrySubmissionUntilBlockFinalized(b *BlockInfo, f submitFunc) (*provider.RelayerTxResponse, error) {
+	var (
+		targetBlock  = b
+		failedCycles = uint64(0)
+	)
+
+	for {
+		if targetBlock.Finalized {
+			v.logger.WithFields(logrus.Fields{
+				"babylon_pk_hex": v.GetBabylonPkHex(),
+				"block_height":   b.Height,
+			}).Debug("the block is already finalized, skip submission")
+			return nil, nil
+		}
+		res, err := f(targetBlock)
+		if err != nil {
+			v.logger.WithFields(logrus.Fields{
+				"currFailures":        failedCycles,
+				"target_block_height": targetBlock.Height,
+				"error":               err,
+			}).Error("Failed to submit to Babylon")
+
+			failedCycles += 1
+			if failedCycles > v.cfg.MaxSubmissionRetries {
+				return nil, fmt.Errorf("reached max failed cycles with err: %w", err)
+			}
+		} else {
+			return res, nil
+		}
+		select {
+		case <-time.After(v.cfg.SubmissionRetryInterval):
+			ib, err := v.bc.QueryIndexedBlock(targetBlock.Height)
+			if err != nil {
+				return nil, fmt.Errorf("failed to query Babylon for block at height %v: %w", targetBlock.Height, err)
+			}
+			targetBlock = &BlockInfo{
+				Height:         ib.Height,
+				LastCommitHash: ib.LastCommitHash,
+				Finalized:      ib.Finalized,
+			}
+		case <-v.quit:
+			v.logger.Debugf("the validator instance %s is closing", v.GetBabylonPkHex())
+			return nil, nil
 		}
 	}
 }

@@ -52,6 +52,8 @@ type BabylonClient interface {
 	QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error)
 	// QueryLatestFinalisedBlocks returns the latest `count` finalised blocks
 	QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error)
+	// QueryIndexedBlock queries the Babylon indexed block at the given height
+	QueryIndexedBlock(height uint64) (*finalitytypes.IndexedBlock, error)
 
 	// QueryNodeStatus returns current node status, with info about latest block
 	QueryNodeStatus() (*ctypes.ResultStatus, error)

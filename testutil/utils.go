@@ -17,6 +17,10 @@ func PrepareMockedBabylonClient(t *testing.T, blockHeight uint64, lastCommitHash
 	status := &coretypes.ResultStatus{
 		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(blockHeight + 1)},
 	}
+	resBlock := &finalitytypes.IndexedBlock{
+		Height:         blockHeight,
+		LastCommitHash: lastCommitHash,
+	}
 	resHeader := &coretypes.ResultHeader{
 		Header: &cometbfttypes.Header{
 			Height:         int64(blockHeight),
@@ -32,7 +36,7 @@ func PrepareMockedBabylonClient(t *testing.T, blockHeight uint64, lastCommitHash
 	finalizedBlocks = append(finalizedBlocks, finalizedBlock)
 
 	mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
-	mockBabylonClient.EXPECT().QueryHeader(int64(blockHeight)).Return(resHeader, nil).AnyTimes()
+	mockBabylonClient.EXPECT().QueryIndexedBlock(blockHeight).Return(resBlock, nil).AnyTimes()
 	mockBabylonClient.EXPECT().QueryBestHeader().Return(resHeader, nil).AnyTimes()
 	mockBabylonClient.EXPECT().QueryLatestFinalisedBlocks(uint64(1)).Return(finalizedBlocks, nil).AnyTimes()
 	mockBabylonClient.EXPECT().Close().Return(nil).AnyTimes()

@@ -482,10 +482,31 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 	}
 	res, err := queryClient.BTCValidatorPowerAtHeight(ctx, queryRequest)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query BTC delegations: %v", err)
+		return 0, fmt.Errorf("failed to query BTC delegations: %w", err)
 	}
 
 	return res.VotingPower, nil
+}
+
+// QueryIndexedBlock queries the Babylon indexed block with the given height
+func (bc *BabylonController) QueryIndexedBlock(blockHeight uint64) (*finalitytypes.IndexedBlock, error) {
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	// query all the unsigned delegations
+	queryRequest := &finalitytypes.QueryBlockRequest{
+		Height: blockHeight,
+	}
+	res, err := queryClient.Block(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", blockHeight, err)
+	}
+
+	return res.Block, nil
 }
 
 func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {

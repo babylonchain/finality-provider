@@ -129,6 +129,21 @@ func (mr *MockBabylonClientMockRecorder) QueryHeightWithLastPubRand(btcPubKey in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockBabylonClient)(nil).QueryHeightWithLastPubRand), btcPubKey)
 }
 
+// QueryIndexedBlock mocks base method.
+func (m *MockBabylonClient) QueryIndexedBlock(height uint64) (*types1.IndexedBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryIndexedBlock", height)
+	ret0, _ := ret[0].(*types1.IndexedBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryIndexedBlock indicates an expected call of QueryIndexedBlock.
+func (mr *MockBabylonClientMockRecorder) QueryIndexedBlock(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryIndexedBlock", reflect.TypeOf((*MockBabylonClient)(nil).QueryIndexedBlock), height)
+}
+
 // QueryLatestFinalisedBlocks mocks base method.
 func (m *MockBabylonClient) QueryLatestFinalisedBlocks(count uint64) ([]*types1.IndexedBlock, error) {
 	m.ctrl.T.Helper()
