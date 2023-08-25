@@ -16,7 +16,7 @@ import (
 
 var (
 	// TODO: Maybe configurable?
-	RtyAttNum = uint(10)
+	RtyAttNum = uint(5)
 	RtyAtt    = retry.Attempts(RtyAttNum)
 	RtyDel    = retry.Delay(time.Millisecond * 400)
 	RtyErr    = retry.LastErrorOnly(true)
@@ -40,8 +40,8 @@ type ChainPoller struct {
 }
 
 type PollerState struct {
-	BlockToRetrieve uint64
-	FailedCycles    uint64
+	HeaderToRetrieve uint64
+	FailedCycles     uint64
 }
 
 type BlockInfo struct {
@@ -77,8 +77,8 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 
 		cp.wg.Add(1)
 		go cp.pollChain(PollerState{
-			BlockToRetrieve: startHeight,
-			FailedCycles:    0,
+			HeaderToRetrieve: startHeight,
+			FailedCycles:     0,
 		})
 	})
 	return startErr
@@ -146,7 +146,7 @@ func (cp *ChainPoller) blockWithRetry(height uint64) (*BlockInfo, error) {
 			"attempt":      n + 1,
 			"max_attempts": RtyAttNum,
 			"error":        err,
-		}).Debug("Failed to query Babylon indexed block")
+		}).Debug("failed to query Babylon indexed block")
 	})); err != nil {
 		return nil, err
 	}
@@ -160,6 +160,11 @@ func (cp *ChainPoller) blockWithRetry(height uint64) (*BlockInfo, error) {
 func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	// Infinite retry to get initial latest height
 	// TODO: Add possible cancellation or timeout for starting node
+
+	if startHeight == 0 {
+		return fmt.Errorf("start height can't be 0")
+	}
+
 	var currentBestChainHeight uint64
 	for {
 		status, err := cp.nodeStatusWithRetry()
@@ -174,9 +179,6 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 		break
 	}
 
-	if startHeight == 0 {
-		return fmt.Errorf("start height can't be 0")
-	}
 	// Allow the start height to be the next chain height
 	if startHeight > currentBestChainHeight+1 {
 		return fmt.Errorf("start height %d is more than the next chain tip height %d", startHeight, currentBestChainHeight+1)
@@ -193,11 +195,11 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		block, err := cp.blockWithRetry(state.BlockToRetrieve)
+		block, err := cp.blockWithRetry(state.HeaderToRetrieve)
 		if err != nil {
 			cp.logger.WithFields(logrus.Fields{
 				"currFailures": state.FailedCycles,
-				"headerToGet":  state.BlockToRetrieve,
+				"headerToGet":  state.HeaderToRetrieve,
 				"error":        err,
 			}).Error("Failed to query Babylon For the indexed block")
 
@@ -207,7 +209,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 			}
 		} else {
 			// no error, bump the state and push notification about data
-			state.BlockToRetrieve = state.BlockToRetrieve + 1
+			state.HeaderToRetrieve = state.HeaderToRetrieve + 1
 			state.FailedCycles = 0
 
 			cp.logger.WithFields(logrus.Fields{

@@ -497,7 +497,7 @@ func (bc *BabylonController) QueryIndexedBlock(blockHeight uint64) (*finalitytyp
 
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
-	// query all the unsigned delegations
+	// query the indexed block at the given height
 	queryRequest := &finalitytypes.QueryBlockRequest{
 		Height: blockHeight,
 	}
