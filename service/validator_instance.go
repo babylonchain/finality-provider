@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -220,7 +221,7 @@ func (v *ValidatorInstance) submissionLoop() {
 			if !should {
 				continue
 			}
-			res, err := v.RetrySubmitFinalitySignatureUntilBlockFinalized(b)
+			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(b)
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":          err,
@@ -310,20 +311,23 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *BlockInfo) (bool, e
 	return true, err
 }
 
-func (v *ValidatorInstance) RetrySubmitFinalitySignatureUntilBlockFinalized(b *BlockInfo) (*provider.RelayerTxResponse, error) {
-	var (
-		targetBlock  = b
-		failedCycles = uint64(0)
-	)
+// retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
+// error will be returned if maximum retires have been reached or the query to Babylon fails
+func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *BlockInfo) (*provider.RelayerTxResponse, error) {
+	var failedCycles uint64
 
+	// we break the for loop if the block is finalized or the signature is successfully submitted
+	// error will be returned if maximum retries have been reached or the query to Babylon fails
 	for {
+		// we don't need to submit the finality signature if the block is already/changed to finalized
 		if targetBlock.Finalized {
 			v.logger.WithFields(logrus.Fields{
 				"babylon_pk_hex": v.GetBabylonPkHex(),
-				"block_height":   b.Height,
+				"block_height":   targetBlock.Height,
 			}).Debug("the block is already finalized, skip submission")
 			return nil, nil
 		}
+		// error will be returned if max retries have been reached
 		res, err := v.SubmitFinalitySignature(targetBlock)
 		if err != nil {
 			v.logger.WithFields(logrus.Fields{
@@ -337,19 +341,22 @@ func (v *ValidatorInstance) RetrySubmitFinalitySignatureUntilBlockFinalized(b *B
 				return nil, fmt.Errorf("reached max failed cycles with err: %w", err)
 			}
 		} else {
+			// the signature has been successfully submitted
 			return res, nil
 		}
 		select {
 		case <-time.After(v.cfg.SubmissionRetryInterval):
+			// periodically query the index block to be later checked whether it is Finalized
 			ib, err := v.bc.QueryIndexedBlock(targetBlock.Height)
 			if err != nil {
 				return nil, fmt.Errorf("failed to query Babylon for block at height %v: %w", targetBlock.Height, err)
 			}
-			targetBlock = &BlockInfo{
-				Height:         ib.Height,
-				LastCommitHash: ib.LastCommitHash,
-				Finalized:      ib.Finalized,
+			if ib.Height != targetBlock.Height || !bytes.Equal(ib.LastCommitHash, targetBlock.LastCommitHash) {
+				// this means the chain is compromised
+				return nil, fmt.Errorf("the queried block is not consistent with the target block, the chain is compromised")
 			}
+			// update the finalization status of the target block which will be checked in the next loop
+			targetBlock.Finalized = ib.Finalized
 		case <-v.quit:
 			v.logger.Debugf("the validator instance %s is closing", v.GetBabylonPkHex())
 			return nil, nil
