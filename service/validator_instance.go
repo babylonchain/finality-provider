@@ -210,33 +210,33 @@ func (v *ValidatorInstance) submissionLoop() {
 	for {
 		select {
 		case b := <-v.getNextBlockChan():
-			should, err := v.shouldSubmitFinalitySignature(b)
+			// use the copy of the block to avoid the impact to other receivers
+			nextBlock := *b
+			should, err := v.shouldSubmitFinalitySignature(&nextBlock)
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":          err,
 					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": b.Height,
+					"block_height": nextBlock.Height,
 				}).Fatal("err when deciding if should send finality signature for the block")
 			}
 			if !should {
 				continue
 			}
-			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(b)
+			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":          err,
 					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": b.Height,
+					"block_height": nextBlock.Height,
 				}).Fatal("failed to submit finality signature to Babylon")
 			}
-			if res != nil {
-				v.logger.WithFields(logrus.Fields{
-					"babylon_pk_hex": v.GetBabylonPkHex(),
-					"btc_pk_hex":     v.GetBtcPkHex(),
-					"block_height":   b.Height,
-					"tx_hash":        res.TxHash,
-				}).Info("successfully submitted a finality signature to Babylon")
-			}
+			v.logger.WithFields(logrus.Fields{
+				"babylon_pk_hex": v.GetBabylonPkHex(),
+				"btc_pk_hex":     v.GetBtcPkHex(),
+				"block_height":   nextBlock.Height,
+				"tx_hash":        res.TxHash,
+			}).Info("successfully submitted a finality signature to Babylon")
 
 		case <-commitRandTicker.C:
 			tipBlock, err := v.getTipBabylonBlock()
@@ -269,6 +269,12 @@ func (v *ValidatorInstance) submissionLoop() {
 	}
 }
 
+// shouldSubmitFinalitySignature checks all the conditions that a finality should not be sent:
+// 1. the validator does not have voting power on the given block
+// 2. the last committed height is lower than the block height as this indicates the validator
+// does not have the corresponding public randomness
+// 3. the block height is lower than the last voted height as this indicates that the validator
+// does not need to send finality signature over this block
 func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *BlockInfo) (bool, error) {
 	// TODO: add retry here or within the query
 	power, err := v.bc.QueryValidatorVotingPower(v.GetBtcPkBIP340(), b.Height)
@@ -480,12 +486,6 @@ func (v *ValidatorInstance) updateStatusWithPower(power uint64) error {
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to Babylon
-// the signature will not be sent if
-// 1. the last committed height is lower than the block height as this indicates the validator
-// does not have the corresponding public randomness
-// 2. the block height is lower than the last voted height as this indicates that the validator
-// does not need to send finality signature over this block
-// 3. the validator does not have voting power on the given block
 func (v *ValidatorInstance) SubmitFinalitySignature(b *BlockInfo) (*provider.RelayerTxResponse, error) {
 	// build proper finality signature request
 	privRand, err := v.getCommittedPrivPubRand(b.Height)
