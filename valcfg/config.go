@@ -19,16 +19,18 @@ import (
 )
 
 const (
-	defaultDataDirname      = "data"
-	defaultLogLevel         = "info"
-	defaultLogDirname       = "logs"
-	defaultLogFilename      = "vald.log"
-	DefaultRPCPort          = 15812
-	defaultConfigFileName   = "vald.conf"
-	defaultNumPubRand       = 100
-	defaultNumPubRandMax    = 100
-	defaultMinRandHeightGap = 10
-	defaultRandomInterval   = 5 * time.Second
+	defaultDataDirname          = "data"
+	defaultLogLevel             = "info"
+	defaultLogDirname           = "logs"
+	defaultLogFilename          = "vald.log"
+	DefaultRPCPort              = 15812
+	defaultConfigFileName       = "vald.conf"
+	defaultNumPubRand           = 100
+	defaultNumPubRandMax        = 100
+	defaultMinRandHeightGap     = 10
+	defaultRandomInterval       = 5 * time.Second
+	defaultSubmitRetryInterval  = 1 * time.Second
+	defaultMaxSubmissionRetries = 20
 )
 
 var (
@@ -55,7 +57,9 @@ type Config struct {
 	NumPubRandMax            uint64        `long:"numpubrandmax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
 	MinRandHeightGap         uint64        `long:"minrandheightgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
 	RandomnessCommitInterval time.Duration `long:"randomnesscommitinterval" description:"The interval between each attempt to commit public randomness"`
-	// TODO: create Jury specific config
+	SubmissionRetryInterval  time.Duration `long:"submissionretryinterval" description:"The interval between each attempt to submit finality signature or public randomness after a failure"`
+	MaxSubmissionRetries     uint64        `long:"maxsubmissionretries" description:"The maximum number of retries to submit finality signature or public randomness"`
+
 	JuryMode bool `long:"jurymode" description:"If the program is running in Jury mode"`
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
@@ -94,6 +98,8 @@ func DefaultConfig() Config {
 		NumPubRandMax:            defaultNumPubRandMax,
 		MinRandHeightGap:         defaultMinRandHeightGap,
 		RandomnessCommitInterval: defaultRandomInterval,
+		SubmissionRetryInterval:  defaultSubmitRetryInterval,
+		MaxSubmissionRetries:     defaultMaxSubmissionRetries,
 	}
 }
 

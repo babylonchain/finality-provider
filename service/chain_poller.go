@@ -150,6 +150,11 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	// Infinite retry to get initial latest height
 	// TODO: Add possible cancellation or timeout for starting node
+
+	if startHeight == 0 {
+		return fmt.Errorf("start height can't be 0")
+	}
+
 	var currentBestChainHeight uint64
 	for {
 		status, err := cp.nodeStatusWithRetry()
@@ -164,9 +169,6 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 		break
 	}
 
-	if startHeight == 0 {
-		return fmt.Errorf("start height can't be 0")
-	}
 	// Allow the start height to be the next chain height
 	if startHeight > currentBestChainHeight+1 {
 		return fmt.Errorf("start height %d is more than the next chain tip height %d", startHeight, currentBestChainHeight+1)
