@@ -231,12 +231,14 @@ func (v *ValidatorInstance) submissionLoop() {
 					"block_height": nextBlock.Height,
 				}).Fatal("failed to submit finality signature to Babylon")
 			}
-			v.logger.WithFields(logrus.Fields{
-				"babylon_pk_hex": v.GetBabylonPkHex(),
-				"btc_pk_hex":     v.GetBtcPkHex(),
-				"block_height":   nextBlock.Height,
-				"tx_hash":        res.TxHash,
-			}).Info("successfully submitted a finality signature to Babylon")
+			if res != nil {
+				v.logger.WithFields(logrus.Fields{
+					"babylon_pk_hex": v.GetBabylonPkHex(),
+					"btc_pk_hex":     v.GetBtcPkHex(),
+					"block_height":   nextBlock.Height,
+					"tx_hash":        res.TxHash,
+				}).Info("successfully submitted a finality signature to Babylon")
+			}
 
 		case <-commitRandTicker.C:
 			tipBlock, err := v.getTipBabylonBlock()
