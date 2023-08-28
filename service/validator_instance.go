@@ -10,6 +10,7 @@ import (
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -225,6 +226,10 @@ func (v *ValidatorInstance) submissionLoop() {
 			}
 			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
+				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBabylonPkHex())
+					return
+				}
 				v.logger.WithFields(logrus.Fields{
 					"err":          err,
 					"btc_pk_hex":   v.GetBtcPkHex(),
@@ -265,7 +270,7 @@ func (v *ValidatorInstance) submissionLoop() {
 				}).Info("successfully committed public randomness to Babylon")
 			}
 		case <-v.quit:
-			v.logger.Debug("exiting submissionLoop")
+			v.logger.Infof("terminating the validator instance %s", v.GetBabylonPkHex())
 			return
 		}
 	}
