@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/types/errors"
 )
 
-var retriableErrors = []*errors.Error{
+var retriableErrors = []*errorsmod.Error{
 	errors.ErrInsufficientFunds,
 	errors.ErrOutOfGas,
 	errors.ErrInsufficientFee,
