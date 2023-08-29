@@ -196,6 +196,7 @@ func (v *ValidatorInstance) Stop() error {
 		v.logger.Infof("Stopping thread handling validator %s", v.GetBabylonPkHex())
 
 		close(v.quit)
+		close(v.blocksToVote)
 		v.wg.Wait()
 
 		v.logger.Debugf("The thread handling validator %s is successfully stopped", v.GetBabylonPkHex())
