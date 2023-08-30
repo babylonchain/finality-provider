@@ -164,14 +164,16 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
-	registerMsg := &btcstakingtypes.MsgCreateBTCValidator{
+	msg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:    bc.MustGetTxSigner(),
 		BabylonPk: bbnPubKey,
 		BtcPk:     btcPubKey,
 		Pop:       pop,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(registerMsg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), "")
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +192,9 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 		Sig:         sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), "")
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +213,9 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 		Sig:           sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), "")
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +233,9 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 		FinalitySig:         sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), "")
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +262,9 @@ func (bc *BabylonController) CreateBTCDelegation(
 		DelegatorSig:  delSig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg), "")
+	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
+		msg.Signer = signer
+	}), "")
 	if err != nil {
 		return nil, err
 	}
@@ -267,18 +277,20 @@ func (bc *BabylonController) CreateBTCDelegation(
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	// convert to []sdk.Msg type
-	imsgs := []pv.RelayerMessage{}
+	relayerMsgs := []pv.RelayerMessage{}
 	for _, h := range headers {
-		msg := cosmos.NewCosmosMessage(
-			&btclctypes.MsgInsertHeader{
-				Signer: bc.MustGetTxSigner(),
-				Header: h,
-			})
+		msg := &btclctypes.MsgInsertHeader{
+			Signer: bc.MustGetTxSigner(),
+			Header: h,
+		}
+		relayerMsg := cosmos.NewCosmosMessage(msg, func(signer string) {
+			msg.Signer = signer
+		})
 
-		imsgs = append(imsgs, msg)
+		relayerMsgs = append(relayerMsgs, relayerMsg)
 	}
 
-	res, _, err := bc.provider.SendMessages(context.Background(), imsgs, "")
+	res, _, err := bc.provider.SendMessages(context.Background(), relayerMsgs, "")
 	if err != nil {
 		return nil, err
 	}
