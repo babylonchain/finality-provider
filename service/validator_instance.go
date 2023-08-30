@@ -398,7 +398,8 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *BlockInfo) (*provider.Relaye
 	if lastCommittedHeight == uint64(0) {
 		// the validator has never submitted public rand before
 		startHeight = tipBlock.Height + 1
-	} else if int64(lastCommittedHeight)-int64(tipBlock.Height) < int64(v.cfg.MinRandHeightGap) {
+		// should not use subtraction because they are in the type of uint64
+	} else if lastCommittedHeight < v.cfg.MinRandHeightGap+tipBlock.Height {
 		// we are running out of the randomness
 		startHeight = lastCommittedHeight + 1
 	} else {
