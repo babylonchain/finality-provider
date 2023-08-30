@@ -2,32 +2,11 @@ package service
 
 import (
 	"math/rand"
-	"strings"
 	"time"
 
-	errorsmod "cosmossdk.io/errors"
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/types/errors"
 )
-
-var retriableErrors = []*errorsmod.Error{
-	errors.ErrInsufficientFunds,
-	errors.ErrOutOfGas,
-	errors.ErrInsufficientFee,
-	errors.ErrMempoolIsFull,
-}
-
-// IsSubmissionErrRetriable returns true when the error is in the retriableErrors list
-func IsSubmissionErrRetriable(err error) bool {
-	for _, e := range retriableErrors {
-		if strings.Contains(err.Error(), e.Error()) {
-			return true
-		}
-	}
-
-	return false
-}
 
 func GenerateRandPairList(num uint64) ([]*eots.PrivateRand, []types.SchnorrPubRand, error) {
 	srList := make([]*eots.PrivateRand, num)

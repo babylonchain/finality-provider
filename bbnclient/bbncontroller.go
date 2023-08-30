@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	bbnapp "github.com/babylonchain/babylon/app"
 	"github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -16,6 +18,7 @@ import (
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
@@ -161,6 +164,82 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 	}, nil
 }
 
+func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxResponse, error) {
+	return bc.reliablySendMsgs([]sdk.Msg{msg})
+}
+
+func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
+	var (
+		rlyResp     *provider.RelayerTxResponse
+		callbackErr error
+		wg          sync.WaitGroup
+	)
+
+	callback := func(rtr *provider.RelayerTxResponse, err error) {
+		rlyResp = rtr
+		callbackErr = err
+		wg.Done()
+	}
+
+	wg.Add(1)
+
+	// convert message type
+	relayerMsgs := []pv.RelayerMessage{}
+	for _, m := range msgs {
+		relayerMsg := cosmos.NewCosmosMessage(m, func(signer string) {})
+		relayerMsgs = append(relayerMsgs, relayerMsg)
+	}
+
+	ctx := context.Background()
+	if err := retry.Do(func() error {
+		err := bc.provider.SendMessagesToMempool(ctx, relayerMsgs, "", ctx, []func(*provider.RelayerTxResponse, error){callback})
+		if err != nil {
+			if !IsRetriable(err) {
+				bc.logger.WithFields(logrus.Fields{
+					"error": err,
+				}).Error("unrecoverable err when submitting the tx, skip retrying")
+				return retry.Unrecoverable(err)
+			}
+			if IsExpected(err) {
+				bc.logger.WithFields(logrus.Fields{
+					"error": err,
+				}).Error("expected err when submitting the tx, skip retrying")
+				return nil
+			}
+			return err
+		}
+		return nil
+	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
+		bc.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": rtyAttNum,
+			"error":        err,
+		}).Error()
+	})); err != nil {
+		return nil, err
+	}
+
+	wg.Wait()
+
+	if callbackErr != nil {
+		if IsExpected(callbackErr) {
+			return nil, nil
+		}
+		return nil, callbackErr
+	}
+
+	if rlyResp == nil {
+		// this case could happen if the error within the retry is an expected error
+		return nil, nil
+	}
+
+	if rlyResp.Code != 0 {
+		return rlyResp, fmt.Errorf("transaction failed with code: %d", rlyResp.Code)
+	}
+
+	return rlyResp, nil
+}
+
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
@@ -171,9 +250,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 		Pop:       pop,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
-		msg.Signer = signer
-	}), "")
+	res, err := bc.reliablySendMsg(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -192,9 +269,7 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 		Sig:         sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
-		msg.Signer = signer
-	}), "")
+	res, err := bc.reliablySendMsg(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -213,9 +288,7 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 		Sig:           sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
-		msg.Signer = signer
-	}), "")
+	res, err := bc.reliablySendMsg(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -233,9 +306,7 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 		FinalitySig:         sig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
-		msg.Signer = signer
-	}), "")
+	res, err := bc.reliablySendMsg(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -262,9 +333,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		DelegatorSig:  delSig,
 	}
 
-	res, _, err := bc.provider.SendMessage(context.Background(), cosmos.NewCosmosMessage(msg, func(signer string) {
-		msg.Signer = signer
-	}), "")
+	res, err := bc.reliablySendMsg(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -276,21 +345,16 @@ func (bc *BabylonController) CreateBTCDelegation(
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
-	// convert to []sdk.Msg type
-	relayerMsgs := []pv.RelayerMessage{}
+	msgs := make([]sdk.Msg, 0, len(headers))
 	for _, h := range headers {
 		msg := &btclctypes.MsgInsertHeader{
 			Signer: bc.MustGetTxSigner(),
 			Header: h,
 		}
-		relayerMsg := cosmos.NewCosmosMessage(msg, func(signer string) {
-			msg.Signer = signer
-		})
-
-		relayerMsgs = append(relayerMsgs, relayerMsg)
+		msgs = append(msgs, msg)
 	}
 
-	res, _, err := bc.provider.SendMessages(context.Background(), relayerMsgs, "")
+	res, err := bc.reliablySendMsgs(msgs)
 	if err != nil {
 		return nil, err
 	}
