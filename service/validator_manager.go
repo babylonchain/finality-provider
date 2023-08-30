@@ -40,8 +40,7 @@ func (vm *ValidatorManager) stop() error {
 
 func (vm *ValidatorManager) receiveBlock(b *BlockInfo) {
 	for _, v := range vm.vals {
-		// this avoids blocking other receivers if one of the validator is blocked (i.e., retrying submitting finality sig)
-		go v.receiveBlock(b)
+		v.receiveBlock(b)
 	}
 }
 
