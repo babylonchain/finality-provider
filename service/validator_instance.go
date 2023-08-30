@@ -335,18 +335,8 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 		// error will be returned if max retries have been reached
 		res, err := v.SubmitFinalitySignature(targetBlock)
 		if err != nil {
-			if strings.Contains(err.Error(), ftypes.ErrDuplicatedFinalitySig.Error()) {
-				// this could happen when the validator instance was terminated when the sig is submitted but
-				// the last voted height has not been updated
-				// we should not consider this case as an error
-				v.logger.WithFields(logrus.Fields{
-					"btc_val_pk":          v.GetBtcPkHex(),
-					"target_block_height": targetBlock.Height,
-				}).Debug("the signature for the same height has been already been cast")
-				return nil, nil
-			}
-			if !IsSubmissionErrRetriable(err) {
-				return nil, fmt.Errorf("failed to submit finality signature: %w", err)
+			if !bbncli.IsRetriable(err) {
+				return nil, err
 			}
 			v.logger.WithFields(logrus.Fields{
 				"currFailures":        failedCycles,

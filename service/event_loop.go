@@ -150,10 +150,12 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				continue
 			}
 
-			app.logger.WithFields(logrus.Fields{
-				"bbnPk":  hex.EncodeToString(req.bbnPubKey.Key),
-				"txHash": res.TxHash,
-			}).Info("successfully registered validator on babylon")
+			if res != nil {
+				app.logger.WithFields(logrus.Fields{
+					"bbnPk":  hex.EncodeToString(req.bbnPubKey.Key),
+					"txHash": res.TxHash,
+				}).Info("successfully registered validator on babylon")
+			}
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
 				bbnPubKey: req.bbnPubKey,
@@ -175,11 +177,13 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				continue
 			}
 
-			app.logger.WithFields(logrus.Fields{
-				"delBtcPk":     req.delBtcPk.MarshalHex(),
-				"valBtcPubKey": req.valBtcPk.MarshalHex(),
-				"txHash":       res.TxHash,
-			}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
+			if res != nil {
+				app.logger.WithFields(logrus.Fields{
+					"delBtcPk":     req.delBtcPk.MarshalHex(),
+					"valBtcPubKey": req.valBtcPk.MarshalHex(),
+					"txHash":       res.TxHash,
+				}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
+			}
 
 			app.jurySigAddedEventChan <- &jurySigAddedEvent{
 				bbnPubKey: req.bbnPubKey,
