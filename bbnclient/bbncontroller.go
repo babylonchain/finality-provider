@@ -228,6 +228,11 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 		return nil, callbackErr
 	}
 
+	if rlyResp == nil {
+		// this case could happen if the error within the retry is an expected error
+		return nil, nil
+	}
+
 	if rlyResp.Code != 0 {
 		return rlyResp, fmt.Errorf("transaction failed with code: %d", rlyResp.Code)
 	}
