@@ -25,6 +25,8 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+const instanceTerminatingMsg = "terminating the instance due to critical error"
+
 type state struct {
 	v *proto.StoreValidator
 	s *val.ValidatorStore
@@ -219,7 +221,8 @@ func (v *ValidatorInstance) submissionLoop() {
 					"err":          err,
 					"btc_pk_hex":   v.GetBtcPkHex(),
 					"block_height": nextBlock.Height,
-				}).Fatal("err when deciding if should send finality signature for the block")
+				}).Warnf(instanceTerminatingMsg)
+				return
 			}
 			if !should {
 				continue
@@ -234,7 +237,8 @@ func (v *ValidatorInstance) submissionLoop() {
 					"err":          err,
 					"btc_pk_hex":   v.GetBtcPkHex(),
 					"block_height": nextBlock.Height,
-				}).Fatal("failed to submit finality signature to Babylon")
+				}).Warnf(instanceTerminatingMsg)
+				return
 			}
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -251,7 +255,8 @@ func (v *ValidatorInstance) submissionLoop() {
 				v.logger.WithFields(logrus.Fields{
 					"err":            err,
 					"babylon_pk_hex": v.GetBabylonPkHex(),
-				}).Fatal("failed to get the current Babylon block")
+				}).Warnf(instanceTerminatingMsg)
+				return
 			}
 			txRes, err := v.CommitPubRand(tipBlock)
 			if err != nil {
@@ -259,7 +264,8 @@ func (v *ValidatorInstance) submissionLoop() {
 					"err":            err,
 					"babylon_pk_hex": v.GetBabylonPkHex(),
 					"block_height":   tipBlock,
-				}).Fatal("failed to commit public randomness")
+				}).Warnf(instanceTerminatingMsg)
+				return
 			}
 			if txRes != nil {
 				v.logger.WithFields(logrus.Fields{
