@@ -20,8 +20,6 @@ var (
 
 var retriableErrors = []*errorsmod.Error{
 	errors.ErrInsufficientFunds,
-	errors.ErrOutOfGas,
-	errors.ErrInsufficientFee,
 	errors.ErrMempoolIsFull,
 }
 

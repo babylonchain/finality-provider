@@ -222,6 +222,9 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 	wg.Wait()
 
 	if callbackErr != nil {
+		if IsExpected(callbackErr) {
+			return nil, nil
+		}
 		return nil, callbackErr
 	}
 
