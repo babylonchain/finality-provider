@@ -3,6 +3,7 @@ module github.com/babylonchain/btc-validator
 go 1.20
 
 require (
+	cosmossdk.io/errors v1.0.0-beta.7
 	github.com/avast/retry-go/v4 v4.3.3
 	github.com/babylonchain/babylon v0.7.1
 	github.com/btcsuite/btcd v0.23.5-0.20230228185050-38331963bddd
@@ -11,7 +12,7 @@ require (
 	github.com/cometbft/cometbft v0.37.2
 	github.com/cosmos/cosmos-sdk v0.47.3
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/cosmos/relayer/v2 v2.3.0-rc4.0.20230725195534-3c7828782d35
+	github.com/cosmos/relayer/v2 v2.4.1
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang/mock v1.6.0
 	github.com/jessevdk/go-flags v1.5.0
@@ -36,7 +37,6 @@ require (
 	cosmossdk.io/api v0.3.1 // indirect
 	cosmossdk.io/core v0.5.1 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
-	cosmossdk.io/errors v1.0.0-beta.7 // indirect
 	cosmossdk.io/log v1.1.0 // indirect
 	cosmossdk.io/math v1.0.1 // indirect
 	cosmossdk.io/tools/rosetta v0.2.1 // indirect
