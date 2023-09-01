@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
+	"github.com/juju/fslock"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -192,21 +194,30 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 
 	ctx := context.Background()
 	if err := retry.Do(func() error {
-		err := bc.provider.SendMessagesToMempool(ctx, relayerMsgs, "", ctx, []func(*provider.RelayerTxResponse, error){callback})
-		if err != nil {
-			if !IsRetriable(err) {
+		var sendMsgErr error
+		krErr := bc.accessKeyWithLock(func() {
+			sendMsgErr = bc.provider.SendMessagesToMempool(ctx, relayerMsgs, "", ctx, []func(*provider.RelayerTxResponse, error){callback})
+		})
+		if krErr != nil {
+			bc.logger.WithFields(logrus.Fields{
+				"error": krErr,
+			}).Error("unrecoverable err when submitting the tx, skip retrying")
+			return retry.Unrecoverable(krErr)
+		}
+		if sendMsgErr != nil {
+			if !IsRetriable(sendMsgErr) {
 				bc.logger.WithFields(logrus.Fields{
-					"error": err,
+					"error": sendMsgErr,
 				}).Error("unrecoverable err when submitting the tx, skip retrying")
-				return retry.Unrecoverable(err)
+				return retry.Unrecoverable(sendMsgErr)
 			}
-			if IsExpected(err) {
+			if IsExpected(sendMsgErr) {
 				bc.logger.WithFields(logrus.Fields{
-					"error": err,
+					"error": sendMsgErr,
 				}).Error("expected err when submitting the tx, skip retrying")
 				return nil
 			}
-			return err
+			return sendMsgErr
 		}
 		return nil
 	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
@@ -631,6 +642,30 @@ func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
 	return &ctypes.ResultHeader{
 		Header: &chainInfo.BlockMetas[0].Header,
 	}, nil
+}
+
+// accessKeyWithLock triggers a function that access key ring while acquiring
+// the file system lock, in order to remain thread-safe when multiple concurrent
+// relayers are running on the same machine and accessing the same keyring
+// adapted from
+// https://github.com/babylonchain/babylon-relayer/blob/f962d0940832a8f84f747c5d9cbc67bc1b156386/bbnrelayer/utils.go#L212
+func (bc *BabylonController) accessKeyWithLock(accessFunc func()) error {
+	// use lock file to guard concurrent access to the keyring
+	lockFilePath := path.Join(bc.provider.PCfg.KeyDirectory, "keys.lock")
+	lock := fslock.New(lockFilePath)
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("failed to acquire file system lock (%s): %w", lockFilePath, err)
+	}
+
+	// trigger function that access keyring
+	accessFunc()
+
+	// unlock and release access
+	if err := lock.Unlock(); err != nil {
+		return fmt.Errorf("error unlocking file system lock (%s), please manually delete", lockFilePath)
+	}
+
+	return nil
 }
 
 func (bc *BabylonController) Close() error {
