@@ -17,6 +17,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jsternberg/zap-logfmt v1.3.0
+	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b
 	github.com/lightningnetwork/lnd v0.16.4-beta.rc1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
