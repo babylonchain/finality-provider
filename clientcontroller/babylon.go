@@ -1,4 +1,4 @@
-package babylonclient
+package clientcontroller
 
 import (
 	"context"
@@ -35,7 +35,7 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
-var _ BabylonClient = &BabylonController{}
+var _ ClientController = &BabylonController{}
 
 type BabylonController struct {
 	provider *cosmos.CosmosProvider

@@ -1,6 +1,8 @@
-package babylonclient
+package clientcontroller
 
 import (
+	"fmt"
+
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
@@ -9,6 +11,13 @@ import (
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	"github.com/sirupsen/logrus"
+
+	"github.com/babylonchain/btc-validator/valcfg"
+)
+
+const (
+	babylonConsumerChainName = "babylon"
 )
 
 type StakingParams struct {
@@ -27,7 +36,7 @@ type StakingParams struct {
 	SlashingAddress string
 }
 
-type BabylonClient interface {
+type ClientController interface {
 	GetStakingParams() (*StakingParams, error)
 	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 	// it returns tx hash and error
@@ -67,4 +76,22 @@ type BabylonClient interface {
 	QueryBestHeader() (*ctypes.ResultHeader, error)
 
 	Close() error
+}
+
+func NewClientController(cfg *valcfg.Config, logger *logrus.Logger) (ClientController, error) {
+	var (
+		cc  ClientController
+		err error
+	)
+	switch cfg.ChainName {
+	case babylonConsumerChainName:
+		cc, err = NewBabylonController(cfg.DataDir, cfg.BabylonConfig, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported consumer chain")
+	}
+
+	return cc, err
 }

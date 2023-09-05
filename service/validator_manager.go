@@ -9,7 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 
-	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -75,7 +75,7 @@ func (vm *ValidatorManager) addValidatorInstance(
 	config *valcfg.Config,
 	valStore *val.ValidatorStore,
 	kr keyring.Keyring,
-	bc bbncli.BabylonClient,
+	cc clientcontroller.ClientController,
 	logger *logrus.Logger,
 ) error {
 	vm.mu.Lock()
@@ -86,7 +86,7 @@ func (vm *ValidatorManager) addValidatorInstance(
 		return fmt.Errorf("validator instance already exists")
 	}
 
-	valIns, err := NewValidatorInstance(pk, config, valStore, kr, bc, logger)
+	valIns, err := NewValidatorInstance(pk, config, valStore, kr, cc, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator %s instance: %w", pkHex, err)
 	}

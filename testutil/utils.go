@@ -11,9 +11,9 @@ import (
 	"github.com/babylonchain/btc-validator/testutil/mocks"
 )
 
-func PrepareMockedBabylonClient(t *testing.T, blockHeight uint64, lastCommitHash []byte) *mocks.MockBabylonClient {
+func PrepareMockedBabylonClient(t *testing.T, blockHeight uint64, lastCommitHash []byte) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
-	mockBabylonClient := mocks.NewMockBabylonClient(ctl)
+	mockBabylonClient := mocks.NewMockClientController(ctl)
 	status := &coretypes.ResultStatus{
 		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(blockHeight + 1)},
 	}

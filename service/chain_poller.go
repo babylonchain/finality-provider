@@ -9,7 +9,7 @@ import (
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
 
-	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	cfg "github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -32,7 +32,7 @@ type ChainPoller struct {
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
-	bc            bbncli.BabylonClient
+	cc            clientcontroller.ClientController
 	cfg           *cfg.ChainPollerConfig
 	blockInfoChan chan *BlockInfo
 	logger        *logrus.Logger
@@ -51,12 +51,12 @@ type BlockInfo struct {
 func NewChainPoller(
 	logger *logrus.Logger,
 	cfg *cfg.ChainPollerConfig,
-	bc bbncli.BabylonClient,
+	bc clientcontroller.ClientController,
 ) *ChainPoller {
 	return &ChainPoller{
 		logger:        logger,
 		cfg:           cfg,
-		bc:            bc,
+		cc:            bc,
 		blockInfoChan: make(chan *BlockInfo, cfg.BufferSize),
 		quit:          make(chan struct{}),
 	}
@@ -86,7 +86,7 @@ func (cp *ChainPoller) Stop() error {
 	var stopError error
 	cp.stopOnce.Do(func() {
 		cp.logger.Infof("Stopping the chain poller")
-		err := cp.bc.Close()
+		err := cp.cc.Close()
 		if err != nil {
 			stopError = err
 			return
@@ -108,7 +108,7 @@ func (cp *ChainPoller) GetBlockInfoChan() <-chan *BlockInfo {
 func (cp *ChainPoller) nodeStatusWithRetry() (*ctypes.ResultStatus, error) {
 	var response *ctypes.ResultStatus
 	if err := retry.Do(func() error {
-		status, err := cp.bc.QueryNodeStatus()
+		status, err := cp.cc.QueryNodeStatus()
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func (cp *ChainPoller) nodeStatusWithRetry() (*ctypes.ResultStatus, error) {
 func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, error) {
 	var response *ctypes.ResultHeader
 	if err := retry.Do(func() error {
-		headerResult, err := cp.bc.QueryHeader(int64(height))
+		headerResult, err := cp.cc.QueryHeader(int64(height))
 		if err != nil {
 			return err
 		}

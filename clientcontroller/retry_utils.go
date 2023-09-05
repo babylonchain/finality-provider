@@ -1,4 +1,4 @@
-package babylonclient
+package clientcontroller
 
 import (
 	"strings"
