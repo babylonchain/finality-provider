@@ -20,6 +20,7 @@ import (
 
 const (
 	defaultDataDirname          = "data"
+	defaultChainName            = "babylon"
 	defaultLogLevel             = "info"
 	defaultLogDirname           = "logs"
 	defaultLogFilename          = "vald.log"
@@ -47,7 +48,9 @@ var (
 
 // Config is the main config for the vald cli command
 type Config struct {
-	DebugLevel               string        `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	DebugLevel string `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	// ChainName and ChainID (if any) of the chain config identify a consumer chain
+	ChainName                string        `long:"chainname" description:"the name of the consumer chain" choice:"babylon"`
 	ValdDir                  string        `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
 	ConfigFile               string        `long:"configfile" description:"Path to configuration file"`
 	DataDir                  string        `long:"datadir" description:"The directory to store validator's data within"`
@@ -85,6 +88,7 @@ func DefaultConfig() Config {
 	valCfg := DefaultValidatorConfig()
 	return Config{
 		ValdDir:                  DefaultValdDir,
+		ChainName:                defaultChainName,
 		ConfigFile:               DefaultConfigFile,
 		DataDir:                  defaultDataDir,
 		DebugLevel:               defaultLogLevel,

@@ -7,7 +7,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/signal"
 
-	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -33,13 +33,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	bbnClient, err := babylonclient.NewBabylonController(cfg.DataDir, cfg.BabylonConfig, cfgLogger)
+	cc, err := clientcontroller.NewClientController(cfg, cfgLogger)
 	if err != nil {
-		cfgLogger.Errorf("failed to create Babylon rpc client: %v", err)
+		cfgLogger.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 		os.Exit(1)
 	}
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger, bbnClient)
+	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger, cc)
 	if err != nil {
 		cfgLogger.Errorf("failed to create validator app: %v", err)
 		os.Exit(1)

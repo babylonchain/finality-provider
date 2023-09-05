@@ -14,7 +14,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 
-	bbncli "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
 
@@ -34,7 +34,7 @@ type ValidatorApp struct {
 	eventWg   sync.WaitGroup
 	eventQuit chan struct{}
 
-	bc     bbncli.BabylonClient
+	cc     clientcontroller.ClientController
 	kr     keyring.Keyring
 	vs     *val.ValidatorStore
 	config *valcfg.Config
@@ -54,7 +54,7 @@ type ValidatorApp struct {
 func NewValidatorAppFromConfig(
 	config *valcfg.Config,
 	logger *logrus.Logger,
-	bc bbncli.BabylonClient,
+	cc clientcontroller.ClientController,
 ) (*ValidatorApp, error) {
 
 	kr, err := CreateKeyring(config.BabylonConfig.KeyDirectory,
@@ -69,7 +69,7 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
-	poller := NewChainPoller(logger, config.PollerConfig, bc)
+	poller := NewChainPoller(logger, config.PollerConfig, cc)
 
 	if config.JuryMode {
 		if _, err := kr.Key(config.JuryModeConfig.JuryKeyName); err != nil {
@@ -79,7 +79,7 @@ func NewValidatorAppFromConfig(
 	}
 
 	return &ValidatorApp{
-		bc:                           bc,
+		cc:                           cc,
 		vs:                           valStore,
 		kr:                           kr,
 		config:                       config,
@@ -127,7 +127,7 @@ func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*Val
 }
 
 func (app *ValidatorApp) GetCurrentBbnBlock() (*BlockInfo, error) {
-	header, err := app.bc.QueryBestHeader()
+	header, err := app.cc.QueryBestHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 // StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
 func (app *ValidatorApp) StartHandlingValidator(bbnPk *secp256k1.PubKey) error {
-	return app.validatorManager.addValidatorInstance(bbnPk, app.config, app.vs, app.kr, app.bc, app.logger)
+	return app.validatorManager.addValidatorInstance(bbnPk, app.config, app.vs, app.kr, app.cc, app.logger)
 }
 
 func (app *ValidatorApp) StartHandlingValidators() error {
@@ -289,7 +289,7 @@ func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
 func (app *ValidatorApp) latestFinalisedBlocksWithRetry(count uint64) ([]*ftypes.IndexedBlock, error) {
 	var response []*ftypes.IndexedBlock
 	if err := retry.Do(func() error {
-		latestFinalisedBlock, err := app.bc.QueryLatestFinalisedBlocks(count)
+		latestFinalisedBlock, err := app.cc.QueryLatestFinalisedBlocks(count)
 		if err != nil {
 			return err
 		}

@@ -20,7 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -31,7 +31,7 @@ type TestManager struct {
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
 	Va             *service.ValidatorApp
-	BabylonClient  *babylonclient.BabylonController
+	BabylonClient  *clientcontroller.BabylonController
 }
 
 type TestDelegationData struct {
@@ -65,10 +65,10 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isJury)
 
-	bl, err := babylonclient.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
+	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bl)
+	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
 	require.NoError(t, err)
 
 	err = valApp.Start()
@@ -78,7 +78,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 		BabylonHandler: bh,
 		Config:         cfg,
 		Va:             valApp,
-		BabylonClient:  bl,
+		BabylonClient:  bc,
 	}
 }
 

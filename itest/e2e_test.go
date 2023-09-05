@@ -18,7 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/val"
@@ -45,7 +45,7 @@ func TestPoller(t *testing.T) {
 	logger.Out = os.Stdout
 	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
 
-	bc, err := babylonclient.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
+	bc, err := clientcontroller.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
 	require.NoError(t, err)
 
 	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)

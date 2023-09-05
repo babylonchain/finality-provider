@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	babylonclient "github.com/babylonchain/btc-validator/bbnclient"
+	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -103,14 +103,14 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, bc babylonclient.BabylonClient) (*service.ValidatorApp, *proto.StoreValidator, func()) {
+func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 	cfg.BabylonConfig.KeyDirectory = t.TempDir()
 	cfg.NumPubRand = uint64(r.Intn(10) + 1)
 	logger := logrus.New()
-	app, err := service.NewValidatorAppFromConfig(&cfg, logger, bc)
+	app, err := service.NewValidatorAppFromConfig(&cfg, logger, cc)
 	require.NoError(t, err)
 
 	// create registered validator

@@ -19,7 +19,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	for {
 		select {
 		case <-jurySigTicker.C:
-			dels, err := app.bc.QueryPendingBTCDelegations()
+			dels, err := app.cc.QueryPendingBTCDelegations()
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
@@ -138,7 +138,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			// we won't do any retries here to not block the loop for more important messages.
 			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			res, err := app.bc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
+			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -166,7 +166,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			}
 		case req := <-app.addJurySigRequestChan:
 			// TODO: we should add some retry mechanism or we can have a health checker to check the connection periodically
-			res, err := app.bc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.stakingTxHash, req.sig)
+			res, err := app.cc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.stakingTxHash, req.sig)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err":          err,

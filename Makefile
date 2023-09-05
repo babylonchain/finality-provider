@@ -70,4 +70,4 @@ proto-gen:
 
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
-	$(MOCKGEN_CMD) -source=bbnclient/interface.go -package mocks -destination $(MOCKS_DIR)/bbnclient.go
+	$(MOCKGEN_CMD) -source=clientcontroller/interface.go -package mocks -destination $(MOCKS_DIR)/babylon.go
