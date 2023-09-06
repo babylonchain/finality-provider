@@ -264,12 +264,13 @@ func (v *ValidatorInstance) sendSignaturesForUnbondingTransactions(sigsToSend []
 	var res []unbondingTxSigSendResult
 
 	for _, sigData := range sigsToSend {
+		sd := sigData
 		eg.Go(func() error {
 			_, err := v.cc.SubmitValidatorUnbondingSig(
 				v.GetBtcPkBIP340(),
-				sigData.stakerPk,
-				sigData.stakingTxHash,
-				sigData.signature,
+				sd.stakerPk,
+				sd.stakingTxHash,
+				sd.signature,
 			)
 
 			mu.Lock()
@@ -278,12 +279,12 @@ func (v *ValidatorInstance) sendSignaturesForUnbondingTransactions(sigsToSend []
 			if err != nil {
 				res = append(res, unbondingTxSigSendResult{
 					err:           err,
-					stakingTxHash: sigData.stakingTxHash,
+					stakingTxHash: sd.stakingTxHash,
 				})
 			} else {
 				res = append(res, unbondingTxSigSendResult{
 					err:           nil,
-					stakingTxHash: sigData.stakingTxHash,
+					stakingTxHash: sd.stakingTxHash,
 				})
 			}
 
