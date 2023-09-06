@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -18,6 +18,7 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -35,9 +36,9 @@ func FuzzRegisterValidator(f *testing.F) {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
 		err = app.Start()
@@ -49,7 +50,7 @@ func FuzzRegisterValidator(f *testing.F) {
 
 		// create a validator object and save it to db
 		validator := testutil.GenStoredValidator(r, t, app)
-		btcSig := new(types.BIP340Signature)
+		btcSig := new(bbntypes.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
 		pop := &bstypes.ProofOfPossession{
@@ -58,7 +59,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		}
 
 		txHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			RegisterValidator(validator.GetBabylonPK(), validator.MustGetBIP340BTCPK(), pop).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, _, err := app.RegisterValidator(validator.KeyName)
@@ -90,8 +91,8 @@ func FuzzAddJurySig(f *testing.F) {
 			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		mockBabylonClient := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
 		require.NoError(t, err)
 
@@ -131,7 +132,7 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		delegation := &bstypes.BTCDelegation{
 			ValBtcPk:   btcPkBIP340,
-			BtcPk:      types.NewBIP340PubKeyFromBTCPK(delPK),
+			BtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delPK),
 			BabylonPk:  delBabylonPK.(*secp256k1.PubKey),
 			Pop:        pop,
 			StakingTx:  stakingTx,

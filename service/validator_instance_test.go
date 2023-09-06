@@ -14,6 +14,7 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -23,8 +24,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		mockBabylonClient := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
 		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
 		defer cleanUp()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
@@ -61,8 +62,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		mockBabylonClient := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
 		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
 		defer cleanUp()
 		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
@@ -86,7 +87,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
-		nextBlock := &service.BlockInfo{
+		nextBlock := &types.BlockInfo{
 			Height:         startingBlock.Height + 1,
 			LastCommitHash: testutil.GenRandomByteArray(r, 32),
 		}

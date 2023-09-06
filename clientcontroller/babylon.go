@@ -10,7 +10,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbnapp "github.com/babylonchain/babylon/app"
-	"github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -32,6 +32,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
 
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -253,7 +254,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:    bc.MustGetTxSigner(),
 		BabylonPk: bbnPubKey,
@@ -271,7 +272,7 @@ func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcP
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) CommitPubRandList(btcPubKey *bbntypes.BIP340PubKey, startHeight uint64, pubRandList []bbntypes.SchnorrPubRand, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
 		Signer:      bc.MustGetTxSigner(),
 		ValBtcPk:    btcPubKey,
@@ -290,7 +291,7 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *types.BIP340PubKey, st
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) SubmitJurySig(btcPubKey *bbntypes.BIP340PubKey, delPubKey *bbntypes.BIP340PubKey, stakingTxHash string, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgAddJurySig{
 		Signer:        bc.MustGetTxSigner(),
 		ValPk:         btcPubKey,
@@ -308,7 +309,7 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) SubmitFinalitySig(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
 		Signer:              bc.MustGetTxSigner(),
 		ValBtcPk:            btcPubKey,
@@ -325,6 +326,32 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	return res, nil
 }
 
+// SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
+func (bc *BabylonController) SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340PubKey, blocks []*types.BlockInfo, sigs []*bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+	if len(blocks) != len(sigs) {
+		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
+	}
+
+	msgs := make([]sdk.Msg, 0, len(blocks))
+	for i, b := range blocks {
+		msg := &finalitytypes.MsgAddFinalitySig{
+			Signer:              bc.MustGetTxSigner(),
+			ValBtcPk:            btcPubKey,
+			BlockHeight:         b.Height,
+			BlockLastCommitHash: b.LastCommitHash,
+			FinalitySig:         sigs[i],
+		}
+		msgs = append(msgs, msg)
+	}
+
+	res, err := bc.reliablySendMsgs(msgs)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
@@ -332,7 +359,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	stakingTx *btcstakingtypes.StakingTx,
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
-	delSig *types.BIP340Signature,
+	delSig *bbntypes.BIP340Signature,
 ) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
 		Signer:        bc.MustGetTxSigner(),
@@ -355,7 +382,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
-func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) InsertBtcBlockHeaders(headers []*bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	msgs := make([]sdk.Msg, 0, len(headers))
 	for _, h := range headers {
 		msg := &btclctypes.MsgInsertHeader{
@@ -375,7 +402,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*types.BTCHeaderByt
 
 // Note: the following queries are only for PoC
 // QueryHeightWithLastPubRand queries the height of the last block with public randomness
-func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
+func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *bbntypes.BIP340PubKey) (uint64, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -483,42 +510,7 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryLatestFinalisedBlocks(count uint64) ([]*finalitytypes.IndexedBlock, error) {
-	var blocks []*finalitytypes.IndexedBlock
-	pagination := &sdkquery.PageRequest{
-		Limit:   count,
-		Reverse: true,
-	}
-
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	for {
-		queryRequest := &finalitytypes.QueryListBlocksRequest{
-			Status:     finalitytypes.QueriedBlockStatus_FINALIZED,
-			Pagination: pagination,
-		}
-		res, err := queryClient.ListBlocks(ctx, queryRequest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
-		}
-		blocks = append(blocks, res.Blocks...)
-		if res.Pagination == nil || res.Pagination.NextKey == nil {
-			break
-		}
-
-		pagination.Key = res.Pagination.NextKey
-	}
-
-	return blocks, nil
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *types.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
 	var delegations []*btcstakingtypes.BTCDelegation
 	pagination := &sdkquery.PageRequest{
 		Limit: 100,
@@ -554,7 +546,7 @@ func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *types.BIP340
 }
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
-func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
+func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64) (uint64, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -575,8 +567,8 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *types.BIP340Pu
 	return res.VotingPower, nil
 }
 
-// QueryIndexedBlock queries the Babylon indexed block with the given height
-func (bc *BabylonController) QueryIndexedBlock(blockHeight uint64) (*finalitytypes.IndexedBlock, error) {
+// QueryBlockFinalization queries whether the block has been finalized
+func (bc *BabylonController) QueryBlockFinalization(blockHeight uint64) (bool, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -590,22 +582,65 @@ func (bc *BabylonController) QueryIndexedBlock(blockHeight uint64) (*finalitytyp
 	}
 	res, err := queryClient.Block(ctx, queryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", blockHeight, err)
+		return false, fmt.Errorf("failed to query indexed block at height %v: %w", blockHeight, err)
 	}
 
-	return res.Block, nil
+	return res.Block.Finalized, nil
 }
 
-func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
+func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
+	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+}
+
+func (bc *BabylonController) QueryLatestUnfinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
+	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_NON_FINALIZED, true)
+}
+
+func (bc *BabylonController) QueryBlocks(startHeight, endHeight uint64) ([]*types.BlockInfo, error) {
+	if startHeight >= endHeight {
+		return nil, fmt.Errorf("the startHeight %v should be higher than the endHeight %v", startHeight, endHeight)
+	}
+	return bc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), endHeight-startHeight, finalitytypes.QueriedBlockStatus_ANY, false)
+}
+
+func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
+	var blocks []*types.BlockInfo
+	pagination := &sdkquery.PageRequest{
+		Limit:   count,
+		Reverse: reverse,
+	}
+
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
-	status, err := bc.provider.QueryStatus(ctx)
-	if err != nil {
-		return nil, err
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	for {
+		queryRequest := &finalitytypes.QueryListBlocksRequest{
+			Status:     status,
+			Pagination: pagination,
+		}
+		res, err := queryClient.ListBlocks(ctx, queryRequest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
+		}
+		for _, b := range res.Blocks {
+			ib := &types.BlockInfo{
+				Height:         b.Height,
+				LastCommitHash: b.LastCommitHash,
+			}
+			blocks = append(blocks, ib)
+		}
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
 	}
 
-	return status, nil
+	return blocks, nil
 }
 
 func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {

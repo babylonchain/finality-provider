@@ -9,9 +9,8 @@ import (
 
 	types "github.com/babylonchain/babylon/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
-	types1 "github.com/babylonchain/babylon/x/finality/types"
 	clientcontroller "github.com/babylonchain/btc-validator/clientcontroller"
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
+	types1 "github.com/babylonchain/btc-validator/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
@@ -84,34 +83,34 @@ func (mr *MockClientControllerMockRecorder) GetStakingParams() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockClientController)(nil).GetStakingParams))
 }
 
-// QueryBestHeader mocks base method.
-func (m *MockClientController) QueryBestHeader() (*coretypes.ResultHeader, error) {
+// QueryBlockFinalization mocks base method.
+func (m *MockClientController) QueryBlockFinalization(height uint64) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBestHeader")
-	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret := m.ctrl.Call(m, "QueryBlockFinalization", height)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryBestHeader indicates an expected call of QueryBestHeader.
-func (mr *MockClientControllerMockRecorder) QueryBestHeader() *gomock.Call {
+// QueryBlockFinalization indicates an expected call of QueryBlockFinalization.
+func (mr *MockClientControllerMockRecorder) QueryBlockFinalization(height interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestHeader", reflect.TypeOf((*MockClientController)(nil).QueryBestHeader))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlockFinalization", reflect.TypeOf((*MockClientController)(nil).QueryBlockFinalization), height)
 }
 
-// QueryHeader mocks base method.
-func (m *MockClientController) QueryHeader(height int64) (*coretypes.ResultHeader, error) {
+// QueryBlocks mocks base method.
+func (m *MockClientController) QueryBlocks(startHeight, endHeight uint64) ([]*types1.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryHeader", height)
-	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret := m.ctrl.Call(m, "QueryBlocks", startHeight, endHeight)
+	ret0, _ := ret[0].([]*types1.BlockInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryHeader indicates an expected call of QueryHeader.
-func (mr *MockClientControllerMockRecorder) QueryHeader(height interface{}) *gomock.Call {
+// QueryBlocks indicates an expected call of QueryBlocks.
+func (mr *MockClientControllerMockRecorder) QueryBlocks(startHeight, endHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeader", reflect.TypeOf((*MockClientController)(nil).QueryHeader), height)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockClientController)(nil).QueryBlocks), startHeight, endHeight)
 }
 
 // QueryHeightWithLastPubRand mocks base method.
@@ -129,49 +128,34 @@ func (mr *MockClientControllerMockRecorder) QueryHeightWithLastPubRand(btcPubKey
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockClientController)(nil).QueryHeightWithLastPubRand), btcPubKey)
 }
 
-// QueryIndexedBlock mocks base method.
-func (m *MockClientController) QueryIndexedBlock(height uint64) (*types1.IndexedBlock, error) {
+// QueryLatestFinalizedBlocks mocks base method.
+func (m *MockClientController) QueryLatestFinalizedBlocks(count uint64) ([]*types1.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryIndexedBlock", height)
-	ret0, _ := ret[0].(*types1.IndexedBlock)
+	ret := m.ctrl.Call(m, "QueryLatestFinalizedBlocks", count)
+	ret0, _ := ret[0].([]*types1.BlockInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryIndexedBlock indicates an expected call of QueryIndexedBlock.
-func (mr *MockClientControllerMockRecorder) QueryIndexedBlock(height interface{}) *gomock.Call {
+// QueryLatestFinalizedBlocks indicates an expected call of QueryLatestFinalizedBlocks.
+func (mr *MockClientControllerMockRecorder) QueryLatestFinalizedBlocks(count interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryIndexedBlock", reflect.TypeOf((*MockClientController)(nil).QueryIndexedBlock), height)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlocks", reflect.TypeOf((*MockClientController)(nil).QueryLatestFinalizedBlocks), count)
 }
 
-// QueryLatestFinalisedBlocks mocks base method.
-func (m *MockClientController) QueryLatestFinalisedBlocks(count uint64) ([]*types1.IndexedBlock, error) {
+// QueryLatestUnfinalizedBlocks mocks base method.
+func (m *MockClientController) QueryLatestUnfinalizedBlocks(count uint64) ([]*types1.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryLatestFinalisedBlocks", count)
-	ret0, _ := ret[0].([]*types1.IndexedBlock)
+	ret := m.ctrl.Call(m, "QueryLatestUnfinalizedBlocks", count)
+	ret0, _ := ret[0].([]*types1.BlockInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryLatestFinalisedBlocks indicates an expected call of QueryLatestFinalisedBlocks.
-func (mr *MockClientControllerMockRecorder) QueryLatestFinalisedBlocks(count interface{}) *gomock.Call {
+// QueryLatestUnfinalizedBlocks indicates an expected call of QueryLatestUnfinalizedBlocks.
+func (mr *MockClientControllerMockRecorder) QueryLatestUnfinalizedBlocks(count interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalisedBlocks", reflect.TypeOf((*MockClientController)(nil).QueryLatestFinalisedBlocks), count)
-}
-
-// QueryNodeStatus mocks base method.
-func (m *MockClientController) QueryNodeStatus() (*coretypes.ResultStatus, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryNodeStatus")
-	ret0, _ := ret[0].(*coretypes.ResultStatus)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryNodeStatus indicates an expected call of QueryNodeStatus.
-func (mr *MockClientControllerMockRecorder) QueryNodeStatus() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryNodeStatus", reflect.TypeOf((*MockClientController)(nil).QueryNodeStatus))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestUnfinalizedBlocks", reflect.TypeOf((*MockClientController)(nil).QueryLatestUnfinalizedBlocks), count)
 }
 
 // QueryPendingBTCDelegations mocks base method.
@@ -217,6 +201,21 @@ func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, bt
 func (mr *MockClientControllerMockRecorder) RegisterValidator(bbnPubKey, btcPubKey, pop interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), bbnPubKey, btcPubKey, pop)
+}
+
+// SubmitBatchFinalitySigs mocks base method.
+func (m *MockClientController) SubmitBatchFinalitySigs(btcPubKey *types.BIP340PubKey, blocks []*types1.BlockInfo, sigs []*types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", btcPubKey, blocks, sigs)
+	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubmitBatchFinalitySigs indicates an expected call of SubmitBatchFinalitySigs.
+func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(btcPubKey, blocks, sigs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockClientController)(nil).SubmitBatchFinalitySigs), btcPubKey, blocks, sigs)
 }
 
 // SubmitFinalitySig mocks base method.
