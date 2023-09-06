@@ -51,14 +51,36 @@ func (v *ValidatorInstance) TryCatchUp(currentBlock *types.BlockInfo) (*provider
 	for _, b := range blocks {
 		should, err := v.shouldSubmitFinalitySignature(b)
 		if err != nil {
+			// stop catch-up when critical errors occur
 			return nil, err
 		}
 		if !should {
-			// if false to the current block, so will be the rest
-			break
+			// two cases could lead to here:
+			// 1. insufficient committed randomness
+			// 2. no voting power
+			// thus we should continue here in case the two conditions
+			// will not happen in the rest of the blocks
+			continue
 		}
 		catchUpBlocks = append(catchUpBlocks, b)
 	}
+
+	if len(catchUpBlocks) < 1 {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":   v.GetBtcPkHex(),
+			"start_height": startHeight,
+			"end_height":   currentBlock.Height,
+		}).Debug("no blocks should be submitted finality signature for while catching up")
+		return nil, nil
+	}
+
+	// TODO: we should add an upper bound of blocks to catch-up
+
+	v.logger.WithFields(logrus.Fields{
+		"btc_pk_hex":   v.GetBtcPkHex(),
+		"start_height": catchUpBlocks[0].Height,
+		"end_height":   catchUpBlocks[len(catchUpBlocks)-1].Height,
+	}).Debug("the validator is catching up by sending finality signatures in a batch")
 
 	return v.SubmitBatchFinalitySignatures(catchUpBlocks)
 }

@@ -31,10 +31,10 @@ type ChainPoller struct {
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
-	cc        clientcontroller.ClientController
-	cfg       *cfg.ChainPollerConfig
-	blockChan chan *types.BlockInfo
-	logger    *logrus.Logger
+	cc            clientcontroller.ClientController
+	cfg           *cfg.ChainPollerConfig
+	bestBlockChan chan *types.BlockInfo
+	logger        *logrus.Logger
 }
 
 func NewChainPoller(
@@ -43,11 +43,11 @@ func NewChainPoller(
 	cc clientcontroller.ClientController,
 ) *ChainPoller {
 	return &ChainPoller{
-		logger:    logger,
-		cfg:       cfg,
-		cc:        cc,
-		blockChan: make(chan *types.BlockInfo, cfg.BufferSize),
-		quit:      make(chan struct{}),
+		logger:        logger,
+		cfg:           cfg,
+		cc:            cc,
+		bestBlockChan: make(chan *types.BlockInfo, cfg.BufferSize),
+		quit:          make(chan struct{}),
 	}
 }
 
@@ -81,8 +81,8 @@ func (cp *ChainPoller) Stop() error {
 // Return read only channel for incoming blocks
 // TODO: Handle the case when there is more than one consumer. Currently with more than
 // one consumer blocks most probably will be received out of order to those consumers.
-func (cp *ChainPoller) GetBlockInfoChan() <-chan *types.BlockInfo {
-	return cp.blockChan
+func (cp *ChainPoller) GetBestBlockChan() <-chan *types.BlockInfo {
+	return cp.bestBlockChan
 }
 
 func (cp *ChainPoller) getBestBlock() (*types.BlockInfo, error) {
@@ -129,7 +129,7 @@ func (cp *ChainPoller) pollChain() {
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will
 			// stop retrieving data from the node.
-			cp.blockChan <- b
+			cp.bestBlockChan <- b
 		} else {
 			failedCycles += 1
 

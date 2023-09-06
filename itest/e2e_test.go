@@ -58,24 +58,27 @@ func TestPoller(t *testing.T) {
 
 	// Get 3 blocks which should be received in order
 	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(1), info.Height)
+	case info := <-poller.GetBestBlockChan():
+		res, _ := bc.QueryBestHeader()
+		require.Equal(t, uint64(res.Header.Height), info.Height)
 
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")
 	}
 
 	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(2), info.Height)
+	case info := <-poller.GetBestBlockChan():
+		res, _ := bc.QueryBestHeader()
+		require.Equal(t, uint64(res.Header.Height), info.Height)
 
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")
 	}
 
 	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(3), info.Height)
+	case info := <-poller.GetBestBlockChan():
+		res, _ := bc.QueryBestHeader()
+		require.Equal(t, uint64(res.Header.Height), info.Height)
 
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")

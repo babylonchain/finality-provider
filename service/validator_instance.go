@@ -39,11 +39,10 @@ type ValidatorInstance struct {
 	state *state
 	cfg   *valcfg.Config
 
-	currentBlockChan chan *types.BlockInfo
-	logger           *logrus.Logger
-	kc               *val.KeyringController
-	cc               clientcontroller.ClientController
-	cp               *ChainPoller
+	logger *logrus.Logger
+	kc     *val.KeyringController
+	cc     clientcontroller.ClientController
+	cp     *ChainPoller
 
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -85,23 +84,17 @@ func NewValidatorInstance(
 			v: v,
 			s: s,
 		},
-		cfg: cfg,
-		// TODO parameterize the buffer
-		currentBlockChan: make(chan *types.BlockInfo, 100),
-		logger:           logger,
-		kc:               kc,
-		cc:               cc,
-		cp:               NewChainPoller(logger, cfg.PollerConfig, cc),
-		quit:             make(chan struct{}),
+		cfg:    cfg,
+		logger: logger,
+		kc:     kc,
+		cc:     cc,
+		cp:     NewChainPoller(logger, cfg.PollerConfig, cc),
+		quit:   make(chan struct{}),
 	}, nil
 }
 
 func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
 	return v.state.v
-}
-
-func (v *ValidatorInstance) getCurrentBlockChan() <-chan *types.BlockInfo {
-	return v.currentBlockChan
 }
 
 func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
@@ -217,7 +210,7 @@ func (v *ValidatorInstance) submissionLoop() {
 
 	for {
 		select {
-		case currentBlock := <-v.cp.GetBlockInfoChan():
+		case currentBlock := <-v.cp.GetBestBlockChan():
 			if v.shouldCatchUp(currentBlock) {
 				res, err := v.TryCatchUp(currentBlock)
 				if err != nil {
@@ -350,7 +343,7 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (b
 		return false, nil
 	}
 
-	return true, err
+	return true, nil
 }
 
 // the validator should catch-up is the current block is higher than (the last voted height + 1)
