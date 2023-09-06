@@ -142,7 +142,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.NoError(t, err)
 	// check the BTC delegation is active
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340())
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
 		if err != nil {
 			return false
 		}
@@ -219,7 +219,7 @@ func TestMultipleValidators(t *testing.T) {
 		go func(v *service.ValidatorInstance) {
 			// check the BTC delegation is active
 			require.Eventually(t, func() bool {
-				dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(v.GetBtcPkBIP340())
+				dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(v.GetBtcPkBIP340(), 1000)
 				if err != nil {
 					return false
 				}
@@ -269,7 +269,7 @@ func TestJurySigSubmission(t *testing.T) {
 	params, err := tm.BabylonClient.GetStakingParams()
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340())
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
 		if err != nil {
 			return false
 		}
@@ -324,7 +324,7 @@ func TestDoubleSigning(t *testing.T) {
 	require.NoError(t, err)
 	// check the BTC delegation is active
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340())
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
 		if err != nil {
 			return false
 		}

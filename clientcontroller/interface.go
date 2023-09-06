@@ -82,6 +82,11 @@ type ClientController interface {
 	// it returns result with nil header
 	QueryBestHeader() (*ctypes.ResultHeader, error)
 
+	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
+	// - already received unbodning transaction on babylon chain
+	// - not received validator signature yet
+	QueryBTCValidatorUnbondingDelegations(valBtcPk *types.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error)
+
 	Close() error
 }
 

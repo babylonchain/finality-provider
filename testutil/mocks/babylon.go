@@ -85,6 +85,21 @@ func (mr *MockClientControllerMockRecorder) GetStakingParams() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockClientController)(nil).GetStakingParams))
 }
 
+// QueryBTCValidatorUnbondingDelegations mocks base method.
+func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valBtcPk *types.BIP340PubKey, max uint64) ([]*types0.BTCDelegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valBtcPk, max)
+	ret0, _ := ret[0].([]*types0.BTCDelegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBTCValidatorUnbondingDelegations indicates an expected call of QueryBTCValidatorUnbondingDelegations.
+func (mr *MockClientControllerMockRecorder) QueryBTCValidatorUnbondingDelegations(valBtcPk, max interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryBTCValidatorUnbondingDelegations), valBtcPk, max)
+}
+
 // QueryBestHeader mocks base method.
 func (m *MockClientController) QueryBestHeader() (*coretypes.ResultHeader, error) {
 	m.ctrl.T.Helper()
