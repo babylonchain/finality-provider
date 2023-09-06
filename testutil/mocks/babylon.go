@@ -264,3 +264,18 @@ func (mr *MockClientControllerMockRecorder) SubmitJurySig(btcPubKey, delPubKey, 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockClientController)(nil).SubmitJurySig), btcPubKey, delPubKey, stakingTxHash, sig)
 }
+
+// SubmitValidatorUnbondingSig mocks base method.
+func (m *MockClientController) SubmitValidatorUnbondingSig(valPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPubKey, delPubKey, stakingTxHash, sig)
+	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubmitValidatorUnbondingSig indicates an expected call of SubmitValidatorUnbondingSig.
+func (mr *MockClientControllerMockRecorder) SubmitValidatorUnbondingSig(valPubKey, delPubKey, stakingTxHash, sig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockClientController)(nil).SubmitValidatorUnbondingSig), valPubKey, delPubKey, stakingTxHash, sig)
+}

@@ -338,6 +338,29 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, bl
 	return res, nil
 }
 
+func (bc *BabylonController) SubmitValidatorUnbondingSig(
+	valPubKey *types.BIP340PubKey,
+	delPubKey *types.BIP340PubKey,
+	stakingTxHash string,
+	sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+
+	msg := &btcstakingtypes.MsgAddValidatorUnbondingSig{
+		Signer:         bc.MustGetTxSigner(),
+		ValPk:          valPubKey,
+		DelPk:          delPubKey,
+		StakingTxHash:  stakingTxHash,
+		UnbondingTxSig: sig,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,

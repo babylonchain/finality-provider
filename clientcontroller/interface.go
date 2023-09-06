@@ -57,6 +57,13 @@ type ClientController interface {
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)
 
+	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction
+	SubmitValidatorUnbondingSig(
+		valPubKey *types.BIP340PubKey,
+		delPubKey *types.BIP340PubKey,
+		stakingTxHash string,
+		sig *types.BIP340Signature) (*provider.RelayerTxResponse, error)
+
 	// Note: the following queries are only for PoC
 
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
