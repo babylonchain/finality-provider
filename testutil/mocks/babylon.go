@@ -159,21 +159,6 @@ func (mr *MockClientControllerMockRecorder) QueryLatestFinalizedBlocks(count int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlocks", reflect.TypeOf((*MockClientController)(nil).QueryLatestFinalizedBlocks), count)
 }
 
-// QueryLatestUnfinalizedBlocks mocks base method.
-func (m *MockClientController) QueryLatestUnfinalizedBlocks(count uint64) ([]*types1.BlockInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryLatestUnfinalizedBlocks", count)
-	ret0, _ := ret[0].([]*types1.BlockInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryLatestUnfinalizedBlocks indicates an expected call of QueryLatestUnfinalizedBlocks.
-func (mr *MockClientControllerMockRecorder) QueryLatestUnfinalizedBlocks(count interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestUnfinalizedBlocks", reflect.TypeOf((*MockClientController)(nil).QueryLatestUnfinalizedBlocks), count)
-}
-
 // QueryPendingBTCDelegations mocks base method.
 func (m *MockClientController) QueryPendingBTCDelegations() ([]*types0.BTCDelegation, error) {
 	m.ctrl.T.Helper()

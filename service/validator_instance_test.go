@@ -25,10 +25,10 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
 		defer cleanUp()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 		err := app.Start()
 		require.NoError(t, err)
@@ -36,10 +36,10 @@ func FuzzCommitPubRandList(f *testing.F) {
 		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
+		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
@@ -63,10 +63,10 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
 		defer cleanUp()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 		err := app.Start()
 		require.NoError(t, err)
@@ -75,15 +75,15 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
+		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
@@ -92,7 +92,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			LastCommitHash: testutil.GenRandomByteArray(r, 32),
 		}
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err = valIns.SubmitFinalitySignature(nextBlock)

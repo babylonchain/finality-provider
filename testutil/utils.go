@@ -8,28 +8,20 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/btc-validator/testutil/mocks"
-	"github.com/babylonchain/btc-validator/types"
 )
 
-func PrepareMockedClientController(t *testing.T, blockHeight uint64, lastCommitHash []byte) *mocks.MockClientController {
+func PrepareMockedClientController(t *testing.T, currentHeight uint64, lastCommitHash []byte) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
 	mockClientController := mocks.NewMockClientController(ctl)
 	resHeader := &coretypes.ResultHeader{
 		Header: &cometbfttypes.Header{
-			Height:         int64(blockHeight),
+			Height:         int64(currentHeight),
 			LastCommitHash: lastCommitHash,
 		},
 	}
-	blocks := make([]*types.BlockInfo, 0)
-	bi := &types.BlockInfo{
-		Height:         blockHeight,
-		LastCommitHash: lastCommitHash,
-	}
-	blocks = append(blocks, bi)
 
 	mockClientController.EXPECT().QueryBestHeader().Return(resHeader, nil).AnyTimes()
-	mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(blocks, nil).AnyTimes()
-	mockClientController.EXPECT().QueryLatestUnfinalizedBlocks(uint64(1)).Return(blocks, nil).AnyTimes()
+	mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil)
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 
 	return mockClientController

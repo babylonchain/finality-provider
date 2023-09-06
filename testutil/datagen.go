@@ -9,13 +9,14 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
-	"github.com/babylonchain/babylon/x/btcstaking/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -51,7 +52,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 	require.NoError(t, err)
 
 	// generate and verify PoP, correct case
-	pop, err := types.NewPoP(babylonSK, btcSK)
+	pop, err := bstypes.NewPoP(babylonSK, btcSK)
 	require.NoError(t, err)
 	err = pop.Verify(babylonPK, bip340PK)
 	require.NoError(t, err)
@@ -65,6 +66,19 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 			BtcSig:     pop.BtcSig.MustMarshal(),
 		},
 	}
+}
+
+func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
+	blocks := make([]*types.BlockInfo, 0)
+	for i := startHeight; i <= endHeight; i++ {
+		b := &types.BlockInfo{
+			Height:         i,
+			LastCommitHash: datagen.GenRandomLastCommitHash(r),
+		}
+		blocks = append(blocks, b)
+	}
+
+	return blocks
 }
 
 // GenStoredValidator generates a random validator from the keyring and store it in DB

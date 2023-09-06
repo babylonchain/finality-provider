@@ -38,8 +38,18 @@ func (v *ValidatorInstance) TryCatchUp(currentBlock *types.BlockInfo) (*provider
 		startHeight = lastFinalizedHeight + 1
 	}
 
+	if startHeight == currentBlock.Height {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":     v.GetBtcPkHex(),
+			"start_height":   startHeight,
+			"current_height": currentBlock.Height,
+		}).Debug("the start height is equal to the current block height, no need to catch up")
+		return nil, nil
+	}
+
 	if startHeight >= currentBlock.Height {
-		return nil, fmt.Errorf("no need to catch up")
+		return nil, fmt.Errorf("the start height %v should not be higher than the current block height %v",
+			startHeight, currentBlock.Height)
 	}
 
 	blocks, err := v.cc.QueryBlocks(startHeight, currentBlock.Height)
