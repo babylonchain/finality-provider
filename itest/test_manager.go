@@ -25,6 +25,11 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+var (
+	eventuallyWaitTimeOut = 20 * time.Second
+	eventuallyPollTime    = 500 * time.Millisecond
+)
+
 var btcNetworkParams = &chaincfg.SimNetParams
 
 type TestManager struct {
@@ -39,7 +44,7 @@ type TestDelegationData struct {
 	DelegatorKey            *btcec.PublicKey
 	DelegatorBabylonPrivKey *secp256k1.PrivKey
 	DelegatorBabylonKey     *secp256k1.PubKey
-	StakingTx               *bstypes.StakingTx
+	StakingTx               *bstypes.BabylonBTCTaprootTx
 	SlashingTx              *bstypes.BTCSlashingTx
 	StakingTxInfo           *btcctypes.TransactionInfo
 	DelegatorSig            *types.BIP340Signature
@@ -74,12 +79,25 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	err = valApp.Start()
 	require.NoError(t, err)
 
-	return &TestManager{
+	tm := &TestManager{
 		BabylonHandler: bh,
 		Config:         cfg,
 		Va:             valApp,
 		BabylonClient:  bc,
 	}
+
+	tm.WaitForNodeStart(t)
+
+	return tm
+}
+
+func (tm *TestManager) WaitForNodeStart(t *testing.T) {
+
+	require.Eventually(t, func() bool {
+		_, err := tm.BabylonClient.GetStakingParams()
+
+		return err == nil
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
 func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
@@ -124,7 +142,7 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 
 	jurySig, err := slashingTx.Sign(
 		stakingMsgTx,
-		stakingTx.StakingScript,
+		stakingTx.Script,
 		juryPrivKey,
 		&tm.Config.JuryModeConfig.ActiveNetParams,
 	)
@@ -206,7 +224,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	// delegator sig
 	delegatorSig, err := slashingTx.Sign(
 		stakingMsgTx,
-		stakingTx.StakingScript,
+		stakingTx.Script,
 		delBtcPrivKey,
 		btcNetworkParams,
 	)

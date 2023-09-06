@@ -26,10 +26,8 @@ import (
 )
 
 var (
-	stakingTime           = uint16(100)
-	stakingAmount         = int64(20000)
-	eventuallyWaitTimeOut = 20 * time.Second
-	eventuallyPollTime    = 500 * time.Millisecond
+	stakingTime   = uint16(100)
+	stakingAmount = int64(20000)
 )
 
 func TestPoller(t *testing.T) {

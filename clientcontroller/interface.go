@@ -6,14 +6,14 @@ import (
 	"github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdkTypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
-
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -34,13 +34,20 @@ type StakingParams struct {
 
 	// Address to which slashing transactions are sent
 	SlashingAddress string
+
+	// Minimum comission required by babylon
+	MinComissionRate sdkTypes.Dec
 }
 
 type ClientController interface {
 	GetStakingParams() (*StakingParams, error)
 	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 	// it returns tx hash and error
-	RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error)
+	RegisterValidator(
+		bbnPubKey *secp256k1.PubKey,
+		btcPubKey *types.BIP340PubKey,
+		pop *btcstakingtypes.ProofOfPossession,
+		commission sdkTypes.Dec) (*provider.RelayerTxResponse, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error
 	CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error)
