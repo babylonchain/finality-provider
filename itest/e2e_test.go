@@ -11,7 +11,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -21,6 +20,7 @@ import (
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -52,7 +52,7 @@ func TestPoller(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set auto calculated start height to 1, as we have disabled automatic start height calculation
-	err = poller.Start(1)
+	err = poller.Start()
 	require.NoError(t, err)
 	defer poller.Stop()
 
@@ -155,7 +155,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 
 	// check there's a block finalized
 	require.Eventually(t, func() bool {
-		blocks, err := tm.BabylonClient.QueryLatestFinalisedBlocks(100)
+		blocks, err := tm.BabylonClient.QueryLatestFinalizedBlocks(100)
 		if err != nil {
 			return false
 		}
@@ -233,7 +233,7 @@ func TestMultipleValidators(t *testing.T) {
 
 	// check there's a block finalized
 	require.Eventually(t, func() bool {
-		blocks, err := tm.BabylonClient.QueryLatestFinalisedBlocks(100)
+		blocks, err := tm.BabylonClient.QueryLatestFinalizedBlocks(100)
 		if err != nil {
 			return false
 		}
@@ -336,9 +336,9 @@ func TestDoubleSigning(t *testing.T) {
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	var blocks []*types.IndexedBlock
+	var blocks []*types.BlockInfo
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BabylonClient.QueryLatestFinalisedBlocks(100)
+		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(100)
 		if err != nil {
 			return false
 		}
@@ -348,7 +348,7 @@ func TestDoubleSigning(t *testing.T) {
 	// attack: manually submit a finality vote over a conflicting block
 	// to trigger the extraction of validator's private key
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := &service.BlockInfo{
+	b := &types.BlockInfo{
 		Height:         blocks[0].Height,
 		LastCommitHash: datagen.GenRandomLastCommitHash(r),
 	}

@@ -4,19 +4,28 @@ import (
 	"fmt"
 
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/types"
 )
 
-// CatchUp allows the validator to send a batch of finality signatures
+// TryCatchUp attempts to send a batch of finality signatures
 // from the maximum of the lasted voted height and the last finalized height
 // to the current height
-func (v *ValidatorInstance) CatchUp(currentBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) TryCatchUp(currentBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
 	// get the last finalized height
 	lastFinalizedBlocks, err := v.cc.QueryLatestFinalizedBlocks(1)
 	if err != nil {
 		return nil, err
 	}
+	if lastFinalizedBlocks == nil {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":   v.GetBtcPkHex(),
+			"block_height": currentBlock.Height,
+		}).Debug("no finalized blocks yet, no need to catch up")
+		return nil, nil
+	}
+
 	lastFinalizedHeight := lastFinalizedBlocks[0].Height
 	lastVotedHeight := v.GetLastVotedHeight()
 

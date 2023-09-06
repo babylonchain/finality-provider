@@ -11,6 +11,7 @@ import (
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
 	clientcontroller "github.com/babylonchain/btc-validator/clientcontroller"
 	types1 "github.com/babylonchain/btc-validator/types"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
@@ -81,6 +82,21 @@ func (m *MockClientController) GetStakingParams() (*clientcontroller.StakingPara
 func (mr *MockClientControllerMockRecorder) GetStakingParams() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockClientController)(nil).GetStakingParams))
+}
+
+// QueryBestHeader mocks base method.
+func (m *MockClientController) QueryBestHeader() (*coretypes.ResultHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBestHeader")
+	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBestHeader indicates an expected call of QueryBestHeader.
+func (mr *MockClientControllerMockRecorder) QueryBestHeader() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestHeader", reflect.TypeOf((*MockClientController)(nil).QueryBestHeader))
 }
 
 // QueryBlockFinalization mocks base method.

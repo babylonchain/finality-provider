@@ -85,14 +85,17 @@ func (cp *ChainPoller) GetBlockInfoChan() <-chan *types.BlockInfo {
 	return cp.blockChan
 }
 
-func (cp *ChainPoller) latestUnfinalizedBlock() (*types.BlockInfo, error) {
-	var latestUnfinalizedBlock *types.BlockInfo
+func (cp *ChainPoller) getBestBlock() (*types.BlockInfo, error) {
+	var getBestBlock *types.BlockInfo
 	if err := retry.Do(func() error {
-		res, err := cp.cc.QueryLatestUnfinalizedBlocks(1)
+		res, err := cp.cc.QueryBestHeader()
 		if err != nil {
 			return err
 		}
-		latestUnfinalizedBlock = res[0]
+		getBestBlock = &types.BlockInfo{
+			Height:         uint64(res.Header.Height),
+			LastCommitHash: res.Header.LastCommitHash,
+		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		cp.logger.WithFields(logrus.Fields{
@@ -103,7 +106,7 @@ func (cp *ChainPoller) latestUnfinalizedBlock() (*types.BlockInfo, error) {
 	})); err != nil {
 		return nil, err
 	}
-	return latestUnfinalizedBlock, nil
+	return getBestBlock, nil
 }
 
 func (cp *ChainPoller) pollChain() {
@@ -113,7 +116,7 @@ func (cp *ChainPoller) pollChain() {
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		b, err := cp.latestUnfinalizedBlock()
+		b, err := cp.getBestBlock()
 		if err == nil {
 			// no error and we got the header we wanted to get, bump the state and push
 			// notification about data
@@ -121,7 +124,7 @@ func (cp *ChainPoller) pollChain() {
 
 			cp.logger.WithFields(logrus.Fields{
 				"height": b.Height,
-			}).Info("retrieved the latest unfinalized block from the consumer chain")
+			}).Info("retrieved the best block from the consumer chain")
 
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will

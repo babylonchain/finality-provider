@@ -104,10 +104,6 @@ func (v *ValidatorInstance) getCurrentBlockChan() <-chan *types.BlockInfo {
 	return v.currentBlockChan
 }
 
-func (v *ValidatorInstance) receiveBlock(b *types.BlockInfo) {
-	v.currentBlockChan <- b
-}
-
 func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
 	return v.bbnPk
 }
@@ -221,9 +217,9 @@ func (v *ValidatorInstance) submissionLoop() {
 
 	for {
 		select {
-		case currentBlock := <-v.getCurrentBlockChan():
+		case currentBlock := <-v.cp.GetBlockInfoChan():
 			if v.shouldCatchUp(currentBlock) {
-				res, err := v.CatchUp(currentBlock)
+				res, err := v.TryCatchUp(currentBlock)
 				if err != nil {
 					if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
 						v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
@@ -236,12 +232,15 @@ func (v *ValidatorInstance) submissionLoop() {
 					}).Error("failed to catch up")
 					continue
 				}
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": currentBlock.Height,
-					"tx_hash":      res.TxHash,
-				}).Info("successfully catch-up to the latest block")
-				continue
+				// res might be nil if catch up is not needed
+				if res != nil {
+					v.logger.WithFields(logrus.Fields{
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": currentBlock.Height,
+						"tx_hash":      res.TxHash,
+					}).Info("successfully catch-up to the latest block")
+					continue
+				}
 			}
 			should, err := v.shouldSubmitFinalitySignature(currentBlock)
 			if err != nil {
@@ -677,9 +676,12 @@ func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.Privat
 }
 
 func (v *ValidatorInstance) getLatestBlock() (*types.BlockInfo, error) {
-	blocks, err := v.cc.QueryLatestUnfinalizedBlocks(1)
+	res, err := v.cc.QueryBestHeader()
 	if err != nil {
 		return nil, err
 	}
-	return blocks[0], nil
+	return &types.BlockInfo{
+		Height:         uint64(res.Header.Height),
+		LastCommitHash: res.Header.LastCommitHash,
+	}, nil
 }

@@ -608,6 +608,7 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 	pagination := &sdkquery.PageRequest{
 		Limit:   count,
 		Reverse: reverse,
+		Key:     startKey,
 	}
 
 	ctx, cancel := getContextWithCancel(bc.timeout)

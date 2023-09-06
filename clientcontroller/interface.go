@@ -7,6 +7,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
@@ -63,12 +64,14 @@ type ClientController interface {
 	QueryValidatorVotingPower(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64) (uint64, error)
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
-	// QueryLatestUnfinalizedBlocks returns the latest unfinalized blocks
-	QueryLatestUnfinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
 	// QueryBlocks returns a list of blocks from startHeight to endHeight
 	QueryBlocks(startHeight, endHeight uint64) ([]*types.BlockInfo, error)
 	// QueryBlockFinalization queries whether the block has been finalized
 	QueryBlockFinalization(height uint64) (bool, error)
+
+	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
+	// it returns result with nil header
+	QueryBestHeader() (*ctypes.ResultHeader, error)
 
 	Close() error
 }
