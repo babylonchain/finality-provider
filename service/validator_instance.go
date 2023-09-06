@@ -327,6 +327,10 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 				continue
 			}
 
+			v.logger.WithFields(logrus.Fields{
+				"num_delegations": len(delegationsNeedingSignatures),
+			}).Debug("Retrieved delegations which need unbonding signatures")
+
 			validatorPrivKey, err := v.kc.GetBtcPrivKey()
 
 			if err != nil {

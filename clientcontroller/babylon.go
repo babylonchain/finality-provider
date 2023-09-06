@@ -358,6 +358,13 @@ func (bc *BabylonController) SubmitValidatorUnbondingSig(
 		return nil, err
 	}
 
+	bc.logger.WithFields(logrus.Fields{
+		"validator": valPubKey.MarshalHex(),
+		"code":      res.Code,
+		"height":    res.Height,
+		"tx_hash":   res.TxHash,
+	}).Debug("Succesfuly submitted validator signature for unbonding tx")
+
 	return res, nil
 }
 
@@ -386,6 +393,27 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
+	return res, nil
+}
+
+func (bc *BabylonController) CreateBTCUndelegation(
+	unbondingTx *btcstakingtypes.BabylonBTCTaprootTx,
+	slashingTx *btcstakingtypes.BTCSlashingTx,
+	delSig *types.BIP340Signature,
+) (*provider.RelayerTxResponse, error) {
+	msg := &btcstakingtypes.MsgBTCUndelegate{
+		Signer:               bc.MustGetTxSigner(),
+		UnbondingTx:          unbondingTx,
+		SlashingTx:           slashingTx,
+		DelegatorSlashingSig: delSig,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	bc.logger.Infof("successfully submitted a BTC undelegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
 	return res, nil
 }
 
@@ -648,7 +676,7 @@ func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valBtcPk *typ
 		valBtcPk,
 		max,
 		func(del *btcstakingtypes.BTCDelegation) bool {
-			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig != nil
+			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig == nil
 		},
 	)
 }

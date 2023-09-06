@@ -372,3 +372,83 @@ func getBtcPrivKey(kr keyring.Keyring, keyName val.KeyName) (*btcec.PrivateKey, 
 		return nil, err
 	}
 }
+
+func TestValidatorUnbondingSigSubmission(t *testing.T) {
+	tm := StartManagerWithValidator(t, 1, false)
+	defer tm.Stop(t)
+
+	app := tm.Va
+	valIns := app.ListValidatorInstances()[0]
+
+	// check the public randomness is committed
+	require.Eventually(t, func() bool {
+		randPairs, err := valIns.GetCommittedPubRandPairList()
+		if err != nil {
+			return false
+		}
+		return int(tm.Config.NumPubRand) == len(randPairs)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// send a BTC delegation
+	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+
+	// check the BTC delegation is pending
+	var (
+		dels []*btcstakingtypes.BTCDelegation
+		err  error
+	)
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		if err != nil {
+			return false
+		}
+		return len(dels) == 1
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	// submit Jury sig
+	_ = tm.AddJurySignature(t, dels[0])
+
+	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	params, err := tm.BabylonClient.GetStakingParams()
+	require.NoError(t, err)
+	// check the BTC delegation is active
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
+		if err != nil {
+			return false
+		}
+		status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
+		return len(dels) == 1 && status == btcstakingtypes.BTCDelegationStatus_ACTIVE
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+
+	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
+
+	// wait for our validator to:
+	// - detect new unbonding
+	// - send signature
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
+		if err != nil {
+			return false
+		}
+
+		if len(dels) == 0 {
+			return false
+		}
+
+		del := dels[0]
+
+		if del.BtcUndelegation == nil {
+			return false
+		}
+
+		if del.BtcUndelegation.ValidatorUnbondingSig == nil {
+			return false
+		}
+
+		return true
+	}, 1*time.Minute, eventuallyPollTime)
+}
