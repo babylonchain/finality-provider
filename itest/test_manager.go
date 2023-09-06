@@ -144,7 +144,7 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
-		&tm.Config.JuryModeConfig.ActiveNetParams,
+		&tm.Config.ActiveNetParams,
 	)
 	require.NoError(t, err)
 

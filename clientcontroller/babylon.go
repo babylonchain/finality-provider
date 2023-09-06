@@ -642,6 +642,8 @@ func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *types.BIP340
 }
 
 func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valBtcPk *types.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	// TODO Check what is the order of returned delegations. Ideally we would return
+	// delegation here from the first one which received undelegation
 	return bc.getNValidatorDelegationsMatchingCriteria(
 		valBtcPk,
 		max,
