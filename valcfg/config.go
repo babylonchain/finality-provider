@@ -19,19 +19,21 @@ import (
 )
 
 const (
-	defaultDataDirname          = "data"
-	defaultChainName            = "babylon"
-	defaultLogLevel             = "info"
-	defaultLogDirname           = "logs"
-	defaultLogFilename          = "vald.log"
-	DefaultRPCPort              = 15812
-	defaultConfigFileName       = "vald.conf"
-	defaultNumPubRand           = 100
-	defaultNumPubRandMax        = 100
-	defaultMinRandHeightGap     = 10
-	defaultRandomInterval       = 5 * time.Second
-	defaultSubmitRetryInterval  = 1 * time.Second
-	defaultMaxSubmissionRetries = 20
+	defaultDataDirname                    = "data"
+	defaultChainName                      = "babylon"
+	defaultLogLevel                       = "info"
+	defaultLogDirname                     = "logs"
+	defaultLogFilename                    = "vald.log"
+	DefaultRPCPort                        = 15812
+	defaultConfigFileName                 = "vald.conf"
+	defaultNumPubRand                     = 100
+	defaultNumPubRandMax                  = 100
+	defaultMinRandHeightGap               = 10
+	defaultRandomInterval                 = 5 * time.Second
+	defautlUnbondingSigSubmissionInterval = 20 * time.Second
+	defaultSubmitRetryInterval            = 1 * time.Second
+	defaultMaxSubmissionRetries           = 20
+	defaultBitcoinNetwork                 = "simnet"
 )
 
 var (
@@ -42,26 +44,32 @@ var (
 
 	DefaultConfigFile = filepath.Join(DefaultValdDir, defaultConfigFileName)
 
-	defaultDataDir = filepath.Join(DefaultValdDir, defaultDataDirname)
-	defaultLogDir  = filepath.Join(DefaultValdDir, defaultLogDirname)
+	defaultDataDir         = filepath.Join(DefaultValdDir, defaultDataDirname)
+	defaultLogDir          = filepath.Join(DefaultValdDir, defaultLogDirname)
+	defaultActiveNetParams = chaincfg.SimNetParams
 )
 
 // Config is the main config for the vald cli command
 type Config struct {
 	DebugLevel string `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
 	// ChainName and ChainID (if any) of the chain config identify a consumer chain
-	ChainName                string        `long:"chainname" description:"the name of the consumer chain" choice:"babylon"`
-	ValdDir                  string        `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
-	ConfigFile               string        `long:"configfile" description:"Path to configuration file"`
-	DataDir                  string        `long:"datadir" description:"The directory to store validator's data within"`
-	LogDir                   string        `long:"logdir" description:"Directory to log output."`
-	DumpCfg                  bool          `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
-	NumPubRand               uint64        `long:"numPubRand" description:"The number of Schnorr public randomness for each commitment"`
-	NumPubRandMax            uint64        `long:"numpubrandmax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
-	MinRandHeightGap         uint64        `long:"minrandheightgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
-	RandomnessCommitInterval time.Duration `long:"randomnesscommitinterval" description:"The interval between each attempt to commit public randomness"`
-	SubmissionRetryInterval  time.Duration `long:"submissionretryinterval" description:"The interval between each attempt to submit finality signature or public randomness after a failure"`
-	MaxSubmissionRetries     uint64        `long:"maxsubmissionretries" description:"The maximum number of retries to submit finality signature or public randomness"`
+	ChainName                      string        `long:"chainname" description:"the name of the consumer chain" choice:"babylon"`
+	ValdDir                        string        `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
+	ConfigFile                     string        `long:"configfile" description:"Path to configuration file"`
+	DataDir                        string        `long:"datadir" description:"The directory to store validator's data within"`
+	LogDir                         string        `long:"logdir" description:"Directory to log output."`
+	DumpCfg                        bool          `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
+	NumPubRand                     uint64        `long:"numPubRand" description:"The number of Schnorr public randomness for each commitment"`
+	NumPubRandMax                  uint64        `long:"numpubrandmax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
+	MinRandHeightGap               uint64        `long:"minrandheightgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
+	RandomnessCommitInterval       time.Duration `long:"randomnesscommitinterval" description:"The interval between each attempt to commit public randomness"`
+	SubmissionRetryInterval        time.Duration `long:"submissionretryinterval" description:"The interval between each attempt to submit finality signature or public randomness after a failure"`
+	UnbondingSigSubmissionInterval time.Duration `long:"unbondingsigsubmissioninterval" description:"The interval between each attempt to check and submit unbonding signature"`
+	MaxSubmissionRetries           uint64        `long:"maxsubmissionretries" description:"The maximum number of retries to submit finality signature or public randomness"`
+
+	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
+
+	ActiveNetParams chaincfg.Params
 
 	JuryMode bool `long:"jurymode" description:"If the program is running in Jury mode"`
 
@@ -87,23 +95,26 @@ func DefaultConfig() Config {
 	pollerCfg := DefaultChainPollerConfig()
 	valCfg := DefaultValidatorConfig()
 	return Config{
-		ValdDir:                  DefaultValdDir,
-		ChainName:                defaultChainName,
-		ConfigFile:               DefaultConfigFile,
-		DataDir:                  defaultDataDir,
-		DebugLevel:               defaultLogLevel,
-		LogDir:                   defaultLogDir,
-		DatabaseConfig:           &dbCfg,
-		BabylonConfig:            &bbnCfg,
-		ValidatorModeConfig:      &valCfg,
-		JuryModeConfig:           &juryCfg,
-		PollerConfig:             &pollerCfg,
-		NumPubRand:               defaultNumPubRand,
-		NumPubRandMax:            defaultNumPubRandMax,
-		MinRandHeightGap:         defaultMinRandHeightGap,
-		RandomnessCommitInterval: defaultRandomInterval,
-		SubmissionRetryInterval:  defaultSubmitRetryInterval,
-		MaxSubmissionRetries:     defaultMaxSubmissionRetries,
+		ValdDir:                        DefaultValdDir,
+		ChainName:                      defaultChainName,
+		ConfigFile:                     DefaultConfigFile,
+		DataDir:                        defaultDataDir,
+		DebugLevel:                     defaultLogLevel,
+		LogDir:                         defaultLogDir,
+		DatabaseConfig:                 &dbCfg,
+		BabylonConfig:                  &bbnCfg,
+		ValidatorModeConfig:            &valCfg,
+		JuryModeConfig:                 &juryCfg,
+		PollerConfig:                   &pollerCfg,
+		NumPubRand:                     defaultNumPubRand,
+		NumPubRandMax:                  defaultNumPubRandMax,
+		MinRandHeightGap:               defaultMinRandHeightGap,
+		RandomnessCommitInterval:       defaultRandomInterval,
+		SubmissionRetryInterval:        defaultSubmitRetryInterval,
+		UnbondingSigSubmissionInterval: defautlUnbondingSigSubmissionInterval,
+		MaxSubmissionRetries:           defaultMaxSubmissionRetries,
+		BitcoinNetwork:                 defaultBitcoinNetwork,
+		ActiveNetParams:                defaultActiveNetParams,
 	}
 }
 
@@ -280,20 +291,19 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	// Multiple networks can't be selected simultaneously.  Count number of
 	// network flags passed; assign active network params
 	// while we're at it.
-	if cfg.JuryMode {
-		switch cfg.JuryModeConfig.BitcoinNetwork {
-		case "testnet":
-			cfg.JuryModeConfig.ActiveNetParams = chaincfg.TestNet3Params
-		case "regtest":
-			cfg.JuryModeConfig.ActiveNetParams = chaincfg.RegressionNetParams
-		case "simnet":
-			cfg.JuryModeConfig.ActiveNetParams = chaincfg.SimNetParams
-		case "signet":
-			cfg.JuryModeConfig.ActiveNetParams = chaincfg.SigNetParams
-		default:
-			return nil, mkErr(fmt.Sprintf("invalid network: %v",
-				cfg.JuryModeConfig.BitcoinNetwork))
-		}
+
+	switch cfg.BitcoinNetwork {
+	case "testnet":
+		cfg.ActiveNetParams = chaincfg.TestNet3Params
+	case "regtest":
+		cfg.ActiveNetParams = chaincfg.RegressionNetParams
+	case "simnet":
+		cfg.ActiveNetParams = chaincfg.SimNetParams
+	case "signet":
+		cfg.ActiveNetParams = chaincfg.SigNetParams
+	default:
+		return nil, mkErr(fmt.Sprintf("invalid network: %v",
+			cfg.BitcoinNetwork))
 	}
 
 	// Create the vald directory and all other subdirectories if they

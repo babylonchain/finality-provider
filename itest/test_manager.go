@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -15,6 +16,8 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
@@ -144,7 +147,7 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
-		&tm.Config.JuryModeConfig.ActiveNetParams,
+		&tm.Config.ActiveNetParams,
 	)
 	require.NoError(t, err)
 
@@ -250,6 +253,60 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	}
 }
 
+func (tm *TestManager) InsertBTCUnbonding(
+	t *testing.T,
+	stakingTx *bstypes.BabylonBTCTaprootTx,
+	stakerPrivKey *btcec.PrivateKey,
+	validatorPk *btcec.PublicKey,
+) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	params, err := tm.BabylonClient.GetStakingParams()
+	require.NoError(t, err)
+	slashingAddr := params.SlashingAddress
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+	require.NoError(t, err)
+	stakingTxHash := stakingTx.MustGetTxHash()
+	stakingTxChainHash, err := chainhash.NewHashFromStr(stakingTxHash)
+	require.NoError(t, err)
+
+	stakingOutputIdx, err := btcstaking.GetIdxOutputCommitingToScript(
+		stakingMsgTx, stakingTx.Script, btcNetworkParams,
+	)
+	require.NoError(t, err)
+
+	stakingValue := stakingMsgTx.TxOut[stakingOutputIdx].Value
+	fee := int64(1000)
+
+	unbondingTx, slashUnbondingTx, err := datagen.GenBTCUnbondingSlashingTx(
+		r,
+		btcNetworkParams,
+		stakerPrivKey,
+		validatorPk,
+		params.JuryPk,
+		wire.NewOutPoint(stakingTxChainHash, uint32(stakingOutputIdx)),
+		uint16(params.FinalizationTimeoutBlocks)+1,
+		stakingValue-fee,
+		slashingAddr,
+	)
+	require.NoError(t, err)
+
+	unbondingTxMsg, err := unbondingTx.ToMsgTx()
+	require.NoError(t, err)
+
+	slashingTxSig, err := slashUnbondingTx.Sign(
+		unbondingTxMsg,
+		unbondingTx.Script,
+		stakerPrivKey,
+		btcNetworkParams,
+	)
+	require.NoError(t, err)
+
+	_, err = tm.BabylonClient.CreateBTCUndelegation(
+		unbondingTx, slashUnbondingTx, slashingTxSig,
+	)
+	require.NoError(t, err)
+}
+
 func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Config {
 	cfg := valcfg.DefaultConfig()
 
@@ -263,6 +320,7 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	cfg.BabylonConfig.GasAdjustment = 5
 	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
 	cfg.JuryMode = isJury
+	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg
 }

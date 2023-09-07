@@ -235,7 +235,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
-		&app.config.JuryModeConfig.ActiveNetParams,
+		&app.config.ActiveNetParams,
 	)
 	if err != nil {
 		return nil, err
