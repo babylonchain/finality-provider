@@ -40,7 +40,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		}()
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil).AnyTimes()
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
