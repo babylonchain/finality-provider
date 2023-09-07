@@ -366,6 +366,36 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340P
 	return res, nil
 }
 
+func (bc *BabylonController) SubmitValidatorUnbondingSig(
+	valPubKey *bbntypes.BIP340PubKey,
+	delPubKey *bbntypes.BIP340PubKey,
+	stakingTxHash string,
+	sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error) {
+
+	msg := &btcstakingtypes.MsgAddValidatorUnbondingSig{
+		Signer:         bc.MustGetTxSigner(),
+		ValPk:          valPubKey,
+		DelPk:          delPubKey,
+		StakingTxHash:  stakingTxHash,
+		UnbondingTxSig: sig,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	bc.logger.WithFields(logrus.Fields{
+		"validator": valPubKey.MarshalHex(),
+		"code":      res.Code,
+		"height":    res.Height,
+		"tx_hash":   res.TxHash,
+	}).Debug("Succesfuly submitted validator signature for unbonding tx")
+
+	return res, nil
+}
+
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
@@ -391,6 +421,28 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
+	return res, nil
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
+func (bc *BabylonController) CreateBTCUndelegation(
+	unbondingTx *btcstakingtypes.BabylonBTCTaprootTx,
+	slashingTx *btcstakingtypes.BTCSlashingTx,
+	delSig *bbntypes.BIP340Signature,
+) (*provider.RelayerTxResponse, error) {
+	msg := &btcstakingtypes.MsgBTCUndelegate{
+		Signer:               bc.MustGetTxSigner(),
+		UnbondingTx:          unbondingTx,
+		SlashingTx:           slashingTx,
+		DelegatorSlashingSig: delSig,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	bc.logger.Infof("successfully submitted a BTC undelegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
 	return res, nil
 }
 
@@ -523,11 +575,14 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	return res.Header, nil
 }
 
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP340PubKey) ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
+func (bc *BabylonController) getNDelegations(
+	valBtcPk *bbntypes.BIP340PubKey,
+	startKey []byte,
+	n uint64,
+) ([]*btcstakingtypes.BTCDelegation, []byte, error) {
 	pagination := &sdkquery.PageRequest{
-		Limit: 100,
+		Key:   startKey,
+		Limit: n,
 	}
 
 	ctx, cancel := getContextWithCancel(bc.timeout)
@@ -537,26 +592,87 @@ func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
+	queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
+		ValBtcPkHex: valBtcPk.MarshalHex(),
+		Pagination:  pagination,
+	}
+	res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+	}
+
+	var delegations []*btcstakingtypes.BTCDelegation
+
+	for _, dels := range res.BtcDelegatorDelegations {
+		delegations = append(delegations, dels.Dels...)
+	}
+
+	var nextKey []byte
+
+	if res.Pagination != nil && res.Pagination.NextKey != nil {
+		nextKey = res.Pagination.NextKey
+	}
+
+	return delegations, nextKey, nil
+}
+
+func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
+	valBtcPk *bbntypes.BIP340PubKey,
+	n uint64,
+	match func(*btcstakingtypes.BTCDelegation) bool,
+) ([]*btcstakingtypes.BTCDelegation, error) {
+	batchSize := 100
+	var delegations []*btcstakingtypes.BTCDelegation
+	var startKey []byte
+
 	for {
-		queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
-			ValBtcPkHex: valBtcPk.MarshalHex(),
-			Pagination:  pagination,
-		}
-		res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+		dels, nextKey, err := bc.getNDelegations(valBtcPk, startKey, uint64(batchSize))
 		if err != nil {
-			return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+			return nil, err
 		}
-		for _, dels := range res.BtcDelegatorDelegations {
-			delegations = append(delegations, dels.Dels...)
+
+		for _, del := range dels {
+			if match(del) {
+				delegations = append(delegations, del)
+			}
 		}
-		if res.Pagination == nil || res.Pagination.NextKey == nil {
+
+		if len(delegations) >= int(n) || len(nextKey) == 0 {
 			break
 		}
 
-		pagination.Key = res.Pagination.NextKey
+		startKey = nextKey
 	}
 
-	return delegations, nil
+	if len(delegations) > int(n) {
+		// only return requested number of delegations
+		return delegations[:n], nil
+	} else {
+		return delegations, nil
+	}
+}
+
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
+func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	return bc.getNValidatorDelegationsMatchingCriteria(
+		valBtcPk,
+		max,
+		// fitlering function which always returns true as we want all delegations
+		func(*btcstakingtypes.BTCDelegation) bool { return true },
+	)
+}
+
+func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	// TODO Check what is the order of returned delegations. Ideally we would return
+	// delegation here from the first one which received undelegation
+	return bc.getNValidatorDelegationsMatchingCriteria(
+		valBtcPk,
+		max,
+		func(del *btcstakingtypes.BTCDelegation) bool {
+			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig == nil
+		},
+	)
 }
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height

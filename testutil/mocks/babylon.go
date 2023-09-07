@@ -85,6 +85,21 @@ func (mr *MockClientControllerMockRecorder) GetStakingParams() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockClientController)(nil).GetStakingParams))
 }
 
+// QueryBTCValidatorUnbondingDelegations mocks base method.
+func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valBtcPk *types.BIP340PubKey, max uint64) ([]*types0.BTCDelegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valBtcPk, max)
+	ret0, _ := ret[0].([]*types0.BTCDelegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBTCValidatorUnbondingDelegations indicates an expected call of QueryBTCValidatorUnbondingDelegations.
+func (mr *MockClientControllerMockRecorder) QueryBTCValidatorUnbondingDelegations(valBtcPk, max interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryBTCValidatorUnbondingDelegations), valBtcPk, max)
+}
+
 // QueryBestHeader mocks base method.
 func (m *MockClientController) QueryBestHeader() (*coretypes.ResultHeader, error) {
 	m.ctrl.T.Helper()
@@ -248,4 +263,19 @@ func (m *MockClientController) SubmitJurySig(btcPubKey, delPubKey *types.BIP340P
 func (mr *MockClientControllerMockRecorder) SubmitJurySig(btcPubKey, delPubKey, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockClientController)(nil).SubmitJurySig), btcPubKey, delPubKey, stakingTxHash, sig)
+}
+
+// SubmitValidatorUnbondingSig mocks base method.
+func (m *MockClientController) SubmitValidatorUnbondingSig(valPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPubKey, delPubKey, stakingTxHash, sig)
+	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubmitValidatorUnbondingSig indicates an expected call of SubmitValidatorUnbondingSig.
+func (mr *MockClientControllerMockRecorder) SubmitValidatorUnbondingSig(valPubKey, delPubKey, stakingTxHash, sig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockClientController)(nil).SubmitValidatorUnbondingSig), valPubKey, delPubKey, stakingTxHash, sig)
 }

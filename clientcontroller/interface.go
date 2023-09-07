@@ -61,6 +61,13 @@ type ClientController interface {
 	// SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
 	SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340PubKey, blocks []*types.BlockInfo, sigs []*bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)
 
+	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction
+	SubmitValidatorUnbondingSig(
+		valPubKey *bbntypes.BIP340PubKey,
+		delPubKey *bbntypes.BIP340PubKey,
+		stakingTxHash string,
+		sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)
+
 	// Note: the following queries are only for PoC
 
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
@@ -80,6 +87,11 @@ type ClientController interface {
 	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
 	// it returns result with nil header
 	QueryBestHeader() (*ctypes.ResultHeader, error)
+
+	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
+	// - already received unbodning transaction on babylon chain
+	// - not received validator signature yet
+	QueryBTCValidatorUnbondingDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error)
 
 	Close() error
 }

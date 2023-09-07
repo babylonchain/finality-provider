@@ -60,3 +60,14 @@ type CreateValidatorResult struct {
 	BtcValidatorPk     btcec.PublicKey
 	BabylonValidatorPk secp256k1.PubKey
 }
+
+type unbondingTxSigData struct {
+	stakerPk      *types.BIP340PubKey
+	stakingTxHash string
+	signature     *types.BIP340Signature
+}
+
+type unbondingTxSigSendResult struct {
+	err           error
+	stakingTxHash string
+}
