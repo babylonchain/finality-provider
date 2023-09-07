@@ -126,6 +126,11 @@ func (v *ValidatorInstance) MustGetBtcPk() *btcec.PublicKey {
 	return v.btcPk.MustToBTCPK()
 }
 
+// Exposed mostly for testing purposes
+func (v *ValidatorInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
+	return v.kc.GetBtcPrivKey()
+}
+
 func (v *ValidatorInstance) GetBtcPkHex() string {
 	return v.btcPk.MarshalHex()
 }
