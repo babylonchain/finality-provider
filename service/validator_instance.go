@@ -464,14 +464,6 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
 
-	newLastCommittedHeight := startHeight + uint64(len(pubRandList)-1)
-	if err := v.SetLastCommittedHeight(newLastCommittedHeight); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-		}).Fatal("err while saving last committed height to DB")
-	}
-
 	// save the committed random list to DB
 	// TODO 1: Optimize the db interface to batch the saving operations
 	// TODO 2: Consider safety after recovery
@@ -489,6 +481,14 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 				"btc_pk_hex": v.GetBtcPkHex(),
 			}).Fatal("err while saving committed random pair to DB")
 		}
+	}
+
+	newLastCommittedHeight := startHeight + uint64(len(pubRandList)-1)
+	if err := v.SetLastCommittedHeight(newLastCommittedHeight); err != nil {
+		v.logger.WithFields(logrus.Fields{
+			"err":        err,
+			"btc_pk_hex": v.GetBtcPkHex(),
+		}).Fatal("err while saving last committed height to DB")
 	}
 
 	return res, nil

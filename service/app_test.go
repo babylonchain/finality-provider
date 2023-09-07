@@ -38,6 +38,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		}()
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
@@ -92,16 +93,9 @@ func FuzzAddJurySig(f *testing.F) {
 			require.NoError(t, err)
 		}()
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
+		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
-
-		err = app.Start()
-		require.NoError(t, err)
-		defer func() {
-			err = app.Stop()
-			require.NoError(t, err)
-		}()
 
 		// create a validator object and save it to db
 		validator := testutil.GenStoredValidator(r, t, app)
@@ -115,6 +109,13 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		require.NotNil(t, jurPk)
 		cfg.JuryMode = true
+
+		err = app.Start()
+		require.NoError(t, err)
+		defer func() {
+			err = app.Stop()
+			require.NoError(t, err)
+		}()
 
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
@@ -142,9 +143,9 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
+		mockClientController.EXPECT().QueryPendingBTCDelegations().
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
+		mockClientController.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)

@@ -21,7 +21,6 @@ func PrepareMockedClientController(t *testing.T, currentHeight uint64, lastCommi
 	}
 
 	mockClientController.EXPECT().QueryBestHeader().Return(resHeader, nil).AnyTimes()
-	mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil)
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 
 	return mockClientController
