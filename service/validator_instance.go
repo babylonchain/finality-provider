@@ -33,17 +33,6 @@ type state struct {
 	s *val.ValidatorStore
 }
 
-type unbondingTxSigData struct {
-	stakerPk      *types.BIP340PubKey
-	stakingTxHash string
-	signature     *types.BIP340Signature
-}
-
-type unbondingTxSigSendResult struct {
-	err           error
-	stakingTxHash string
-}
-
 type ValidatorInstance struct {
 	bbnPk *secp256k1.PubKey
 	btcPk *types.BIP340PubKey
@@ -330,6 +319,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 
 			v.logger.WithFields(logrus.Fields{
 				"num_delegations": len(delegationsNeedingSignatures),
+				"btc_pk_hex":      v.GetBtcPkHex(),
 			}).Debug("Retrieved delegations which need unbonding signatures")
 
 			validatorPrivKey, err := v.kc.GetBtcPrivKey()

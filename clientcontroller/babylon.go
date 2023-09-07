@@ -396,6 +396,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return res, nil
 }
 
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) CreateBTCUndelegation(
 	unbondingTx *btcstakingtypes.BabylonBTCTaprootTx,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
