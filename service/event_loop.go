@@ -19,6 +19,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	for {
 		select {
 		case <-jurySigTicker.C:
+			// 1. Get all pending delegations first, this are more important than the unbonding ones
 			dels, err := app.cc.QueryPendingBTCDelegations()
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -32,6 +33,29 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 
 			for _, d := range dels {
 				_, err := app.AddJurySignature(d)
+				if err != nil {
+					app.logger.WithFields(logrus.Fields{
+						"err":        err,
+						"del_btc_pk": d.BtcPk,
+					}).Error("failed to submit Jury sig to the Bitcoin delegation")
+				}
+			}
+			// 2. Get all unbonding delegations
+			unbondingDels, err := app.cc.QueryUnbondindBTCDelegations()
+
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("failed to get pending delegations")
+				continue
+			}
+
+			if len(unbondingDels) == 0 {
+				app.logger.WithFields(logrus.Fields{}).Debug("no unbonding delegations are found")
+			}
+
+			for _, d := range unbondingDels {
+				_, err := app.AddJuryUnbondingSignatures(d)
 				if err != nil {
 					app.logger.WithFields(logrus.Fields{
 						"err":        err,

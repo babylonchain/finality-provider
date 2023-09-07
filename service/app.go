@@ -263,6 +263,102 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 	}, nil
 }
 
+// AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
+// Note: this should be only called when the program is running in Jury mode
+func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegation) (*AddJurySigResponse, error) {
+	if btcDel == nil {
+		return nil, fmt.Errorf("btc delegation is nil")
+	}
+
+	if btcDel.BtcUndelegation == nil {
+		return nil, fmt.Errorf("delegation does not have an unbonding transaction")
+	}
+
+	if btcDel.BtcUndelegation.ValidatorUnbondingSig == nil {
+		return nil, fmt.Errorf("delegation does not have a validator signature for unbonding transaction yet")
+	}
+
+	if btcDel.BtcUndelegation.JurySlashingSig != nil || btcDel.BtcUndelegation.JuryUnbondingSig != nil {
+		return nil, fmt.Errorf("delegation already have required jury signatures")
+	}
+
+	// get Jury private key from the keyring
+	juryPrivKey, err := app.getJuryPrivKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Jury private key: %w", err)
+	}
+
+	// 1. Sign unbonding transaction
+	stakingTx := btcDel.StakingTx
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
+	}
+
+	juryUnbondingSig, err := btcDel.BtcUndelegation.UnbondingTx.Sign(
+		stakingMsgTx,
+		stakingTx.Script,
+		juryPrivKey,
+		&app.config.ActiveNetParams,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
+	}
+
+	// 2. Sign slash unbonding transaction
+	slashUnbondigTx := btcDel.BtcUndelegation.SlashingTx
+	unbondingTx := btcDel.BtcUndelegation.UnbondingTx
+	unbondingMsgTx, err := unbondingTx.ToMsgTx()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize unbonding tx: %w", err)
+	}
+
+	jurySlashingUnbondingSig, err := slashUnbondigTx.Sign(
+		unbondingMsgTx,
+		unbondingTx.Script,
+		juryPrivKey,
+		&app.config.ActiveNetParams,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign slash unbonding tx: %w", err)
+	}
+
+	stakingTxHash := stakingMsgTx.TxHash().String()
+
+	res, err := app.cc.SubmitJuryUnbondingSigs(
+		btcDel.ValBtcPk,
+		btcDel.BtcPk,
+		stakingTxHash,
+		juryUnbondingSig,
+		jurySlashingUnbondingSig,
+	)
+
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"err":          err,
+			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
+			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+		}).Error("failed to submit Jury signature")
+		return nil, err
+	}
+
+	if res == nil {
+		app.logger.WithFields(logrus.Fields{
+			"err":          err,
+			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
+			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+		}).Error("failed to submit Jury signature")
+		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
+	}
+
+	return &AddJurySigResponse{
+		TxHash: res.TxHash,
+	}, nil
+}
+
 func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
 	return app.getPrivKey(app.config.JuryModeConfig.JuryKeyName)
 }
