@@ -13,6 +13,7 @@ import (
 	types1 "github.com/babylonchain/btc-validator/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	types2 "github.com/cosmos/cosmos-sdk/types"
 	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -190,18 +191,18 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(btcPubKey,
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession, commission types2.Dec) (*provider.RelayerTxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop)
+	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop, commission)
 	ret0, _ := ret[0].(*provider.RelayerTxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RegisterValidator indicates an expected call of RegisterValidator.
-func (mr *MockClientControllerMockRecorder) RegisterValidator(bbnPubKey, btcPubKey, pop interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) RegisterValidator(bbnPubKey, btcPubKey, pop, commission interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), bbnPubKey, btcPubKey, pop)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), bbnPubKey, btcPubKey, pop, commission)
 }
 
 // SubmitBatchFinalitySigs mocks base method.

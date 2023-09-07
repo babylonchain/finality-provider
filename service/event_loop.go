@@ -116,10 +116,23 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 	for {
 		select {
 		case req := <-app.registerValidatorRequestChan:
+			params, err := app.cc.GetStakingParams()
+
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err":       err,
+					"bbnPubKey": hex.EncodeToString(req.bbnPubKey.Key),
+					"btcPubKey": req.btcPubKey.MarshalHex(),
+				}).Error("failed to get staking params")
+				req.errResponse <- err
+				continue
+			}
+
 			// we won't do any retries here to not block the loop for more important messages.
 			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop)
+			// TODO: for now use minimum commission rate, but ultimately it should be configurable
+			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop, params.MinComissionRate)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

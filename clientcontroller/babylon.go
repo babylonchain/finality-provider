@@ -20,8 +20,10 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkTypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
+	sttypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
@@ -32,8 +34,9 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
 
-	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
+
+	"github.com/babylonchain/btc-validator/types"
 )
 
 var _ ClientController = &BabylonController{}
@@ -164,6 +167,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		JuryPk:                    juryPk,
 		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
+		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
 	}, nil
 }
 
@@ -254,12 +258,23 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) RegisterValidator(
+	bbnPubKey *secp256k1.PubKey,
+	btcPubKey *bbntypes.BIP340PubKey,
+	pop *btcstakingtypes.ProofOfPossession,
+	commission sdkTypes.Dec,
+) (*provider.RelayerTxResponse, error) {
+
+	// TODO: This should be user configurable
+	emptyDesc := sttypes.Description{}
+
 	msg := &btcstakingtypes.MsgCreateBTCValidator{
-		Signer:    bc.MustGetTxSigner(),
-		BabylonPk: bbnPubKey,
-		BtcPk:     btcPubKey,
-		Pop:       pop,
+		Signer:      bc.MustGetTxSigner(),
+		BabylonPk:   bbnPubKey,
+		BtcPk:       btcPubKey,
+		Pop:         pop,
+		Commission:  &commission,
+		Description: &emptyDesc,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -356,7 +371,7 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340P
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
 	pop *btcstakingtypes.ProofOfPossession,
-	stakingTx *btcstakingtypes.StakingTx,
+	stakingTx *btcstakingtypes.BabylonBTCTaprootTx,
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *bbntypes.BIP340Signature,
