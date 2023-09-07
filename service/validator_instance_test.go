@@ -26,7 +26,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil).AnyTimes()
 		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
@@ -65,7 +65,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(nil, nil).AnyTimes()
 		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).

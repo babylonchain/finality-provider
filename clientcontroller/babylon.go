@@ -34,9 +34,8 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
 
-	"github.com/babylonchain/btc-validator/valcfg"
-
 	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var _ ClientController = &BabylonController{}
