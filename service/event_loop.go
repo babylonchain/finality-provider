@@ -107,16 +107,6 @@ func (app *ValidatorApp) eventLoop() {
 				TxHash: ev.txHash,
 			}
 
-		case ev := <-app.jurySigAddedEventChan:
-			// TODO do we assume the delegator is also a BTC validator?
-			// if so, do we want to change its status to ACTIVE here?
-			// if not, maybe we can remove the handler of this event
-
-			// return to the caller
-			ev.successResponse <- &AddJurySigResponse{
-				TxHash: ev.txHash,
-			}
-
 		case <-app.eventQuit:
 			app.logger.Debug("exiting main eventLoop")
 			return
@@ -177,35 +167,6 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				// the registration
 				successResponse: req.successResponse,
 			}
-		case req := <-app.addJurySigRequestChan:
-			// TODO: we should add some retry mechanism or we can have a health checker to check the connection periodically
-			res, err := app.cc.SubmitJurySig(req.valBtcPk, req.delBtcPk, req.stakingTxHash, req.sig)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"valBtcPubKey": req.valBtcPk.MarshalHex(),
-					"delBtcPubKey": req.delBtcPk.MarshalHex(),
-				}).Error("failed to submit Jury signature")
-				req.errResponse <- err
-				continue
-			}
-
-			if res != nil {
-				app.logger.WithFields(logrus.Fields{
-					"delBtcPk":     req.delBtcPk.MarshalHex(),
-					"valBtcPubKey": req.valBtcPk.MarshalHex(),
-					"txHash":       res.TxHash,
-				}).Info("successfully submit Jury sig over Bitcoin delegation to Babylon")
-			}
-
-			app.jurySigAddedEventChan <- &jurySigAddedEvent{
-				bbnPubKey: req.bbnPubKey,
-				txHash:    res.TxHash,
-				// pass the channel to the event so that we can send the response to the user which requested
-				// the registration
-				successResponse: req.successResponse,
-			}
-
 		case <-app.sentQuit:
 			app.logger.Debug("exiting sentToBabylonLoop")
 			return

@@ -45,10 +45,7 @@ type ValidatorApp struct {
 
 	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
-	addJurySigRequestChan        chan *addJurySigRequest
-
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
-	jurySigAddedEventChan        chan *jurySigAddedEvent
 }
 
 func NewValidatorAppFromConfig(
@@ -91,9 +88,7 @@ func NewValidatorAppFromConfig(
 		eventQuit:                    make(chan struct{}),
 		createValidatorRequestChan:   make(chan *createValidatorRequest),
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
-		addJurySigRequestChan:        make(chan *addJurySigRequest),
 		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
-		jurySigAddedEventChan:        make(chan *jurySigAddedEvent),
 	}, nil
 }
 
@@ -241,26 +236,31 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 		return nil, err
 	}
 
-	request := &addJurySigRequest{
-		bbnPubKey:       btcDel.BabylonPk,
-		valBtcPk:        btcDel.ValBtcPk,
-		delBtcPk:        btcDel.BtcPk,
-		stakingTxHash:   stakingMsgTx.TxHash().String(),
-		sig:             jurySig,
-		errResponse:     make(chan error, 1),
-		successResponse: make(chan *AddJurySigResponse, 1),
-	}
+	stakingTxHash := stakingMsgTx.TxHash().String()
 
-	app.addJurySigRequestChan <- request
+	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, jurySig)
 
-	select {
-	case err := <-request.errResponse:
+	if err != nil {
+		app.logger.WithFields(logrus.Fields{
+			"err":          err,
+			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
+			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+		}).Error("failed to submit Jury signature")
 		return nil, err
-	case successResponse := <-request.successResponse:
-		return successResponse, nil
-	case <-app.quit:
-		return nil, fmt.Errorf("validator app is shutting down")
 	}
+
+	if res == nil {
+		app.logger.WithFields(logrus.Fields{
+			"err":          err,
+			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
+			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+		}).Error("failed to submit Jury signature")
+		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
+	}
+
+	return &AddJurySigResponse{
+		TxHash: res.TxHash,
+	}, nil
 }
 
 func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
