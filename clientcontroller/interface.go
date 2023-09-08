@@ -54,6 +54,17 @@ type ClientController interface {
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
 	SubmitJurySig(btcPubKey *types.BIP340PubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error)
+
+	// SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
+	// it returns tx hash and error
+	SubmitJuryUnbondingSigs(
+		btcPubKey *types.BIP340PubKey,
+		delPubKey *types.BIP340PubKey,
+		stakingTxHash string,
+		unbondingSig *types.BIP340Signature,
+		slashUnbondingSig *types.BIP340Signature,
+	) (*provider.RelayerTxResponse, error)
+
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 	SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)
 
@@ -71,6 +82,11 @@ type ClientController interface {
 	// QueryPendingBTCDelegations queries BTC delegations that need a Jury signature
 	// it is only used when the program is running in Jury mode
 	QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
+
+	// QueryUnbondindBTCDelegations queries BTC delegations that need a Jury sig for unbodning
+	// it is only used when the program is running in Jury mode
+	QueryUnbondindBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
+
 	// QueryValidatorVotingPower queries the voting power of the validator at a given height
 	QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error)
 	// QueryLatestFinalisedBlocks returns the latest `count` finalised blocks

@@ -36,24 +36,8 @@ type RegisterValidatorResponse struct {
 	TxHash string
 }
 
-type addJurySigRequest struct {
-	bbnPubKey       *secp256k1.PubKey
-	valBtcPk        *types.BIP340PubKey
-	delBtcPk        *types.BIP340PubKey
-	sig             *types.BIP340Signature
-	stakingTxHash   string
-	errResponse     chan error
-	successResponse chan *AddJurySigResponse
-}
-
 type AddJurySigResponse struct {
 	TxHash string
-}
-
-type jurySigAddedEvent struct {
-	bbnPubKey       *secp256k1.PubKey
-	txHash          string
-	successResponse chan *AddJurySigResponse
 }
 
 type CreateValidatorResult struct {

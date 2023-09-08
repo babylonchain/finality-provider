@@ -205,6 +205,21 @@ func (mr *MockClientControllerMockRecorder) QueryPendingBTCDelegations() *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingBTCDelegations", reflect.TypeOf((*MockClientController)(nil).QueryPendingBTCDelegations))
 }
 
+// QueryUnbondindBTCDelegations mocks base method.
+func (m *MockClientController) QueryUnbondindBTCDelegations() ([]*types0.BTCDelegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryUnbondindBTCDelegations")
+	ret0, _ := ret[0].([]*types0.BTCDelegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryUnbondindBTCDelegations indicates an expected call of QueryUnbondindBTCDelegations.
+func (mr *MockClientControllerMockRecorder) QueryUnbondindBTCDelegations() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryUnbondindBTCDelegations", reflect.TypeOf((*MockClientController)(nil).QueryUnbondindBTCDelegations))
+}
+
 // QueryValidatorVotingPower mocks base method.
 func (m *MockClientController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -263,6 +278,21 @@ func (m *MockClientController) SubmitJurySig(btcPubKey, delPubKey *types.BIP340P
 func (mr *MockClientControllerMockRecorder) SubmitJurySig(btcPubKey, delPubKey, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockClientController)(nil).SubmitJurySig), btcPubKey, delPubKey, stakingTxHash, sig)
+}
+
+// SubmitJuryUnbondingSigs mocks base method.
+func (m *MockClientController) SubmitJuryUnbondingSigs(btcPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, unbondingSig, slashUnbondingSig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubmitJuryUnbondingSigs", btcPubKey, delPubKey, stakingTxHash, unbondingSig, slashUnbondingSig)
+	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubmitJuryUnbondingSigs indicates an expected call of SubmitJuryUnbondingSigs.
+func (mr *MockClientControllerMockRecorder) SubmitJuryUnbondingSigs(btcPubKey, delPubKey, stakingTxHash, unbondingSig, slashUnbondingSig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJuryUnbondingSigs", reflect.TypeOf((*MockClientController)(nil).SubmitJuryUnbondingSigs), btcPubKey, delPubKey, stakingTxHash, unbondingSig, slashUnbondingSig)
 }
 
 // SubmitValidatorUnbondingSig mocks base method.

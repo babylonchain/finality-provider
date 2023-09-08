@@ -320,6 +320,32 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *types.BIP340PubKey, delPub
 	return res, nil
 }
 
+// SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
+// it returns tx hash and error
+func (bc *BabylonController) SubmitJuryUnbondingSigs(
+	btcPubKey *types.BIP340PubKey,
+	delPubKey *types.BIP340PubKey,
+	stakingTxHash string,
+	unbondingSig *types.BIP340Signature,
+	slashUnbondingSig *types.BIP340Signature,
+) (*provider.RelayerTxResponse, error) {
+	msg := &btcstakingtypes.MsgAddJuryUnbondingSigs{
+		Signer:                 bc.MustGetTxSigner(),
+		ValPk:                  btcPubKey,
+		DelPk:                  delPubKey,
+		StakingTxHash:          stakingTxHash,
+		UnbondingTxSig:         unbondingSig,
+		SlashingUnbondingTxSig: slashUnbondingSig,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 func (bc *BabylonController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
@@ -477,8 +503,6 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 // QueryPendingBTCDelegations queries BTC delegations that need a Jury sig
 // it is only used when the program is running in Jury mode
 func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
-
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -492,9 +516,28 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
-	delegations = append(delegations, res.BtcDelegations...)
 
-	return delegations, nil
+	return res.BtcDelegations, nil
+}
+
+// QueryUnbondindBTCDelegations queries BTC delegations that need a Jury sig for unbodning
+// it is only used when the program is running in Jury mode
+func (bc *BabylonController) QueryUnbondindBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	// query all the unsigned delegations
+	queryRequest := &btcstakingtypes.QueryUnbondingBTCDelegationsRequest{}
+	res, err := queryClient.UnbondingBTCDelegations(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+	}
+
+	return res.BtcDelegations, nil
 }
 
 // QueryValidators queries BTC validators
