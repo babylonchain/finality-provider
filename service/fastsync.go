@@ -9,10 +9,15 @@ import (
 	"github.com/babylonchain/btc-validator/types"
 )
 
-// TryCatchUp attempts to send a batch of finality signatures
-// from the maximum of the lasted voted height and the last finalized height
+// TryFastSync attempts to send a batch of finality signatures
+// from the maximum of the last voted height and the last finalized height
 // to the current height
-func (v *ValidatorInstance) TryCatchUp(currentBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) TryFastSync(currentBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+	if v.inSync.Swap(true) {
+		return nil, fmt.Errorf("the validator has already been in fast sync")
+	}
+	defer v.inSync.Store(false)
+
 	// get the last finalized height
 	lastFinalizedBlocks, err := v.cc.QueryLatestFinalizedBlocks(1)
 	if err != nil {
@@ -47,7 +52,7 @@ func (v *ValidatorInstance) TryCatchUp(currentBlock *types.BlockInfo) (*provider
 		return nil, nil
 	}
 
-	if startHeight >= currentBlock.Height {
+	if startHeight > currentBlock.Height {
 		return nil, fmt.Errorf("the start height %v should not be higher than the current block height %v",
 			startHeight, currentBlock.Height)
 	}

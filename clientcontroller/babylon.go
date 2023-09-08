@@ -806,6 +806,17 @@ func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
 	}, nil
 }
 
+func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	status, err := bc.provider.QueryStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return status, nil
+}
+
 // accessKeyWithLock triggers a function that access key ring while acquiring
 // the file system lock, in order to remain thread-safe when multiple concurrent
 // relayers are running on the same machine and accessing the same keyring

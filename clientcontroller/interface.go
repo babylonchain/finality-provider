@@ -87,6 +87,11 @@ type ClientController interface {
 	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
 	// it returns result with nil header
 	QueryBestHeader() (*ctypes.ResultHeader, error)
+	// QueryNodeStatus returns current node status, with info about latest block
+	QueryNodeStatus() (*ctypes.ResultStatus, error)
+	// QueryHeader queries the header at the given height, if header is not found
+	// it returns result with nil header
+	QueryHeader(height int64) (*ctypes.ResultHeader, error)
 
 	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
 	// - already received unbodning transaction on babylon chain

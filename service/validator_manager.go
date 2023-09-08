@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -36,6 +37,12 @@ func (vm *ValidatorManager) stop() error {
 	}
 
 	return stopErr
+}
+
+func (vm *ValidatorManager) receiveBlock(b *types.BlockInfo) {
+	for _, v := range vm.vals {
+		v.receiveBlock(b)
+	}
 }
 
 func (vm *ValidatorManager) listValidatorInstances() []*ValidatorInstance {

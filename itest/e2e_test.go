@@ -50,33 +50,30 @@ func TestPoller(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set auto calculated start height to 1, as we have disabled automatic start height calculation
-	err = poller.Start()
+	err = poller.Start(1)
 	require.NoError(t, err)
 	defer poller.Stop()
 
 	// Get 3 blocks which should be received in order
 	select {
-	case info := <-poller.GetBestBlockChan():
-		res, _ := bc.QueryBestHeader()
-		require.Equal(t, uint64(res.Header.Height), info.Height)
+	case info := <-poller.GetBlockInfoChan():
+		require.Equal(t, uint64(1), info.Height)
 
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")
 	}
 
 	select {
-	case info := <-poller.GetBestBlockChan():
-		res, _ := bc.QueryBestHeader()
-		require.Equal(t, uint64(res.Header.Height), info.Height)
+	case info := <-poller.GetBlockInfoChan():
+		require.Equal(t, uint64(2), info.Height)
 
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")
 	}
 
 	select {
-	case info := <-poller.GetBestBlockChan():
-		res, _ := bc.QueryBestHeader()
-		require.Equal(t, uint64(res.Header.Height), info.Height)
+	case info := <-poller.GetBlockInfoChan():
+		require.Equal(t, uint64(3), info.Height)
 
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Failed to get block info")

@@ -145,6 +145,21 @@ func (mr *MockClientControllerMockRecorder) QueryBlocks(startHeight, endHeight i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockClientController)(nil).QueryBlocks), startHeight, endHeight)
 }
 
+// QueryHeader mocks base method.
+func (m *MockClientController) QueryHeader(height int64) (*coretypes.ResultHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryHeader", height)
+	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryHeader indicates an expected call of QueryHeader.
+func (mr *MockClientControllerMockRecorder) QueryHeader(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeader", reflect.TypeOf((*MockClientController)(nil).QueryHeader), height)
+}
+
 // QueryHeightWithLastPubRand mocks base method.
 func (m *MockClientController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -173,6 +188,21 @@ func (m *MockClientController) QueryLatestFinalizedBlocks(count uint64) ([]*type
 func (mr *MockClientControllerMockRecorder) QueryLatestFinalizedBlocks(count interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlocks", reflect.TypeOf((*MockClientController)(nil).QueryLatestFinalizedBlocks), count)
+}
+
+// QueryNodeStatus mocks base method.
+func (m *MockClientController) QueryNodeStatus() (*coretypes.ResultStatus, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryNodeStatus")
+	ret0, _ := ret[0].(*coretypes.ResultStatus)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryNodeStatus indicates an expected call of QueryNodeStatus.
+func (mr *MockClientControllerMockRecorder) QueryNodeStatus() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryNodeStatus", reflect.TypeOf((*MockClientController)(nil).QueryNodeStatus))
 }
 
 // QueryPendingBTCDelegations mocks base method.

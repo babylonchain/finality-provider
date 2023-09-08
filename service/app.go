@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/babylonchain/babylon/types"
+	"github.com/avast/retry-go/v4"
+	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 
 	"github.com/babylonchain/btc-validator/val"
@@ -37,6 +39,7 @@ type ValidatorApp struct {
 	vs     *val.ValidatorStore
 	config *valcfg.Config
 	logger *logrus.Logger
+	poller *ChainPoller
 
 	validatorManager *ValidatorManager
 
@@ -66,6 +69,8 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
+	poller := NewChainPoller(logger, config.PollerConfig, cc)
+
 	if config.JuryMode {
 		if _, err := kr.Key(config.JuryModeConfig.JuryKeyName); err != nil {
 			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
@@ -79,6 +84,7 @@ func NewValidatorAppFromConfig(
 		kr:                           kr,
 		config:                       config,
 		logger:                       logger,
+		poller:                       poller,
 		validatorManager:             NewValidatorManager(),
 		quit:                         make(chan struct{}),
 		sentQuit:                     make(chan struct{}),
@@ -141,7 +147,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 		return nil, nil, fmt.Errorf("validator is already registered")
 	}
 
-	btcSig, err := types.NewBIP340Signature(validator.Pop.BtcSig)
+	btcSig, err := bbntypes.NewBIP340Signature(validator.Pop.BtcSig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -169,6 +175,67 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 	case <-app.quit:
 		return nil, nil, fmt.Errorf("validator app is shutting down")
 	}
+}
+
+func (app *ValidatorApp) latestFinalizedBlocksWithRetry(count uint64) ([]*types.BlockInfo, error) {
+	var response []*types.BlockInfo
+	if err := retry.Do(func() error {
+		latestFinalisedBlock, err := app.cc.QueryLatestFinalizedBlocks(count)
+		if err != nil {
+			return err
+		}
+		response = latestFinalisedBlock
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		app.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("Failed to query babylon for the latest finalised blocks")
+	})); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func (app *ValidatorApp) getPollerStartingHeight() (uint64, error) {
+	if !app.config.ValidatorModeConfig.AutoChainScanningMode {
+		return app.config.ValidatorModeConfig.StaticChainScanningStartHeight, nil
+	}
+	earliestVotedHeight, err := app.vs.GetEarliestActiveValidatorVotedHeight()
+	if err != nil {
+		return 0, err
+	}
+
+	// Set initial block to the maximum of
+	//    - earliestVotedHeight
+	//    - the latest Babylon finalised block
+	// The above is to ensure that:
+	//
+	//	(1) Any validator that is eligible to vote for a block,
+	//	 doesn't miss submitting a vote for it.
+	//	(2) The validators do not submit signatures for any already
+	//	 finalised blocks.
+	var initialBlockToGet uint64
+	latestFinalisedBlock, err := app.latestFinalizedBlocksWithRetry(1)
+	if err != nil {
+		return 0, err
+	}
+	if len(latestFinalisedBlock) != 0 {
+		if earliestVotedHeight > latestFinalisedBlock[0].Height {
+			initialBlockToGet = earliestVotedHeight
+		} else {
+			initialBlockToGet = latestFinalisedBlock[0].Height
+		}
+	} else {
+		initialBlockToGet = earliestVotedHeight
+	}
+
+	// ensure that initialBlockToGet is at least 1
+	if initialBlockToGet == 0 {
+		initialBlockToGet = 1
+	}
+	return initialBlockToGet, nil
 }
 
 // StartHandlingValidator starts a validator instance with the given Babylon public key
@@ -273,20 +340,36 @@ func (app *ValidatorApp) Start() error {
 	app.startOnce.Do(func() {
 		app.logger.Infof("Starting ValidatorApp")
 
+		// We perform this calculation here as we do not want to expose the database
+		// to the poller.
+		startHeight, err := app.getPollerStartingHeight()
+		if err != nil {
+			startErr = err
+			return
+		}
+
+		if err := app.poller.Start(startHeight); err != nil {
+			startErr = err
+			return
+		}
+
 		app.eventWg.Add(1)
 		go app.eventLoop()
 
 		app.sentWg.Add(1)
 		go app.handleSentToBabylonLoop()
 
+		// Start submission loop last, as at this point both eventLoop and sentToBabylonLoop
+		// are already running
+		app.wg.Add(1)
 		if app.IsJury() {
-			app.wg.Add(1)
 			go app.jurySigSubmissionLoop()
 		} else {
 			if err := app.StartHandlingValidators(); err != nil {
 				startErr = err
 				return
 			}
+			go app.validatorSubmissionLoop()
 		}
 	})
 
@@ -297,6 +380,10 @@ func (app *ValidatorApp) Stop() error {
 	var stopErr error
 	app.stopOnce.Do(func() {
 		app.logger.Infof("Stopping ValidatorApp")
+		if err := app.poller.Stop(); err != nil {
+			stopErr = err
+			return
+		}
 
 		// Always stop the submission loop first to not generate additional events and actions
 		app.logger.Debug("Stopping submission loop")

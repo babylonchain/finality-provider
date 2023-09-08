@@ -31,6 +31,7 @@ const (
 	defaultMinRandHeightGap               = 10
 	defaultRandomInterval                 = 5 * time.Second
 	defautlUnbondingSigSubmissionInterval = 20 * time.Second
+	defaultCheckSyncInterval              = 20 * time.Second
 	defaultSubmitRetryInterval            = 1 * time.Second
 	defaultMaxSubmissionRetries           = 20
 	defaultBitcoinNetwork                 = "simnet"
@@ -65,6 +66,7 @@ type Config struct {
 	RandomnessCommitInterval       time.Duration `long:"randomnesscommitinterval" description:"The interval between each attempt to commit public randomness"`
 	SubmissionRetryInterval        time.Duration `long:"submissionretryinterval" description:"The interval between each attempt to submit finality signature or public randomness after a failure"`
 	UnbondingSigSubmissionInterval time.Duration `long:"unbondingsigsubmissioninterval" description:"The interval between each attempt to check and submit unbonding signature"`
+	CheckSyncInterval              time.Duration `long:"checksyncinterval" description:"The interval between each check of whether the validator is voting for the latest consumer block"`
 	MaxSubmissionRetries           uint64        `long:"maxsubmissionretries" description:"The maximum number of retries to submit finality signature or public randomness"`
 
 	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
@@ -112,6 +114,7 @@ func DefaultConfig() Config {
 		RandomnessCommitInterval:       defaultRandomInterval,
 		SubmissionRetryInterval:        defaultSubmitRetryInterval,
 		UnbondingSigSubmissionInterval: defautlUnbondingSigSubmissionInterval,
+		CheckSyncInterval:              defaultCheckSyncInterval,
 		MaxSubmissionRetries:           defaultMaxSubmissionRetries,
 		BitcoinNetwork:                 defaultBitcoinNetwork,
 		ActiveNetParams:                defaultActiveNetParams,
