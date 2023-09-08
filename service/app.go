@@ -278,6 +278,9 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 		return nil, fmt.Errorf("delegation does not have a validator signature for unbonding transaction yet")
 	}
 
+	// In normal operation it is not possible to have one of this signatures and not have the other
+	// as only way to update this fields in delegation is by processing the MsgAddJuryUnbondingSigs msg
+	// which should update both fields at atomically in case of successfull transaction.
 	if btcDel.BtcUndelegation.JurySlashingSig != nil || btcDel.BtcUndelegation.JuryUnbondingSig != nil {
 		return nil, fmt.Errorf("delegation already has required jury signatures")
 	}
