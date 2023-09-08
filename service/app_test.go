@@ -21,8 +21,6 @@ import (
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
-
-	"github.com/babylonchain/btc-validator/types"
 )
 
 func FuzzRegisterValidator(f *testing.F) {
@@ -33,13 +31,14 @@ func FuzzRegisterValidator(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
+		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
+		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
@@ -93,15 +92,16 @@ func FuzzAddJurySig(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, startingBlock.Height, startingBlock.LastCommitHash)
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
+		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
+		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
