@@ -503,8 +503,6 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340P
 // QueryPendingBTCDelegations queries BTC delegations that need a Jury sig
 // it is only used when the program is running in Jury mode
 func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
-
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -518,16 +516,13 @@ func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BT
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
-	delegations = append(delegations, res.BtcDelegations...)
 
-	return delegations, nil
+	return res.BtcDelegations, nil
 }
 
 // QueryUnbondindBTCDelegations queries BTC delegations that need a Jury sig for unbodning
 // it is only used when the program is running in Jury mode
 func (bc *BabylonController) QueryUnbondindBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
-	var delegations []*btcstakingtypes.BTCDelegation
-
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -541,9 +536,8 @@ func (bc *BabylonController) QueryUnbondindBTCDelegations() ([]*btcstakingtypes.
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
-	delegations = append(delegations, res.BtcDelegations...)
 
-	return delegations, nil
+	return res.BtcDelegations, nil
 }
 
 // QueryValidators queries BTC validators

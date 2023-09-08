@@ -279,7 +279,7 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 	}
 
 	if btcDel.BtcUndelegation.JurySlashingSig != nil || btcDel.BtcUndelegation.JuryUnbondingSig != nil {
-		return nil, fmt.Errorf("delegation already have required jury signatures")
+		return nil, fmt.Errorf("delegation already has required jury signatures")
 	}
 
 	// get Jury private key from the keyring
