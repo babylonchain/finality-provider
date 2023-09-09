@@ -325,11 +325,11 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *bbntypes.BIP340PubKey, del
 // SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitJuryUnbondingSigs(
-	btcPubKey *types.BIP340PubKey,
-	delPubKey *types.BIP340PubKey,
+	btcPubKey *bbntypes.BIP340PubKey,
+	delPubKey *bbntypes.BIP340PubKey,
 	stakingTxHash string,
-	unbondingSig *types.BIP340Signature,
-	slashUnbondingSig *types.BIP340Signature,
+	unbondingSig *bbntypes.BIP340Signature,
+	slashUnbondingSig *bbntypes.BIP340Signature,
 ) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgAddJuryUnbondingSigs{
 		Signer:                 bc.MustGetTxSigner(),
