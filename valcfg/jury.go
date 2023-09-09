@@ -6,7 +6,7 @@ import (
 
 var (
 	defaultJuryKeyName   = "jury-key"
-	defaultQueryInterval = 5 * time.Second
+	defaultQueryInterval = 15 * time.Second
 )
 
 type JuryConfig struct {

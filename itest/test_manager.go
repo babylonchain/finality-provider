@@ -282,6 +282,37 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 	return res
 }
 
+// delegation must containt undelgation object
+func (tm *TestManager) AddValidatorUnbondingSignature(
+	t *testing.T,
+	btcDel *bstypes.BTCDelegation,
+	validatorSk *btcec.PrivateKey,
+) {
+	stakingTx := btcDel.StakingTx
+	stakingMsgTx, err := stakingTx.ToMsgTx()
+	require.NoError(t, err)
+
+	unbondingTx := btcDel.BtcUndelegation.UnbondingTx
+
+	valSig, err := unbondingTx.Sign(
+		stakingMsgTx,
+		stakingTx.Script,
+		validatorSk,
+		btcNetworkParams,
+	)
+	require.NoError(t, err)
+
+	stakingTxHash := stakingMsgTx.TxHash().String()
+
+	_, err = tm.BabylonClient.SubmitValidatorUnbondingSig(
+		btcDel.ValBtcPk,
+		btcDel.BtcPk,
+		stakingTxHash,
+		valSig,
+	)
+	require.NoError(t, err)
+}
+
 func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 	kr := tm.Va.GetKeyring()
 	juryKeyName := tm.BabylonHandler.GetJuryKeyName()
@@ -445,6 +476,7 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	cfg.BabylonConfig.GasAdjustment = 5
 	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
 	cfg.JuryMode = isJury
+	cfg.JuryModeConfig.QueryInterval = 7 * time.Second
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg
