@@ -38,7 +38,7 @@ var (
 var btcNetworkParams = &chaincfg.SimNetParams
 
 type TestManager struct {
-	wg             sync.WaitGroup
+	Wg             sync.WaitGroup
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
 	Va             *service.ValidatorApp
@@ -137,7 +137,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) waitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
 	require.Eventually(t, func() bool {
 		queriedValidators, err := tm.BabylonClient.QueryValidators()
 		if err != nil {
@@ -147,7 +147,7 @@ func (tm *TestManager) waitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKe
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func (tm *TestManager) waitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
+func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
 	require.Eventually(t, func() bool {
 		randPairs, err := valIns.GetCommittedPubRandPairList()
 		if err != nil {
@@ -157,7 +157,7 @@ func (tm *TestManager) waitForValPubRandCommitted(t *testing.T, valIns *service.
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func (tm *TestManager) waitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
 	var (
 		dels []*bstypes.BTCDelegation
 		err  error
@@ -173,7 +173,7 @@ func (tm *TestManager) waitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	return dels
 }
 
-func (tm *TestManager) waitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
 	var dels []*bstypes.BTCDelegation
 	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
@@ -184,13 +184,13 @@ func (tm *TestManager) waitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 		if err != nil {
 			return false
 		}
-		return len(dels) == n && checkDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
+		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	return dels
 }
 
-func (tm *TestManager) waitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
 	var (
 		dels []*bstypes.BTCDelegation
 		err  error
@@ -211,7 +211,7 @@ func (tm *TestManager) waitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BI
 	return dels
 }
 
-func checkDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
+func CheckDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
 	allChecked := true
 	for _, d := range dels {
 		s := d.GetStatus(btcHeight, w)
@@ -223,7 +223,7 @@ func checkDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, 
 	return allChecked
 }
 
-func (tm *TestManager) waitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
+func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
 	var (
 		blocks []*types.BlockInfo
 		err    error
@@ -239,7 +239,7 @@ func (tm *TestManager) waitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	return blocks
 }
 
-func (tm *TestManager) stopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
+func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
 	headerBeforeStop, err := tm.BabylonClient.QueryBestHeader()
 	require.NoError(t, err)
 	err = valIns.Stop()

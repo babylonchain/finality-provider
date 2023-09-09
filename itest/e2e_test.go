@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
@@ -100,26 +97,26 @@ func TestValidatorLifeCycle(t *testing.T) {
 	valIns, err := app.GetValidatorInstance(bbnPk)
 	require.NoError(t, err)
 	require.Equal(t, valIns.GetStoreValidator().Status, proto.ValidatorStatus_REGISTERED)
-	tm.waitForValRegistered(t, bbnPk)
+	tm.WaitForValRegistered(t, bbnPk)
 
 	// check the public randomness is committed
-	tm.waitForValPubRandCommitted(t, valIns)
+	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.waitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
-	dels = tm.waitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	_ = tm.waitForNFinalizedBlocks(t, 1)
+	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
 // TestMultipleValidators tests starting with multiple validators
@@ -133,42 +130,42 @@ func TestMultipleValidators(t *testing.T) {
 
 	// submit BTC delegations for each validator
 	for _, valIns := range valInstances {
-		tm.wg.Add(1)
+		tm.Wg.Add(1)
 		go func(v *service.ValidatorInstance) {
-			defer tm.wg.Done()
+			defer tm.Wg.Done()
 			// check the public randomness is committed
-			tm.waitForValPubRandCommitted(t, v)
+			tm.WaitForValPubRandCommitted(t, v)
 
 			// send a BTC delegation
 			_ = tm.InsertBTCDelegation(t, v.MustGetBtcPk(), stakingTime, stakingAmount)
 		}(valIns)
 	}
-	tm.wg.Wait()
+	tm.Wg.Wait()
 
 	// check the 3 BTC delegations are pending
-	dels := tm.waitForNPendingDels(t, 3)
+	dels := tm.WaitForNPendingDels(t, 3)
 
 	// submit Jury sigs for each delegation
 	for _, del := range dels {
-		tm.wg.Add(1)
+		tm.Wg.Add(1)
 		go func(btcDel *btcstakingtypes.BTCDelegation) {
-			defer tm.wg.Done()
+			defer tm.Wg.Done()
 			_ = tm.AddJurySignature(t, btcDel)
 		}(del)
 	}
-	tm.wg.Wait()
+	tm.Wg.Wait()
 
 	for _, valIns := range valInstances {
-		tm.wg.Add(1)
+		tm.Wg.Add(1)
 		go func(v *service.ValidatorInstance) {
-			defer tm.wg.Done()
-			_ = tm.waitForValNActiveDels(t, v.GetBtcPkBIP340(), 1)
+			defer tm.Wg.Done()
+			_ = tm.WaitForValNActiveDels(t, v.GetBtcPkBIP340(), 1)
 		}(valIns)
 	}
-	tm.wg.Wait()
+	tm.Wg.Wait()
 
 	// check there's a block finalized
-	_ = tm.waitForNFinalizedBlocks(t, 1)
+	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
 func TestJurySigSubmission(t *testing.T) {
@@ -180,7 +177,7 @@ func TestJurySigSubmission(t *testing.T) {
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
-	dels := tm.waitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 }
 
@@ -195,24 +192,24 @@ func TestDoubleSigning(t *testing.T) {
 	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
-	tm.waitForValPubRandCommitted(t, valIns)
+	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.waitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	// check the BTC delegation is active
-	dels = tm.waitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	finalizedBlocks := tm.waitForNFinalizedBlocks(t, 1)
+	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 
 	// attack: manually submit a finality vote over a conflicting block
@@ -254,31 +251,31 @@ func TestFastSync(t *testing.T) {
 	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
-	tm.waitForValPubRandCommitted(t, valIns)
+	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.waitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
-	dels = tm.waitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	finalizedBlocks := tm.waitForNFinalizedBlocks(t, 1)
+	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
-	tm.stopAndRestartValidatorAfterNBlocks(t, n, valIns)
+	tm.StopAndRestartValidatorAfterNBlocks(t, n, valIns)
 
 	// check there are n+1 blocks finalized
-	finalizedBlocks = tm.waitForNFinalizedBlocks(t, n+1)
+	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, n+1)
 	finalizedHeight := finalizedBlocks[0].Height
 	t.Logf("the latest finalized block is at %v", finalizedHeight)
 
@@ -298,23 +295,23 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
-	tm.waitForValPubRandCommitted(t, valIns)
+	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.waitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
-	dels = tm.waitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
 
-	_ = tm.waitForValNUnbondingDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForValNUnbondingDels(t, valIns.GetBtcPkBIP340(), 1)
 }
 
 func TestJuryUnbondingSigSubmission(t *testing.T) {
