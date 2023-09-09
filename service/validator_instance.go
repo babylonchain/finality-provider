@@ -46,9 +46,6 @@ type ValidatorInstance struct {
 	kc           *val.KeyringController
 	cc           clientcontroller.ClientController
 
-	startOnce sync.Once
-	stopOnce  sync.Once
-
 	inSync *atomic.Bool
 
 	wg   sync.WaitGroup
@@ -98,7 +95,6 @@ func NewValidatorInstance(
 		inSync:       atomic.NewBool(false),
 		kc:           kc,
 		cc:           cc,
-		quit:         make(chan struct{}),
 	}, nil
 }
 
@@ -186,32 +182,29 @@ func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 }
 
 func (v *ValidatorInstance) Start() error {
-	var startErr error
-	v.startOnce.Do(func() {
-		v.logger.Infof("Starting thread handling validator %s", v.GetBtcPkHex())
+	v.logger.Infof("Starting thread handling validator %s", v.GetBtcPkHex())
 
-		v.wg.Add(1)
-		go v.submissionLoop()
-		v.wg.Add(1)
-		go v.unbondindSigSubmissionLoop()
-		v.wg.Add(1)
-		go v.fastSyncLoop()
-	})
+	v.quit = make(chan struct{})
 
-	return startErr
+	v.wg.Add(1)
+	go v.submissionLoop()
+	v.wg.Add(1)
+	go v.unbondindSigSubmissionLoop()
+	v.wg.Add(1)
+	go v.fastSyncLoop()
+
+	return nil
 }
 
 func (v *ValidatorInstance) Stop() error {
-	var stopErr error
-	v.stopOnce.Do(func() {
-		v.logger.Infof("Stopping thread handling validator %s", v.GetBtcPkHex())
+	v.logger.Infof("Stopping thread handling validator %s", v.GetBtcPkHex())
 
-		close(v.quit)
-		v.wg.Wait()
+	close(v.quit)
+	v.wg.Wait()
 
-		v.logger.Debugf("The thread handling validator %s is successfully stopped", v.GetBtcPkHex())
-	})
-	return stopErr
+	v.logger.Debugf("The thread handling validator %s is successfully stopped", v.GetBtcPkHex())
+
+	return nil
 }
 
 func (v *ValidatorInstance) signUnbondingTransactions(
@@ -305,6 +298,7 @@ func (v *ValidatorInstance) fastSyncLoop() {
 		select {
 		case <-checkSyncTicker.C:
 			if v.inSync.Load() {
+				v.logger.Debugf("the validator %s is already syncing", v.GetBtcPkHex())
 				continue
 			}
 			latestBlock, err := v.getLatestBlock()
@@ -340,7 +334,7 @@ func (v *ValidatorInstance) fastSyncLoop() {
 				}
 			}
 		case <-v.quit:
-			v.logger.Infof("terminating the validator instance %s", v.GetBtcPkHex())
+			v.logger.Info("the fast sync loop is closing")
 			return
 		}
 	}
@@ -420,7 +414,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 			}
 
 		case <-v.quit:
-			v.logger.Debugf("the validator instance %s is closing", v.GetBabylonPkHex())
+			v.logger.Debug("the unbonding sig submission loop is closing")
 			return
 		}
 	}
@@ -435,12 +429,56 @@ func (v *ValidatorInstance) submissionLoop() {
 	for {
 		select {
 		case b := <-v.getNextBlockChan():
+			v.logger.WithFields(logrus.Fields{
+				"btc_pk_hex":   v.GetBtcPkHex(),
+				"block_height": b.Height,
+			}).Debug("the validator received a new block, start processing")
 			if v.inSync.Load() {
 				v.logger.WithFields(logrus.Fields{
 					"btc_pk_hex":   v.GetBtcPkHex(),
 					"block_height": b.Height,
 				}).Debug("the validator is in fast sync, skip processing new blocks")
 				continue
+			}
+			if b.Height <= v.GetLastVotedHeight() {
+				v.logger.WithFields(logrus.Fields{
+					"btc_pk_hex":        v.GetBtcPkHex(),
+					"block_height":      b.Height,
+					"last_voted_height": v.GetLastVotedHeight(),
+				}).Debug("the block has been voted before, skip voting")
+				continue
+			}
+			latestBlock, err := v.getLatestBlock()
+			if err != nil {
+				v.logger.WithFields(logrus.Fields{
+					"err":        err,
+					"btc_pk_hex": v.GetBtcPkHex(),
+				}).Warnf(instanceTerminatingMsg)
+				continue
+			}
+			if v.isBehind(latestBlock) {
+				res, err := v.TryFastSync(latestBlock)
+				if err != nil {
+					if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+						v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
+						return
+					}
+					v.logger.WithFields(logrus.Fields{
+						"err":          err,
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": latestBlock.Height,
+					}).Error("failed to catch up")
+					continue
+				}
+				// res might be nil if catch up is not needed
+				if res != nil {
+					v.logger.WithFields(logrus.Fields{
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": latestBlock.Height,
+						"tx_hash":      res.TxHash,
+					}).Info("successfully catch-up to the latest block")
+					continue
+				}
 			}
 			// use the copy of the block to avoid the impact to other receivers
 			nextBlock := *b
@@ -503,7 +541,7 @@ func (v *ValidatorInstance) submissionLoop() {
 				}).Info("successfully committed public randomness to the consumer chain")
 			}
 		case <-v.quit:
-			v.logger.Infof("terminating the validator instance %s", v.GetBtcPkHex())
+			v.logger.Info("the finality signature and public randomness submission loop is closing")
 			return
 		}
 	}

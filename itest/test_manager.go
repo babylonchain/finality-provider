@@ -10,7 +10,7 @@ import (
 
 	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -25,6 +25,7 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -50,7 +51,7 @@ type TestDelegationData struct {
 	StakingTx               *bstypes.BabylonBTCTaprootTx
 	SlashingTx              *bstypes.BTCSlashingTx
 	StakingTxInfo           *btcctypes.TransactionInfo
-	DelegatorSig            *types.BIP340Signature
+	DelegatorSig            *bbntypes.BIP340Signature
 
 	SlashingAddr  string
 	StakingTime   uint16
@@ -134,6 +135,128 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func (tm *TestManager) waitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
+	require.Eventually(t, func() bool {
+		queriedValidators, err := tm.BabylonClient.QueryValidators()
+		if err != nil {
+			return false
+		}
+		return len(queriedValidators) == 1 && queriedValidators[0].BabylonPk.Equals(bbnPk)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func (tm *TestManager) waitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
+	require.Eventually(t, func() bool {
+		randPairs, err := valIns.GetCommittedPubRandPairList()
+		if err != nil {
+			return false
+		}
+		return int(tm.Config.NumPubRand) == len(randPairs)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func (tm *TestManager) waitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+	var (
+		dels []*bstypes.BTCDelegation
+		err  error
+	)
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		if err != nil {
+			return false
+		}
+		return len(dels) == n
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return dels
+}
+
+func (tm *TestManager) waitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
+	var dels []*bstypes.BTCDelegation
+	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	params, err := tm.BabylonClient.GetStakingParams()
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
+		if err != nil {
+			return false
+		}
+		return len(dels) == n && checkDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return dels
+}
+
+func (tm *TestManager) waitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
+	var (
+		dels []*bstypes.BTCDelegation
+		err  error
+	)
+	// wait for our validator to:
+	// - detect new unbonding
+	// - send signature
+	require.Eventually(t, func() bool {
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
+		if err != nil {
+			return false
+		}
+
+		return len(dels) == 1 && dels[0].BtcUndelegation != nil && dels[0].BtcUndelegation.ValidatorUnbondingSig != nil
+
+	}, 1*time.Minute, eventuallyPollTime)
+
+	return dels
+}
+
+func checkDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
+	allChecked := true
+	for _, d := range dels {
+		s := d.GetStatus(btcHeight, w)
+		if s != status {
+			allChecked = false
+		}
+	}
+
+	return allChecked
+}
+
+func (tm *TestManager) waitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
+	var (
+		blocks []*types.BlockInfo
+		err    error
+	)
+	require.Eventually(t, func() bool {
+		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(100)
+		if err != nil {
+			return false
+		}
+		return len(blocks) >= n
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return blocks
+}
+
+func (tm *TestManager) stopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
+	headerBeforeStop, err := tm.BabylonClient.QueryBestHeader()
+	require.NoError(t, err)
+	err = valIns.Stop()
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		headerAfterStop, err := tm.BabylonClient.QueryBestHeader()
+		if err != nil {
+			return false
+		}
+
+		return headerAfterStop.Header.Height >= int64(n)+headerBeforeStop.Header.Height
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Log("restarting the validator instance")
+	err = valIns.Start()
+	require.NoError(t, err)
+}
+
 func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *provider.RelayerTxResponse {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
@@ -212,7 +335,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 		Height: currentBtcTip.Height + 1,
 		Work:   &accumulatedWork,
 	}
-	headers := make([]*types.BTCHeaderBytes, 0)
+	headers := make([]*bbntypes.BTCHeaderBytes, 0)
 	headers = append(headers, &blockWithStakingTx.HeaderBytes)
 	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
 		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)

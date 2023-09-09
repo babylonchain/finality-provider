@@ -194,7 +194,7 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 
 			cp.logger.WithFields(logrus.Fields{
 				"height": result.Header.Height,
-			}).Info("retrieved the header from the consumer chain")
+			}).Info("the poller retrieved the header from the consumer chain")
 
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will
