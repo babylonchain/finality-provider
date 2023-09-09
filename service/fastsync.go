@@ -9,55 +9,21 @@ import (
 	"github.com/babylonchain/btc-validator/types"
 )
 
-// TryFastSync attempts to send a batch of finality signatures
+// FastSync attempts to send a batch of finality signatures
 // from the maximum of the last voted height and the last finalized height
 // to the current height
-func (v *ValidatorInstance) TryFastSync(currentBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
-	if v.inSync.Swap(true) {
+func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*provider.RelayerTxResponse, error) {
+	if v.InSync.Swap(true) {
 		return nil, fmt.Errorf("the validator has already been in fast sync")
 	}
-	defer v.inSync.Store(false)
+	defer v.InSync.Store(false)
 
-	// get the last finalized height
-	lastFinalizedBlocks, err := v.cc.QueryLatestFinalizedBlocks(1)
-	if err != nil {
-		return nil, err
-	}
-	if lastFinalizedBlocks == nil {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   v.GetBtcPkHex(),
-			"block_height": currentBlock.Height,
-		}).Debug("no finalized blocks yet, no need to catch up")
-		return nil, nil
-	}
-
-	lastFinalizedHeight := lastFinalizedBlocks[0].Height
-	lastVotedHeight := v.GetLastVotedHeight()
-
-	// get the startHeight from the maximum of the lastVotedHeight and
-	// the lastFinalizedHeight plus 1
-	var startHeight uint64
-	if lastFinalizedHeight < lastVotedHeight {
-		startHeight = lastVotedHeight + 1
-	} else {
-		startHeight = lastFinalizedHeight + 1
-	}
-
-	if startHeight == currentBlock.Height {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":     v.GetBtcPkHex(),
-			"start_height":   startHeight,
-			"current_height": currentBlock.Height,
-		}).Debug("the start height is equal to the current block height, no need to catch up")
-		return nil, nil
-	}
-
-	if startHeight > currentBlock.Height {
+	if startHeight > endHeight {
 		return nil, fmt.Errorf("the start height %v should not be higher than the current block height %v",
-			startHeight, currentBlock.Height)
+			startHeight, endHeight)
 	}
 
-	blocks, err := v.cc.QueryBlocks(startHeight, currentBlock.Height)
+	blocks, err := v.cc.QueryBlocks(startHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +50,7 @@ func (v *ValidatorInstance) TryFastSync(currentBlock *types.BlockInfo) (*provide
 		v.logger.WithFields(logrus.Fields{
 			"btc_pk_hex":   v.GetBtcPkHex(),
 			"start_height": startHeight,
-			"end_height":   currentBlock.Height,
+			"end_height":   endHeight,
 		}).Debug("no blocks should be submitted finality signature for while catching up")
 		return nil, nil
 	}

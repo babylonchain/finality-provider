@@ -28,6 +28,8 @@ func FuzzFastSync(f *testing.F) {
 		require.NoError(t, err)
 		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
+		// disable syncing
+		valIns.InSync.Store(true)
 
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
@@ -44,8 +46,7 @@ func FuzzFastSync(f *testing.F) {
 		err = valIns.SetLastCommittedHeight(currentHeight + 1)
 		require.NoError(t, err)
 
-		// catch up
-		currentBlock := &types.BlockInfo{Height: currentHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		// fast sync
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
@@ -54,7 +55,9 @@ func FuzzFastSync(f *testing.F) {
 			Return(catchUpBlocks, nil)
 		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.GetBtcPkBIP340(), catchUpBlocks, gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err = valIns.TryFastSync(currentBlock)
+		// enable syncing
+		valIns.InSync.Store(false)
+		res, err = valIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Equal(t, expectedTxHash, res.TxHash)

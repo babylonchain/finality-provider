@@ -37,6 +37,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
+		// disable syncing
+		valIns.InSync.Store(true)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
@@ -76,6 +78,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		require.NoError(t, err)
 		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
+		// disable syncing
+		valIns.InSync.Store(true)
 
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)

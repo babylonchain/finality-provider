@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -37,6 +38,7 @@ var (
 var btcNetworkParams = &chaincfg.SimNetParams
 
 type TestManager struct {
+	wg             sync.WaitGroup
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
 	Va             *service.ValidatorApp

@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package e2etest
 
 import (
@@ -130,7 +133,9 @@ func TestMultipleValidators(t *testing.T) {
 
 	// submit BTC delegations for each validator
 	for _, valIns := range valInstances {
+		tm.wg.Add(1)
 		go func(v *service.ValidatorInstance) {
+			defer tm.wg.Done()
 			// check the public randomness is committed
 			tm.waitForValPubRandCommitted(t, v)
 
@@ -138,22 +143,29 @@ func TestMultipleValidators(t *testing.T) {
 			_ = tm.InsertBTCDelegation(t, v.MustGetBtcPk(), stakingTime, stakingAmount)
 		}(valIns)
 	}
+	tm.wg.Wait()
 
-	// check the BTC delegation is pending
-	dels := tm.waitForNPendingDels(t, 1)
+	// check the 3 BTC delegations are pending
+	dels := tm.waitForNPendingDels(t, 3)
 
 	// submit Jury sigs for each delegation
 	for _, del := range dels {
+		tm.wg.Add(1)
 		go func(btcDel *btcstakingtypes.BTCDelegation) {
+			defer tm.wg.Done()
 			_ = tm.AddJurySignature(t, btcDel)
 		}(del)
 	}
+	tm.wg.Wait()
 
 	for _, valIns := range valInstances {
+		tm.wg.Add(1)
 		go func(v *service.ValidatorInstance) {
+			defer tm.wg.Done()
 			_ = tm.waitForValNActiveDels(t, v.GetBtcPkBIP340(), 1)
 		}(valIns)
 	}
+	tm.wg.Wait()
 
 	// check there's a block finalized
 	_ = tm.waitForNFinalizedBlocks(t, 1)

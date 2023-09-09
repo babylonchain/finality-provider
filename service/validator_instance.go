@@ -46,7 +46,8 @@ type ValidatorInstance struct {
 	kc           *val.KeyringController
 	cc           clientcontroller.ClientController
 
-	inSync *atomic.Bool
+	isStarted *atomic.Bool
+	InSync    *atomic.Bool
 
 	wg   sync.WaitGroup
 	quit chan struct{}
@@ -92,7 +93,8 @@ func NewValidatorInstance(
 		cfg:          cfg,
 		blocksToVote: blocksToVote,
 		logger:       logger,
-		inSync:       atomic.NewBool(false),
+		isStarted:    atomic.NewBool(false),
+		InSync:       atomic.NewBool(false),
 		kc:           kc,
 		cc:           cc,
 	}, nil
@@ -182,6 +184,10 @@ func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 }
 
 func (v *ValidatorInstance) Start() error {
+	if v.isStarted.Swap(true) {
+		return fmt.Errorf("the validator instance %s is already started", v.GetBtcPkHex())
+	}
+
 	v.logger.Infof("Starting thread handling validator %s", v.GetBtcPkHex())
 
 	v.quit = make(chan struct{})
@@ -190,13 +196,13 @@ func (v *ValidatorInstance) Start() error {
 	go v.submissionLoop()
 	v.wg.Add(1)
 	go v.unbondindSigSubmissionLoop()
-	v.wg.Add(1)
-	go v.fastSyncLoop()
 
 	return nil
 }
 
 func (v *ValidatorInstance) Stop() error {
+	v.isStarted.Store(false)
+
 	v.logger.Infof("Stopping thread handling validator %s", v.GetBtcPkHex())
 
 	close(v.quit)
@@ -286,58 +292,6 @@ func (v *ValidatorInstance) sendSignaturesForUnbondingTransactions(sigsToSend []
 	}
 
 	return res
-}
-
-func (v *ValidatorInstance) fastSyncLoop() {
-	defer v.wg.Done()
-
-	checkSyncTicker := time.NewTicker(v.cfg.CheckSyncInterval)
-	defer checkSyncTicker.Stop()
-
-	for {
-		select {
-		case <-checkSyncTicker.C:
-			if v.inSync.Load() {
-				v.logger.Debugf("the validator %s is already syncing", v.GetBtcPkHex())
-				continue
-			}
-			latestBlock, err := v.getLatestBlock()
-			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":        err,
-					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Warnf(instanceTerminatingMsg)
-				return
-			}
-			if v.isBehind(latestBlock) {
-				res, err := v.TryFastSync(latestBlock)
-				if err != nil {
-					if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-						v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-						return
-					}
-					v.logger.WithFields(logrus.Fields{
-						"err":          err,
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": latestBlock.Height,
-					}).Error("failed to catch up")
-					continue
-				}
-				// res might be nil if catch up is not needed
-				if res != nil {
-					v.logger.WithFields(logrus.Fields{
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": latestBlock.Height,
-						"tx_hash":      res.TxHash,
-					}).Info("successfully catch-up to the latest block")
-					continue
-				}
-			}
-		case <-v.quit:
-			v.logger.Info("the fast sync loop is closing")
-			return
-		}
-	}
 }
 
 func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
@@ -433,7 +387,7 @@ func (v *ValidatorInstance) submissionLoop() {
 				"btc_pk_hex":   v.GetBtcPkHex(),
 				"block_height": b.Height,
 			}).Debug("the validator received a new block, start processing")
-			if v.inSync.Load() {
+			if v.InSync.Load() {
 				v.logger.WithFields(logrus.Fields{
 					"btc_pk_hex":   v.GetBtcPkHex(),
 					"block_height": b.Height,
@@ -448,37 +402,25 @@ func (v *ValidatorInstance) submissionLoop() {
 				}).Debug("the block has been voted before, skip voting")
 				continue
 			}
-			latestBlock, err := v.getLatestBlock()
+			res, err := v.tryFastSync()
 			if err != nil {
+				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
+					return
+				}
 				v.logger.WithFields(logrus.Fields{
 					"err":        err,
 					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Warnf(instanceTerminatingMsg)
+				}).Error("failed to sync up")
 				continue
 			}
-			if v.isBehind(latestBlock) {
-				res, err := v.TryFastSync(latestBlock)
-				if err != nil {
-					if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-						v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-						return
-					}
-					v.logger.WithFields(logrus.Fields{
-						"err":          err,
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": latestBlock.Height,
-					}).Error("failed to catch up")
-					continue
-				}
-				// res might be nil if catch up is not needed
-				if res != nil {
-					v.logger.WithFields(logrus.Fields{
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": latestBlock.Height,
-						"tx_hash":      res.TxHash,
-					}).Info("successfully catch-up to the latest block")
-					continue
-				}
+			// res might be nil if sync is not needed
+			if res != nil {
+				v.logger.WithFields(logrus.Fields{
+					"btc_pk_hex": v.GetBtcPkHex(),
+					"tx_hash":    res.TxHash,
+				}).Info("successfully synced to the latest block")
+				continue
 			}
 			// use the copy of the block to avoid the impact to other receivers
 			nextBlock := *b
@@ -494,7 +436,7 @@ func (v *ValidatorInstance) submissionLoop() {
 			if !should {
 				continue
 			}
-			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
+			res, err = v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
@@ -545,6 +487,57 @@ func (v *ValidatorInstance) submissionLoop() {
 			return
 		}
 	}
+}
+
+func (v *ValidatorInstance) tryFastSync() (*provider.RelayerTxResponse, error) {
+	if v.InSync.Load() {
+		return nil, fmt.Errorf("the validator %s is already in sync", v.GetBtcPkHex())
+	}
+
+	latestBlock, err := v.getLatestBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	if !v.isBehind(latestBlock) {
+		return nil, nil
+	}
+
+	// get the last finalized height
+	lastFinalizedBlocks, err := v.cc.QueryLatestFinalizedBlocks(1)
+	if err != nil {
+		return nil, err
+	}
+	if lastFinalizedBlocks == nil {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":   v.GetBtcPkHex(),
+			"block_height": latestBlock.Height,
+		}).Debug("no finalized blocks yet, no need to catch up")
+		return nil, nil
+	}
+
+	lastFinalizedHeight := lastFinalizedBlocks[0].Height
+	lastVotedHeight := v.GetLastVotedHeight()
+
+	// get the startHeight from the maximum of the lastVotedHeight and
+	// the lastFinalizedHeight plus 1
+	var startHeight uint64
+	if lastFinalizedHeight < lastVotedHeight {
+		startHeight = lastVotedHeight + 1
+	} else {
+		startHeight = lastFinalizedHeight + 1
+	}
+
+	if startHeight == latestBlock.Height {
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":     v.GetBtcPkHex(),
+			"start_height":   startHeight,
+			"current_height": latestBlock.Height,
+		}).Debug("the start height is equal to the current block height, no need to catch up")
+		return nil, nil
+	}
+
+	return v.FastSync(startHeight, latestBlock.Height)
 }
 
 // shouldSubmitFinalitySignature checks all the conditions that a finality should not be sent:
