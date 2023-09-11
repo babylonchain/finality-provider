@@ -392,13 +392,6 @@ func (v *ValidatorInstance) submissionLoop() {
 				"btc_pk_hex":   v.GetBtcPkHex(),
 				"block_height": b.Height,
 			}).Debug("the validator received a new block, start processing")
-			if v.InSync.Load() {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": b.Height,
-				}).Debug("the validator is in fast sync, skip processing new blocks")
-				continue
-			}
 			if b.Height <= v.GetLastVotedHeight() {
 				v.logger.WithFields(logrus.Fields{
 					"btc_pk_hex":        v.GetBtcPkHex(),
