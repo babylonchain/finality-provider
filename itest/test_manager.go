@@ -255,6 +255,8 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Log("restarting the validator instance")
+
+	tm.Config.ValidatorModeConfig.AutoChainScanningMode = true
 	err = valIns.Start()
 	require.NoError(t, err)
 }

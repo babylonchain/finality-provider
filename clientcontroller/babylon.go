@@ -765,9 +765,13 @@ func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.
 	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
 }
 
-func (bc *BabylonController) QueryBlocks(startHeight, endHeight uint64) ([]*types.BlockInfo, error) {
+func (bc *BabylonController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
 	if startHeight >= endHeight {
 		return nil, fmt.Errorf("the startHeight %v should be higher than the endHeight %v", startHeight, endHeight)
+	}
+	count := endHeight - startHeight
+	if count > limit {
+		endHeight = startHeight + limit
 	}
 	return bc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), endHeight-startHeight, finalitytypes.QueriedBlockStatus_ANY, false)
 }

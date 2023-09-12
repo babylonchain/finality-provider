@@ -131,18 +131,18 @@ func (mr *MockClientControllerMockRecorder) QueryBlockFinalization(height interf
 }
 
 // QueryBlocks mocks base method.
-func (m *MockClientController) QueryBlocks(startHeight, endHeight uint64) ([]*types1.BlockInfo, error) {
+func (m *MockClientController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types1.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBlocks", startHeight, endHeight)
+	ret := m.ctrl.Call(m, "QueryBlocks", startHeight, endHeight, limit)
 	ret0, _ := ret[0].([]*types1.BlockInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QueryBlocks indicates an expected call of QueryBlocks.
-func (mr *MockClientControllerMockRecorder) QueryBlocks(startHeight, endHeight interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) QueryBlocks(startHeight, endHeight, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockClientController)(nil).QueryBlocks), startHeight, endHeight)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockClientController)(nil).QueryBlocks), startHeight, endHeight, limit)
 }
 
 // QueryHeader mocks base method.

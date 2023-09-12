@@ -5,6 +5,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 )
 
 type createValidatorResponse struct {
@@ -54,4 +55,10 @@ type unbondingTxSigData struct {
 type unbondingTxSigSendResult struct {
 	err           error
 	stakingTxHash string
+}
+
+type FastSyncResult struct {
+	response            *provider.RelayerTxResponse
+	syncedHeight        uint64
+	lastProcessedHeight uint64
 }

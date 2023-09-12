@@ -275,6 +275,7 @@ func TestFastSync(t *testing.T) {
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
+	tm.Config.FastSyncGap = uint64(n)
 	tm.StopAndRestartValidatorAfterNBlocks(t, n, valIns)
 
 	// check there are n+1 blocks finalized

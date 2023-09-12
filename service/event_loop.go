@@ -7,7 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/types"
 )
 
 // jurySigSubmissionLoop is the reactor to submit Jury signature for pending BTC delegations
@@ -71,25 +70,6 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 		}
 	}
 
-}
-
-// validatorSubmissionLoop is the reactor to submit finality signature and public randomness
-func (app *ValidatorApp) validatorSubmissionLoop() {
-	defer app.wg.Done()
-
-	for {
-		select {
-		case b := <-app.poller.GetBlockInfoChan():
-			app.sendBlockToValidators(b)
-		case <-app.quit:
-			app.logger.Debug("exiting validatorSubmissionLoop")
-			return
-		}
-	}
-}
-
-func (app *ValidatorApp) sendBlockToValidators(b *types.BlockInfo) {
-	app.validatorManager.receiveBlock(b)
 }
 
 // main event loop for the validator app

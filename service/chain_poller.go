@@ -31,17 +31,14 @@ type ChainPoller struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 	wg        sync.WaitGroup
+	mu        sync.Mutex
 	quit      chan struct{}
 
 	cc            clientcontroller.ClientController
 	cfg           *cfg.ChainPollerConfig
 	blockInfoChan chan *types.BlockInfo
+	nextHeight    uint64
 	logger        *logrus.Logger
-}
-
-type PollerState struct {
-	HeaderToRetrieve uint64
-	FailedCycles     uint64
 }
 
 func NewChainPoller(
@@ -69,12 +66,11 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 			return
 		}
 
+		cp.nextHeight = startHeight
+
 		cp.wg.Add(1)
 
-		go cp.pollChain(PollerState{
-			HeaderToRetrieve: startHeight,
-			FailedCycles:     0,
-		})
+		go cp.pollChain()
 	})
 	return startErr
 }
@@ -177,20 +173,21 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	return nil
 }
 
-func (cp *ChainPoller) pollChain(initialState PollerState) {
+func (cp *ChainPoller) pollChain() {
 	defer cp.wg.Done()
 
-	var state = initialState
+	var failedCycles uint64
 
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		result, err := cp.headerWithRetry(state.HeaderToRetrieve)
+		headerToRetrieve := cp.GetNextHeight()
+		result, err := cp.headerWithRetry(headerToRetrieve)
 		if err == nil && result.Header != nil {
 			// no error and we got the header we wanted to get, bump the state and push
 			// notification about data
-			state.HeaderToRetrieve = state.HeaderToRetrieve + 1
-			state.FailedCycles = 0
+			cp.SetNextHeight(headerToRetrieve + 1)
+			failedCycles = 0
 
 			cp.logger.WithFields(logrus.Fields{
 				"height": result.Header.Height,
@@ -206,25 +203,25 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 
 		} else if err == nil && result.Header == nil {
 			// no error but header is nil, means the header is not found on node
-			state.FailedCycles = state.FailedCycles + 1
+			failedCycles++
 
 			cp.logger.WithFields(logrus.Fields{
 				"error":        err,
-				"currFailures": state.FailedCycles,
-				"headerToGet":  state.HeaderToRetrieve,
+				"currFailures": failedCycles,
+				"headerToGet":  headerToRetrieve,
 			}).Error("failed to retrieve header from the consumer chain. Header did not produced yet")
 
 		} else {
-			state.FailedCycles = state.FailedCycles + 1
+			failedCycles++
 
 			cp.logger.WithFields(logrus.Fields{
 				"error":        err,
-				"currFailures": state.FailedCycles,
-				"headerToGet":  state.HeaderToRetrieve,
+				"currFailures": failedCycles,
+				"headerToGet":  headerToRetrieve,
 			}).Error("failed to query the consumer chain for the header")
 		}
 
-		if state.FailedCycles > maxFailedCycles {
+		if failedCycles > maxFailedCycles {
 			cp.logger.Fatal("the poller has reached the max failed cycles, exiting")
 		}
 
@@ -235,4 +232,16 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 			return
 		}
 	}
+}
+
+func (cp *ChainPoller) GetNextHeight() uint64 {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	return cp.nextHeight
+}
+
+func (cp *ChainPoller) SetNextHeight(height uint64) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	cp.nextHeight = height
 }

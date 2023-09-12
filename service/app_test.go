@@ -39,6 +39,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
+		mockClientController.EXPECT().QueryBlocks(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 

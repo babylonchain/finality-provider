@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon/crypto/eots"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -41,13 +42,13 @@ type ValidatorInstance struct {
 	state *state
 	cfg   *valcfg.Config
 
-	blocksToVote chan *types.BlockInfo
-	logger       *logrus.Logger
-	kc           *val.KeyringController
-	cc           clientcontroller.ClientController
+	logger *logrus.Logger
+	kc     *val.KeyringController
+	cc     clientcontroller.ClientController
+	poller *ChainPoller
 
 	isStarted *atomic.Bool
-	InSync    *atomic.Bool
+	inSync    *atomic.Bool
 
 	wg   sync.WaitGroup
 	quit chan struct{}
@@ -79,10 +80,6 @@ func NewValidatorInstance(
 		return nil, err
 	}
 
-	// TODO load unvoted blocks from WAL and insert them into the channel
-	// TODO parameterize the buffer
-	blocksToVote := make(chan *types.BlockInfo, 100)
-
 	return &ValidatorInstance{
 		bbnPk: bbnPk,
 		btcPk: v.MustGetBIP340BTCPK(),
@@ -90,26 +87,17 @@ func NewValidatorInstance(
 			v: v,
 			s: s,
 		},
-		cfg:          cfg,
-		blocksToVote: blocksToVote,
-		logger:       logger,
-		isStarted:    atomic.NewBool(false),
-		InSync:       atomic.NewBool(false),
-		kc:           kc,
-		cc:           cc,
+		cfg:       cfg,
+		logger:    logger,
+		isStarted: atomic.NewBool(false),
+		inSync:    atomic.NewBool(false),
+		kc:        kc,
+		cc:        cc,
 	}, nil
 }
 
 func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
 	return v.state.v
-}
-
-func (v *ValidatorInstance) getNextBlockChan() <-chan *types.BlockInfo {
-	return v.blocksToVote
-}
-
-func (v *ValidatorInstance) receiveBlock(b *types.BlockInfo) {
-	v.blocksToVote <- b
 }
 
 func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
@@ -143,6 +131,10 @@ func (v *ValidatorInstance) GetStatus() proto.ValidatorStatus {
 
 func (v *ValidatorInstance) GetLastVotedHeight() uint64 {
 	return v.state.v.LastVotedHeight
+}
+
+func (v *ValidatorInstance) GetLastProcessedHeight() uint64 {
+	return v.state.v.LastProcessedHeight
 }
 
 func (v *ValidatorInstance) GetLastCommittedHeight() uint64 {
@@ -183,8 +175,19 @@ func (v *ValidatorInstance) SetLastVotedHeight(height uint64) error {
 	return v.state.s.UpdateValidator(v.state.v)
 }
 
+func (v *ValidatorInstance) SetLastProcessedHeight(height uint64) error {
+	v.state.v.LastProcessedHeight = height
+	return v.state.s.UpdateValidator(v.state.v)
+}
+
 func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 	v.state.v.LastCommittedHeight = height
+	return v.state.s.UpdateValidator(v.state.v)
+}
+
+func (v *ValidatorInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
+	v.state.v.LastProcessedHeight = height
+	v.state.v.LastVotedHeight = height
 	return v.state.s.UpdateValidator(v.state.v)
 }
 
@@ -192,6 +195,24 @@ func (v *ValidatorInstance) Start() error {
 	if v.isStarted.Swap(true) {
 		return fmt.Errorf("the validator instance %s is already started", v.GetBtcPkHex())
 	}
+
+	_, err := v.tryFastSync()
+	if err != nil {
+		return fmt.Errorf("failed to sync up while starting the validator %s: %w", v.GetBtcPkBIP340(), err)
+	}
+
+	startHeight, err := v.getPollerStartingHeight()
+	if err != nil {
+		return fmt.Errorf("failed to get the starting height of the poller: %w", err)
+	}
+
+	poller := NewChainPoller(v.logger, v.cfg.PollerConfig, v.cc)
+
+	if err := poller.Start(startHeight); err != nil {
+		return fmt.Errorf("failed to start the poller: %w", err)
+	}
+
+	v.poller = poller
 
 	v.logger.Infof("Starting thread handling validator %s", v.GetBtcPkHex())
 
@@ -201,14 +222,22 @@ func (v *ValidatorInstance) Start() error {
 	go v.submissionLoop()
 	v.wg.Add(1)
 	go v.unbondindSigSubmissionLoop()
+	v.wg.Add(1)
+	go v.fastSyncLoop()
 
 	return nil
 }
 
 func (v *ValidatorInstance) Stop() error {
-	v.isStarted.Store(false)
+	if !v.isStarted.Swap(false) {
+		return fmt.Errorf("the validator %s has already stopped", v.GetBtcPkHex())
+	}
 
-	v.logger.Infof("Stopping thread handling validator %s", v.GetBtcPkHex())
+	if err := v.poller.Stop(); err != nil {
+		return fmt.Errorf("failed to stop the poller: %w", err)
+	}
+
+	v.logger.Infof("stopping thread handling validator %s", v.GetBtcPkHex())
 
 	close(v.quit)
 	v.wg.Wait()
@@ -387,7 +416,16 @@ func (v *ValidatorInstance) submissionLoop() {
 
 	for {
 		select {
-		case b := <-v.getNextBlockChan():
+		case b := <-v.poller.GetBlockInfoChan():
+			if v.inSync.Load() {
+				v.logger.WithFields(logrus.Fields{
+					"btc_pk_hex":   v.GetBtcPkHex(),
+					"block_height": b.Height,
+				}).Debug("the validator is in fast sync, skip processing the block")
+				// it is safe to drop the block because after the fast sync is finished
+				// the poller will start fetching blocks that have not been processed
+				continue
+			}
 			v.logger.WithFields(logrus.Fields{
 				"btc_pk_hex":   v.GetBtcPkHex(),
 				"block_height": b.Height,
@@ -398,26 +436,6 @@ func (v *ValidatorInstance) submissionLoop() {
 					"block_height":      b.Height,
 					"last_voted_height": v.GetLastVotedHeight(),
 				}).Debug("the block has been voted before, skip voting")
-				continue
-			}
-			res, err := v.tryFastSync()
-			if err != nil {
-				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-					return
-				}
-				v.logger.WithFields(logrus.Fields{
-					"err":        err,
-					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Error("failed to sync up")
-				continue
-			}
-			// res might be nil if sync is not needed
-			if res != nil {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex": v.GetBtcPkHex(),
-					"tx_hash":    res.TxHash,
-				}).Info("successfully synced to the latest block")
 				continue
 			}
 			// use the copy of the block to avoid the impact to other receivers
@@ -432,9 +450,17 @@ func (v *ValidatorInstance) submissionLoop() {
 				return
 			}
 			if !should {
+				if err := v.SetLastProcessedHeight(nextBlock.Height); err != nil {
+					v.logger.WithFields(logrus.Fields{
+						"err":          err,
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": nextBlock.Height,
+					}).Warnf(instanceTerminatingMsg)
+					return
+				}
 				continue
 			}
-			res, err = v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
+			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
@@ -480,6 +506,7 @@ func (v *ValidatorInstance) submissionLoop() {
 					"tx_hash":               txRes.TxHash,
 				}).Info("successfully committed public randomness to the consumer chain")
 			}
+
 		case <-v.quit:
 			v.logger.Info("the finality signature and public randomness submission loop is closing")
 			return
@@ -487,8 +514,52 @@ func (v *ValidatorInstance) submissionLoop() {
 	}
 }
 
+func (v *ValidatorInstance) fastSyncLoop() {
+	defer v.wg.Done()
+
+	if v.cfg.FastSyncInterval == 0 {
+		v.logger.Info("the fast sync is disabled")
+		return
+	}
+
+	fastSyncTicker := time.NewTicker(v.cfg.FastSyncInterval)
+	defer fastSyncTicker.Stop()
+
+	for {
+		select {
+		case <-fastSyncTicker.C:
+			res, err := v.tryFastSync()
+			if err != nil {
+				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
+					return
+				}
+				v.logger.WithFields(logrus.Fields{
+					"err":        err,
+					"btc_pk_hex": v.GetBtcPkHex(),
+				}).Error("failed to sync up")
+				continue
+			}
+			// response might be nil if sync is not needed
+			if res != nil {
+				v.logger.WithFields(logrus.Fields{
+					"btc_pk_hex": v.GetBtcPkHex(),
+					"tx_hash":    res.TxHash,
+				}).Info("successfully synced to the latest block")
+
+				// set the poller to fetch blocks that have not been processed
+				v.poller.SetNextHeight(v.GetLastProcessedHeight() + 1)
+			}
+
+		case <-v.quit:
+			v.logger.Debug("the fast sync loop is closing")
+			return
+		}
+	}
+}
+
 func (v *ValidatorInstance) tryFastSync() (*provider.RelayerTxResponse, error) {
-	if v.InSync.Load() {
+	if v.inSync.Load() {
 		return nil, fmt.Errorf("the validator %s is already in sync", v.GetBtcPkHex())
 	}
 
@@ -515,13 +586,13 @@ func (v *ValidatorInstance) tryFastSync() (*provider.RelayerTxResponse, error) {
 	}
 
 	lastFinalizedHeight := lastFinalizedBlocks[0].Height
-	lastVotedHeight := v.GetLastVotedHeight()
+	lastProcessedHeight := v.GetLastProcessedHeight()
 
 	// get the startHeight from the maximum of the lastVotedHeight and
 	// the lastFinalizedHeight plus 1
 	var startHeight uint64
-	if lastFinalizedHeight < lastVotedHeight {
-		startHeight = lastVotedHeight + 1
+	if lastFinalizedHeight < lastProcessedHeight {
+		startHeight = lastProcessedHeight + 1
 	} else {
 		startHeight = lastFinalizedHeight + 1
 	}
@@ -584,9 +655,9 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (b
 	return true, nil
 }
 
-// isBehind returns true if the lasted voted height is at least two blocks behind of the current block
+// isBehind returns true if the lasted voted height is behind by a configured gap
 func (v *ValidatorInstance) isBehind(currentBlock *types.BlockInfo) bool {
-	return currentBlock.Height >= v.GetLastVotedHeight()+2
+	return currentBlock.Height >= v.GetLastProcessedHeight()+v.cfg.FastSyncGap
 }
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
@@ -768,8 +839,8 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*provid
 	}
 
 	// update DB
-	if err := v.SetLastVotedHeight(b.Height); err != nil {
-		return nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", b.Height, err)
+	if err := v.updateStateAfterFinalitySigSubmission(b.Height); err != nil {
+		return nil, fmt.Errorf("failed to update state in DB after finality sig submission: %w", err)
 	}
 
 	return res, nil
@@ -799,8 +870,8 @@ func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockI
 
 	// update DB
 	highBlock := blocks[len(blocks)-1]
-	if err := v.SetLastVotedHeight(highBlock.Height); err != nil {
-		return nil, fmt.Errorf("failed to update last voted height to %v in DB: %w", highBlock.Height, err)
+	if err := v.updateStateAfterFinalitySigSubmission(highBlock.Height); err != nil {
+		return nil, fmt.Errorf("failed to update state in DB after submission: %w", err)
 	}
 
 	return res, nil
@@ -892,6 +963,59 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 	}
 
 	return res, privKey, nil
+}
+
+func (v *ValidatorInstance) getPollerStartingHeight() (uint64, error) {
+	if !v.cfg.ValidatorModeConfig.AutoChainScanningMode {
+		return v.cfg.ValidatorModeConfig.StaticChainScanningStartHeight, nil
+	}
+
+	// Set initial block to the maximum of
+	//    - last processed height
+	//    - the latest Babylon finalised height
+	// The above is to ensure that:
+	//
+	//	(1) Any validator that is eligible to vote for a block,
+	//	 doesn't miss submitting a vote for it.
+	//	(2) The validators do not submit signatures for any already
+	//	 finalised blocks.
+	initialBlockToGet := v.GetLastProcessedHeight()
+	latestFinalisedBlock, err := v.latestFinalizedBlocksWithRetry(1)
+	if err != nil {
+		return 0, err
+	}
+	if len(latestFinalisedBlock) != 0 {
+		if latestFinalisedBlock[0].Height > initialBlockToGet {
+			initialBlockToGet = latestFinalisedBlock[0].Height
+		}
+	}
+
+	// ensure that initialBlockToGet is at least 1
+	if initialBlockToGet == 0 {
+		initialBlockToGet = 1
+	}
+	return initialBlockToGet, nil
+}
+
+func (v *ValidatorInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*types.BlockInfo, error) {
+	var response []*types.BlockInfo
+	if err := retry.Do(func() error {
+		latestFinalisedBlock, err := v.cc.QueryLatestFinalizedBlocks(count)
+		if err != nil {
+			return err
+		}
+		response = latestFinalisedBlock
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		v.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("Failed to query babylon for the latest finalised blocks")
+	})); err != nil {
+		return nil, err
+	}
+	return response, nil
 }
 
 func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
