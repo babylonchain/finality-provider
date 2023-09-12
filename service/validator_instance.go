@@ -198,7 +198,7 @@ func (v *ValidatorInstance) Start() error {
 
 	_, err := v.tryFastSync()
 	if err != nil {
-		return fmt.Errorf("failed to sync up while starting the validator %s: %w", v.GetBtcPkBIP340(), err)
+		return fmt.Errorf("failed to sync up while starting the validator %s: %w", v.GetBtcPkHex(), err)
 	}
 
 	startHeight, err := v.getPollerStartingHeight()
