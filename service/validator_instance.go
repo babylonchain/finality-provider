@@ -463,6 +463,7 @@ func (v *ValidatorInstance) submissionLoop() {
 			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
 					return
 				}
@@ -531,6 +532,7 @@ func (v *ValidatorInstance) fastSyncLoop() {
 			res, err := v.tryFastSync()
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
 					return
 				}
