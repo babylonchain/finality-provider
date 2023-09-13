@@ -439,6 +439,8 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 
 	errChan := make(chan error)
 
+	var submissionWg sync.WaitGroup
+
 	for {
 		select {
 		case b := <-v.poller.GetBlockInfoChan():
@@ -478,9 +480,9 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			}
 			// this is to avoid blocking processing next blocks
 			// as submitting finality signature takes a long time
-			v.wg.Add(1)
+			submissionWg.Add(1)
 			go func(b *types.BlockInfo, errChan chan error) {
-				defer v.wg.Done()
+				defer submissionWg.Done()
 				res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(b)
 				if err != nil {
 					errChan <- err
@@ -494,6 +496,8 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 				}
 			}(&nextBlock, errChan)
 		case targetBlock := <-v.laggingTargetChan:
+			// we wait until all the normal submissions are finished
+			submissionWg.Wait()
 			res, err := v.tryFastSync(targetBlock)
 			v.isLagging.Store(false)
 			if err != nil {
