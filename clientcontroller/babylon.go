@@ -15,7 +15,6 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -34,6 +33,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
+
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var _ ClientController = &BabylonController{}
@@ -207,7 +208,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 			return retry.Unrecoverable(krErr)
 		}
 		if sendMsgErr != nil {
-			if !IsRetriable(sendMsgErr) {
+			if IsUnrecoverable(sendMsgErr) {
 				bc.logger.WithFields(logrus.Fields{
 					"error": sendMsgErr,
 				}).Error("unrecoverable err when submitting the tx, skip retrying")

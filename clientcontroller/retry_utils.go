@@ -6,8 +6,7 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
-	"github.com/babylonchain/babylon/x/finality/types"
-	"github.com/cosmos/cosmos-sdk/types/errors"
+	ftypes "github.com/babylonchain/babylon/x/finality/types"
 )
 
 // Variables used for retries
@@ -18,14 +17,21 @@ var (
 	rtyErr    = retry.LastErrorOnly(true)
 )
 
-var retriableErrors = []*errorsmod.Error{
-	errors.ErrInsufficientFunds,
-	errors.ErrMempoolIsFull,
+// these errors are considered unrecoverable because these indicate
+// something critical in the validator program or the Babylon server
+var unrecoverableErrors = []*errorsmod.Error{
+	ftypes.ErrBlockNotFound,
+	ftypes.ErrInvalidFinalitySig,
+	ftypes.ErrHeightTooHigh,
+	ftypes.ErrInvalidPubRand,
+	ftypes.ErrNoPubRandYet,
+	ftypes.ErrPubRandNotFound,
+	ftypes.ErrTooFewPubRand,
 }
 
-// IsRetriable returns true when the error is in the retriableErrors list
-func IsRetriable(err error) bool {
-	for _, e := range retriableErrors {
+// IsUnrecoverable returns true when the error is in the unrecoverableErrors list
+func IsUnrecoverable(err error) bool {
+	for _, e := range unrecoverableErrors {
 		if strings.Contains(err.Error(), e.Error()) {
 			return true
 		}
@@ -35,7 +41,9 @@ func IsRetriable(err error) bool {
 }
 
 var expectedErrors = []*errorsmod.Error{
-	types.ErrDuplicatedFinalitySig,
+	// if due to some low-level reason (e.g., network), we submit duplicated finality sig,
+	// we should just ignore the error
+	ftypes.ErrDuplicatedFinalitySig,
 }
 
 // IsExpected returns true when the error is in the expectedErrors list
