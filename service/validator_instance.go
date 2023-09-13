@@ -219,7 +219,9 @@ func (v *ValidatorInstance) Start() error {
 	v.quit = make(chan struct{})
 
 	v.wg.Add(1)
-	go v.submissionLoop()
+	go v.finalitySigSubmissionLoop()
+	v.wg.Add(1)
+	go v.randomnessCommitmentLoop()
 	v.wg.Add(1)
 	go v.unbondindSigSubmissionLoop()
 	v.wg.Add(1)
@@ -408,11 +410,10 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 	}
 }
 
-func (v *ValidatorInstance) submissionLoop() {
+func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 	defer v.wg.Done()
 
-	commitRandTicker := time.NewTicker(v.cfg.RandomnessCommitInterval)
-	defer commitRandTicker.Stop()
+	errChan := make(chan error)
 
 	for {
 		select {
@@ -460,28 +461,54 @@ func (v *ValidatorInstance) submissionLoop() {
 				}
 				continue
 			}
-			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
-			if err != nil {
-				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
-					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-					return
-				}
-				v.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": nextBlock.Height,
-				}).Warnf(instanceTerminatingMsg)
-				return
-			}
-			if res != nil {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": nextBlock.Height,
-					"tx_hash":      res.TxHash,
-				}).Info("successfully submitted a finality signature to the consumer chain")
-			}
 
+			// this is to avoid blocking processing next blocks
+			// as submitting finality signature takes a long time
+			v.wg.Add(1)
+			go func(b *types.BlockInfo, errChan chan error) {
+				defer v.wg.Done()
+				res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(b)
+				if err != nil {
+					errChan <- err
+				}
+				if res != nil {
+					v.logger.WithFields(logrus.Fields{
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": b.Height,
+						"tx_hash":      res.TxHash,
+					}).Info("successfully submitted a finality signature to the consumer chain")
+				}
+			}(&nextBlock, errChan)
+
+		case err := <-errChan:
+			if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+				_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
+				v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
+			} else {
+				v.logger.WithFields(logrus.Fields{
+					"err":        err,
+					"btc_pk_hex": v.GetBtcPkHex(),
+				}).Warnf(instanceTerminatingMsg)
+			}
+			// TODO: maybe we should stop the whole validator instance other than merely close the for loop
+			//  how to gracefully do that?
+			return
+
+		case <-v.quit:
+			v.logger.Info("the finality signature submission loop is closing")
+			return
+		}
+	}
+}
+
+func (v *ValidatorInstance) randomnessCommitmentLoop() {
+	defer v.wg.Done()
+
+	commitRandTicker := time.NewTicker(v.cfg.RandomnessCommitInterval)
+	defer commitRandTicker.Stop()
+
+	for {
+		select {
 		case <-commitRandTicker.C:
 			tipBlock, err := v.getLatestBlock()
 			if err != nil {
@@ -509,7 +536,7 @@ func (v *ValidatorInstance) submissionLoop() {
 			}
 
 		case <-v.quit:
-			v.logger.Info("the finality signature and public randomness submission loop is closing")
+			v.logger.Info("the randomness commitment loop is closing")
 			return
 		}
 	}
