@@ -673,7 +673,7 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 		// error will be returned if max retries have been reached
 		res, err := v.SubmitFinalitySignature(targetBlock)
 		if err != nil {
-			if !clientcontroller.IsRetriable(err) {
+			if clientcontroller.IsUnrecoverable(err) {
 				return nil, err
 			}
 			v.logger.WithFields(logrus.Fields{

@@ -209,7 +209,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 			return retry.Unrecoverable(krErr)
 		}
 		if sendMsgErr != nil {
-			if !IsRetriable(sendMsgErr) {
+			if IsUnrecoverable(sendMsgErr) {
 				bc.logger.WithFields(logrus.Fields{
 					"error": sendMsgErr,
 				}).Error("unrecoverable err when submitting the tx, skip retrying")
