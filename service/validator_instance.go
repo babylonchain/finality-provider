@@ -514,8 +514,10 @@ func (v *ValidatorInstance) submissionLoop() {
 			// response might be nil if sync is not needed
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex": v.GetBtcPkHex(),
-					"tx_hash":    res.TxHash,
+					"btc_pk_hex":            v.GetBtcPkHex(),
+					"tx_hashes":             res.Responses,
+					"synced_height":         res.SyncedHeight,
+					"last_processed_height": res.LastProcessedHeight,
 				}).Info("successfully synced to the latest block")
 
 				// set the poller to fetch blocks that have not been processed
@@ -566,9 +568,14 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 	fastSyncTicker := time.NewTicker(v.cfg.FastSyncInterval)
 	defer fastSyncTicker.Stop()
 
-	for v.isLagging.Load() {
+	for {
 		select {
 		case <-fastSyncTicker.C:
+			if v.isLagging.Load() {
+				// we are in fast sync mode, skip do not do checks
+				continue
+			}
+
 			latestBlock, err := v.getLatestBlock()
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -589,7 +596,7 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 	}
 }
 
-func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSyncResult, error) {
 	if v.inSync.Load() {
 		return nil, fmt.Errorf("the validator %s is already in sync", v.GetBtcPkHex())
 	}

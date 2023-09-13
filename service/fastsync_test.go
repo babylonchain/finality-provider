@@ -54,10 +54,10 @@ func FuzzFastSync(f *testing.F) {
 			Return(catchUpBlocks, nil)
 		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.GetBtcPkBIP340(), catchUpBlocks, gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err = valIns.FastSync(finalizedHeight+1, currentHeight)
+		result, err := valIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
-		require.NotNil(t, res)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.NotNil(t, result)
+		require.Equal(t, expectedTxHash, result.Responses[0].TxHash)
 		require.Equal(t, currentHeight, valIns.GetLastVotedHeight())
 		require.Equal(t, currentHeight, valIns.GetLastProcessedHeight())
 	})
