@@ -518,13 +518,18 @@ func (v *ValidatorInstance) randomnessCommitmentLoop() {
 				}).Warnf(instanceTerminatingMsg)
 				return
 			}
-			txRes, err := v.CommitPubRand(tipBlock)
+			txRes, err := v.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": tipBlock,
-				}).Warnf(instanceTerminatingMsg)
+				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
+					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
+				} else {
+					v.logger.WithFields(logrus.Fields{
+						"err":          err,
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": tipBlock,
+					}).Warnf(instanceTerminatingMsg)
+				}
 				return
 			}
 			if txRes != nil {
@@ -715,6 +720,56 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 			}
 		} else {
 			// the signature has been successfully submitted
+			return res, nil
+		}
+		select {
+		case <-time.After(v.cfg.SubmissionRetryInterval):
+			// periodically query the index block to be later checked whether it is Finalized
+			finalized, err := v.cc.QueryBlockFinalization(targetBlock.Height)
+			if err != nil {
+				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
+			}
+			if finalized {
+				v.logger.WithFields(logrus.Fields{
+					"btc_val_pk":   v.GetBtcPkHex(),
+					"block_height": targetBlock.Height,
+				}).Debug("the block is already finalized, skip submission")
+				return nil, nil
+			}
+
+		case <-v.quit:
+			v.logger.Debugf("the validator instance %s is closing", v.GetBtcPkHex())
+			return nil, nil
+		}
+	}
+}
+
+// retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
+// error will be returned if maximum retires have been reached or the query to the consumer chain fails
+func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+	var failedCycles uint64
+
+	// we break the for loop if the block is finalized or the public rand is successfully committed
+	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
+	for {
+		// error will be returned if max retries have been reached
+		res, err := v.CommitPubRand(targetBlock)
+		if err != nil {
+			if clientcontroller.IsUnrecoverable(err) {
+				return nil, err
+			}
+			v.logger.WithFields(logrus.Fields{
+				"currFailures":        failedCycles,
+				"target_block_height": targetBlock.Height,
+				"error":               err,
+			}).Error("err committing public randomness to the consumer chain")
+
+			failedCycles += 1
+			if failedCycles > v.cfg.MaxSubmissionRetries {
+				return nil, fmt.Errorf("reached max failed cycles with err: %w", err)
+			}
+		} else {
+			// the public randomness has been successfully submitted
 			return res, nil
 		}
 		select {
