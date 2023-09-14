@@ -58,7 +58,8 @@ func FuzzRegisterValidator(f *testing.F) {
 		require.NoError(t, err)
 		pop := &bstypes.ProofOfPossession{
 			BabylonSig: validator.Pop.BabylonSig,
-			BtcSig:     btcSig,
+			BtcSig:     btcSig.MustMarshal(),
+			BtcSigType: bstypes.BTCSigType_BIP340,
 		}
 
 		txHash := testutil.GenRandomHexStr(r, 32)

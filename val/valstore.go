@@ -27,7 +27,7 @@ func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, k
 		BtcPk:     btcPk.MustMarshal(),
 		Pop: &proto.ProofOfPossession{
 			BabylonSig: pop.BabylonSig,
-			BtcSig:     pop.BtcSig.MustMarshal(),
+			BtcSig:     pop.BtcSig,
 		},
 		Status: proto.ValidatorStatus_CREATED,
 	}
