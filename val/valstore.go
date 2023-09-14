@@ -28,7 +28,6 @@ func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, k
 		Pop: &proto.ProofOfPossession{
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig,
-			BtcSigType: bbnPopSigTypeToProto(pop.BtcSigType),
 		},
 		Status: proto.ValidatorStatus_CREATED,
 	}
@@ -263,15 +262,4 @@ func openStore(dbcfg *valcfg.DatabaseConfig) (store.Store, error) {
 	default:
 		return nil, fmt.Errorf("unsupported database type")
 	}
-}
-
-func bbnPopSigTypeToProto(t bstypes.BTCSigType) proto.BTCSigType {
-	if t == bstypes.BTCSigType_BIP322 {
-		return proto.BTCSigType_BIP322
-	} else if t == bstypes.BTCSigType_BIP340 {
-		return proto.BTCSigType_BIP340
-	} else {
-		panic("invalid signature type")
-	}
-
 }

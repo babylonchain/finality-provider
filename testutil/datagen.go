@@ -64,7 +64,6 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 		Pop: &proto.ProofOfPossession{
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig,
-			BtcSigType: proto.BTCSigType_BIP340,
 		},
 	}
 }
