@@ -14,6 +14,7 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -23,11 +24,13 @@ func FuzzCommitPubRandList(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 		err := app.Start()
 		require.NoError(t, err)
@@ -35,10 +38,10 @@ func FuzzCommitPubRandList(f *testing.F) {
 		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
+		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
@@ -61,11 +64,13 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockBabylonClient)
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 		err := app.Start()
 		require.NoError(t, err)
@@ -74,24 +79,24 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
+		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-		mockBabylonClient.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
-		nextBlock := &service.BlockInfo{
+		nextBlock := &types.BlockInfo{
 			Height:         startingBlock.Height + 1,
 			LastCommitHash: testutil.GenRandomByteArray(r, 32),
 		}
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err = valIns.SubmitFinalitySignature(nextBlock)
@@ -100,15 +105,18 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// check the last_voted_height
 		require.Equal(t, nextBlock.Height, valIns.GetLastVotedHeight())
+		require.Equal(t, nextBlock.Height, valIns.GetLastProcessedHeight())
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorApp, *proto.StoreValidator, func()) {
+func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 	cfg.BabylonConfig.KeyDirectory = t.TempDir()
-	cfg.NumPubRand = uint64(r.Intn(10) + 1)
+	cfg.NumPubRand = uint64(20)
+	cfg.ValidatorModeConfig.AutoChainScanningMode = false
+	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()
 	app, err := service.NewValidatorAppFromConfig(&cfg, logger, cc)
 	require.NoError(t, err)

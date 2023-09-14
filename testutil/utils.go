@@ -1,9 +1,9 @@
 package testutil
 
 import (
+	"math/rand"
 	"testing"
 
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cometbfttypes "github.com/cometbft/cometbft/types"
 	"github.com/golang/mock/gomock"
@@ -11,31 +11,33 @@ import (
 	"github.com/babylonchain/btc-validator/testutil/mocks"
 )
 
-func PrepareMockedBabylonClient(t *testing.T, blockHeight uint64, lastCommitHash []byte) *mocks.MockClientController {
+func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
-	mockBabylonClient := mocks.NewMockClientController(ctl)
+	mockClientController := mocks.NewMockClientController(ctl)
 	status := &coretypes.ResultStatus{
-		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(blockHeight + 1)},
+		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(currentHeight)},
 	}
-	resHeader := &coretypes.ResultHeader{
+
+	for i := startHeight + 1; i <= currentHeight; i++ {
+		resHeader := &coretypes.ResultHeader{
+			Header: &cometbfttypes.Header{
+				Height:         int64(currentHeight),
+				LastCommitHash: GenRandomByteArray(r, 32),
+			},
+		}
+		mockClientController.EXPECT().QueryHeader(int64(i)).Return(resHeader, nil).AnyTimes()
+	}
+
+	currentHeaderRes := &coretypes.ResultHeader{
 		Header: &cometbfttypes.Header{
-			Height:         int64(blockHeight),
-			LastCommitHash: lastCommitHash,
+			Height:         int64(currentHeight),
+			LastCommitHash: GenRandomByteArray(r, 32),
 		},
 	}
-	finalizedBlocks := make([]*finalitytypes.IndexedBlock, 0)
-	finalizedBlock := &finalitytypes.IndexedBlock{
-		Height:         blockHeight,
-		LastCommitHash: lastCommitHash,
-		Finalized:      true,
-	}
-	finalizedBlocks = append(finalizedBlocks, finalizedBlock)
 
-	mockBabylonClient.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
-	mockBabylonClient.EXPECT().QueryHeader(int64(blockHeight)).Return(resHeader, nil).AnyTimes()
-	mockBabylonClient.EXPECT().QueryBestHeader().Return(resHeader, nil).AnyTimes()
-	mockBabylonClient.EXPECT().QueryLatestFinalisedBlocks(uint64(1)).Return(finalizedBlocks, nil).AnyTimes()
-	mockBabylonClient.EXPECT().Close().Return(nil).AnyTimes()
+	mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
+	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
+	mockClientController.EXPECT().QueryBestHeader().Return(currentHeaderRes, nil).AnyTimes()
 
-	return mockBabylonClient
+	return mockClientController
 }

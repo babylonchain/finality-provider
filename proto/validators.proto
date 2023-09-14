@@ -110,8 +110,11 @@ message StoreValidator {
     // last_committed_height defines the height of the last Babylon block
     // to which the validator committed a randomness pair
     uint64 last_committed_height = 6;
+    // last_processed_height defines the height of the last successfully processed block
+    // even though the vote is not cast
+    uint64 last_processed_height = 7;
     // status defines the current validator status
-    ValidatorStatus status = 7;
+    ValidatorStatus status = 8;
 }
 
 // ValidatorInfo is the basic information of a validator mainly for external usage

@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/types"
 	cfg "github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -30,34 +31,26 @@ type ChainPoller struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 	wg        sync.WaitGroup
+	mu        sync.Mutex
 	quit      chan struct{}
 
 	cc            clientcontroller.ClientController
 	cfg           *cfg.ChainPollerConfig
-	blockInfoChan chan *BlockInfo
+	blockInfoChan chan *types.BlockInfo
+	nextHeight    uint64
 	logger        *logrus.Logger
-}
-
-type PollerState struct {
-	HeaderToRetrieve uint64
-	FailedCycles     uint64
-}
-
-type BlockInfo struct {
-	Height         uint64
-	LastCommitHash []byte
 }
 
 func NewChainPoller(
 	logger *logrus.Logger,
 	cfg *cfg.ChainPollerConfig,
-	bc clientcontroller.ClientController,
+	cc clientcontroller.ClientController,
 ) *ChainPoller {
 	return &ChainPoller{
 		logger:        logger,
 		cfg:           cfg,
-		cc:            bc,
-		blockInfoChan: make(chan *BlockInfo, cfg.BufferSize),
+		cc:            cc,
+		blockInfoChan: make(chan *types.BlockInfo, cfg.BufferSize),
 		quit:          make(chan struct{}),
 	}
 }
@@ -73,11 +66,11 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 			return
 		}
 
+		cp.nextHeight = startHeight
+
 		cp.wg.Add(1)
-		go cp.pollChain(PollerState{
-			HeaderToRetrieve: startHeight,
-			FailedCycles:     0,
-		})
+
+		go cp.pollChain()
 	})
 	return startErr
 }
@@ -101,12 +94,13 @@ func (cp *ChainPoller) Stop() error {
 // Return read only channel for incoming blocks
 // TODO: Handle the case when there is more than one consumer. Currently with more than
 // one consumer blocks most probably will be received out of order to those consumers.
-func (cp *ChainPoller) GetBlockInfoChan() <-chan *BlockInfo {
+func (cp *ChainPoller) GetBlockInfoChan() <-chan *types.BlockInfo {
 	return cp.blockInfoChan
 }
 
 func (cp *ChainPoller) nodeStatusWithRetry() (*ctypes.ResultStatus, error) {
 	var response *ctypes.ResultStatus
+
 	if err := retry.Do(func() error {
 		status, err := cp.cc.QueryNodeStatus()
 		if err != nil {
@@ -139,11 +133,13 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 		cp.logger.WithFields(logrus.Fields{
 			"attempt":      n + 1,
 			"max_attempts": RtyAttNum,
+			"height":       height,
 			"error":        err,
-		}).Debug("Failed to query babylon For the latest header")
+		}).Debug("failed to query the consumer chain for the header")
 	})); err != nil {
 		return nil, err
 	}
+
 	return response, nil
 }
 
@@ -177,56 +173,56 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	return nil
 }
 
-func (cp *ChainPoller) pollChain(initialState PollerState) {
+func (cp *ChainPoller) pollChain() {
 	defer cp.wg.Done()
 
-	var state = initialState
+	var failedCycles uint64
 
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		result, err := cp.headerWithRetry(state.HeaderToRetrieve)
-
+		headerToRetrieve := cp.GetNextHeight()
+		result, err := cp.headerWithRetry(headerToRetrieve)
 		if err == nil && result.Header != nil {
 			// no error and we got the header we wanted to get, bump the state and push
 			// notification about data
-			state.HeaderToRetrieve = state.HeaderToRetrieve + 1
-			state.FailedCycles = 0
+			cp.SetNextHeight(headerToRetrieve + 1)
+			failedCycles = 0
 
 			cp.logger.WithFields(logrus.Fields{
 				"height": result.Header.Height,
-			}).Info("Retrieved header from babylon")
+			}).Info("the poller retrieved the header from the consumer chain")
 
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will
 			// stop retrieving data from the node.
-			cp.blockInfoChan <- &BlockInfo{
+			cp.blockInfoChan <- &types.BlockInfo{
 				Height:         uint64(result.Header.Height),
 				LastCommitHash: result.Header.LastCommitHash,
 			}
 
 		} else if err == nil && result.Header == nil {
 			// no error but header is nil, means the header is not found on node
-			state.FailedCycles = state.FailedCycles + 1
+			failedCycles++
 
 			cp.logger.WithFields(logrus.Fields{
 				"error":        err,
-				"currFailures": state.FailedCycles,
-				"headerToGet":  state.HeaderToRetrieve,
-			}).Error("Failed to retrieve header from babylon.Header did not produced yet")
+				"currFailures": failedCycles,
+				"headerToGet":  headerToRetrieve,
+			}).Error("failed to retrieve header from the consumer chain. Header did not produced yet")
 
 		} else {
-			state.FailedCycles = state.FailedCycles + 1
+			failedCycles++
 
 			cp.logger.WithFields(logrus.Fields{
 				"error":        err,
-				"currFailures": state.FailedCycles,
-				"headerToGet":  state.HeaderToRetrieve,
-			}).Error("Failed to query babylon For the latest header")
+				"currFailures": failedCycles,
+				"headerToGet":  headerToRetrieve,
+			}).Error("failed to query the consumer chain for the header")
 		}
 
-		if state.FailedCycles > maxFailedCycles {
-			cp.logger.Fatal("Reached max failed cycles, exiting")
+		if failedCycles > maxFailedCycles {
+			cp.logger.Fatal("the poller has reached the max failed cycles, exiting")
 		}
 
 		select {
@@ -236,4 +232,16 @@ func (cp *ChainPoller) pollChain(initialState PollerState) {
 			return
 		}
 	}
+}
+
+func (cp *ChainPoller) GetNextHeight() uint64 {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	return cp.nextHeight
+}
+
+func (cp *ChainPoller) SetNextHeight(height uint64) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	cp.nextHeight = height
 }

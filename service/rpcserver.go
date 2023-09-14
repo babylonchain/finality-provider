@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/version"
 )
@@ -144,7 +145,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		return nil, err
 	}
 
-	b := &BlockInfo{
+	b := &types.BlockInfo{
 		Height:         req.Height,
 		LastCommitHash: req.LastCommitHash,
 	}

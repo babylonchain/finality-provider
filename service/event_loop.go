@@ -72,25 +72,6 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 
 }
 
-// validatorSubmissionLoop is the reactor to submit finality signature and public randomness
-func (app *ValidatorApp) validatorSubmissionLoop() {
-	defer app.wg.Done()
-
-	for {
-		select {
-		case b := <-app.poller.GetBlockInfoChan():
-			app.sendBlockToValidators(b)
-		case <-app.quit:
-			app.logger.Debug("exiting validatorSubmissionLoop")
-			return
-		}
-	}
-}
-
-func (app *ValidatorApp) sendBlockToValidators(b *BlockInfo) {
-	app.validatorManager.receiveBlock(b)
-}
-
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {
 	defer app.eventWg.Done()

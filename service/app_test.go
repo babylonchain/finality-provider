@@ -6,20 +6,21 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	ctrl "github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/testutil"
-	"github.com/babylonchain/btc-validator/val"
-	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	ctrl "github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/val"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 func FuzzRegisterValidator(f *testing.F) {
@@ -30,14 +31,17 @@ func FuzzRegisterValidator(f *testing.F) {
 		// create validator app with db and mocked Babylon client
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		cfg.ValidatorModeConfig.AutoChainScanningMode = false
+		cfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
 		err = app.Start()
@@ -49,7 +53,7 @@ func FuzzRegisterValidator(f *testing.F) {
 
 		// create a validator object and save it to db
 		validator := testutil.GenStoredValidator(r, t, app)
-		btcSig := new(types.BIP340Signature)
+		btcSig := new(bbntypes.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
 		pop := &bstypes.ProofOfPossession{
@@ -59,8 +63,8 @@ func FuzzRegisterValidator(f *testing.F) {
 
 		txHash := testutil.GenRandomHexStr(r, 32)
 		defaultParams := ctrl.StakingParams{}
-		mockBabylonClient.EXPECT().GetStakingParams().Return(&defaultParams, nil)
-		mockBabylonClient.EXPECT().
+		mockClientController.EXPECT().GetStakingParams().Return(&defaultParams, nil)
+		mockClientController.EXPECT().
 			RegisterValidator(
 				validator.GetBabylonPK(),
 				validator.MustGetBIP340BTCPK(),
@@ -90,24 +94,18 @@ func FuzzAddJurySig(f *testing.F) {
 		cfg := valcfg.DefaultConfig()
 		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 		cfg.BabylonConfig.KeyDirectory = t.TempDir()
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
-		startingBlock := &service.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockBabylonClient := testutil.PrepareMockedBabylonClient(t, startingBlock.Height, startingBlock.LastCommitHash)
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockBabylonClient)
+		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
+		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
+		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
+		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
-
-		err = app.Start()
-		require.NoError(t, err)
-		defer func() {
-			err = app.Stop()
-			require.NoError(t, err)
-		}()
 
 		// create a validator object and save it to db
 		validator := testutil.GenStoredValidator(r, t, app)
@@ -121,6 +119,13 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		require.NotNil(t, jurPk)
 		cfg.JuryMode = true
+
+		err = app.Start()
+		require.NoError(t, err)
+		defer func() {
+			err = app.Stop()
+			require.NoError(t, err)
+		}()
 
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
@@ -138,7 +143,7 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		delegation := &bstypes.BTCDelegation{
 			ValBtcPk:   btcPkBIP340,
-			BtcPk:      types.NewBIP340PubKeyFromBTCPK(delPK),
+			BtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delPK),
 			BabylonPk:  delBabylonPK.(*secp256k1.PubKey),
 			Pop:        pop,
 			StakingTx:  stakingTx,
@@ -148,9 +153,9 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockBabylonClient.EXPECT().QueryPendingBTCDelegations().
+		mockClientController.EXPECT().QueryPendingBTCDelegations().
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
-		mockBabylonClient.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
+		mockClientController.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)

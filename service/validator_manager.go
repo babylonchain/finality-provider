@@ -38,12 +38,6 @@ func (vm *ValidatorManager) stop() error {
 	return stopErr
 }
 
-func (vm *ValidatorManager) receiveBlock(b *BlockInfo) {
-	for _, v := range vm.vals {
-		v.receiveBlock(b)
-	}
-}
-
 func (vm *ValidatorManager) listValidatorInstances() []*ValidatorInstance {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
