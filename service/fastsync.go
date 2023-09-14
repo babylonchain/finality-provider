@@ -24,8 +24,8 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 	}
 	defer v.inSync.Store(false)
 
-	if startHeight >= endHeight {
-		return nil, fmt.Errorf("the start height %v should not be higher than or equal to the end height %v",
+	if startHeight > endHeight {
+		return nil, fmt.Errorf("the start height %v should not be higher than the end height %v",
 			startHeight, endHeight)
 	}
 
@@ -33,7 +33,7 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 	responses := make([]*provider.RelayerTxResponse, 0)
 	// we may need several rounds to catch-up as we need to limit
 	// the catch-up distance for each round to avoid memory overflow
-	for startHeight < endHeight {
+	for startHeight <= endHeight {
 		blocks, err := v.cc.QueryBlocks(startHeight, endHeight, v.cfg.FastSyncLimit)
 		if err != nil {
 			return nil, err

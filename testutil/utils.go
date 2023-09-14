@@ -9,17 +9,16 @@ import (
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/btc-validator/testutil/mocks"
-	"github.com/babylonchain/btc-validator/types"
 )
 
-func PrepareMockedClientController(t *testing.T, r *rand.Rand, finalizedHeight, currentHeight uint64) *mocks.MockClientController {
+func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
 	mockClientController := mocks.NewMockClientController(ctl)
 	status := &coretypes.ResultStatus{
 		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(currentHeight)},
 	}
 
-	for i := finalizedHeight; i <= currentHeight; i++ {
+	for i := startHeight + 1; i <= currentHeight; i++ {
 		resHeader := &coretypes.ResultHeader{
 			Header: &cometbfttypes.Header{
 				Height:         int64(currentHeight),
@@ -36,15 +35,7 @@ func PrepareMockedClientController(t *testing.T, r *rand.Rand, finalizedHeight, 
 		},
 	}
 
-	finalizedBlocks := make([]*types.BlockInfo, 0)
-	finalizedBlock := &types.BlockInfo{
-		Height:         finalizedHeight,
-		LastCommitHash: GenRandomByteArray(r, 32),
-	}
-	finalizedBlocks = append(finalizedBlocks, finalizedBlock)
-
 	mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
-	mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return(finalizedBlocks, nil).AnyTimes()
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 	mockClientController.EXPECT().QueryBestHeader().Return(currentHeaderRes, nil).AnyTimes()
 
