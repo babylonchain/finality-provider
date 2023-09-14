@@ -73,7 +73,7 @@ func NewKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*KeyringC
 }
 
 // CreateBTCValidator creates a BTC validator object using the keyring
-func (kc *KeyringController) CreateBTCValidator() (*proto.StoreValidator, error) {
+func (kc *KeyringController) CreateBTCValidator(des string) (*proto.StoreValidator, error) {
 	// create babylon key pair stored in the keyring
 	babylonPubKey, err := kc.createBabylonKeyPair()
 	if err != nil {
@@ -92,7 +92,7 @@ func (kc *KeyringController) CreateBTCValidator() (*proto.StoreValidator, error)
 		return nil, err
 	}
 
-	return NewStoreValidator(babylonPubKey, btcPubKey, kc.GetKeyName(), pop), nil
+	return NewStoreValidator(babylonPubKey, btcPubKey, kc.GetKeyName(), pop, des), nil
 }
 
 func (kc *KeyringController) GetKeyName() string {

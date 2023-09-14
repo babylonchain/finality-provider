@@ -34,6 +34,7 @@ var daemonCommands = []cli.Command{
 const (
 	valdDaemonAddressFlag = "daemon-address"
 	keyNameFlag           = "key-name"
+	descriptionFlag       = "description"
 	valBabylonPkFlag      = "babylon-pk"
 	blockHeightFlag       = "height"
 	lastCommitHashFlag    = "last-commit-hash"
@@ -92,6 +93,11 @@ var createValDaemonCmd = cli.Command{
 			Usage:    "The unique name of the validator key",
 			Required: true,
 		},
+		cli.StringFlag{
+			Name:  descriptionFlag,
+			Usage: "The description of the validator",
+			Value: "",
+		},
 	},
 	Action: createValDaemon,
 }
@@ -99,13 +105,14 @@ var createValDaemonCmd = cli.Command{
 func createValDaemon(ctx *cli.Context) error {
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	keyName := ctx.String(keyNameFlag)
+	descriptionStr := ctx.String(descriptionFlag)
 	client, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
 	defer cleanUp()
 
-	info, err := client.CreateValidator(context.Background(), keyName)
+	info, err := client.CreateValidator(context.Background(), keyName, descriptionStr)
 
 	if err != nil {
 		return err

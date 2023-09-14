@@ -20,7 +20,7 @@ const (
 	randPairPrefix  = "rand-pair"
 )
 
-func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession) *proto.StoreValidator {
+func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession, des string) *proto.StoreValidator {
 	return &proto.StoreValidator{
 		KeyName:   keyName,
 		BabylonPk: babylonPk.Bytes(),
@@ -29,7 +29,8 @@ func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, k
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig.MustMarshal(),
 		},
-		Status: proto.ValidatorStatus_CREATED,
+		Status:      proto.ValidatorStatus_CREATED,
+		Description: des,
 	}
 }
 

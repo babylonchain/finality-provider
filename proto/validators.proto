@@ -41,6 +41,8 @@ message GetInfoResponse {
 message CreateValidatorRequest {
     // key_name is the identifier key in keyring
     string key_name = 1;
+    // description is the description text of the validator
+    string description = 2;
 }
 
 message CreateValidatorResponse {
@@ -101,20 +103,22 @@ message StoreValidator {
     bytes babylon_pk = 1;
     // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
     bytes btc_pk = 2;
+    // description is the description text of the validator
+    string description = 3;
     // pop is the proof of possession of babylon_pk and btc_pk
-    ProofOfPossession pop = 3;
+    ProofOfPossession pop = 4;
     // key_name is the identifier of the keyring
-    string key_name = 4;
+    string key_name = 5;
     // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 5;
+    uint64 last_voted_height = 6;
     // last_committed_height defines the height of the last Babylon block
     // to which the validator committed a randomness pair
-    uint64 last_committed_height = 6;
+    uint64 last_committed_height = 7;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 7;
+    uint64 last_processed_height = 8;
     // status defines the current validator status
-    ValidatorStatus status = 8;
+    ValidatorStatus status = 9;
 }
 
 // ValidatorInfo is the basic information of a validator mainly for external usage

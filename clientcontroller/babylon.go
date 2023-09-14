@@ -262,6 +262,7 @@ func (bc *BabylonController) RegisterValidator(
 	btcPubKey *bbntypes.BIP340PubKey,
 	pop *btcstakingtypes.ProofOfPossession,
 	commission sdkTypes.Dec,
+	description string,
 ) (*provider.RelayerTxResponse, error) {
 
 	// TODO: This should be user configurable

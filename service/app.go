@@ -150,6 +150,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 		bbnPubKey:       validator.GetBabylonPK(),
 		btcPubKey:       validator.MustGetBIP340BTCPK(),
 		pop:             pop,
+		description:     validator.Description,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *RegisterValidatorResponse, 1),
 	}
@@ -429,9 +430,10 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName string) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(keyName, description string) (*CreateValidatorResult, error) {
 	req := &createValidatorRequest{
 		keyName:         keyName,
+		description:     description,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *createValidatorResponse, 1),
 	}
@@ -471,7 +473,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 
 	// TODO should not expose direct proto here, as this is internal db representation
 	// connected to serialization
-	validator, err := kr.CreateBTCValidator()
+	validator, err := kr.CreateBTCValidator(req.description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}

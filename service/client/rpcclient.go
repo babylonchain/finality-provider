@@ -49,8 +49,8 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, keyN
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName string) (*proto.CreateValidatorResponse, error) {
-	req := &proto.CreateValidatorRequest{KeyName: keyName}
+func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName, description string) (*proto.CreateValidatorResponse, error) {
+	req := &proto.CreateValidatorRequest{KeyName: keyName, Description: description}
 	res, err := c.client.CreateValidator(ctx, req)
 	if err != nil {
 		return nil, err

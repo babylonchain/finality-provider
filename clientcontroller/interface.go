@@ -49,7 +49,9 @@ type ClientController interface {
 		bbnPubKey *secp256k1.PubKey,
 		btcPubKey *bbntypes.BIP340PubKey,
 		pop *btcstakingtypes.ProofOfPossession,
-		commission sdkTypes.Dec) (*provider.RelayerTxResponse, error)
+		commission sdkTypes.Dec,
+		description string,
+	) (*provider.RelayerTxResponse, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error
 	CommitPubRandList(btcPubKey *bbntypes.BIP340PubKey, startHeight uint64, pubRandList []bbntypes.SchnorrPubRand, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)

@@ -13,6 +13,7 @@ type createValidatorResponse struct {
 }
 type createValidatorRequest struct {
 	keyName         string
+	description     string
 	errResponse     chan error
 	successResponse chan *createValidatorResponse
 }
@@ -22,6 +23,7 @@ type registerValidatorRequest struct {
 	btcPubKey *types.BIP340PubKey
 	// TODO we should have our own representation of PoP
 	pop             *btcstakingtypes.ProofOfPossession
+	description     string
 	errResponse     chan error
 	successResponse chan *RegisterValidatorResponse
 }
