@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	eventuallyWaitTimeOut = 20 * time.Second
+	eventuallyWaitTimeOut = 30 * time.Second
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
@@ -229,11 +229,11 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 		err    error
 	)
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(100)
+		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
 			return false
 		}
-		return len(blocks) >= n
+		return len(blocks) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	return blocks

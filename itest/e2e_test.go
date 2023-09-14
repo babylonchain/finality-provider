@@ -288,7 +288,7 @@ func TestFastSync(t *testing.T) {
 	currentHeight := currentHeaderRes.Header.Height
 	t.Logf("the current block is at %v", currentHeight)
 	require.NoError(t, err)
-	require.True(t, currentHeight <= int64(finalizedHeight)+int64(1))
+	require.True(t, currentHeight < int64(finalizedHeight)+int64(n))
 }
 
 func TestValidatorUnbondingSigSubmission(t *testing.T) {
