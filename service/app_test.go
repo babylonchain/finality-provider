@@ -36,10 +36,11 @@ func FuzzRegisterValidator(f *testing.F) {
 			require.NoError(t, err)
 		}()
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
-		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
-		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		mockClientController.EXPECT().QueryBlocks(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
+		cfg.ValidatorModeConfig.AutoChainScanningMode = false
+		cfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 

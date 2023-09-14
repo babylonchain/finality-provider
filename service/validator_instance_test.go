@@ -24,15 +24,14 @@ func FuzzCommitPubRandList(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
-		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		mockClientController.EXPECT().QueryBlocks(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
 		err := app.Start()
 		require.NoError(t, err)
 
@@ -65,15 +64,14 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
-		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		mockClientController.EXPECT().QueryBlocks(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
 		err := app.Start()
 		require.NoError(t, err)
 		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
@@ -107,15 +105,18 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// check the last_voted_height
 		require.Equal(t, nextBlock.Height, valIns.GetLastVotedHeight())
+		require.Equal(t, nextBlock.Height, valIns.GetLastProcessedHeight())
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorApp, *proto.StoreValidator, func()) {
+func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 	cfg.BabylonConfig.KeyDirectory = t.TempDir()
-	cfg.NumPubRand = uint64(25)
+	cfg.NumPubRand = uint64(20)
+	cfg.ValidatorModeConfig.AutoChainScanningMode = false
+	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()
 	app, err := service.NewValidatorAppFromConfig(&cfg, logger, cc)
 	require.NoError(t, err)

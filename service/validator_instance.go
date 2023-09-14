@@ -202,7 +202,7 @@ func (v *ValidatorInstance) Start() error {
 
 	v.logger.Infof("Starting thread handling validator %s", v.GetBtcPkHex())
 
-	startHeight, err := v.boostrap()
+	startHeight, err := v.bootstrap()
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap the validator %s: %w", v.GetBtcPkHex(), err)
 	}
@@ -211,7 +211,7 @@ func (v *ValidatorInstance) Start() error {
 
 	poller := NewChainPoller(v.logger, v.cfg.PollerConfig, v.cc)
 
-	if err := poller.Start(startHeight); err != nil {
+	if err := poller.Start(startHeight + 1); err != nil {
 		return fmt.Errorf("failed to start the poller: %w", err)
 	}
 
@@ -233,7 +233,7 @@ func (v *ValidatorInstance) Start() error {
 	return nil
 }
 
-func (v *ValidatorInstance) boostrap() (uint64, error) {
+func (v *ValidatorInstance) bootstrap() (uint64, error) {
 	latestBlock, err := v.getLatestBlock()
 	if err != nil {
 		return 0, err
@@ -515,8 +515,10 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			// response might be nil if sync is not needed
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex": v.GetBtcPkHex(),
-					"tx_hash":    res.TxHash,
+					"btc_pk_hex":            v.GetBtcPkHex(),
+					"tx_hashes":             res.Responses,
+					"synced_height":         res.SyncedHeight,
+					"last_processed_height": res.LastProcessedHeight,
 				}).Info("successfully synced to the latest block")
 
 				// set the poller to fetch blocks that have not been processed
@@ -600,9 +602,14 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 	fastSyncTicker := time.NewTicker(v.cfg.FastSyncInterval)
 	defer fastSyncTicker.Stop()
 
-	for v.isLagging.Load() {
+	for {
 		select {
 		case <-fastSyncTicker.C:
+			if v.isLagging.Load() {
+				// we are in fast sync mode, skip do not do checks
+				continue
+			}
+
 			latestBlock, err := v.getLatestBlock()
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -623,7 +630,7 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 	}
 }
 
-func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSyncResult, error) {
 	if v.inSync.Load() {
 		return nil, fmt.Errorf("the validator %s is already in sync", v.GetBtcPkHex())
 	}
@@ -652,13 +659,8 @@ func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*provider
 		startHeight = lastFinalizedHeight + 1
 	}
 
-	if startHeight == targetBlock.Height {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":     v.GetBtcPkHex(),
-			"start_height":   startHeight,
-			"current_height": targetBlock.Height,
-		}).Debug("the start height is equal to the current block height, no need to catch up")
-		return nil, nil
+	if startHeight > targetBlock.Height {
+		return nil, fmt.Errorf("the start height %v should not be higher than the current block %v", startHeight, targetBlock.Height)
 	}
 
 	return v.FastSync(startHeight, targetBlock.Height)

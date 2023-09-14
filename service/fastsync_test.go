@@ -18,12 +18,12 @@ func FuzzFastSync(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
-		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
+		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
+		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		mockClientController.EXPECT().QueryBlocks(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil)
+		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		err := app.Start()
 		require.NoError(t, err)
@@ -42,8 +42,6 @@ func FuzzFastSync(f *testing.F) {
 		require.Equal(t, expectedTxHash, res.TxHash)
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		err = valIns.SetLastCommittedHeight(currentHeight + 1)
-		require.NoError(t, err)
 
 		// fast sync
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
@@ -54,10 +52,10 @@ func FuzzFastSync(f *testing.F) {
 			Return(catchUpBlocks, nil)
 		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.GetBtcPkBIP340(), catchUpBlocks, gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err = valIns.FastSync(finalizedHeight+1, currentHeight)
+		result, err := valIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
-		require.NotNil(t, res)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.NotNil(t, result)
+		require.Equal(t, expectedTxHash, result.Responses[0].TxHash)
 		require.Equal(t, currentHeight, valIns.GetLastVotedHeight())
 		require.Equal(t, currentHeight, valIns.GetLastProcessedHeight())
 	})

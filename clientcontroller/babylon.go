@@ -766,14 +766,14 @@ func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.
 }
 
 func (bc *BabylonController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
-	if startHeight >= endHeight {
-		return nil, fmt.Errorf("the startHeight %v should be higher than the endHeight %v", startHeight, endHeight)
+	if endHeight < startHeight {
+		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
 	}
-	count := endHeight - startHeight
+	count := endHeight - startHeight + 1
 	if count > limit {
-		endHeight = startHeight + limit
+		count = limit
 	}
-	return bc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), endHeight-startHeight, finalitytypes.QueriedBlockStatus_ANY, false)
+	return bc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), count, finalitytypes.QueriedBlockStatus_ANY, false)
 }
 
 func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
@@ -791,27 +791,21 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
-	for {
-		queryRequest := &finalitytypes.QueryListBlocksRequest{
-			Status:     status,
-			Pagination: pagination,
-		}
-		res, err := queryClient.ListBlocks(ctx, queryRequest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
-		}
-		for _, b := range res.Blocks {
-			ib := &types.BlockInfo{
-				Height:         b.Height,
-				LastCommitHash: b.LastCommitHash,
-			}
-			blocks = append(blocks, ib)
-		}
-		if res.Pagination == nil || res.Pagination.NextKey == nil {
-			break
-		}
+	queryRequest := &finalitytypes.QueryListBlocksRequest{
+		Status:     status,
+		Pagination: pagination,
+	}
+	res, err := queryClient.ListBlocks(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
+	}
 
-		pagination.Key = res.Pagination.NextKey
+	for _, b := range res.Blocks {
+		ib := &types.BlockInfo{
+			Height:         b.Height,
+			LastCommitHash: b.LastCommitHash,
+		}
+		blocks = append(blocks, ib)
 	}
 
 	return blocks, nil
