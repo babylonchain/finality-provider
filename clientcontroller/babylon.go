@@ -791,27 +791,21 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
-	for {
-		queryRequest := &finalitytypes.QueryListBlocksRequest{
-			Status:     status,
-			Pagination: pagination,
-		}
-		res, err := queryClient.ListBlocks(ctx, queryRequest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
-		}
-		for _, b := range res.Blocks {
-			ib := &types.BlockInfo{
-				Height:         b.Height,
-				LastCommitHash: b.LastCommitHash,
-			}
-			blocks = append(blocks, ib)
-		}
-		if res.Pagination == nil || res.Pagination.NextKey == nil {
-			break
-		}
+	queryRequest := &finalitytypes.QueryListBlocksRequest{
+		Status:     status,
+		Pagination: pagination,
+	}
+	res, err := queryClient.ListBlocks(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
+	}
 
-		pagination.Key = res.Pagination.NextKey
+	for _, b := range res.Blocks {
+		ib := &types.BlockInfo{
+			Height:         b.Height,
+			LastCommitHash: b.LastCommitHash,
+		}
+		blocks = append(blocks, ib)
 	}
 
 	return blocks, nil
