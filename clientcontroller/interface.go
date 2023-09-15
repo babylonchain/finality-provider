@@ -10,6 +10,7 @@ import (
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdkTypes "github.com/cosmos/cosmos-sdk/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 
@@ -50,7 +51,7 @@ type ClientController interface {
 		btcPubKey *bbntypes.BIP340PubKey,
 		pop *btcstakingtypes.ProofOfPossession,
 		commission sdkTypes.Dec,
-		description string,
+		description *stakingtypes.Description,
 	) (*provider.RelayerTxResponse, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 	// it returns tx hash and error

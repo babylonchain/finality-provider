@@ -20,6 +20,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -113,7 +114,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	var newValName = "test-val-"
 	for i := 0; i < n; i++ {
 		newValName += strconv.Itoa(i)
-		_, err := app.CreateValidator(newValName)
+		_, err := app.CreateValidator(newValName, &stakingtypes.Description{})
 		require.NoError(t, err)
 		_, bbnPk, err := app.RegisterValidator(newValName)
 		require.NoError(t, err)

@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -431,7 +432,7 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName, description string) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(keyName string, description *stakingtypes.Description) (*CreateValidatorResult, error) {
 	req := &createValidatorRequest{
 		keyName:         keyName,
 		description:     description,

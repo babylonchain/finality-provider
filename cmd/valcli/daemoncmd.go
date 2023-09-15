@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/babylonchain/babylon/x/checkpointing/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -34,10 +35,16 @@ var daemonCommands = []cli.Command{
 const (
 	valdDaemonAddressFlag = "daemon-address"
 	keyNameFlag           = "key-name"
-	descriptionFlag       = "description"
 	valBabylonPkFlag      = "babylon-pk"
 	blockHeightFlag       = "height"
 	lastCommitHashFlag    = "last-commit-hash"
+
+	// flags for description
+	monikerFlag          = "moniker"
+	identityFlag         = "identity"
+	websiteFlag          = "website"
+	securityContractFlag = "security-contract"
+	detailsFlag          = "details"
 )
 
 var (
@@ -94,8 +101,28 @@ var createValDaemonCmd = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
-			Name:  descriptionFlag,
-			Usage: "The description of the validator",
+			Name:  monikerFlag,
+			Usage: "A human-readable name for the validator",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  identityFlag,
+			Usage: "An optional identity signature (ex. UPort or Keybase)",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  websiteFlag,
+			Usage: "An optional website link",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  securityContractFlag,
+			Usage: "An optional email for security contact",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  detailsFlag,
+			Usage: "Other optional details",
 			Value: "",
 		},
 	},
@@ -105,14 +132,18 @@ var createValDaemonCmd = cli.Command{
 func createValDaemon(ctx *cli.Context) error {
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	keyName := ctx.String(keyNameFlag)
-	descriptionStr := ctx.String(descriptionFlag)
+	description, err := getDesciptionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	client, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
 	defer cleanUp()
 
-	info, err := client.CreateValidator(context.Background(), keyName, descriptionStr)
+	info, err := client.CreateValidator(context.Background(), keyName, &description)
 
 	if err != nil {
 		return err
@@ -121,6 +152,19 @@ func createValDaemon(ctx *cli.Context) error {
 	printRespJSON(info)
 
 	return nil
+}
+
+func getDesciptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
+
+	// get information for description
+	monikerStr := ctx.String(monikerFlag)
+	identityStr := ctx.String(identityFlag)
+	websiteStr := ctx.String(websiteFlag)
+	securityContractStr := ctx.String(securityContractFlag)
+	detailsStr := ctx.String(detailsFlag)
+
+	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContractStr, detailsStr)
+	return description.EnsureLength()
 }
 
 var lsValDaemonCmd = cli.Command{

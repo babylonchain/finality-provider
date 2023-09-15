@@ -7,6 +7,7 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/testutil"
@@ -30,7 +31,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		require.False(t, kc.ValidatorKeyExists())
 
-		validator, err := kc.CreateBTCValidator()
+		validator, err := kc.CreateBTCValidator(&stakingtypes.Description{})
 		require.NoError(t, err)
 		require.True(t, kc.ValidatorKeyExists() && kc.ValidatorKeyNameTaken())
 

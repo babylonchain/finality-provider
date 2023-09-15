@@ -114,7 +114,7 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clien
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 	cfg.BabylonConfig.KeyDirectory = t.TempDir()
-	cfg.NumPubRand = uint64(20)
+	cfg.NumPubRand = uint64(25)
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()

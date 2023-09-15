@@ -262,11 +262,8 @@ func (bc *BabylonController) RegisterValidator(
 	btcPubKey *bbntypes.BIP340PubKey,
 	pop *btcstakingtypes.ProofOfPossession,
 	commission sdkTypes.Dec,
-	description string,
+	description *sttypes.Description,
 ) (*provider.RelayerTxResponse, error) {
-
-	// TODO: This should be user configurable
-	emptyDesc := sttypes.Description{}
 
 	msg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:      bc.MustGetTxSigner(),
@@ -274,7 +271,7 @@ func (bc *BabylonController) RegisterValidator(
 		BtcPk:       btcPubKey,
 		Pop:         pop,
 		Commission:  &commission,
-		Description: &emptyDesc,
+		Description: description,
 	}
 
 	res, err := bc.reliablySendMsg(msg)

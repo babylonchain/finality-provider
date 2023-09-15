@@ -11,6 +11,7 @@ import (
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/client"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
@@ -89,7 +90,7 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *
 	require.NoError(t, err)
 
 	// create validator using the keyring
-	validator, err := kc.CreateBTCValidator()
+	validator, err := kc.CreateBTCValidator(&stakingtypes.Description{})
 	require.NoError(t, err)
 
 	// save the validator

@@ -56,6 +56,31 @@ var createValCmd = cli.Command{
 			Name:  keyringDirFlag,
 			Usage: "The directory where the keyring is stored",
 		},
+		cli.StringFlag{
+			Name:  monikerFlag,
+			Usage: "A human-readable name for the validator",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  identityFlag,
+			Usage: "An optional identity signature (ex. UPort or Keybase)",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  websiteFlag,
+			Usage: "An optional website link",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  securityContractFlag,
+			Usage: "An optional email for security contact",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  detailsFlag,
+			Usage: "Other optional details",
+			Value: "",
+		},
 	},
 	Action: createVal,
 }
@@ -82,7 +107,12 @@ func createVal(ctx *cli.Context) error {
 		return fmt.Errorf("the key name %s is taken", krController.GetKeyName())
 	}
 
-	validator, err := krController.CreateBTCValidator()
+	description, err := getDesciptionFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	validator, err := krController.CreateBTCValidator(&description)
 	if err != nil {
 		return err
 	}

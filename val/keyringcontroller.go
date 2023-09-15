@@ -10,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/go-bip39"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -73,7 +74,7 @@ func NewKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*KeyringC
 }
 
 // CreateBTCValidator creates a BTC validator object using the keyring
-func (kc *KeyringController) CreateBTCValidator(des string) (*proto.StoreValidator, error) {
+func (kc *KeyringController) CreateBTCValidator(des *stakingtypes.Description) (*proto.StoreValidator, error) {
 	// create babylon key pair stored in the keyring
 	babylonPubKey, err := kc.createBabylonKeyPair()
 	if err != nil {
