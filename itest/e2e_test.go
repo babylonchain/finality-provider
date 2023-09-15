@@ -14,6 +14,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -91,7 +92,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	app := tm.Va
 	newValName := "testingValidator"
 
-	_, err := app.CreateValidator(newValName)
+	_, err := app.CreateValidator(newValName, &stakingtypes.Description{})
 	require.NoError(t, err)
 	_, bbnPk, err := app.RegisterValidator(newValName)
 	require.NoError(t, err)
