@@ -222,7 +222,9 @@ func (v *ValidatorInstance) Start() error {
 	v.quit = make(chan struct{})
 
 	v.wg.Add(1)
-	go v.submissionLoop()
+	go v.finalitySigSubmissionLoop()
+	v.wg.Add(1)
+	go v.randomnessCommitmentLoop()
 	v.wg.Add(1)
 	go v.unbondindSigSubmissionLoop()
 	v.wg.Add(1)
@@ -432,11 +434,8 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 	}
 }
 
-func (v *ValidatorInstance) submissionLoop() {
+func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 	defer v.wg.Done()
-
-	commitRandTicker := time.NewTicker(v.cfg.RandomnessCommitInterval)
-	defer commitRandTicker.Stop()
 
 	for {
 		select {
@@ -480,19 +479,20 @@ func (v *ValidatorInstance) submissionLoop() {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
 					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-					return
+				} else {
+					v.logger.WithFields(logrus.Fields{
+						"err":          err,
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": nextBlock.Height,
+					}).Warnf(instanceTerminatingMsg)
 				}
-				v.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": nextBlock.Height,
-				}).Warnf(instanceTerminatingMsg)
+				// TODO: we should stop the whole validator instance other than merely close the for loop
 				return
 			}
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
 					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": nextBlock.Height,
+					"block_height": b.Height,
 					"tx_hash":      res.TxHash,
 				}).Info("successfully submitted a finality signature to the consumer chain")
 			}
@@ -523,7 +523,21 @@ func (v *ValidatorInstance) submissionLoop() {
 				// set the poller to fetch blocks that have not been processed
 				v.poller.SetNextHeight(v.GetLastProcessedHeight() + 1)
 			}
+		case <-v.quit:
+			v.logger.Info("the finality signature submission loop is closing")
+			return
+		}
+	}
+}
 
+func (v *ValidatorInstance) randomnessCommitmentLoop() {
+	defer v.wg.Done()
+
+	commitRandTicker := time.NewTicker(v.cfg.RandomnessCommitInterval)
+	defer commitRandTicker.Stop()
+
+	for {
+		select {
 		case <-commitRandTicker.C:
 			tipBlock, err := v.getLatestBlock()
 			if err != nil {
@@ -533,13 +547,18 @@ func (v *ValidatorInstance) submissionLoop() {
 				}).Warnf(instanceTerminatingMsg)
 				return
 			}
-			txRes, err := v.CommitPubRand(tipBlock)
+			txRes, err := v.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": tipBlock,
-				}).Warnf(instanceTerminatingMsg)
+				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
+					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
+				} else {
+					v.logger.WithFields(logrus.Fields{
+						"err":          err,
+						"btc_pk_hex":   v.GetBtcPkHex(),
+						"block_height": tipBlock,
+					}).Warnf(instanceTerminatingMsg)
+				}
 				return
 			}
 			if txRes != nil {
@@ -551,7 +570,7 @@ func (v *ValidatorInstance) submissionLoop() {
 			}
 
 		case <-v.quit:
-			v.logger.Info("the finality signature and public randomness submission loop is closing")
+			v.logger.Info("the randomness commitment loop is closing")
 			return
 		}
 	}
@@ -684,7 +703,7 @@ func (v *ValidatorInstance) checkLagging(currentBlock *types.BlockInfo) bool {
 }
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
-// error will be returned if maximum retires have been reached or the query to the consumer chain fails
+// error will be returned if maximum retries have been reached or the query to the consumer chain fails
 func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
 	var failedCycles uint64
 
@@ -709,6 +728,56 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 			}
 		} else {
 			// the signature has been successfully submitted
+			return res, nil
+		}
+		select {
+		case <-time.After(v.cfg.SubmissionRetryInterval):
+			// periodically query the index block to be later checked whether it is Finalized
+			finalized, err := v.cc.QueryBlockFinalization(targetBlock.Height)
+			if err != nil {
+				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
+			}
+			if finalized {
+				v.logger.WithFields(logrus.Fields{
+					"btc_val_pk":   v.GetBtcPkHex(),
+					"block_height": targetBlock.Height,
+				}).Debug("the block is already finalized, skip submission")
+				return nil, nil
+			}
+
+		case <-v.quit:
+			v.logger.Debugf("the validator instance %s is closing", v.GetBtcPkHex())
+			return nil, nil
+		}
+	}
+}
+
+// retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
+// error will be returned if maximum retries have been reached or the query to the consumer chain fails
+func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+	var failedCycles uint64
+
+	// we break the for loop if the block is finalized or the public rand is successfully committed
+	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
+	for {
+		// error will be returned if max retries have been reached
+		res, err := v.CommitPubRand(targetBlock)
+		if err != nil {
+			if clientcontroller.IsUnrecoverable(err) {
+				return nil, err
+			}
+			v.logger.WithFields(logrus.Fields{
+				"currFailures":        failedCycles,
+				"target_block_height": targetBlock.Height,
+				"error":               err,
+			}).Error("err committing public randomness to the consumer chain")
+
+			failedCycles += 1
+			if failedCycles > v.cfg.MaxSubmissionRetries {
+				return nil, fmt.Errorf("reached max failed cycles with err: %w", err)
+			}
+		} else {
+			// the public randomness has been successfully submitted
 			return res, nil
 		}
 		select {
