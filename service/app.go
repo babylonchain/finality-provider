@@ -143,7 +143,8 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 
 	pop := &bstypes.ProofOfPossession{
 		BabylonSig: validator.Pop.BabylonSig,
-		BtcSig:     btcSig,
+		BtcSig:     btcSig.MustMarshal(),
+		BtcSigType: bstypes.BTCSigType_BIP340,
 	}
 
 	request := &registerValidatorRequest{
