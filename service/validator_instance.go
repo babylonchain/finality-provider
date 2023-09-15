@@ -703,7 +703,7 @@ func (v *ValidatorInstance) checkLagging(currentBlock *types.BlockInfo) bool {
 }
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
-// error will be returned if maximum retires have been reached or the query to the consumer chain fails
+// error will be returned if maximum retries have been reached or the query to the consumer chain fails
 func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
 	var failedCycles uint64
 
@@ -753,7 +753,7 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 }
 
 // retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
-// error will be returned if maximum retires have been reached or the query to the consumer chain fails
+// error will be returned if maximum retries have been reached or the query to the consumer chain fails
 func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
 	var failedCycles uint64
 
