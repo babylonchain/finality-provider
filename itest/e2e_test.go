@@ -14,12 +14,10 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
@@ -86,22 +84,11 @@ func TestPoller(t *testing.T) {
 // activation with BTC delegation and Jury sig ->
 // vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
-	tm := StartManager(t, false)
+	tm := StartManagerWithValidator(t, 1, false)
 	defer tm.Stop(t)
 
 	app := tm.Va
-	newValName := "testingValidator"
-
-	_, err := app.CreateValidator(newValName, &stakingtypes.Description{})
-	require.NoError(t, err)
-	_, bbnPk, err := app.RegisterValidator(newValName)
-	require.NoError(t, err)
-	err = app.StartHandlingValidator(bbnPk)
-	require.NoError(t, err)
-	valIns, err := app.GetValidatorInstance(bbnPk)
-	require.NoError(t, err)
-	require.Equal(t, valIns.GetStoreValidator().Status, proto.ValidatorStatus_REGISTERED)
-	tm.WaitForValRegistered(t, bbnPk)
+	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -116,11 +103,13 @@ func TestValidatorLifeCycle(t *testing.T) {
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
+	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	_ = tm.WaitForNFinalizedBlocks(t, 1)
+	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
+	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 }
 
 // TestMultipleValidators tests starting with multiple validators
