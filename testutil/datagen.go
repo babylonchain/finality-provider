@@ -63,7 +63,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 		BtcPk:     bip340PK.MustMarshal(),
 		Pop: &proto.ProofOfPossession{
 			BabylonSig: pop.BabylonSig,
-			BtcSig:     pop.BtcSig.MustMarshal(),
+			BtcSig:     pop.BtcSig,
 		},
 	}
 }
