@@ -128,8 +128,8 @@ message ValidatorInfo {
     string babylon_pk_hex = 1;
     // btc_pk_hex is the hex string of the BTC secp256k1 PK of the validator encoded in BIP-340 spec
     string btc_pk_hex = 2;
-    // moniker is the human-readable name for the validator
-    string moniker = 3;
+    // description defines the description terms for the validator
+    cosmos.staking.v1beta1.Description description = 3;
     // last_voted_height defines the height of the last voted Babylon block
     uint64 last_voted_height = 4;
     // last_committed_height defines the height of the last Babylon block

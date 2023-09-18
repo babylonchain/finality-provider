@@ -10,7 +10,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -72,7 +71,7 @@ func FuzzRegisterValidator(f *testing.F) {
 				validator.MustGetBIP340BTCPK(),
 				pop,
 				defaultParams.MinComissionRate,
-				&stakingtypes.Description{},
+				testutil.EmptyDescription(),
 			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, _, err := app.RegisterValidator(validator.KeyName)

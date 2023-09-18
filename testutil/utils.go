@@ -6,10 +6,15 @@ import (
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cometbfttypes "github.com/cometbft/cometbft/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/btc-validator/testutil/mocks"
 )
+
+func EmptyDescription() *stakingtypes.Description {
+	return &stakingtypes.Description{}
+}
 
 func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
