@@ -234,7 +234,7 @@ func (v *ValidatorInstance) Start() error {
 }
 
 func (v *ValidatorInstance) bootstrap() (uint64, error) {
-	latestBlock, err := v.getLatestBlock()
+	latestBlock, err := v.getLatestBlockWithRetry()
 	if err != nil {
 		return 0, err
 	}
@@ -539,7 +539,7 @@ func (v *ValidatorInstance) randomnessCommitmentLoop() {
 	for {
 		select {
 		case <-commitRandTicker.C:
-			tipBlock, err := v.getLatestBlock()
+			tipBlock, err := v.getLatestBlockWithRetry()
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":        err,
@@ -595,12 +595,14 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 				continue
 			}
 
-			latestBlock, err := v.getLatestBlock()
+			latestBlock, err := v.getLatestBlockWithRetry()
 			if err != nil {
 				v.logger.WithFields(logrus.Fields{
 					"err":        err,
 					"btc_pk_hex": v.GetBtcPkHex(),
 				}).Error("failed to get the latest block of the consumer chain")
+				// TODO should terminate the validator instance from the outside
+				continue
 			}
 
 			if v.checkLagging(latestBlock) {
@@ -1126,13 +1128,28 @@ func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.Privat
 	return privRand, nil
 }
 
-func (v *ValidatorInstance) getLatestBlock() (*types.BlockInfo, error) {
-	res, err := v.cc.QueryBestHeader()
-	if err != nil {
+func (v *ValidatorInstance) getLatestBlockWithRetry() (*types.BlockInfo, error) {
+	var latestBlock *types.BlockInfo
+
+	if err := retry.Do(func() error {
+		headerResult, err := v.cc.QueryBestHeader()
+		if err != nil {
+			return err
+		}
+		latestBlock = &types.BlockInfo{
+			Height:         uint64(headerResult.Header.Height),
+			LastCommitHash: headerResult.Header.LastCommitHash,
+		}
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		v.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("failed to query the consumer chain for the latest block")
+	})); err != nil {
 		return nil, err
 	}
-	return &types.BlockInfo{
-		Height:         uint64(res.Header.Height),
-		LastCommitHash: res.Header.LastCommitHash,
-	}, nil
+
+	return latestBlock, nil
 }
