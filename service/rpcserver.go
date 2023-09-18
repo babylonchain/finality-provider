@@ -102,7 +102,7 @@ func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetI
 // CreateValidator generates a validator object and saves it in the database
 func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValidatorRequest) (
 	*proto.CreateValidatorResponse, error) {
-	result, err := r.app.CreateValidator(req.KeyName)
+	result, err := r.app.CreateValidator(req.KeyName, req.Description)
 
 	if err != nil {
 		return nil, err

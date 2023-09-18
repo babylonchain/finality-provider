@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -49,8 +50,8 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, keyN
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName string) (*proto.CreateValidatorResponse, error) {
-	req := &proto.CreateValidatorRequest{KeyName: keyName}
+func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName string, description *stakingtypes.Description) (*proto.CreateValidatorResponse, error) {
+	req := &proto.CreateValidatorRequest{KeyName: keyName, Description: description}
 	res, err := c.client.CreateValidator(ctx, req)
 	if err != nil {
 		return nil, err

@@ -146,7 +146,7 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
 			// TODO: for now use minimum commission rate, but ultimately it should be configurable
-			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop, params.MinComissionRate)
+			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop, params.MinComissionRate, req.description)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

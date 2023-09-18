@@ -30,7 +30,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		require.False(t, kc.ValidatorKeyExists())
 
-		validator, err := kc.CreateBTCValidator()
+		validator, err := kc.CreateBTCValidator(testutil.EmptyDescription())
 		require.NoError(t, err)
 		require.True(t, kc.ValidatorKeyExists() && kc.ValidatorKeyNameTaken())
 

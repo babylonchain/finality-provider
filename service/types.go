@@ -5,6 +5,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 type createValidatorResponse struct {
@@ -13,6 +14,7 @@ type createValidatorResponse struct {
 }
 type createValidatorRequest struct {
 	keyName         string
+	description     *stakingtypes.Description
 	errResponse     chan error
 	successResponse chan *createValidatorResponse
 }
@@ -22,6 +24,7 @@ type registerValidatorRequest struct {
 	btcPubKey *types.BIP340PubKey
 	// TODO we should have our own representation of PoP
 	pop             *btcstakingtypes.ProofOfPossession
+	description     *stakingtypes.Description
 	errResponse     chan error
 	successResponse chan *RegisterValidatorResponse
 }

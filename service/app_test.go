@@ -71,6 +71,7 @@ func FuzzRegisterValidator(f *testing.F) {
 				validator.MustGetBIP340BTCPK(),
 				pop,
 				defaultParams.MinComissionRate,
+				testutil.EmptyDescription(),
 			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, _, err := app.RegisterValidator(validator.KeyName)

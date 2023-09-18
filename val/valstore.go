@@ -8,6 +8,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	gproto "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -20,7 +21,7 @@ const (
 	randPairPrefix  = "rand-pair"
 )
 
-func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession) *proto.StoreValidator {
+func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession, des *stakingtypes.Description) *proto.StoreValidator {
 	return &proto.StoreValidator{
 		KeyName:   keyName,
 		BabylonPk: babylonPk.Bytes(),
@@ -29,7 +30,8 @@ func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, k
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig,
 		},
-		Status: proto.ValidatorStatus_CREATED,
+		Status:      proto.ValidatorStatus_CREATED,
+		Description: des,
 	}
 }
 

@@ -89,7 +89,7 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *
 	require.NoError(t, err)
 
 	// create validator using the keyring
-	validator, err := kc.CreateBTCValidator()
+	validator, err := kc.CreateBTCValidator(EmptyDescription())
 	require.NoError(t, err)
 
 	// save the validator

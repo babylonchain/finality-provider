@@ -14,6 +14,7 @@ import (
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	types2 "github.com/cosmos/cosmos-sdk/types"
+	types3 "github.com/cosmos/cosmos-sdk/x/staking/types"
 	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -251,18 +252,18 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(btcPubKey,
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession, commission types2.Dec) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession, commission types2.Dec, description *types3.Description) (*provider.RelayerTxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop, commission)
+	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop, commission, description)
 	ret0, _ := ret[0].(*provider.RelayerTxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RegisterValidator indicates an expected call of RegisterValidator.
-func (mr *MockClientControllerMockRecorder) RegisterValidator(bbnPubKey, btcPubKey, pop, commission interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) RegisterValidator(bbnPubKey, btcPubKey, pop, commission, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), bbnPubKey, btcPubKey, pop, commission)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), bbnPubKey, btcPubKey, pop, commission, description)
 }
 
 // SubmitBatchFinalitySigs mocks base method.

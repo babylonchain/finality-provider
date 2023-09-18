@@ -46,6 +46,7 @@ func NewValidatorInfo(v *StoreValidator) *ValidatorInfo {
 	return &ValidatorInfo{
 		BabylonPkHex:        v.GetBabylonPkHexString(),
 		BtcPkHex:            v.MustGetBIP340BTCPK().MarshalHex(),
+		Description:         v.Description,
 		LastVotedHeight:     v.LastVotedHeight,
 		LastCommittedHeight: v.LastCommittedHeight,
 		Status:              v.Status,
