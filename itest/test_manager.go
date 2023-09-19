@@ -120,6 +120,10 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		require.NoError(t, err)
 		err = app.StartHandlingValidator(bbnPk)
 		require.NoError(t, err)
+		valIns, err := app.GetValidatorInstance(bbnPk)
+		require.NoError(t, err)
+		require.True(t, valIns.IsRunning())
+		require.NoError(t, err)
 	}
 
 	require.Equal(t, n, len(app.ListValidatorInstances()))
@@ -238,6 +242,14 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	return blocks
+}
+
+func (tm *TestManager) WaitForValStopped(t *testing.T, bbnPk *secp256k1.PubKey) {
+	valIns, err := tm.Va.GetValidatorInstance(bbnPk)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return !valIns.IsRunning()
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
 func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {

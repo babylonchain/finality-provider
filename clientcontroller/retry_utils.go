@@ -6,6 +6,7 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 )
 
@@ -27,6 +28,7 @@ var unrecoverableErrors = []*errorsmod.Error{
 	ftypes.ErrNoPubRandYet,
 	ftypes.ErrPubRandNotFound,
 	ftypes.ErrTooFewPubRand,
+	bstypes.ErrBTCValAlreadySlashed,
 }
 
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list
