@@ -245,10 +245,9 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 }
 
 func (tm *TestManager) WaitForValStopped(t *testing.T, bbnPk *secp256k1.PubKey) {
-	valIns, err := tm.Va.GetValidatorInstance(bbnPk)
-	require.NoError(t, err)
 	require.Eventually(t, func() bool {
-		return !valIns.IsRunning()
+		_, err := tm.Va.GetValidatorInstance(bbnPk)
+		return err != nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
