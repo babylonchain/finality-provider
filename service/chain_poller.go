@@ -255,7 +255,7 @@ func (cp *ChainPoller) SetNextHeight(height uint64) {
 }
 
 func (cp *ChainPoller) SetNextHeightAndClearBuffer(height uint64) {
-	cp.setNextHeight(height)
+	cp.SetNextHeight(height)
 	cp.clearChanBuffer()
 }
 
