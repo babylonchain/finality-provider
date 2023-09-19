@@ -444,12 +444,13 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 				"btc_pk_hex":   v.GetBtcPkHex(),
 				"block_height": b.Height,
 			}).Debug("the validator received a new block, start processing")
-			if b.Height <= v.GetLastVotedHeight() {
+			if b.Height <= v.GetLastProcessedHeight() {
 				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":        v.GetBtcPkHex(),
-					"block_height":      b.Height,
-					"last_voted_height": v.GetLastVotedHeight(),
-				}).Debug("the block has been voted before, skip voting")
+					"btc_pk_hex":            v.GetBtcPkHex(),
+					"block_height":          b.Height,
+					"last_processed_height": v.GetLastProcessedHeight(),
+					"last_voted_height":     v.GetLastVotedHeight(),
+				}).Debug("the block has been processed before, skip processing")
 				continue
 			}
 			// use the copy of the block to avoid the impact to other receivers
@@ -477,7 +478,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
+					_ = v.SetStatus(proto.ValidatorStatus_INACTIVE)
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
 				} else {
 					v.logger.WithFields(logrus.Fields{
@@ -501,7 +502,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			v.isLagging.Store(false)
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
+					_ = v.SetStatus(proto.ValidatorStatus_INACTIVE)
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
 					return
 				}
@@ -521,7 +522,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 				}).Info("successfully synced to the latest block")
 
 				// set the poller to fetch blocks that have not been processed
-				v.poller.SetNextHeight(v.GetLastProcessedHeight() + 1)
+				v.poller.SetNextHeightAndClearBuffer(v.GetLastProcessedHeight() + 1)
 			}
 		case <-v.quit:
 			v.logger.Info("the finality signature submission loop is closing")
@@ -550,7 +551,7 @@ func (v *ValidatorInstance) randomnessCommitmentLoop() {
 			txRes, err := v.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
 				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_ACTIVE)
+					_ = v.SetStatus(proto.ValidatorStatus_INACTIVE)
 					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
 				} else {
 					v.logger.WithFields(logrus.Fields{

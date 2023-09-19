@@ -216,6 +216,10 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 				return retry.Unrecoverable(sendMsgErr)
 			}
 			if IsExpected(sendMsgErr) {
+				// this is necessary because if err is returned
+				// the callback function will not be executed so
+				// that the inside wg.Done will not be executed
+				wg.Done()
 				bc.logger.WithFields(logrus.Fields{
 					"error": sendMsgErr,
 				}).Error("expected err when submitting the tx, skip retrying")
