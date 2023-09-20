@@ -22,7 +22,6 @@ func FuzzFastSync(f *testing.F) {
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil)
 		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		err := app.Start()

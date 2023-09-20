@@ -622,6 +622,18 @@ func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSync
 	if v.inSync.Load() {
 		return nil, fmt.Errorf("the validator %s is already in sync", v.GetBtcPkHex())
 	}
+
+	if v.GetLastCommittedHeight() <= v.GetLastVotedHeight() {
+		if err := v.SetLastProcessedHeight(targetBlock.Height); err != nil {
+			return nil, err
+		}
+		v.logger.WithFields(logrus.Fields{
+			"btc_pk_hex":   v.GetBtcPkHex(),
+			"block_height": targetBlock.Height,
+		}).Debug("insufficient public randomness, jumping to the latest block")
+		return nil, nil
+	}
+
 	// get the last finalized height
 	lastFinalizedBlocks, err := v.cc.QueryLatestFinalizedBlocks(1)
 	if err != nil {
