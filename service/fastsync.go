@@ -43,6 +43,8 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 			break
 		}
 
+		startHeight = blocks[len(blocks)-1].Height + 1
+
 		// Note: not all the blocks in the range will have votes cast
 		// due to lack of voting power or public randomness, so we may
 		// have gaps during sync
@@ -75,7 +77,6 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 			return nil, err
 		}
 
-		startHeight = blocks[len(blocks)-1].Height + 1
 		responses = append(responses, res)
 
 		v.logger.WithFields(logrus.Fields{
