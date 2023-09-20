@@ -2,12 +2,11 @@ package service
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
-	"github.com/babylonchain/babylon/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -26,7 +26,7 @@ type CriticalError struct {
 	// TODO use validator BTC key as the unique id of
 	//  the validator; currently, the storage is keyed
 	//  the babylon public key
-	valBtcPk *types.BIP340PubKey
+	valBtcPk *bbntypes.BIP340PubKey
 	bbnPk    *secp256k1.PubKey
 }
 
@@ -85,7 +85,7 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 			if err != nil {
 				panic(fmt.Errorf("failed to get the validator instance: %w", err))
 			}
-			if strings.Contains(criticalErr.err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+			if errors.Is(criticalErr.err, types.ErrValidatorSlashed) {
 				vi.MustSetStatus(proto.ValidatorStatus_SLASHED)
 				if err := vm.removeValidatorInstance(vi.GetBabylonPk()); err != nil {
 					panic(fmt.Errorf("failed to terminate a slashed validator %s: %w", vi.GetBtcPkHex(), err))

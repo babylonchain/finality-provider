@@ -1,13 +1,12 @@
 package clientcontroller
 
 import (
-	"strings"
+	"errors"
 	"time"
 
-	errorsmod "cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	ftypes "github.com/babylonchain/babylon/x/finality/types"
+
+	"github.com/babylonchain/btc-validator/types"
 )
 
 // Variables used for retries
@@ -19,22 +18,22 @@ var (
 )
 
 // these errors are considered unrecoverable because these indicate
-// something critical in the validator program or the Babylon server
-var unrecoverableErrors = []*errorsmod.Error{
-	ftypes.ErrBlockNotFound,
-	ftypes.ErrInvalidFinalitySig,
-	ftypes.ErrHeightTooHigh,
-	ftypes.ErrInvalidPubRand,
-	ftypes.ErrNoPubRandYet,
-	ftypes.ErrPubRandNotFound,
-	ftypes.ErrTooFewPubRand,
-	bstypes.ErrBTCValAlreadySlashed,
+// something critical in the validator program or the consumer chain
+var unrecoverableErrors = []error{
+	types.ErrBlockNotFound,
+	types.ErrInvalidFinalitySig,
+	types.ErrHeightTooHigh,
+	types.ErrInvalidPubRand,
+	types.ErrNoPubRandYet,
+	types.ErrPubRandNotFound,
+	types.ErrTooFewPubRand,
+	types.ErrValidatorSlashed,
 }
 
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list
 func IsUnrecoverable(err error) bool {
 	for _, e := range unrecoverableErrors {
-		if strings.Contains(err.Error(), e.Error()) {
+		if errors.Is(err, e) {
 			return true
 		}
 	}
@@ -42,16 +41,16 @@ func IsUnrecoverable(err error) bool {
 	return false
 }
 
-var expectedErrors = []*errorsmod.Error{
+var expectedErrors = []error{
 	// if due to some low-level reason (e.g., network), we submit duplicated finality sig,
 	// we should just ignore the error
-	ftypes.ErrDuplicatedFinalitySig,
+	types.ErrDuplicatedFinalitySig,
 }
 
 // IsExpected returns true when the error is in the expectedErrors list
 func IsExpected(err error) bool {
 	for _, e := range expectedErrors {
-		if strings.Contains(err.Error(), e.Error()) {
+		if errors.Is(err, e) {
 			return true
 		}
 	}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -46,7 +47,7 @@ type ValidatorInstance struct {
 	poller *ChainPoller
 
 	laggingTargetChan chan *types.BlockInfo
-	criticalErrChan   chan *CriticalError
+	criticalErrChan   chan<- *CriticalError
 
 	isStarted *atomic.Bool
 	inSync    *atomic.Bool
@@ -64,7 +65,7 @@ func NewValidatorInstance(
 	s *val.ValidatorStore,
 	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
-	errChan chan *CriticalError,
+	errChan chan<- *CriticalError,
 	logger *logrus.Logger,
 ) (*ValidatorInstance, error) {
 	v, err := s.GetStoreValidator(bbnPk.Key)
@@ -514,7 +515,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 
 			if err != nil {
 				v.reportCriticalErr(err)
-				return
+				continue
 			}
 
 			if !should {
@@ -525,7 +526,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				v.reportCriticalErr(err)
-				return
+				continue
 			}
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -538,9 +539,9 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			res, err := v.tryFastSync(targetBlock)
 			v.isLagging.Store(false)
 			if err != nil {
-				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
+				if errors.Is(err, types.ErrValidatorSlashed) {
 					v.reportCriticalErr(err)
-					return
+					continue
 				}
 				v.logger.WithFields(logrus.Fields{
 					"err":        err,
@@ -579,12 +580,12 @@ func (v *ValidatorInstance) randomnessCommitmentLoop() {
 			tipBlock, err := v.getLatestBlockWithRetry()
 			if err != nil {
 				v.reportCriticalErr(err)
-				return
+				continue
 			}
 			txRes, err := v.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
 				v.reportCriticalErr(err)
-				return
+				continue
 			}
 			if txRes != nil {
 				v.logger.WithFields(logrus.Fields{
