@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/testutil"
@@ -30,22 +29,17 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		require.False(t, kc.ValidatorKeyExists())
 
-		validator, err := kc.CreateBTCValidator(testutil.EmptyDescription())
+		btcPk, bbnPk, err := kc.CreateValidatorKeys()
 		require.NoError(t, err)
 		require.True(t, kc.ValidatorKeyExists() && kc.ValidatorKeyNameTaken())
 
-		// TODO avoid conversion after btcstaking protos are introduced
-		btcPk := validator.MustGetBIP340BTCPK()
-		bbnPk := validator.GetBabylonPK()
+		pop, err := kc.CreatePop()
+		require.NoError(t, err)
+		validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, testutil.EmptyDescription(), testutil.ZeroCommissionRates())
+
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
-		pop := &bstypes.ProofOfPossession{
-			BabylonSig: validator.Pop.BabylonSig,
-			BtcSig:     btcSig.MustMarshal(),
-			BtcSigType: bstypes.BTCSigType_BIP340,
-		}
-
 		err = pop.Verify(bbnPk, btcPk)
 		require.NoError(t, err)
 	})

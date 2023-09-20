@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"cosmossdk.io/math"
+	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/lightningnetwork/lnd/signal"
@@ -102,16 +104,21 @@ func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetI
 // CreateValidator generates a validator object and saves it in the database
 func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValidatorRequest) (
 	*proto.CreateValidatorResponse, error) {
-	result, err := r.app.CreateValidator(req.KeyName, req.Description)
+
+	commissionRate, err := math.LegacyNewDecFromStr(req.Commission)
+	if err != nil {
+		return nil, err
+	}
+	result, err := r.app.CreateValidator(req.KeyName, req.Description, &commissionRate)
 
 	if err != nil {
 		return nil, err
 	}
 
-	btcPk := schnorr.SerializePubKey(&result.BtcValidatorPk)
+	btcPk := bbntypes.BIP340PubKey(schnorr.SerializePubKey(&result.BtcValidatorPk))
 
 	return &proto.CreateValidatorResponse{
-		BtcPk:     hex.EncodeToString(btcPk),
+		BtcPk:     btcPk.MarshalHex(),
 		BabylonPk: hex.EncodeToString(result.BabylonValidatorPk.Key),
 	}, nil
 

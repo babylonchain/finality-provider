@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"cosmossdk.io/math"
 	"github.com/urfave/cli"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -57,6 +58,11 @@ var createValCmd = cli.Command{
 			Usage: "The directory where the keyring is stored",
 		},
 		cli.StringFlag{
+			Name:  commissionRateFlag,
+			Usage: "The commission rate for the validator",
+			Value: "",
+		},
+		cli.StringFlag{
 			Name:  monikerFlag,
 			Usage: "A human-readable name for the validator",
 			Value: "",
@@ -103,6 +109,11 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
+	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
+	if err != nil {
+		return err
+	}
+
 	if krController.ValidatorKeyNameTaken() {
 		return fmt.Errorf("the key name %s is taken", krController.GetKeyName())
 	}
@@ -112,10 +123,17 @@ func createVal(ctx *cli.Context) error {
 		return err
 	}
 
-	validator, err := krController.CreateBTCValidator(&description)
+	btcPk, bbnPk, err := krController.CreateValidatorKeys()
 	if err != nil {
 		return err
 	}
+
+	pop, err := krController.CreatePop()
+	if err != nil {
+		return err
+	}
+
+	validator := val.NewStoreValidator(bbnPk, btcPk, krController.GetKeyName(), pop, &description, &commissionRate)
 
 	vs, err := getValStoreFromCtx(ctx)
 	if err != nil {

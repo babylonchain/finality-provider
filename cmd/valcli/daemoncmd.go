@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"cosmossdk.io/math"
 	"github.com/babylonchain/babylon/x/checkpointing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/urfave/cli"
@@ -45,6 +46,8 @@ const (
 	websiteFlag          = "website"
 	securityContractFlag = "security-contract"
 	detailsFlag          = "details"
+
+	commissionRateFlag = "commission"
 )
 
 var (
@@ -101,6 +104,11 @@ var createValDaemonCmd = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
+			Name:  commissionRateFlag,
+			Usage: "The commission rate for the validator",
+			Value: "",
+		},
+		cli.StringFlag{
 			Name:  monikerFlag,
 			Usage: "A human-readable name for the validator",
 			Value: "",
@@ -132,6 +140,12 @@ var createValDaemonCmd = cli.Command{
 func createValDaemon(ctx *cli.Context) error {
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	keyName := ctx.String(keyNameFlag)
+
+	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
+	if err != nil {
+		return err
+	}
+
 	description, err := getDesciptionFromContext(ctx)
 	if err != nil {
 		return err
@@ -143,7 +157,7 @@ func createValDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	info, err := client.CreateValidator(context.Background(), keyName, &description)
+	info, err := client.CreateValidator(context.Background(), keyName, &description, &commissionRate)
 
 	if err != nil {
 		return err

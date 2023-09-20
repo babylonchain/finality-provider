@@ -114,7 +114,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	var newValName = "test-val-"
 	for i := 0; i < n; i++ {
 		newValName += strconv.Itoa(i)
-		_, err := app.CreateValidator(newValName, testutil.EmptyDescription())
+		_, err := app.CreateValidator(newValName, testutil.EmptyDescription(), testutil.ZeroCommissionRates())
 		require.NoError(t, err)
 		_, bbnPk, err := app.RegisterValidator(newValName)
 		require.NoError(t, err)

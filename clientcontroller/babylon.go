@@ -166,7 +166,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		JuryPk:                    juryPk,
 		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
-		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
+		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate,
 	}, nil
 }
 
@@ -265,7 +265,7 @@ func (bc *BabylonController) RegisterValidator(
 	bbnPubKey *secp256k1.PubKey,
 	btcPubKey *bbntypes.BIP340PubKey,
 	pop *btcstakingtypes.ProofOfPossession,
-	commission sdkTypes.Dec,
+	commission *sdkTypes.Dec,
 	description *sttypes.Description,
 ) (*provider.RelayerTxResponse, error) {
 
@@ -274,7 +274,7 @@ func (bc *BabylonController) RegisterValidator(
 		BabylonPk:   bbnPubKey,
 		BtcPk:       btcPubKey,
 		Pop:         pop,
-		Commission:  &commission,
+		Commission:  commission,
 		Description: description,
 	}
 

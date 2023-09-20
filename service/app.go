@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"sync"
 
+	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 
@@ -148,11 +150,17 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 		BtcSigType: bstypes.BTCSigType_BIP340,
 	}
 
+	commissionRate, err := math.LegacyNewDecFromStr(validator.Commission)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	request := &registerValidatorRequest{
 		bbnPubKey:       validator.GetBabylonPK(),
 		btcPubKey:       validator.MustGetBIP340BTCPK(),
 		pop:             pop,
 		description:     validator.Description,
+		commission:      &commissionRate,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *RegisterValidatorResponse, 1),
 	}
@@ -432,10 +440,11 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName string, description *stakingtypes.Description) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(keyName string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
 	req := &createValidatorRequest{
 		keyName:         keyName,
 		description:     description,
+		commission:      commission,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *createValidatorResponse, 1),
 	}
@@ -475,10 +484,17 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 
 	// TODO should not expose direct proto here, as this is internal db representation
 	// connected to serialization
-	validator, err := kr.CreateBTCValidator(req.description)
+	btcPk, bbnPk, err := kr.CreateValidatorKeys()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}
+
+	pop, err := kr.CreatePop()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
+	}
+
+	validator := val.NewStoreValidator(bbnPk, btcPk, kr.GetKeyName(), pop, req.description, req.commission)
 
 	if err := app.vs.SaveValidator(validator); err != nil {
 		return nil, fmt.Errorf("failed to save validator: %w", err)

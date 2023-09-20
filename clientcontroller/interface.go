@@ -37,8 +37,8 @@ type StakingParams struct {
 	// Address to which slashing transactions are sent
 	SlashingAddress string
 
-	// Minimum comission required by babylon
-	MinComissionRate sdkTypes.Dec
+	// Minimum commission required by babylon
+	MinCommissionRate sdkTypes.Dec
 }
 
 // TODO replace babylon types with general ones
@@ -50,7 +50,7 @@ type ClientController interface {
 		bbnPubKey *secp256k1.PubKey,
 		btcPubKey *bbntypes.BIP340PubKey,
 		pop *btcstakingtypes.ProofOfPossession,
-		commission sdkTypes.Dec,
+		commission *sdkTypes.Dec,
 		description *stakingtypes.Description,
 	) (*provider.RelayerTxResponse, error)
 	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon

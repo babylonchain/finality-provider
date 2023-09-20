@@ -4,6 +4,7 @@ package proto;
 
 import "gogoproto/gogo.proto";
 import "cosmos/staking/v1beta1/staking.proto";
+import "cosmos_proto/cosmos.proto";
 
 option go_package = "github.com/babylonchain/btc-validator/proto";
 
@@ -44,6 +45,12 @@ message CreateValidatorRequest {
     string key_name = 1;
     // description defines the description terms for the validator
     cosmos.staking.v1beta1.Description description = 2;
+    // commission defines the commission rate for the validator
+    // TODO failed to use the customized type: github.com/cosmos/cosmos-sdk/types.Dec
+    string commission = 3  [
+        (cosmos_proto.scalar)  = "cosmos.Dec",
+        (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
+    ];
 }
 
 message CreateValidatorResponse {
@@ -106,20 +113,26 @@ message StoreValidator {
     bytes btc_pk = 2;
     // description defines the description terms for the validator
     cosmos.staking.v1beta1.Description description = 3;
+    // commission defines the commission rate for the validator
+    // TODO failed to use the customized type: github.com/cosmos/cosmos-sdk/types.Dec
+    string commission = 4  [
+        (cosmos_proto.scalar)  = "cosmos.Dec",
+        (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
+    ];
     // pop is the proof of possession of babylon_pk and btc_pk
-    ProofOfPossession pop = 4;
+    ProofOfPossession pop = 5;
     // key_name is the identifier of the keyring
-    string key_name = 5;
+    string key_name = 6;
     // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 6;
+    uint64 last_voted_height = 7;
     // last_committed_height defines the height of the last Babylon block
     // to which the validator committed a randomness pair
-    uint64 last_committed_height = 7;
+    uint64 last_committed_height = 8;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 8;
+    uint64 last_processed_height = 9;
     // status defines the current validator status
-    ValidatorStatus status = 9;
+    ValidatorStatus status = 10;
 }
 
 // ValidatorInfo is the basic information of a validator mainly for external usage
@@ -130,13 +143,19 @@ message ValidatorInfo {
     string btc_pk_hex = 2;
     // description defines the description terms for the validator
     cosmos.staking.v1beta1.Description description = 3;
+    // commission defines the commission rate for the validator
+    // TODO failed to use the customized type: github.com/cosmos/cosmos-sdk/types.Dec
+    string commission = 4  [
+        (cosmos_proto.scalar)  = "cosmos.Dec",
+        (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
+    ];
     // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 4;
+    uint64 last_voted_height = 5;
     // last_committed_height defines the height of the last Babylon block
     // to which the validator committed a randomness pair
-    uint64 last_committed_height = 5;
+    uint64 last_committed_height = 6;
     // status defines the current validator status
-    ValidatorStatus status = 6;
+    ValidatorStatus status = 7;
 }
 
 // ProofOfPossession is the proof of possession that a Babylon secp256k1
