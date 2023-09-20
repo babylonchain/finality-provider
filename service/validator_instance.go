@@ -107,19 +107,19 @@ func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
 }
 
 func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
-	return v.bbnPk
+	return v.state.v.GetBabylonPK()
 }
 
 func (v *ValidatorInstance) GetBabylonPkHex() string {
-	return hex.EncodeToString(v.bbnPk.Key)
+	return hex.EncodeToString(v.state.v.GetBabylonPk())
 }
 
 func (v *ValidatorInstance) GetBtcPkBIP340() *bbntypes.BIP340PubKey {
-	return v.btcPk
+	return v.state.v.MustGetBIP340BTCPK()
 }
 
 func (v *ValidatorInstance) MustGetBtcPk() *btcec.PublicKey {
-	return v.btcPk.MustToBTCPK()
+	return v.state.v.MustGetBTCPK()
 }
 
 // Exposed mostly for testing purposes
@@ -128,7 +128,7 @@ func (v *ValidatorInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (v *ValidatorInstance) GetBtcPkHex() string {
-	return v.btcPk.MarshalHex()
+	return v.GetBtcPkBIP340().MarshalHex()
 }
 
 func (v *ValidatorInstance) GetStatus() proto.ValidatorStatus {

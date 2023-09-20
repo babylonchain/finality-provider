@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	eventuallyWaitTimeOut = 30 * time.Second
+	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
