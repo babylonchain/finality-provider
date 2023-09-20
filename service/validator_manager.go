@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/atomic"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
@@ -30,25 +31,43 @@ type CriticalError struct {
 }
 
 type ValidatorManager struct {
+	isStarted *atomic.Bool
+
 	mu sync.Mutex
-	// validator instances map keyed by the hex string of the BTC public key
+	wg sync.WaitGroup
+
+	// running validator instances map keyed by the hex string of the BTC public key
 	vals map[string]*ValidatorInstance
+
+	// needed for initiating validator instances
+	vs     *val.ValidatorStore
+	config *valcfg.Config
+	kr     keyring.Keyring
+	cc     clientcontroller.ClientController
+	logger *logrus.Logger
 
 	criticalErrChan chan *CriticalError
 
 	quit chan struct{}
 }
 
-func NewValidatorManager() *ValidatorManager {
-	vm := &ValidatorManager{
+func NewValidatorManager(vs *val.ValidatorStore,
+	config *valcfg.Config,
+	kr keyring.Keyring,
+	cc clientcontroller.ClientController,
+	logger *logrus.Logger,
+) (*ValidatorManager, error) {
+	return &ValidatorManager{
 		vals:            make(map[string]*ValidatorInstance),
 		criticalErrChan: make(chan *CriticalError),
+		isStarted:       atomic.NewBool(false),
+		vs:              vs,
+		config:          config,
+		kr:              kr,
+		cc:              cc,
+		logger:          logger,
 		quit:            make(chan struct{}),
-	}
-
-	go vm.monitorCriticalErr()
-
-	return vm
+	}, nil
 }
 
 // monitorCriticalErr takes actions when it receives critical errors from a validator instance
@@ -56,6 +75,8 @@ func NewValidatorManager() *ValidatorManager {
 // new validators join
 // otherwise, the program will panic
 func (vm *ValidatorManager) monitorCriticalErr() {
+	defer vm.wg.Done()
+
 	var criticalErr *CriticalError
 	for {
 		select {
@@ -81,10 +102,34 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 	}
 }
 
-func (vm *ValidatorManager) stop() error {
-	var stopErr error
+func (vm *ValidatorManager) Start() error {
+	if vm.isStarted.Swap(true) {
+		return fmt.Errorf("the validator manager is already started")
+	}
 
-	close(vm.quit)
+	storedValidators, err := vm.vs.ListRegisteredValidators()
+	if err != nil {
+		return err
+	}
+
+	vm.wg.Add(1)
+	go vm.monitorCriticalErr()
+
+	for _, v := range storedValidators {
+		if err := vm.addValidatorInstance(v.GetBabylonPK()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (vm *ValidatorManager) Stop() error {
+	if !vm.isStarted.Swap(false) {
+		return fmt.Errorf("the validator manager has already stopped")
+	}
+
+	var stopErr error
 
 	for _, v := range vm.vals {
 		if err := v.Stop(); err != nil {
@@ -92,6 +137,9 @@ func (vm *ValidatorManager) stop() error {
 			break
 		}
 	}
+
+	close(vm.quit)
+	vm.wg.Wait()
 
 	return stopErr
 }
@@ -143,11 +191,6 @@ func (vm *ValidatorManager) removeValidatorInstance(babylonPk *secp256k1.PubKey)
 // addValidatorInstance creates a validator instance, starts it and adds it into the validator manager
 func (vm *ValidatorManager) addValidatorInstance(
 	pk *secp256k1.PubKey,
-	config *valcfg.Config,
-	valStore *val.ValidatorStore,
-	kr keyring.Keyring,
-	cc clientcontroller.ClientController,
-	logger *logrus.Logger,
 ) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
@@ -157,7 +200,7 @@ func (vm *ValidatorManager) addValidatorInstance(
 		return fmt.Errorf("validator instance already exists")
 	}
 
-	valIns, err := NewValidatorInstance(pk, config, valStore, kr, cc, vm.criticalErrChan, logger)
+	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.kr, vm.cc, vm.criticalErrChan, vm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator %s instance: %w", pkHex, err)
 	}
