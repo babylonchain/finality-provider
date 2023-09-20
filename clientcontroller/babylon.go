@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -898,24 +899,24 @@ func ConvertErrType(err error) error {
 	if err == nil {
 		return nil
 	}
-	switch err {
-	case finalitytypes.ErrBlockNotFound:
+	switch {
+	case errors.Is(err, finalitytypes.ErrBlockNotFound):
 		return types.ErrBlockNotFound
-	case finalitytypes.ErrInvalidFinalitySig:
+	case errors.Is(err, finalitytypes.ErrInvalidFinalitySig):
 		return types.ErrInvalidFinalitySig
-	case finalitytypes.ErrHeightTooHigh:
+	case errors.Is(err, finalitytypes.ErrHeightTooHigh):
 		return types.ErrHeightTooHigh
-	case finalitytypes.ErrNoPubRandYet:
+	case errors.Is(err, finalitytypes.ErrNoPubRandYet):
 		return types.ErrNoPubRandYet
-	case finalitytypes.ErrPubRandNotFound:
+	case errors.Is(err, finalitytypes.ErrPubRandNotFound):
 		return types.ErrPubRandNotFound
-	case finalitytypes.ErrTooFewPubRand:
+	case errors.Is(err, finalitytypes.ErrTooFewPubRand):
 		return types.ErrTooFewPubRand
-	case btcstakingtypes.ErrBTCValAlreadySlashed:
+	case errors.Is(err, btcstakingtypes.ErrBTCValAlreadySlashed):
 		return types.ErrValidatorSlashed
-	case finalitytypes.ErrInvalidPubRand:
+	case errors.Is(err, finalitytypes.ErrInvalidPubRand):
 		return types.ErrInvalidPubRand
-	case finalitytypes.ErrDuplicatedFinalitySig:
+	case errors.Is(err, finalitytypes.ErrDuplicatedFinalitySig):
 		return types.ErrDuplicatedFinalitySig
 	default:
 		return err
