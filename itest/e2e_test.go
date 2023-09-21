@@ -218,6 +218,10 @@ func TestDoubleSigning(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 
+	// try to submit another signature and should get error due to being slashed already
+	_, _, err = valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
+	require.ErrorIs(t, err, types.ErrValidatorSlashed)
+
 	tm.WaitForValStopped(t, valIns.GetBabylonPk())
 	require.Equal(t, proto.ValidatorStatus_SLASHED, valIns.GetStatus())
 }
