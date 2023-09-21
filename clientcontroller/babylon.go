@@ -2,10 +2,10 @@ package clientcontroller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -900,23 +900,23 @@ func ConvertErrType(err error) error {
 		return nil
 	}
 	switch {
-	case errors.Is(err, finalitytypes.ErrBlockNotFound):
-		return types.ErrBlockNotFound
-	case errors.Is(err, finalitytypes.ErrInvalidFinalitySig):
-		return types.ErrInvalidFinalitySig
-	case errors.Is(err, finalitytypes.ErrHeightTooHigh):
-		return types.ErrHeightTooHigh
-	case errors.Is(err, finalitytypes.ErrNoPubRandYet):
-		return types.ErrNoPubRandYet
-	case errors.Is(err, finalitytypes.ErrPubRandNotFound):
-		return types.ErrPubRandNotFound
-	case errors.Is(err, finalitytypes.ErrTooFewPubRand):
-		return types.ErrTooFewPubRand
-	case errors.Is(err, btcstakingtypes.ErrBTCValAlreadySlashed):
+	case strings.Contains(err.Error(), btcstakingtypes.ErrBTCValAlreadySlashed.Error()):
 		return types.ErrValidatorSlashed
-	case errors.Is(err, finalitytypes.ErrInvalidPubRand):
+	case strings.Contains(err.Error(), finalitytypes.ErrBlockNotFound.Error()):
+		return types.ErrBlockNotFound
+	case strings.Contains(err.Error(), finalitytypes.ErrInvalidFinalitySig.Error()):
+		return types.ErrInvalidFinalitySig
+	case strings.Contains(err.Error(), finalitytypes.ErrHeightTooHigh.Error()):
+		return types.ErrHeightTooHigh
+	case strings.Contains(err.Error(), finalitytypes.ErrNoPubRandYet.Error()):
+		return types.ErrNoPubRandYet
+	case strings.Contains(err.Error(), finalitytypes.ErrPubRandNotFound.Error()):
+		return types.ErrPubRandNotFound
+	case strings.Contains(err.Error(), finalitytypes.ErrTooFewPubRand.Error()):
+		return types.ErrTooFewPubRand
+	case strings.Contains(err.Error(), finalitytypes.ErrInvalidPubRand.Error()):
 		return types.ErrInvalidPubRand
-	case errors.Is(err, finalitytypes.ErrDuplicatedFinalitySig):
+	case strings.Contains(err.Error(), finalitytypes.ErrDuplicatedFinalitySig.Error()):
 		return types.ErrDuplicatedFinalitySig
 	default:
 		return err

@@ -150,6 +150,8 @@ func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKe
 		}
 		return len(queriedValidators) == 1 && queriedValidators[0].BabylonPk.Equals(bbnPk)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the validator is successfully registered")
 }
 
 func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
@@ -160,6 +162,8 @@ func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.
 		}
 		return int(tm.Config.NumPubRand) == len(randPairs)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("public randomness is successfully committed")
 }
 
 func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
@@ -174,6 +178,8 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 		}
 		return len(dels) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("delegations are pending")
 
 	return dels
 }
@@ -191,6 +197,8 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 		}
 		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the delegation is active, validators should start voting")
 
 	return dels
 }
@@ -236,10 +244,13 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	require.Eventually(t, func() bool {
 		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
+			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
 		return len(blocks) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the block is finalized at %v", blocks[0].Height)
 
 	return blocks
 }

@@ -109,8 +109,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
+	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
 // TestMultipleValidators tests starting with multiple validators
@@ -204,7 +203,6 @@ func TestDoubleSigning(t *testing.T) {
 
 	// check there's a block finalized
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 
 	// attack: manually submit a finality vote over a conflicting block
 	// to trigger the extraction of validator's private key
@@ -265,7 +263,6 @@ func TestFastSync(t *testing.T) {
 
 	// check there's a block finalized
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
