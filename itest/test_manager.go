@@ -78,6 +78,8 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isJury)
 
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
+	// making sure the fee is sufficient
+	cfg.BabylonConfig.GasAdjustment = 1.5
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
@@ -128,17 +130,19 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 
 	require.Equal(t, n, len(app.ListValidatorInstances()))
 
+	t.Logf("the test manager is running with %v validators", n)
+
 	return tm
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
 	err := tm.Va.Stop()
 	require.NoError(t, err)
+	err = tm.BabylonHandler.Stop()
+	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
 	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
-	require.NoError(t, err)
-	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
 }
 
@@ -247,7 +251,6 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
-		t.Logf("got %v finalizd blocks", len(blocks))
 		return len(blocks) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 

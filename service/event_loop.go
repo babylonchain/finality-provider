@@ -95,7 +95,7 @@ func (app *ValidatorApp) eventLoop() {
 				// we always check if the validator is in the DB before sending the registration request
 				app.logger.WithFields(logrus.Fields{
 					"bbn_pk": ev.bbnPubKey,
-				}).Fatal("Registred validator not found in DB")
+				}).Fatal("registered validator not found in DB")
 			}
 
 			// change the status of the validator to registered
@@ -158,12 +158,11 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 				continue
 			}
 
-			if res != nil {
-				app.logger.WithFields(logrus.Fields{
-					"bbnPk":  hex.EncodeToString(req.bbnPubKey.Key),
-					"txHash": res.TxHash,
-				}).Info("successfully registered validator on babylon")
-			}
+			app.logger.WithFields(logrus.Fields{
+				"bbnPk":     hex.EncodeToString(req.bbnPubKey.Key),
+				"btcPubKey": req.btcPubKey.MarshalHex(),
+				"txHash":    res.TxHash,
+			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
 				bbnPubKey: req.bbnPubKey,

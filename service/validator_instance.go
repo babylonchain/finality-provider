@@ -802,6 +802,7 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 				return nil, err
 			}
 			v.logger.WithFields(logrus.Fields{
+				"btc_val_pk":          v.GetBtcPkHex(),
 				"currFailures":        failedCycles,
 				"target_block_height": targetBlock.Height,
 				"error":               err,

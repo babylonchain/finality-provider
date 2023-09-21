@@ -163,6 +163,7 @@ func TestMultipleValidators(t *testing.T) {
 
 func TestJurySigSubmission(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, true)
+	// changing the mode because we need to ensure the validator is also stopped when the test is finished
 	defer tm.Stop(t)
 	app := tm.Va
 	valIns := app.ListValidatorInstances()[0]
@@ -172,6 +173,8 @@ func TestJurySigSubmission(t *testing.T) {
 
 	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+	err := valIns.Stop()
+	require.NoError(t, err)
 }
 
 // TestDoubleSigning tests the attack scenario where the validator

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/hex"
 	"fmt"
 	"sync"
 
@@ -479,17 +478,13 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to save validator: %w", err)
 	}
 
-	btcPubKey := validator.MustGetBTCPK()
-	babylonPubKey := validator.GetBabylonPK()
-
-	app.logger.Info("successfully created validator")
 	app.logger.WithFields(logrus.Fields{
-		"btc_pub_key":     hex.EncodeToString(btcPubKey.SerializeCompressed()),
-		"babylon_pub_key": hex.EncodeToString(babylonPubKey.Key),
-	}).Debug("created validator")
+		"btc_pub_key":     validator.MustGetBIP340BTCPK().MarshalHex(),
+		"babylon_pub_key": validator.GetBabylonPkHexString(),
+	}).Debug("successfully created a validator")
 
 	return &createValidatorResponse{
-		BtcValidatorPk:     *btcPubKey,
-		BabylonValidatorPk: *babylonPubKey,
+		BtcValidatorPk:     *validator.MustGetBTCPK(),
+		BabylonValidatorPk: *validator.GetBabylonPK(),
 	}, nil
 }
