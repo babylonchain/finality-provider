@@ -242,11 +242,13 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 		err    error
 	)
 	require.Eventually(t, func() bool {
+		t.Logf("checking block finalization...")
 		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
+		t.Logf("got %v finalizd blocks", len(blocks))
 		return len(blocks) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
