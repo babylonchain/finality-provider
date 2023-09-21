@@ -252,7 +252,7 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(btcPubKey,
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession, commission types2.Dec, description *types3.Description) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession, commission *types2.Dec, description *types3.Description) (*provider.RelayerTxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop, commission, description)
 	ret0, _ := ret[0].(*provider.RelayerTxResponse)

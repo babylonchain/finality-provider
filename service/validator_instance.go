@@ -1030,30 +1030,10 @@ func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEO
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
 func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (*provider.RelayerTxResponse, *btcec.PrivateKey, error) {
-	btcPk := v.GetBtcPkBIP340()
-
 	// check last committed height
 	if v.GetLastCommittedHeight() < b.Height {
 		return nil, nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
 			v.GetLastCommittedHeight(), b.Height)
-	}
-
-	// check voting power
-	power, err := v.cc.QueryValidatorVotingPower(btcPk, b.Height)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query the consumer chain for the validator's voting power: %w", err)
-	}
-	if power == 0 {
-		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
-			// the validator is slashed or unbonded from the consumer chain
-			v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
-		}
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   btcPk.MarshalHex(),
-			"block_height": b.Height,
-		}).Debug("the validator's voting power is 0, skip voting")
-
-		return nil, nil, nil
 	}
 
 	eotsSig, err := v.signEotsSig(b)

@@ -15,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	ctrl "github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -63,14 +62,12 @@ func FuzzRegisterValidator(f *testing.F) {
 		}
 
 		txHash := testutil.GenRandomHexStr(r, 32)
-		defaultParams := ctrl.StakingParams{}
-		mockClientController.EXPECT().GetStakingParams().Return(&defaultParams, nil)
 		mockClientController.EXPECT().
 			RegisterValidator(
 				validator.GetBabylonPK(),
 				validator.MustGetBIP340BTCPK(),
 				pop,
-				defaultParams.MinComissionRate,
+				testutil.ZeroCommissionRate(),
 				testutil.EmptyDescription(),
 			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -20,13 +21,14 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -80,6 +82,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	// making sure the fee is sufficient
 	cfg.BabylonConfig.GasAdjustment = 1.5
+	cfg.BabylonConfig.GasPrices = "0.1ubbn"
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
@@ -113,12 +116,17 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	tm := StartManager(t, isJury)
 	app := tm.Va
 
-	var newValName = "test-val-"
+	var (
+		valNamePrefix = "test-val-"
+		monikerPrefix = "moniker-"
+	)
 	for i := 0; i < n; i++ {
-		newValName += strconv.Itoa(i)
-		_, err := app.CreateValidator(newValName, testutil.EmptyDescription())
+		valName := valNamePrefix + strconv.Itoa(i)
+		moniker := monikerPrefix + strconv.Itoa(i)
+		commission := sdktypes.OneDec()
+		_, err := app.CreateValidator(valName, newDescription(moniker), &commission)
 		require.NoError(t, err)
-		_, bbnPk, err := app.RegisterValidator(newValName)
+		_, bbnPk, err := app.RegisterValidator(valName)
 		require.NoError(t, err)
 		err = app.StartHandlingValidator(bbnPk)
 		require.NoError(t, err)
@@ -126,6 +134,30 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		require.NoError(t, err)
 		require.True(t, valIns.IsRunning())
 		require.NoError(t, err)
+
+		// check validators on Babylon side
+		require.Eventually(t, func() bool {
+			vals, err := tm.BabylonClient.QueryValidators()
+			if err != nil {
+				t.Logf("failed to query validtors from Babylon %s", err.Error())
+				return false
+			}
+
+			if len(vals) != i+1 {
+				return false
+			}
+
+			for _, v := range vals {
+				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
+					return false
+				}
+				if !v.Commission.Equal(sdktypes.OneDec()) {
+					return false
+				}
+			}
+
+			return true
+		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
 
 	require.Equal(t, n, len(app.ListValidatorInstances()))
@@ -526,4 +558,9 @@ func tempDirWithName(name string) (string, error) {
 	}
 
 	return tempName, nil
+}
+
+func newDescription(moniker string) *stakingtypes.Description {
+	dec := stakingtypes.NewDescription(moniker, "", "", "", "")
+	return &dec
 }

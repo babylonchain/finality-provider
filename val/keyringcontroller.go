@@ -10,10 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/go-bip39"
-
-	"github.com/babylonchain/btc-validator/proto"
 )
 
 const (
@@ -73,27 +70,21 @@ func NewKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*KeyringC
 	}, nil
 }
 
-// CreateBTCValidator creates a BTC validator object using the keyring
-func (kc *KeyringController) CreateBTCValidator(des *stakingtypes.Description) (*proto.StoreValidator, error) {
+// CreateValidatorKeys creates a BTC validator object using the keyring
+func (kc *KeyringController) CreateValidatorKeys() (*types.BIP340PubKey, *secp256k1.PubKey, error) {
 	// create babylon key pair stored in the keyring
 	babylonPubKey, err := kc.createBabylonKeyPair()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// create BTC key pair stored in the keyring
 	btcPubKey, err := kc.createBIP340KeyPair()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// create proof of possession
-	pop, err := kc.createPop()
-	if err != nil {
-		return nil, err
-	}
-
-	return NewStoreValidator(babylonPubKey, btcPubKey, kc.GetKeyName(), pop, des), nil
+	return btcPubKey, babylonPubKey, nil
 }
 
 func (kc *KeyringController) GetKeyName() string {
@@ -200,10 +191,10 @@ func (kc *KeyringController) createKey(name string) (*secp256k1.PubKey, error) {
 	}
 }
 
-// createPop creates proof-of-possession of Babylon and BTC public keys
+// CreatePop creates proof-of-possession of Babylon and BTC public keys
 // the input is the bytes of BTC public key used to sign
 // this requires both keys created beforehand
-func (kc *KeyringController) createPop() (*bstypes.ProofOfPossession, error) {
+func (kc *KeyringController) CreatePop() (*bstypes.ProofOfPossession, error) {
 	if !kc.ValidatorKeyExists() {
 		return nil, fmt.Errorf("the keys do not exist")
 	}

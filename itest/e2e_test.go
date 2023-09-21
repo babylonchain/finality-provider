@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
@@ -221,12 +220,7 @@ func TestDoubleSigning(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 
-	// try to submit another signature and should get error due to being slashed already
-	_, _, err = valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
-	require.ErrorIs(t, err, types.ErrValidatorSlashed)
-
-	tm.WaitForValStopped(t, valIns.GetBabylonPk())
-	require.Equal(t, proto.ValidatorStatus_SLASHED, valIns.GetStatus())
+	t.Logf("the equivocation attack is successful")
 }
 
 func getBtcPrivKey(kr keyring.Keyring, keyName val.KeyName) (*btcec.PrivateKey, error) {

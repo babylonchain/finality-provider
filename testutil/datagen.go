@@ -89,8 +89,13 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *
 	require.NoError(t, err)
 
 	// create validator using the keyring
-	validator, err := kc.CreateBTCValidator(EmptyDescription())
+	btcPk, bbnPk, err := kc.CreateValidatorKeys()
 	require.NoError(t, err)
+
+	pop, err := kc.CreatePop()
+	require.NoError(t, err)
+
+	validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, EmptyDescription(), ZeroCommissionRate())
 
 	// save the validator
 	s := app.GetValidatorStore()
