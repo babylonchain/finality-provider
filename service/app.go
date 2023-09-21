@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/hex"
 	"fmt"
 	"sync"
 
@@ -73,13 +72,18 @@ func NewValidatorAppFromConfig(
 		}
 	}
 
+	vm, err := NewValidatorManager(valStore, config, kr, cc, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validator manager: %w", err)
+	}
+
 	return &ValidatorApp{
 		cc:                           cc,
 		vs:                           valStore,
 		kr:                           kr,
 		config:                       config,
 		logger:                       logger,
-		validatorManager:             NewValidatorManager(),
+		validatorManager:             vm,
 		quit:                         make(chan struct{}),
 		sentQuit:                     make(chan struct{}),
 		eventQuit:                    make(chan struct{}),
@@ -180,23 +184,11 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 // StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
 func (app *ValidatorApp) StartHandlingValidator(bbnPk *secp256k1.PubKey) error {
-	return app.validatorManager.addValidatorInstance(bbnPk, app.config, app.vs, app.kr, app.cc, app.logger)
+	return app.validatorManager.addValidatorInstance(bbnPk)
 }
 
 func (app *ValidatorApp) StartHandlingValidators() error {
-	storedValidators, err := app.vs.ListRegisteredValidators()
-	if err != nil {
-		return err
-	}
-
-	for _, v := range storedValidators {
-		err = app.StartHandlingValidator(v.GetBabylonPK())
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return app.validatorManager.Start()
 }
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
@@ -413,10 +405,12 @@ func (app *ValidatorApp) Stop() error {
 		close(app.quit)
 		app.wg.Wait()
 
-		app.logger.Debug("Stopping validators")
-		if err := app.validatorManager.stop(); err != nil {
-			stopErr = err
-			return
+		if !app.IsJury() {
+			app.logger.Debug("Stopping validators")
+			if err := app.validatorManager.Stop(); err != nil {
+				stopErr = err
+				return
+			}
 		}
 
 		app.logger.Debug("Sent to Babylon loop stopped")
@@ -500,17 +494,13 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to save validator: %w", err)
 	}
 
-	btcPubKey := validator.MustGetBTCPK()
-	babylonPubKey := validator.GetBabylonPK()
-
-	app.logger.Info("successfully created validator")
 	app.logger.WithFields(logrus.Fields{
-		"btc_pub_key":     hex.EncodeToString(btcPubKey.SerializeCompressed()),
-		"babylon_pub_key": hex.EncodeToString(babylonPubKey.Key),
-	}).Debug("created validator")
+		"btc_pub_key":     validator.MustGetBIP340BTCPK().MarshalHex(),
+		"babylon_pub_key": validator.GetBabylonPkHexString(),
+	}).Debug("successfully created a validator")
 
 	return &createValidatorResponse{
-		BtcValidatorPk:     *btcPubKey,
-		BabylonValidatorPk: *babylonPubKey,
+		BtcValidatorPk:     *validator.MustGetBTCPK(),
+		BabylonValidatorPk: *validator.GetBabylonPK(),
 	}, nil
 }

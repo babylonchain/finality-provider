@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -209,6 +210,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 			return retry.Unrecoverable(krErr)
 		}
 		if sendMsgErr != nil {
+			sendMsgErr = ConvertErrType(sendMsgErr)
 			if IsUnrecoverable(sendMsgErr) {
 				bc.logger.WithFields(logrus.Fields{
 					"error": sendMsgErr,
@@ -241,6 +243,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 	wg.Wait()
 
 	if callbackErr != nil {
+		callbackErr = ConvertErrType(callbackErr)
 		if IsExpected(callbackErr) {
 			return nil, nil
 		}
@@ -890,4 +893,32 @@ func (bc *BabylonController) Close() error {
 	}
 
 	return bc.provider.RPCClient.Stop()
+}
+
+func ConvertErrType(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch {
+	case strings.Contains(err.Error(), btcstakingtypes.ErrBTCValAlreadySlashed.Error()):
+		return types.ErrValidatorSlashed
+	case strings.Contains(err.Error(), finalitytypes.ErrBlockNotFound.Error()):
+		return types.ErrBlockNotFound
+	case strings.Contains(err.Error(), finalitytypes.ErrInvalidFinalitySig.Error()):
+		return types.ErrInvalidFinalitySig
+	case strings.Contains(err.Error(), finalitytypes.ErrHeightTooHigh.Error()):
+		return types.ErrHeightTooHigh
+	case strings.Contains(err.Error(), finalitytypes.ErrNoPubRandYet.Error()):
+		return types.ErrNoPubRandYet
+	case strings.Contains(err.Error(), finalitytypes.ErrPubRandNotFound.Error()):
+		return types.ErrPubRandNotFound
+	case strings.Contains(err.Error(), finalitytypes.ErrTooFewPubRand.Error()):
+		return types.ErrTooFewPubRand
+	case strings.Contains(err.Error(), finalitytypes.ErrInvalidPubRand.Error()):
+		return types.ErrInvalidPubRand
+	case strings.Contains(err.Error(), finalitytypes.ErrDuplicatedFinalitySig.Error()):
+		return types.ErrDuplicatedFinalitySig
+	default:
+		return err
+	}
 }

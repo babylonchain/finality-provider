@@ -86,9 +86,7 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 		}).Debug("the validator is catching up by sending finality signatures in a batch")
 	}
 
-	if err := v.SetLastProcessedHeight(endHeight); err != nil {
-		return nil, err
-	}
+	v.MustSetLastProcessedHeight(endHeight)
 
 	return &FastSyncResult{
 		Responses:           responses,
