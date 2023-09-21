@@ -67,7 +67,7 @@ func FuzzRegisterValidator(f *testing.F) {
 				validator.GetBabylonPK(),
 				validator.MustGetBIP340BTCPK(),
 				pop,
-				testutil.ZeroCommissionRates(),
+				testutil.ZeroCommissionRate(),
 				testutil.EmptyDescription(),
 			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
 

@@ -95,7 +95,7 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *
 	pop, err := kc.CreatePop()
 	require.NoError(t, err)
 
-	validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, EmptyDescription(), ZeroCommissionRates())
+	validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, EmptyDescription(), ZeroCommissionRate())
 
 	// save the validator
 	s := app.GetValidatorStore()

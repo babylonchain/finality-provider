@@ -105,8 +105,8 @@ var createValDaemonCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  commissionRateFlag,
-			Usage: "The commission rate for the validator",
-			Value: "",
+			Usage: "The commission rate for the validator, e.g., 0.05",
+			Value: "0.05",
 		},
 		cli.StringFlag{
 			Name:  monikerFlag,

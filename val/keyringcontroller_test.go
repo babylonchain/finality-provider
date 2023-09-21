@@ -35,7 +35,7 @@ func FuzzCreatePoP(f *testing.F) {
 
 		pop, err := kc.CreatePop()
 		require.NoError(t, err)
-		validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, testutil.EmptyDescription(), testutil.ZeroCommissionRates())
+		validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
 
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)

@@ -17,7 +17,7 @@ func EmptyDescription() *stakingtypes.Description {
 	return &stakingtypes.Description{}
 }
 
-func ZeroCommissionRates() *sdktypes.Dec {
+func ZeroCommissionRate() *sdktypes.Dec {
 	zeroCom := sdktypes.ZeroDec()
 	return &zeroCom
 }
