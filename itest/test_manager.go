@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	eventuallyWaitTimeOut = 30 * time.Second
+	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
 )
 
@@ -78,6 +78,8 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isJury)
 
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
+	// making sure the fee is sufficient
+	cfg.BabylonConfig.GasAdjustment = 1.5
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
@@ -120,9 +122,15 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		require.NoError(t, err)
 		err = app.StartHandlingValidator(bbnPk)
 		require.NoError(t, err)
+		valIns, err := app.GetValidatorInstance(bbnPk)
+		require.NoError(t, err)
+		require.True(t, valIns.IsRunning())
+		require.NoError(t, err)
 	}
 
 	require.Equal(t, n, len(app.ListValidatorInstances()))
+
+	t.Logf("the test manager is running with %v validators", n)
 
 	return tm
 }
@@ -130,11 +138,11 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 func (tm *TestManager) Stop(t *testing.T) {
 	err := tm.Va.Stop()
 	require.NoError(t, err)
+	err = tm.BabylonHandler.Stop()
+	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
 	require.NoError(t, err)
 	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
-	require.NoError(t, err)
-	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
 }
 
@@ -146,6 +154,8 @@ func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKe
 		}
 		return len(queriedValidators) == 1 && queriedValidators[0].BabylonPk.Equals(bbnPk)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the validator is successfully registered")
 }
 
 func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
@@ -156,6 +166,8 @@ func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.
 		}
 		return int(tm.Config.NumPubRand) == len(randPairs)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("public randomness is successfully committed")
 }
 
 func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
@@ -170,6 +182,8 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 		}
 		return len(dels) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("delegations are pending")
 
 	return dels
 }
@@ -187,6 +201,8 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 		}
 		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the delegation is active, validators should start voting")
 
 	return dels
 }
@@ -232,12 +248,22 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	require.Eventually(t, func() bool {
 		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
+			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
 		return len(blocks) == n
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
+	t.Logf("the block is finalized at %v", blocks[0].Height)
+
 	return blocks
+}
+
+func (tm *TestManager) WaitForValStopped(t *testing.T, bbnPk *secp256k1.PubKey) {
+	require.Eventually(t, func() bool {
+		_, err := tm.Va.GetValidatorInstance(bbnPk)
+		return err != nil
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
 func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {

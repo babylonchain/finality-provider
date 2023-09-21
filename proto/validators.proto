@@ -179,6 +179,8 @@ enum ValidatorStatus {
     REGISTERED = 1 [(gogoproto.enumvalue_customname) = "REGISTERED"];
     // ACTIVE defines a validator that is delegated to vote
     ACTIVE = 2 [(gogoproto.enumvalue_customname) = "ACTIVE"];
-    // INACTIVE defines a validator whose delegations are reduced to zero
+    // INACTIVE defines a validator whose delegations are reduced to zero but not slashed
     INACTIVE = 3 [(gogoproto.enumvalue_customname) = "INACTIVE"];
+    // SLASHED defines a validator that has been slashed
+    SLASHED = 4 [(gogoproto.enumvalue_customname) = "SLASHED"];
 }

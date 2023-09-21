@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -28,8 +29,6 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
-const instanceTerminatingMsg = "terminating the instance due to critical error"
-
 type state struct {
 	v *proto.StoreValidator
 	s *val.ValidatorStore
@@ -48,6 +47,7 @@ type ValidatorInstance struct {
 	poller *ChainPoller
 
 	laggingTargetChan chan *types.BlockInfo
+	criticalErrChan   chan<- *CriticalError
 
 	isStarted *atomic.Bool
 	inSync    *atomic.Bool
@@ -65,6 +65,7 @@ func NewValidatorInstance(
 	s *val.ValidatorStore,
 	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
+	errChan chan<- *CriticalError,
 	logger *logrus.Logger,
 ) (*ValidatorInstance, error) {
 	v, err := s.GetStoreValidator(bbnPk.Key)
@@ -90,13 +91,14 @@ func NewValidatorInstance(
 			v: v,
 			s: s,
 		},
-		cfg:       cfg,
-		logger:    logger,
-		isStarted: atomic.NewBool(false),
-		inSync:    atomic.NewBool(false),
-		isLagging: atomic.NewBool(false),
-		kc:        kc,
-		cc:        cc,
+		cfg:             cfg,
+		logger:          logger,
+		isStarted:       atomic.NewBool(false),
+		inSync:          atomic.NewBool(false),
+		isLagging:       atomic.NewBool(false),
+		criticalErrChan: errChan,
+		kc:              kc,
+		cc:              cc,
 	}, nil
 }
 
@@ -105,19 +107,19 @@ func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
 }
 
 func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
-	return v.bbnPk
+	return v.state.v.GetBabylonPK()
 }
 
 func (v *ValidatorInstance) GetBabylonPkHex() string {
-	return hex.EncodeToString(v.bbnPk.Key)
+	return hex.EncodeToString(v.state.v.GetBabylonPk())
 }
 
 func (v *ValidatorInstance) GetBtcPkBIP340() *bbntypes.BIP340PubKey {
-	return v.btcPk
+	return v.state.v.MustGetBIP340BTCPK()
 }
 
 func (v *ValidatorInstance) MustGetBtcPk() *btcec.PublicKey {
-	return v.btcPk.MustToBTCPK()
+	return v.state.v.MustGetBTCPK()
 }
 
 // Exposed mostly for testing purposes
@@ -126,7 +128,7 @@ func (v *ValidatorInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (v *ValidatorInstance) GetBtcPkHex() string {
-	return v.btcPk.MarshalHex()
+	return v.GetBtcPkBIP340().MarshalHex()
 }
 
 func (v *ValidatorInstance) GetStatus() proto.ValidatorStatus {
@@ -174,9 +176,29 @@ func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
 	return v.state.s.UpdateValidator(v.state.v)
 }
 
+func (v *ValidatorInstance) MustSetStatus(s proto.ValidatorStatus) {
+	if err := v.SetStatus(s); err != nil {
+		v.logger.WithFields(logrus.Fields{
+			"err":        err,
+			"btc_pk_hex": v.GetBtcPkHex(),
+			"status":     s.String(),
+		}).Fatal("failed to set validator status")
+	}
+}
+
 func (v *ValidatorInstance) SetLastVotedHeight(height uint64) error {
 	v.state.v.LastVotedHeight = height
 	return v.state.s.UpdateValidator(v.state.v)
+}
+
+func (v *ValidatorInstance) MustSetLastVotedHeight(height uint64) {
+	if err := v.SetLastVotedHeight(height); err != nil {
+		v.logger.WithFields(logrus.Fields{
+			"err":        err,
+			"btc_pk_hex": v.GetBtcPkHex(),
+			"height":     height,
+		}).Fatal("failed to set last voted height")
+	}
 }
 
 func (v *ValidatorInstance) SetLastProcessedHeight(height uint64) error {
@@ -184,15 +206,45 @@ func (v *ValidatorInstance) SetLastProcessedHeight(height uint64) error {
 	return v.state.s.UpdateValidator(v.state.v)
 }
 
+func (v *ValidatorInstance) MustSetLastProcessedHeight(height uint64) {
+	if err := v.SetLastProcessedHeight(height); err != nil {
+		v.logger.WithFields(logrus.Fields{
+			"err":        err,
+			"btc_pk_hex": v.GetBtcPkHex(),
+			"height":     height,
+		}).Fatal("failed to set last processed height")
+	}
+}
+
 func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 	v.state.v.LastCommittedHeight = height
 	return v.state.s.UpdateValidator(v.state.v)
+}
+
+func (v *ValidatorInstance) MustSetLastCommittedHeight(height uint64) {
+	if err := v.SetLastCommittedHeight(height); err != nil {
+		v.logger.WithFields(logrus.Fields{
+			"err":        err,
+			"btc_pk_hex": v.GetBtcPkHex(),
+			"height":     height,
+		}).Fatal("failed to set last committed height")
+	}
 }
 
 func (v *ValidatorInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
 	v.state.v.LastProcessedHeight = height
 	v.state.v.LastVotedHeight = height
 	return v.state.s.UpdateValidator(v.state.v)
+}
+
+func (v *ValidatorInstance) MustUpdateStateAfterFinalitySigSubmission(height uint64) {
+	if err := v.updateStateAfterFinalitySigSubmission(height); err != nil {
+		v.logger.WithFields(logrus.Fields{
+			"err":        err,
+			"btc_pk_hex": v.GetBtcPkHex(),
+			"height":     height,
+		}).Fatal("failed to update state after finality sig submission")
+	}
 }
 
 func (v *ValidatorInstance) Start() error {
@@ -271,6 +323,10 @@ func (v *ValidatorInstance) Stop() error {
 	v.logger.Debugf("The thread handling validator %s is successfully stopped", v.GetBtcPkHex())
 
 	return nil
+}
+
+func (v *ValidatorInstance) IsRunning() bool {
+	return v.isStarted.Load()
 }
 
 func (v *ValidatorInstance) signUnbondingTransactions(
@@ -456,39 +512,21 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			// use the copy of the block to avoid the impact to other receivers
 			nextBlock := *b
 			should, err := v.shouldSubmitFinalitySignature(&nextBlock)
+
 			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":          err,
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": nextBlock.Height,
-				}).Warnf(instanceTerminatingMsg)
-				return
-			}
-			if !should {
-				if err := v.SetLastProcessedHeight(nextBlock.Height); err != nil {
-					v.logger.WithFields(logrus.Fields{
-						"err":          err,
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": nextBlock.Height,
-					}).Warnf(instanceTerminatingMsg)
-					return
-				}
+				v.reportCriticalErr(err)
 				continue
 			}
+
+			if !should {
+				v.MustSetLastProcessedHeight(nextBlock.Height)
+				continue
+			}
+
 			res, err := v.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
-				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_INACTIVE)
-					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-				} else {
-					v.logger.WithFields(logrus.Fields{
-						"err":          err,
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": nextBlock.Height,
-					}).Warnf(instanceTerminatingMsg)
-				}
-				// TODO: we should stop the whole validator instance other than merely close the for loop
-				return
+				v.reportCriticalErr(err)
+				continue
 			}
 			if res != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -501,15 +539,14 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			res, err := v.tryFastSync(targetBlock)
 			v.isLagging.Store(false)
 			if err != nil {
-				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_INACTIVE)
-					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-					return
+				if errors.Is(err, types.ErrValidatorSlashed) {
+					v.reportCriticalErr(err)
+					continue
 				}
 				v.logger.WithFields(logrus.Fields{
 					"err":        err,
 					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Error("failed to sync up")
+				}).Error("failed to sync up, will try again later")
 				continue
 			}
 			// response might be nil if sync is not needed
@@ -542,25 +579,13 @@ func (v *ValidatorInstance) randomnessCommitmentLoop() {
 		case <-commitRandTicker.C:
 			tipBlock, err := v.getLatestBlockWithRetry()
 			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":        err,
-					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Warnf(instanceTerminatingMsg)
-				return
+				v.reportCriticalErr(err)
+				continue
 			}
 			txRes, err := v.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
-				if strings.Contains(err.Error(), bstypes.ErrBTCValAlreadySlashed.Error()) {
-					_ = v.SetStatus(proto.ValidatorStatus_INACTIVE)
-					v.logger.Infof("the validator %s is slashed, terminating the instance", v.GetBtcPkHex())
-				} else {
-					v.logger.WithFields(logrus.Fields{
-						"err":          err,
-						"btc_pk_hex":   v.GetBtcPkHex(),
-						"block_height": tipBlock,
-					}).Warnf(instanceTerminatingMsg)
-				}
-				return
+				v.reportCriticalErr(err)
+				continue
 			}
 			if txRes != nil {
 				v.logger.WithFields(logrus.Fields{
@@ -602,7 +627,6 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 					"err":        err,
 					"btc_pk_hex": v.GetBtcPkHex(),
 				}).Error("failed to get the latest block of the consumer chain")
-				// TODO should terminate the validator instance from the outside
 				continue
 			}
 
@@ -698,9 +722,9 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (b
 	if err != nil {
 		return false, err
 	}
-	if err = v.updateStatusWithPower(power); err != nil {
-		return false, err
-	}
+
+	v.updateStatusWithPower(power)
+
 	if power == 0 {
 		v.logger.WithFields(logrus.Fields{
 			"btc_pk_hex":   v.GetBtcPkHex(),
@@ -710,6 +734,14 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (b
 	}
 
 	return true, nil
+}
+
+func (v *ValidatorInstance) reportCriticalErr(err error) {
+	v.criticalErrChan <- &CriticalError{
+		err:      err,
+		valBtcPk: v.GetBtcPkBIP340(),
+		bbnPk:    v.GetBabylonPk(),
+	}
 }
 
 // checkLagging returns true if the lasted voted height is behind by a configured gap
@@ -782,6 +814,7 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 				return nil, err
 			}
 			v.logger.WithFields(logrus.Fields{
+				"btc_val_pk":          v.GetBtcPkHex(),
 				"currFailures":        failedCycles,
 				"target_block_height": targetBlock.Height,
 				"error":               err,
@@ -900,36 +933,25 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	}
 
 	newLastCommittedHeight := startHeight + uint64(len(pubRandList)-1)
-	if err := v.SetLastCommittedHeight(newLastCommittedHeight); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-		}).Fatal("err while saving last committed height to DB")
-	}
+
+	v.MustSetLastCommittedHeight(newLastCommittedHeight)
 
 	return res, nil
 }
 
-func (v *ValidatorInstance) updateStatusWithPower(power uint64) error {
+func (v *ValidatorInstance) updateStatusWithPower(power uint64) {
 	if power == 0 {
 		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
 			// the validator is slashed or unbonded from the consumer chain
-			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
-				return fmt.Errorf("cannot set the validator status: %w", err)
-			}
+			v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
 		}
-
-		return nil
+		return
 	}
 
 	// update the status
 	if v.GetStatus() == proto.ValidatorStatus_REGISTERED || v.GetStatus() == proto.ValidatorStatus_INACTIVE {
-		if err := v.SetStatus(proto.ValidatorStatus_ACTIVE); err != nil {
-			return fmt.Errorf("cannot set the validator status: %w", err)
-		}
+		v.MustSetStatus(proto.ValidatorStatus_ACTIVE)
 	}
-
-	return nil
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
@@ -946,9 +968,7 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*provid
 	}
 
 	// update DB
-	if err := v.updateStateAfterFinalitySigSubmission(b.Height); err != nil {
-		return nil, fmt.Errorf("failed to update state in DB after finality sig submission: %w", err)
-	}
+	v.MustUpdateStateAfterFinalitySigSubmission(b.Height)
 
 	return res, nil
 }
@@ -977,9 +997,7 @@ func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockI
 
 	// update DB
 	highBlock := blocks[len(blocks)-1]
-	if err := v.updateStateAfterFinalitySigSubmission(highBlock.Height); err != nil {
-		return nil, fmt.Errorf("failed to update state in DB after submission: %w", err)
-	}
+	v.MustUpdateStateAfterFinalitySigSubmission(highBlock.Height)
 
 	return res, nil
 }
@@ -1028,9 +1046,7 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 	if power == 0 {
 		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
 			// the validator is slashed or unbonded from the consumer chain
-			if err := v.SetStatus(proto.ValidatorStatus_INACTIVE); err != nil {
-				return nil, nil, fmt.Errorf("cannot set the validator status: %w", err)
-			}
+			v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
 		}
 		v.logger.WithFields(logrus.Fields{
 			"btc_pk_hex":   btcPk.MarshalHex(),

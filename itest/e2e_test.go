@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
@@ -108,8 +109,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check there's a block finalized
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
+	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
 // TestMultipleValidators tests starting with multiple validators
@@ -163,6 +163,7 @@ func TestMultipleValidators(t *testing.T) {
 
 func TestJurySigSubmission(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, true)
+	// changing the mode because we need to ensure the validator is also stopped when the test is finished
 	defer tm.Stop(t)
 	app := tm.Va
 	valIns := app.ListValidatorInstances()[0]
@@ -172,6 +173,8 @@ func TestJurySigSubmission(t *testing.T) {
 
 	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
+	err := valIns.Stop()
+	require.NoError(t, err)
 }
 
 // TestDoubleSigning tests the attack scenario where the validator
@@ -203,7 +206,6 @@ func TestDoubleSigning(t *testing.T) {
 
 	// check there's a block finalized
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 
 	// attack: manually submit a finality vote over a conflicting block
 	// to trigger the extraction of validator's private key
@@ -218,6 +220,13 @@ func TestDoubleSigning(t *testing.T) {
 	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(valIns.GetStoreValidator().KeyName))
 	require.NoError(t, err)
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
+
+	// try to submit another signature and should get error due to being slashed already
+	_, _, err = valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
+	require.ErrorIs(t, err, types.ErrValidatorSlashed)
+
+	tm.WaitForValStopped(t, valIns.GetBabylonPk())
+	require.Equal(t, proto.ValidatorStatus_SLASHED, valIns.GetStatus())
 }
 
 func getBtcPrivKey(kr keyring.Keyring, keyName val.KeyName) (*btcec.PrivateKey, error) {
@@ -261,7 +270,6 @@ func TestFastSync(t *testing.T) {
 
 	// check there's a block finalized
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	t.Logf("the latest finalized block is at %v", finalizedBlocks[0].Height)
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
