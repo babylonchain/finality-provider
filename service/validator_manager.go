@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -81,15 +83,17 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 	for {
 		select {
 		case criticalErr = <-vm.criticalErrChan:
-			vi, err := vm.getValidatorInstance(criticalErr.bbnPk)
+			vi, err := vm.GetValidatorInstance(criticalErr.bbnPk)
 			if err != nil {
 				panic(fmt.Errorf("failed to get the validator instance: %w", err))
 			}
 			if errors.Is(criticalErr.err, types.ErrValidatorSlashed) {
-				vi.MustSetStatus(proto.ValidatorStatus_SLASHED)
-				if err := vm.removeValidatorInstance(vi.GetBabylonPk()); err != nil {
-					panic(fmt.Errorf("failed to terminate a slashed validator %s: %w", vi.GetBtcPkHex(), err))
-				}
+				vm.slashValidator(vi)
+				vm.logger.WithFields(logrus.Fields{
+					"err":        err,
+					"val_btc_pk": vi.GetBtcPkHex(),
+					"old_status": vi.GetStatus(),
+				}).Debug("the validator status has been slashed")
 				continue
 			}
 			vi.logger.WithFields(logrus.Fields{
@@ -99,6 +103,100 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 		case <-vm.quit:
 			return
 		}
+	}
+}
+
+// monitorStatusUpdate periodically check the status of each managed validators and update
+// it accordingly. We update the status by querying the latest voting power and the slashed_height.
+// In particular, we perform the following status transitions (REGISTERED, ACTIVE, INACTIVE, SLASHED):
+// 1. if power == 0 and slashed_height == 0, if status == ACTIVE, change to INACTIVE, otherwise remain the same
+// 2. if power == 0 and slashed_height > 0, set status to SLASHED and stop and remove the validator instance
+// 3. if power > 0 (slashed_height must > 0), set status to ACTIVE
+// NOTE: once error occurs, we log and continue as the status update is not critical to the entire program
+func (vm *ValidatorManager) monitorStatusUpdate() {
+	defer vm.wg.Done()
+
+	if vm.config.StatusUpdateInterval == 0 {
+		vm.logger.Info("the status update is disabled")
+		return
+	}
+
+	statusUpdateTicker := time.NewTicker(vm.config.StatusUpdateInterval)
+	defer statusUpdateTicker.Stop()
+
+	for {
+		select {
+		case <-statusUpdateTicker.C:
+			latestBlock, err := vm.getLatestBlockWithRetry()
+			if err != nil {
+				vm.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Debug("failed to get the latest block")
+				continue
+			}
+			vals := vm.ListValidatorInstances()
+			for _, v := range vals {
+				power, err := v.GetVotingPowerWithRetry(latestBlock.Height)
+				if err != nil {
+					vm.logger.WithFields(logrus.Fields{
+						"err":        err,
+						"val_btc_pk": v.GetBtcPkHex(),
+						"height":     latestBlock.Height,
+					}).Debug("failed to get the voting power")
+					continue
+				}
+				// power > 0 (slashed_height must > 0), set status to ACTIVE
+				if power > 0 {
+					if v.GetStatus() != proto.ValidatorStatus_ACTIVE {
+						v.MustSetStatus(proto.ValidatorStatus_ACTIVE)
+						vm.logger.WithFields(logrus.Fields{
+							"err":        err,
+							"val_btc_pk": v.GetBtcPkHex(),
+							"old_status": v.GetStatus(),
+							"power":      power,
+						}).Debug("the validator status has changed to ACTIVE")
+					}
+					continue
+				}
+				slashedHeight, err := v.GetSlashedHeightWithRetry()
+				if err != nil {
+					vm.logger.WithFields(logrus.Fields{
+						"err":        err,
+						"val_btc_pk": v.GetBtcPkHex(),
+					}).Debug("failed to get the slashed height")
+					continue
+				}
+				// power == 0 and slashed_height > 0, set status to SLASHED and stop and remove the validator instance
+				if slashedHeight > 0 {
+					vm.slashValidator(v)
+					vm.logger.WithFields(logrus.Fields{
+						"err":            err,
+						"val_btc_pk":     v.GetBtcPkHex(),
+						"old_status":     v.GetStatus(),
+						"slashed_height": slashedHeight,
+					}).Debug("the validator status has been slashed")
+					continue
+				}
+				// power == 0 and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
+				if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
+					v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
+					vm.logger.WithFields(logrus.Fields{
+						"err":        err,
+						"val_btc_pk": v.GetBtcPkHex(),
+						"old_status": v.GetStatus(),
+					}).Debug("the validator status has changed to INACTIVE")
+				}
+			}
+		case <-vm.quit:
+			return
+		}
+	}
+}
+
+func (vm *ValidatorManager) slashValidator(vi *ValidatorInstance) {
+	vi.MustSetStatus(proto.ValidatorStatus_SLASHED)
+	if err := vm.removeValidatorInstance(vi.GetBabylonPk()); err != nil {
+		panic(fmt.Errorf("failed to terminate a slashed validator %s: %w", vi.GetBtcPkHex(), err))
 	}
 }
 
@@ -114,6 +212,9 @@ func (vm *ValidatorManager) Start() error {
 
 	vm.wg.Add(1)
 	go vm.monitorCriticalErr()
+
+	vm.wg.Add(1)
+	go vm.monitorStatusUpdate()
 
 	for _, v := range storedValidators {
 		if err := vm.addValidatorInstance(v.GetBabylonPK()); err != nil {
@@ -132,6 +233,9 @@ func (vm *ValidatorManager) Stop() error {
 	var stopErr error
 
 	for _, v := range vm.vals {
+		if !v.IsRunning() {
+			continue
+		}
 		if err := v.Stop(); err != nil {
 			stopErr = err
 			break
@@ -144,7 +248,7 @@ func (vm *ValidatorManager) Stop() error {
 	return stopErr
 }
 
-func (vm *ValidatorManager) listValidatorInstances() []*ValidatorInstance {
+func (vm *ValidatorManager) ListValidatorInstances() []*ValidatorInstance {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
@@ -156,7 +260,7 @@ func (vm *ValidatorManager) listValidatorInstances() []*ValidatorInstance {
 	return valsList
 }
 
-func (vm *ValidatorManager) getValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
+func (vm *ValidatorManager) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
@@ -212,4 +316,30 @@ func (vm *ValidatorManager) addValidatorInstance(
 	vm.vals[pkHex] = valIns
 
 	return nil
+}
+
+func (vm *ValidatorManager) getLatestBlockWithRetry() (*types.BlockInfo, error) {
+	var latestBlock *types.BlockInfo
+
+	if err := retry.Do(func() error {
+		headerResult, err := vm.cc.QueryBestHeader()
+		if err != nil {
+			return err
+		}
+		latestBlock = &types.BlockInfo{
+			Height:         uint64(headerResult.Header.Height),
+			LastCommitHash: headerResult.Header.LastCommitHash,
+		}
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		vm.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("failed to query the consumer chain for the latest block")
+	})); err != nil {
+		return nil, err
+	}
+
+	return latestBlock, nil
 }

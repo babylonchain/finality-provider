@@ -100,6 +100,8 @@ type ClientController interface {
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
 	// QueryBlocks returns a list of blocks from startHeight to endHeight
 	QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error)
+	// QueryValidator returns a BTC validator object
+	QueryValidator(btcPk *bbntypes.BIP340PubKey) (*btcstakingtypes.BTCValidator, error)
 	// QueryBlockFinalization queries whether the block has been finalized
 	QueryBlockFinalization(height uint64) (bool, error)
 

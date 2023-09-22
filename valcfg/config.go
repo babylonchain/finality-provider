@@ -29,6 +29,7 @@ const (
 	defaultNumPubRand                     = 100
 	defaultNumPubRandMax                  = 100
 	defaultMinRandHeightGap               = 10
+	defaultStatusUpdateInterval           = 5 * time.Second
 	defaultRandomInterval                 = 5 * time.Second
 	defautlUnbondingSigSubmissionInterval = 20 * time.Second
 	defaultSubmitRetryInterval            = 1 * time.Second
@@ -65,6 +66,7 @@ type Config struct {
 	NumPubRand                     uint64        `long:"numPubRand" description:"The number of Schnorr public randomness for each commitment"`
 	NumPubRandMax                  uint64        `long:"numpubrandmax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
 	MinRandHeightGap               uint64        `long:"minrandheightgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`
+	StatusUpdateInterval           time.Duration `long:"statusupdateinterval" description:"The interval between each update of validator status"`
 	RandomnessCommitInterval       time.Duration `long:"randomnesscommitinterval" description:"The interval between each attempt to commit public randomness"`
 	SubmissionRetryInterval        time.Duration `long:"submissionretryinterval" description:"The interval between each attempt to submit finality signature or public randomness after a failure"`
 	UnbondingSigSubmissionInterval time.Duration `long:"unbondingsigsubmissioninterval" description:"The interval between each attempt to check and submit unbonding signature"`
@@ -115,6 +117,7 @@ func DefaultConfig() Config {
 		NumPubRand:                     defaultNumPubRand,
 		NumPubRandMax:                  defaultNumPubRandMax,
 		MinRandHeightGap:               defaultMinRandHeightGap,
+		StatusUpdateInterval:           defaultStatusUpdateInterval,
 		RandomnessCommitInterval:       defaultRandomInterval,
 		SubmissionRetryInterval:        defaultSubmitRetryInterval,
 		UnbondingSigSubmissionInterval: defautlUnbondingSigSubmissionInterval,
