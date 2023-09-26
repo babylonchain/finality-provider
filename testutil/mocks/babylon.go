@@ -236,6 +236,21 @@ func (mr *MockClientControllerMockRecorder) QueryUnbondindBTCDelegations() *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryUnbondindBTCDelegations", reflect.TypeOf((*MockClientController)(nil).QueryUnbondindBTCDelegations))
 }
 
+// QueryValidator mocks base method.
+func (m *MockClientController) QueryValidator(btcPk *types.BIP340PubKey) (*types0.BTCValidator, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryValidator", btcPk)
+	ret0, _ := ret[0].(*types0.BTCValidator)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryValidator indicates an expected call of QueryValidator.
+func (mr *MockClientControllerMockRecorder) QueryValidator(btcPk interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidator", reflect.TypeOf((*MockClientController)(nil).QueryValidator), btcPk)
+}
+
 // QueryValidatorVotingPower mocks base method.
 func (m *MockClientController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()

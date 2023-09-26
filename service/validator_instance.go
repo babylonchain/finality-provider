@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -29,16 +28,11 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
-type state struct {
-	v *proto.StoreValidator
-	s *val.ValidatorStore
-}
-
 type ValidatorInstance struct {
 	bbnPk *secp256k1.PubKey
 	btcPk *bbntypes.BIP340PubKey
 
-	state *state
+	state *valState
 	cfg   *valcfg.Config
 
 	logger *logrus.Logger
@@ -74,7 +68,6 @@ func NewValidatorInstance(
 	}
 
 	// ensure the validator has been registered
-	// TODO refactor this by getting the constants from Babylon
 	if v.Status < proto.ValidatorStatus_REGISTERED {
 		return nil, fmt.Errorf("the validator %s has not been registered", v.KeyName)
 	}
@@ -87,7 +80,7 @@ func NewValidatorInstance(
 	return &ValidatorInstance{
 		bbnPk: bbnPk,
 		btcPk: v.MustGetBIP340BTCPK(),
-		state: &state{
+		state: &valState{
 			v: v,
 			s: s,
 		},
@@ -100,151 +93,6 @@ func NewValidatorInstance(
 		kc:              kc,
 		cc:              cc,
 	}, nil
-}
-
-func (v *ValidatorInstance) GetStoreValidator() *proto.StoreValidator {
-	return v.state.v
-}
-
-func (v *ValidatorInstance) GetBabylonPk() *secp256k1.PubKey {
-	return v.state.v.GetBabylonPK()
-}
-
-func (v *ValidatorInstance) GetBabylonPkHex() string {
-	return hex.EncodeToString(v.state.v.GetBabylonPk())
-}
-
-func (v *ValidatorInstance) GetBtcPkBIP340() *bbntypes.BIP340PubKey {
-	return v.state.v.MustGetBIP340BTCPK()
-}
-
-func (v *ValidatorInstance) MustGetBtcPk() *btcec.PublicKey {
-	return v.state.v.MustGetBTCPK()
-}
-
-// Exposed mostly for testing purposes
-func (v *ValidatorInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
-	return v.kc.GetBtcPrivKey()
-}
-
-func (v *ValidatorInstance) GetBtcPkHex() string {
-	return v.GetBtcPkBIP340().MarshalHex()
-}
-
-func (v *ValidatorInstance) GetStatus() proto.ValidatorStatus {
-	return v.state.v.Status
-}
-
-func (v *ValidatorInstance) GetLastVotedHeight() uint64 {
-	return v.state.v.LastVotedHeight
-}
-
-func (v *ValidatorInstance) GetLastProcessedHeight() uint64 {
-	return v.state.v.LastProcessedHeight
-}
-
-func (v *ValidatorInstance) GetLastCommittedHeight() uint64 {
-	return v.state.v.LastCommittedHeight
-}
-
-func (v *ValidatorInstance) GetCommittedPubRandPairList() ([]*proto.SchnorrRandPair, error) {
-	return v.state.s.GetRandPairList(v.bbnPk.Key)
-}
-
-func (v *ValidatorInstance) GetCommittedPubRandPair(height uint64) (*proto.SchnorrRandPair, error) {
-	return v.state.s.GetRandPair(v.bbnPk.Key, height)
-}
-
-func (v *ValidatorInstance) GetCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
-	randPair, err := v.state.s.GetRandPair(v.bbnPk.Key, height)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(randPair.SecRand) != 32 {
-		return nil, fmt.Errorf("the private randomness should be 32 bytes")
-	}
-
-	privRand := new(eots.PrivateRand)
-	privRand.SetByteSlice(randPair.SecRand)
-
-	return privRand, nil
-}
-
-func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
-	v.state.v.Status = s
-	return v.state.s.UpdateValidator(v.state.v)
-}
-
-func (v *ValidatorInstance) MustSetStatus(s proto.ValidatorStatus) {
-	if err := v.SetStatus(s); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"status":     s.String(),
-		}).Fatal("failed to set validator status")
-	}
-}
-
-func (v *ValidatorInstance) SetLastVotedHeight(height uint64) error {
-	v.state.v.LastVotedHeight = height
-	return v.state.s.UpdateValidator(v.state.v)
-}
-
-func (v *ValidatorInstance) MustSetLastVotedHeight(height uint64) {
-	if err := v.SetLastVotedHeight(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to set last voted height")
-	}
-}
-
-func (v *ValidatorInstance) SetLastProcessedHeight(height uint64) error {
-	v.state.v.LastProcessedHeight = height
-	return v.state.s.UpdateValidator(v.state.v)
-}
-
-func (v *ValidatorInstance) MustSetLastProcessedHeight(height uint64) {
-	if err := v.SetLastProcessedHeight(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to set last processed height")
-	}
-}
-
-func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
-	v.state.v.LastCommittedHeight = height
-	return v.state.s.UpdateValidator(v.state.v)
-}
-
-func (v *ValidatorInstance) MustSetLastCommittedHeight(height uint64) {
-	if err := v.SetLastCommittedHeight(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to set last committed height")
-	}
-}
-
-func (v *ValidatorInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
-	v.state.v.LastProcessedHeight = height
-	v.state.v.LastVotedHeight = height
-	return v.state.s.UpdateValidator(v.state.v)
-}
-
-func (v *ValidatorInstance) MustUpdateStateAfterFinalitySigSubmission(height uint64) {
-	if err := v.updateStateAfterFinalitySigSubmission(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to update state after finality sig submission")
-	}
 }
 
 func (v *ValidatorInstance) Start() error {
@@ -717,13 +565,10 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (b
 		return false, nil
 	}
 
-	// TODO: add retry here or within the query
-	power, err := v.cc.QueryValidatorVotingPower(v.GetBtcPkBIP340(), b.Height)
+	power, err := v.GetVotingPowerWithRetry(b.Height)
 	if err != nil {
 		return false, err
 	}
-
-	v.updateStatusWithPower(power)
 
 	if power == 0 {
 		v.logger.WithFields(logrus.Fields{
@@ -939,21 +784,6 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	return res, nil
 }
 
-func (v *ValidatorInstance) updateStatusWithPower(power uint64) {
-	if power == 0 {
-		if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
-			// the validator is slashed or unbonded from the consumer chain
-			v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
-		}
-		return
-	}
-
-	// update the status
-	if v.GetStatus() == proto.ValidatorStatus_REGISTERED || v.GetStatus() == proto.ValidatorStatus_INACTIVE {
-		v.MustSetStatus(proto.ValidatorStatus_ACTIVE)
-	}
-}
-
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
 func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*provider.RelayerTxResponse, error) {
 	eotsSig, err := v.signEotsSig(b)
@@ -1161,4 +991,54 @@ func (v *ValidatorInstance) getLatestBlockWithRetry() (*types.BlockInfo, error) 
 	}
 
 	return latestBlock, nil
+}
+
+func (v *ValidatorInstance) GetVotingPowerWithRetry(height uint64) (uint64, error) {
+	var (
+		power uint64
+		err   error
+	)
+
+	if err := retry.Do(func() error {
+		power, err = v.cc.QueryValidatorVotingPower(v.GetBtcPkBIP340(), height)
+		if err != nil {
+			return err
+		}
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		v.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("failed to query the voting power")
+	})); err != nil {
+		return 0, err
+	}
+
+	return power, nil
+}
+
+func (v *ValidatorInstance) GetSlashedHeightWithRetry() (uint64, error) {
+	var (
+		slashedHeight uint64
+	)
+
+	if err := retry.Do(func() error {
+		res, err := v.cc.QueryValidator(v.GetBtcPkBIP340())
+		if err != nil {
+			return err
+		}
+		slashedHeight = res.SlashedBtcHeight
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		v.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("failed to query the voting power")
+	})); err != nil {
+		return 0, err
+	}
+
+	return slashedHeight, nil
 }
