@@ -3,6 +3,7 @@ package local
 import (
 	"fmt"
 
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
@@ -10,6 +11,10 @@ import (
 	"github.com/babylonchain/btc-validator/store"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
+)
+
+const (
+	randPairPrefix = "rand-pair"
 )
 
 type EOTSStore struct {
@@ -50,6 +55,43 @@ func (es *EOTSStore) saveValidator(storeVal *proto.StoreValidator) error {
 	}
 
 	return es.s.Put(k, v)
+}
+
+func (es *EOTSStore) saveRandPair(pk []byte, chainID string, height uint64, randPair *proto.SchnorrRandPair) error {
+	k := getRandPairKey(pk, chainID, height)
+	v, err := gproto.Marshal(randPair)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the Schnorr random pair: %w", err)
+	}
+
+	if err := es.s.Put(k, v); err != nil {
+		return fmt.Errorf("failed to save the Schnorr random pair: %w", err)
+	}
+
+	return nil
+}
+
+func getRandPairKey(pk []byte, chainID string, height uint64) []byte {
+	return append(getRandPairListKey(pk, chainID), sdktypes.Uint64ToBigEndian(height)...)
+}
+
+func getRandPairListKey(pk []byte, chainID string) []byte {
+	return append(append([]byte(randPairPrefix), pk...), []byte(chainID)...)
+}
+
+func (es *EOTSStore) getValidatorKeyName(pk []byte) (string, error) {
+	k := val.GetValidatorKey(pk)
+	v, err := es.s.Get(k)
+	if err != nil {
+		return "", err
+	}
+
+	validator := new(proto.StoreValidator)
+	if err := gproto.Unmarshal(v, validator); err != nil {
+		return "", err
+	}
+
+	return validator.KeyName, nil
 }
 
 // openStore returns a Store instance with the given db type, path and name

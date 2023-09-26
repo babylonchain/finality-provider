@@ -2,9 +2,13 @@ package local
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
+	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -52,8 +56,8 @@ func NewLocalEOTSManager(ctx client.Context, keyringBackend string, dbCfg *valcf
 	}, nil
 }
 
-func (lm *LocalEOTSManager) CreateValidator(uid, passPhrase string) (*types.BIP340PubKey, error) {
-	if lm.keyExists(uid) {
+func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*types.BIP340PubKey, error) {
+	if lm.keyExists(name) {
 		return nil, eotsmanager.ErrValidatorAlreadyExisted
 	}
 
@@ -75,7 +79,7 @@ func (lm *LocalEOTSManager) CreateValidator(uid, passPhrase string) (*types.BIP3
 	}
 
 	// TODO for now we leave and hdPath empty
-	record, err := lm.kr.NewAccount(uid, mnemonic, passPhrase, "", algo)
+	record, err := lm.kr.NewAccount(name, mnemonic, passPhrase, "", algo)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +103,7 @@ func (lm *LocalEOTSManager) CreateValidator(uid, passPhrase string) (*types.BIP3
 
 	validator := &proto.StoreValidator{
 		BtcPk:   eotsPk.MustMarshal(),
-		KeyName: uid,
+		KeyName: name,
 	}
 
 	if err := lm.es.saveValidator(validator); err != nil {
@@ -107,6 +111,61 @@ func (lm *LocalEOTSManager) CreateValidator(uid, passPhrase string) (*types.BIP3
 	}
 
 	return eotsPk, nil
+}
+
+func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *types.BIP340PubKey, chainID string, startHeight uint64, step int, num int) ([]*types.SchnorrPubRand, error) {
+	prList := make([]*types.SchnorrPubRand, 0, num)
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := 0; i < num; i++ {
+		// generate randomness pair
+		eotsSR, eotsPR, err := eots.RandGen(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate randomness pair")
+		}
+
+		// persists randomness pair
+		height := startHeight + uint64(i)
+		privRand := eotsSR.Bytes()
+		pubRand := eotsPR.Bytes()
+		randPair := &proto.SchnorrRandPair{
+			SecRand: privRand[:],
+			PubRand: pubRand[:],
+		}
+		if err := lm.es.saveRandPair(valPk.MustMarshal(), chainID, height, randPair); err != nil {
+			return nil, fmt.Errorf("failed to save randomness pair")
+		}
+
+		pr := types.NewSchnorrPubRandFromFieldVal(eotsPR)
+		prList = append(prList, pr)
+	}
+
+	return prList, nil
+}
+
+func (lm *LocalEOTSManager) SignSchnorrSig(valPk *types.BIP340PubKey, msg []byte) (*schnorr.Signature, error) {
+	keyName, err := lm.es.getValidatorKeyName(valPk.MustMarshal())
+	if err != nil {
+		return nil, err
+	}
+
+	k, err := lm.kr.Key(keyName)
+	if err != nil {
+		return nil, err
+	}
+
+	privKeyCached := k.GetLocal().PrivKey.GetCachedValue()
+
+	var privKey *btcec.PrivateKey
+	switch v := privKeyCached.(type) {
+	case *secp256k1.PrivKey:
+		privKey, _ = btcec.PrivKeyFromBytes(v.Key)
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
+	}
+
+	return schnorr.Sign(privKey, msg)
 }
 
 func (lm *LocalEOTSManager) keyExists(name string) bool {
