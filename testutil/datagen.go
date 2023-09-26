@@ -117,6 +117,18 @@ func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
 	return dbcfg
 }
 
+func GenEOTSConfig(r *rand.Rand, t *testing.T) *valcfg.EOTSManagerConfig {
+	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
+	path := filepath.Join(t.TempDir(), bucketName)
+	eotsCfg, err := valcfg.NewEOTSManagerConfig(
+		"bbolt",
+		path,
+		bucketName,
+	)
+	require.NoError(t, err)
+	return eotsCfg
+}
+
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {
 	chainID := "testchain-" + GenRandomHexStr(r, 4)
 	dir := t.TempDir()

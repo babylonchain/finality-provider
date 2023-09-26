@@ -9,20 +9,20 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/store"
-	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
-	randPairPrefix = "rand-pair"
+	randPairPrefix         = "rand-pair"
+	validatorKeyNamePrefix = "val-key"
 )
 
 type EOTSStore struct {
 	s store.Store
 }
 
-func NewEOTSStore(dbcfg *valcfg.DatabaseConfig) (*EOTSStore, error) {
-	s, err := openStore(dbcfg)
+func NewEOTSStore(cfg *valcfg.EOTSManagerConfig) (*EOTSStore, error) {
+	s, err := openStore(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +38,8 @@ func (es *EOTSStore) Close() error {
 	return nil
 }
 
-func (es *EOTSStore) saveValidator(storeVal *proto.StoreValidator) error {
-	k := val.GetValidatorKey(storeVal.BtcPk)
+func (es *EOTSStore) saveValidatorKey(pk []byte, keyName string) error {
+	k := getValidatorKeyNameKey(pk)
 
 	exists, err := es.s.Exists(k)
 	if err != nil {
@@ -49,12 +49,7 @@ func (es *EOTSStore) saveValidator(storeVal *proto.StoreValidator) error {
 		return eotsmanager.ErrValidatorAlreadyExisted
 	}
 
-	v, err := gproto.Marshal(storeVal)
-	if err != nil {
-		return err
-	}
-
-	return es.s.Put(k, v)
+	return es.s.Put(k, []byte(keyName))
 }
 
 func (es *EOTSStore) saveRandPair(pk []byte, chainID string, height uint64, randPair *proto.SchnorrRandPair) error {
@@ -71,6 +66,21 @@ func (es *EOTSStore) saveRandPair(pk []byte, chainID string, height uint64, rand
 	return nil
 }
 
+func (es *EOTSStore) getRandPair(pk []byte, chainID string, height uint64) (*proto.SchnorrRandPair, error) {
+	k := getRandPairKey(pk, chainID, height)
+	v, err := es.s.Get(k)
+	if err != nil {
+		return nil, err
+	}
+
+	pair := new(proto.SchnorrRandPair)
+	if err := gproto.Unmarshal(v, pair); err != nil {
+		return nil, err
+	}
+
+	return pair, nil
+}
+
 func getRandPairKey(pk []byte, chainID string, height uint64) []byte {
 	return append(getRandPairListKey(pk, chainID), sdktypes.Uint64ToBigEndian(height)...)
 }
@@ -79,27 +89,24 @@ func getRandPairListKey(pk []byte, chainID string) []byte {
 	return append(append([]byte(randPairPrefix), pk...), []byte(chainID)...)
 }
 
-func (es *EOTSStore) getValidatorKeyName(pk []byte) (string, error) {
-	k := val.GetValidatorKey(pk)
+func (es *EOTSStore) GetValidatorKeyName(pk []byte) (string, error) {
+	k := getValidatorKeyNameKey(pk)
 	v, err := es.s.Get(k)
 	if err != nil {
 		return "", err
 	}
 
-	validator := new(proto.StoreValidator)
-	if err := gproto.Unmarshal(v, validator); err != nil {
-		return "", err
-	}
-
-	return validator.KeyName, nil
+	return string(v), nil
 }
 
-// openStore returns a Store instance with the given db type, path and name
-// currently, we only support bbolt
-func openStore(dbcfg *valcfg.DatabaseConfig) (store.Store, error) {
-	switch dbcfg.Backend {
+func getValidatorKeyNameKey(pk []byte) []byte {
+	return append([]byte(validatorKeyNamePrefix), pk...)
+}
+
+func openStore(dbcfg *valcfg.EOTSManagerConfig) (store.Store, error) {
+	switch dbcfg.DBBackend {
 	case "bbolt":
-		return store.NewBboltStore(dbcfg.Path, dbcfg.Name)
+		return store.NewBboltStore(dbcfg.DBPath, dbcfg.DBName)
 	default:
 		return nil, fmt.Errorf("unsupported database type")
 	}

@@ -29,7 +29,7 @@ type LocalEOTSManager struct {
 	es *EOTSStore
 }
 
-func NewLocalEOTSManager(ctx client.Context, keyringBackend string, dbCfg *valcfg.DatabaseConfig) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *valcfg.EOTSManagerConfig) (*LocalEOTSManager, error) {
 	if keyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
@@ -45,7 +45,7 @@ func NewLocalEOTSManager(ctx client.Context, keyringBackend string, dbCfg *valcf
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	es, err := NewEOTSStore(dbCfg)
+	es, err := NewEOTSStore(eotsCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
@@ -101,12 +101,7 @@ func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*types.BIP
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 
-	validator := &proto.StoreValidator{
-		BtcPk:   eotsPk.MustMarshal(),
-		KeyName: name,
-	}
-
-	if err := lm.es.saveValidator(validator); err != nil {
+	if err := lm.es.saveValidatorKey(eotsPk.MustMarshal(), name); err != nil {
 		return nil, err
 	}
 
@@ -122,11 +117,11 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *types.BIP340PubKey, 
 		// generate randomness pair
 		eotsSR, eotsPR, err := eots.RandGen(r)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate randomness pair")
+			return nil, fmt.Errorf("failed to generate randomness pair: %w", err)
 		}
 
 		// persists randomness pair
-		height := startHeight + uint64(i)
+		height := startHeight + uint64(i)*uint64(step)
 		privRand := eotsSR.Bytes()
 		pubRand := eotsPR.Bytes()
 		randPair := &proto.SchnorrRandPair{
@@ -134,7 +129,7 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *types.BIP340PubKey, 
 			PubRand: pubRand[:],
 		}
 		if err := lm.es.saveRandPair(valPk.MustMarshal(), chainID, height, randPair); err != nil {
-			return nil, fmt.Errorf("failed to save randomness pair")
+			return nil, fmt.Errorf("failed to save randomness pair: %w", err)
 		}
 
 		pr := types.NewSchnorrPubRandFromFieldVal(eotsPR)
@@ -144,8 +139,56 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *types.BIP340PubKey, 
 	return prList, nil
 }
 
+func (lm *LocalEOTSManager) SignEOTS(valPk *types.BIP340PubKey, chainID string, msg []byte, height uint64) (*types.SchnorrEOTSSig, error) {
+	privRand, err := lm.getPrivRandomness(valPk, chainID, height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get private randomness: %w", err)
+	}
+
+	privKey, err := lm.getEOTSPrivKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
+	}
+
+	sig, err := eots.Sign(privKey, privRand, msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
+	}
+
+	return types.NewSchnorrEOTSSigFromModNScalar(sig), nil
+}
+
 func (lm *LocalEOTSManager) SignSchnorrSig(valPk *types.BIP340PubKey, msg []byte) (*schnorr.Signature, error) {
-	keyName, err := lm.es.getValidatorKeyName(valPk.MustMarshal())
+	privKey, err := lm.getEOTSPrivKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
+	}
+
+	return schnorr.Sign(privKey, msg)
+}
+
+func (lm *LocalEOTSManager) Close() error {
+	return lm.es.Close()
+}
+
+func (lm *LocalEOTSManager) getPrivRandomness(valPk *types.BIP340PubKey, chainID string, height uint64) (*eots.PrivateRand, error) {
+	randPair, err := lm.es.getRandPair(valPk.MustMarshal(), chainID, height)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(randPair.SecRand) != 32 {
+		return nil, fmt.Errorf("the private randomness should be 32 bytes")
+	}
+
+	privRand := new(eots.PrivateRand)
+	privRand.SetByteSlice(randPair.SecRand)
+
+	return privRand, nil
+}
+
+func (lm *LocalEOTSManager) getEOTSPrivKey(valPk *types.BIP340PubKey) (*btcec.PrivateKey, error) {
+	keyName, err := lm.es.GetValidatorKeyName(valPk.MustMarshal())
 	if err != nil {
 		return nil, err
 	}
@@ -161,11 +204,10 @@ func (lm *LocalEOTSManager) SignSchnorrSig(valPk *types.BIP340PubKey, msg []byte
 	switch v := privKeyCached.(type) {
 	case *secp256k1.PrivKey:
 		privKey, _ = btcec.PrivKeyFromBytes(v.Key)
+		return privKey, nil
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
-
-	return schnorr.Sign(privKey, msg)
 }
 
 func (lm *LocalEOTSManager) keyExists(name string) bool {

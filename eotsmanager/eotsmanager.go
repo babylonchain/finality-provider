@@ -20,11 +20,12 @@ type EOTSManager interface {
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height
-	// It fails if the validator does not exist or the chain has not been registered
-	// by the validator
+	// It fails if the validator does not exist or there's no randomness committed to the given height
 	SignEOTS(valPk *types.BIP340PubKey, chainID string, msg []byte, height uint64) (*types.SchnorrEOTSSig, error)
 
 	// SignSchnorrSig signs a Schnorr signature using the private key of the validator
 	// It fails if the validator does not exist
 	SignSchnorrSig(valPk *types.BIP340PubKey, msg []byte) (*schnorr.Signature, error)
+
+	Close() error
 }
