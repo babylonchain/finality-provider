@@ -88,7 +88,7 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 				panic(fmt.Errorf("failed to get the validator instance: %w", err))
 			}
 			if errors.Is(criticalErr.err, types.ErrValidatorSlashed) {
-				vm.slashValidator(vi)
+				vm.setValidatorSlashed(vi)
 				vm.logger.WithFields(logrus.Fields{
 					"err":        err,
 					"val_btc_pk": vi.GetBtcPkHex(),
@@ -168,7 +168,7 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 				}
 				// power == 0 and slashed_height > 0, set status to SLASHED and stop and remove the validator instance
 				if slashedHeight > 0 {
-					vm.slashValidator(v)
+					vm.setValidatorSlashed(v)
 					vm.logger.WithFields(logrus.Fields{
 						"err":            err,
 						"val_btc_pk":     v.GetBtcPkHex(),
@@ -193,7 +193,7 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 	}
 }
 
-func (vm *ValidatorManager) slashValidator(vi *ValidatorInstance) {
+func (vm *ValidatorManager) setValidatorSlashed(vi *ValidatorInstance) {
 	vi.MustSetStatus(proto.ValidatorStatus_SLASHED)
 	if err := vm.removeValidatorInstance(vi.GetBabylonPk()); err != nil {
 		panic(fmt.Errorf("failed to terminate a slashed validator %s: %w", vi.GetBtcPkHex(), err))
