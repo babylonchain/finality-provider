@@ -573,7 +573,25 @@ func (bc *BabylonController) QueryUnbondindBTCDelegations() ([]*btcstakingtypes.
 	return res.BtcDelegations, nil
 }
 
+func (bc *BabylonController) QueryValidator(btcPk *bbntypes.BIP340PubKey) (*btcstakingtypes.BTCValidator, error) {
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryRequest := &btcstakingtypes.QueryBTCValidatorRequest{ValBtcPkHex: btcPk.MarshalHex()}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+	res, err := queryClient.BTCValidator(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query the validator %s: %v", btcPk.MarshalHex(), err)
+	}
+
+	return res.BtcValidator, nil
+}
+
 // QueryValidators queries BTC validators
+// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator, error) {
 	var validators []*btcstakingtypes.BTCValidator
 	pagination := &sdkquery.PageRequest{

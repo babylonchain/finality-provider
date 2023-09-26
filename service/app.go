@@ -114,12 +114,12 @@ func (app *ValidatorApp) GetJuryPk() (*btcec.PublicKey, error) {
 }
 
 func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
-	return app.validatorManager.listValidatorInstances()
+	return app.validatorManager.ListValidatorInstances()
 }
 
 // GetValidatorInstance returns the validator instance with the given Babylon public key
 func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
-	return app.validatorManager.getValidatorInstance(babylonPk)
+	return app.validatorManager.GetValidatorInstance(babylonPk)
 }
 
 func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorResponse, *secp256k1.PubKey, error) {
