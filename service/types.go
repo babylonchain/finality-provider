@@ -82,37 +82,37 @@ func (vs *valState) getStoreValidator() *proto.StoreValidator {
 
 func (vs *valState) setStatus(s proto.ValidatorStatus) error {
 	vs.mu.Lock()
-	defer vs.mu.Unlock()
 	vs.v.Status = s
+	vs.mu.Unlock()
 	return vs.s.UpdateValidator(vs.v)
 }
 
 func (vs *valState) setLastVotedHeight(height uint64) error {
 	vs.mu.Lock()
-	defer vs.mu.Unlock()
 	vs.v.LastVotedHeight = height
+	vs.mu.Unlock()
 	return vs.s.UpdateValidator(vs.v)
 }
 
 func (vs *valState) setLastProcessedHeight(height uint64) error {
 	vs.mu.Lock()
-	defer vs.mu.Unlock()
 	vs.v.LastProcessedHeight = height
+	vs.mu.Unlock()
 	return vs.s.UpdateValidator(vs.v)
 }
 
 func (vs *valState) setLastCommittedHeight(height uint64) error {
 	vs.mu.Lock()
-	defer vs.mu.Unlock()
 	vs.v.LastCommittedHeight = height
+	vs.mu.Unlock()
 	return vs.s.UpdateValidator(vs.v)
 }
 
 func (vs *valState) setLastProcessedAndVotedHeight(height uint64) error {
 	vs.mu.Lock()
-	defer vs.mu.Unlock()
 	vs.v.LastVotedHeight = height
 	vs.v.LastProcessedHeight = height
+	vs.mu.Unlock()
 	return vs.s.UpdateValidator(vs.v)
 }
 
@@ -167,20 +167,6 @@ func (v *ValidatorInstance) MustSetStatus(s proto.ValidatorStatus) {
 			"btc_pk_hex": v.GetBtcPkHex(),
 			"status":     s.String(),
 		}).Fatal("failed to set validator status")
-	}
-}
-
-func (v *ValidatorInstance) SetLastVotedHeight(height uint64) error {
-	return v.state.setLastVotedHeight(height)
-}
-
-func (v *ValidatorInstance) MustSetLastVotedHeight(height uint64) {
-	if err := v.SetLastVotedHeight(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to set last voted height")
 	}
 }
 
