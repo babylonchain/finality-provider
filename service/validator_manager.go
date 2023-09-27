@@ -90,9 +90,8 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 			if errors.Is(criticalErr.err, types.ErrValidatorSlashed) {
 				vm.setValidatorSlashed(vi)
 				vm.logger.WithFields(logrus.Fields{
-					"err":        err,
+					"err":        criticalErr.err,
 					"val_btc_pk": vi.GetBtcPkHex(),
-					"old_status": vi.GetStatus(),
 				}).Debug("the validator status has been slashed")
 				continue
 			}
