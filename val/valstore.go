@@ -49,7 +49,7 @@ func NewValidatorStore(dbcfg *valcfg.DatabaseConfig) (*ValidatorStore, error) {
 	return &ValidatorStore{s: s}, nil
 }
 
-func GetValidatorKey(pk []byte) []byte {
+func getValidatorKey(pk []byte) []byte {
 	return append([]byte(validatorPrefix), pk...)
 }
 
@@ -66,7 +66,7 @@ func (vs *ValidatorStore) getRandPairListKey(pk []byte) []byte {
 }
 
 func (vs *ValidatorStore) SaveValidator(val *proto.StoreValidator) error {
-	k := GetValidatorKey(val.BabylonPk)
+	k := getValidatorKey(val.BabylonPk)
 	v, err := gproto.Marshal(val)
 	if err != nil {
 		return fmt.Errorf("failed to marshal the created validator object: %w", err)
@@ -80,7 +80,7 @@ func (vs *ValidatorStore) SaveValidator(val *proto.StoreValidator) error {
 }
 
 func (vs *ValidatorStore) UpdateValidator(val *proto.StoreValidator) error {
-	k := GetValidatorKey(val.BabylonPk)
+	k := getValidatorKey(val.BabylonPk)
 	exists, err := vs.s.Exists(k)
 	if err != nil {
 		return err
@@ -156,7 +156,7 @@ func (vs *ValidatorStore) GetRandPair(pk []byte, height uint64) (*proto.SchnorrR
 }
 
 func (vs *ValidatorStore) GetStoreValidator(pk []byte) (*proto.StoreValidator, error) {
-	k := GetValidatorKey(pk)
+	k := getValidatorKey(pk)
 	valsBytes, err := vs.s.Get(k)
 	if err != nil {
 		return nil, err
