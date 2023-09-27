@@ -187,8 +187,12 @@ func (lm *LocalEOTSManager) getPrivRandomness(valPk *types.BIP340PubKey, chainID
 	return privRand, nil
 }
 
+func (lm *LocalEOTSManager) GetValidatorKeyName(valPk *types.BIP340PubKey) (string, error) {
+	return lm.es.getValidatorKeyName(valPk.MustMarshal())
+}
+
 func (lm *LocalEOTSManager) getEOTSPrivKey(valPk *types.BIP340PubKey) (*btcec.PrivateKey, error) {
-	keyName, err := lm.es.GetValidatorKeyName(valPk.MustMarshal())
+	keyName, err := lm.es.getValidatorKeyName(valPk.MustMarshal())
 	if err != nil {
 		return nil, err
 	}

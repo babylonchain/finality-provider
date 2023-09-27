@@ -24,7 +24,7 @@ type EOTSManager interface {
 	SignEOTS(valPk *types.BIP340PubKey, chainID string, msg []byte, height uint64) (*types.SchnorrEOTSSig, error)
 
 	// SignSchnorrSig signs a Schnorr signature using the private key of the validator
-	// It fails if the validator does not exist
+	// It fails if the validator does not exist or the message size is not 32 bytes
 	SignSchnorrSig(valPk *types.BIP340PubKey, msg []byte) (*schnorr.Signature, error)
 
 	Close() error

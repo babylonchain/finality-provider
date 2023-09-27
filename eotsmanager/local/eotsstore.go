@@ -89,7 +89,7 @@ func getRandPairListKey(pk []byte, chainID string) []byte {
 	return append(append([]byte(randPairPrefix), pk...), []byte(chainID)...)
 }
 
-func (es *EOTSStore) GetValidatorKeyName(pk []byte) (string, error) {
+func (es *EOTSStore) getValidatorKeyName(pk []byte) (string, error) {
 	k := getValidatorKeyNameKey(pk)
 	v, err := es.s.Get(k)
 	if err != nil {
