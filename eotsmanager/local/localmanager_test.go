@@ -43,7 +43,7 @@ func FuzzCreateValidator(f *testing.F) {
 		require.NoError(t, err)
 		require.NotNil(t, sig)
 
-		valPk, err = lm.CreateValidator(valName, "")
+		_, err = lm.CreateValidator(valName, "")
 		require.ErrorIs(t, err, eotsmanager.ErrValidatorAlreadyExisted)
 	})
 }
