@@ -36,6 +36,7 @@ func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *val
 
 	kr, err := keyring.New(
 		ctx.ChainID,
+		// TODO currently only support test backend
 		keyringBackend,
 		ctx.KeyringDir,
 		ctx.Input,
@@ -111,6 +112,7 @@ func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*bbntypes.
 func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *bbntypes.BIP340PubKey, chainID string, startHeight uint64, step int, num int) ([]*bbntypes.SchnorrPubRand, error) {
 	prList := make([]*bbntypes.SchnorrPubRand, 0, num)
 
+	// TODO improve the security of randomness generation if concerned
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < num; i++ {
