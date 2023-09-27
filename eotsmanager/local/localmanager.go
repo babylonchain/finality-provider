@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
-	"github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -15,7 +15,7 @@ import (
 	"github.com/cosmos/go-bip39"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -56,7 +56,7 @@ func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *val
 	}, nil
 }
 
-func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*types.BIP340PubKey, error) {
+func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*bbntypes.BIP340PubKey, error) {
 	if lm.keyExists(name) {
 		return nil, eotsmanager.ErrValidatorAlreadyExisted
 	}
@@ -89,14 +89,14 @@ func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*types.BIP
 		return nil, err
 	}
 
-	var eotsPk *types.BIP340PubKey
+	var eotsPk *bbntypes.BIP340PubKey
 	switch v := pubKey.(type) {
 	case *secp256k1.PubKey:
 		pk, err := btcec.ParsePubKey(v.Key)
 		if err != nil {
 			return nil, err
 		}
-		eotsPk = types.NewBIP340PubKeyFromBTCPK(pk)
+		eotsPk = bbntypes.NewBIP340PubKeyFromBTCPK(pk)
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
@@ -108,8 +108,8 @@ func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) (*types.BIP
 	return eotsPk, nil
 }
 
-func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *types.BIP340PubKey, chainID string, startHeight uint64, step int, num int) ([]*types.SchnorrPubRand, error) {
-	prList := make([]*types.SchnorrPubRand, 0, num)
+func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *bbntypes.BIP340PubKey, chainID string, startHeight uint64, step int, num int) ([]*bbntypes.SchnorrPubRand, error) {
+	prList := make([]*bbntypes.SchnorrPubRand, 0, num)
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -124,22 +124,22 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk *types.BIP340PubKey, 
 		height := startHeight + uint64(i)*uint64(step)
 		privRand := eotsSR.Bytes()
 		pubRand := eotsPR.Bytes()
-		randPair := &proto.SchnorrRandPair{
-			SecRand: privRand[:],
-			PubRand: pubRand[:],
+		randPair, err := types.NewSchnorrRandPair(privRand[:], pubRand[:])
+		if err != nil {
+			return nil, fmt.Errorf("invalid Schnorr randomness")
 		}
 		if err := lm.es.saveRandPair(valPk.MustMarshal(), chainID, height, randPair); err != nil {
 			return nil, fmt.Errorf("failed to save randomness pair: %w", err)
 		}
 
-		pr := types.NewSchnorrPubRandFromFieldVal(eotsPR)
+		pr := bbntypes.NewSchnorrPubRandFromFieldVal(eotsPR)
 		prList = append(prList, pr)
 	}
 
 	return prList, nil
 }
 
-func (lm *LocalEOTSManager) SignEOTS(valPk *types.BIP340PubKey, chainID string, msg []byte, height uint64) (*types.SchnorrEOTSSig, error) {
+func (lm *LocalEOTSManager) SignEOTS(valPk *bbntypes.BIP340PubKey, chainID string, msg []byte, height uint64) (*bbntypes.SchnorrEOTSSig, error) {
 	privRand, err := lm.getPrivRandomness(valPk, chainID, height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private randomness: %w", err)
@@ -155,10 +155,10 @@ func (lm *LocalEOTSManager) SignEOTS(valPk *types.BIP340PubKey, chainID string, 
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}
 
-	return types.NewSchnorrEOTSSigFromModNScalar(sig), nil
+	return bbntypes.NewSchnorrEOTSSigFromModNScalar(sig), nil
 }
 
-func (lm *LocalEOTSManager) SignSchnorrSig(valPk *types.BIP340PubKey, msg []byte) (*schnorr.Signature, error) {
+func (lm *LocalEOTSManager) SignSchnorrSig(valPk *bbntypes.BIP340PubKey, msg []byte) (*schnorr.Signature, error) {
 	privKey, err := lm.getEOTSPrivKey(valPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
@@ -171,13 +171,13 @@ func (lm *LocalEOTSManager) Close() error {
 	return lm.es.Close()
 }
 
-func (lm *LocalEOTSManager) getPrivRandomness(valPk *types.BIP340PubKey, chainID string, height uint64) (*eots.PrivateRand, error) {
+func (lm *LocalEOTSManager) getPrivRandomness(valPk *bbntypes.BIP340PubKey, chainID string, height uint64) (*eots.PrivateRand, error) {
 	randPair, err := lm.es.getRandPair(valPk.MustMarshal(), chainID, height)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(randPair.SecRand) != 32 {
+	if len(randPair.SecRand) != types.SchnorrRandomnessLength {
 		return nil, fmt.Errorf("the private randomness should be 32 bytes")
 	}
 
@@ -187,11 +187,11 @@ func (lm *LocalEOTSManager) getPrivRandomness(valPk *types.BIP340PubKey, chainID
 	return privRand, nil
 }
 
-func (lm *LocalEOTSManager) GetValidatorKeyName(valPk *types.BIP340PubKey) (string, error) {
+func (lm *LocalEOTSManager) GetValidatorKeyName(valPk *bbntypes.BIP340PubKey) (string, error) {
 	return lm.es.getValidatorKeyName(valPk.MustMarshal())
 }
 
-func (lm *LocalEOTSManager) getEOTSPrivKey(valPk *types.BIP340PubKey) (*btcec.PrivateKey, error) {
+func (lm *LocalEOTSManager) getEOTSPrivKey(valPk *bbntypes.BIP340PubKey) (*btcec.PrivateKey, error) {
 	keyName, err := lm.es.getValidatorKeyName(valPk.MustMarshal())
 	if err != nil {
 		return nil, err

@@ -16,7 +16,7 @@ type EOTSManager interface {
 	// that the validator wants to finalize and num means the number of public randomness
 	// It fails if the validator does not exist
 	// NOTE: the same Schnorr randomness pair should not be used twice in a global view
-	CreateRandomnessPairList(valPk *types.BIP340PubKey, chainID string, startingHeight uint64, step int, num int) ([]*types.SchnorrPubRand, error)
+	CreateRandomnessPairList(valPk *types.BIP340PubKey, chainID string, startHeight uint64, step int, num int) ([]*types.SchnorrPubRand, error)
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height
