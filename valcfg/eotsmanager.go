@@ -8,9 +8,11 @@ const (
 	DefaultEOTSManagerDBBackend = "bbolt"
 	DefaultEOTSManagerDBPath    = "bbolt-eots.db"
 	DefaultEOTSManagerDBName    = "eots-default"
+	DefaultEOTSManagerMode      = "local"
 )
 
 type EOTSManagerConfig struct {
+	Mode      string `long:"mode" description:"Indicates in which mode the EOTS manager is running" choice:"local" choice:"remote"`
 	DBBackend string `long:"dbbackend" description:"Possible database to choose as backend"`
 	DBPath    string `long:"dbpath" description:"The path that stores the database file"`
 	DBName    string `long:"dbname" description:"The name of the database"`
@@ -41,5 +43,6 @@ func DefaultEOTSManagerConfig() EOTSManagerConfig {
 		DBBackend: DefaultEOTSManagerDBBackend,
 		DBPath:    DefaultEOTSManagerDBPath,
 		DBName:    DefaultEOTSManagerDBName,
+		Mode:      DefaultEOTSManagerMode,
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
 
@@ -41,6 +42,7 @@ type ValidatorApp struct {
 	logger *logrus.Logger
 
 	validatorManager *ValidatorManager
+	eotsManager      eotsmanager.EOTSManager
 
 	createValidatorRequestChan   chan *createValidatorRequest
 	registerValidatorRequestChan chan *registerValidatorRequest
@@ -77,6 +79,11 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to create validator manager: %w", err)
 	}
 
+	em, err := eotsmanager.NewEOTSManager(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
+	}
+
 	return &ValidatorApp{
 		cc:                           cc,
 		vs:                           valStore,
@@ -84,6 +91,7 @@ func NewValidatorAppFromConfig(
 		config:                       config,
 		logger:                       logger,
 		validatorManager:             vm,
+		eotsManager:                  em,
 		quit:                         make(chan struct{}),
 		sentQuit:                     make(chan struct{}),
 		eventQuit:                    make(chan struct{}),
