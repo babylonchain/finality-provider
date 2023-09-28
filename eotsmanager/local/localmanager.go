@@ -109,8 +109,48 @@ func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) ([]byte, er
 	return eotsPk.MustMarshal(), nil
 }
 
-func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*bbntypes.SchnorrPubRand, error) {
-	prList := make([]*bbntypes.SchnorrPubRand, 0, num)
+func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*btcec.FieldVal, error) {
+	prList := make([]*btcec.FieldVal, 0, num)
+
+	// TODO improve the security of randomness generation if concerned
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := uint32(0); i < num; i++ {
+		// check whether the randomness is created already
+		height := startHeight + uint64(i)*uint64(step)
+		exists, err := lm.es.randPairExists(valPk, chainID, height)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, eotsmanager.ErrSchnorrRandomnessALreadyCreated
+		}
+
+		// generate randomness pair
+		eotsSR, eotsPR, err := eots.RandGen(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate randomness pair: %w", err)
+		}
+
+		// persists randomness pair
+		privRand := eotsSR.Bytes()
+		pubRand := eotsPR.Bytes()
+		randPair, err := types.NewSchnorrRandPair(privRand[:], pubRand[:])
+		if err != nil {
+			return nil, fmt.Errorf("invalid Schnorr randomness")
+		}
+		if err := lm.es.saveRandPair(valPk, chainID, height, randPair); err != nil {
+			return nil, fmt.Errorf("failed to save randomness pair: %w", err)
+		}
+
+		prList = append(prList, eotsPR)
+	}
+
+	return prList, nil
+}
+
+func (lm *LocalEOTSManager) CreateRandomnessPairListWithOverwrite(valPk []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*btcec.FieldVal, error) {
+	prList := make([]*btcec.FieldVal, 0, num)
 
 	// TODO improve the security of randomness generation if concerned
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -134,14 +174,13 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byt
 			return nil, fmt.Errorf("failed to save randomness pair: %w", err)
 		}
 
-		pr := bbntypes.NewSchnorrPubRandFromFieldVal(eotsPR)
-		prList = append(prList, pr)
+		prList = append(prList, eotsPR)
 	}
 
 	return prList, nil
 }
 
-func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, height uint64) (*bbntypes.SchnorrEOTSSig, error) {
+func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, height uint64) (*btcec.ModNScalar, error) {
 	privRand, err := lm.getPrivRandomness(valPk, chainID, height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private randomness: %w", err)
@@ -152,12 +191,7 @@ func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, h
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
 
-	sig, err := eots.Sign(privKey, privRand, msg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
-	}
-
-	return bbntypes.NewSchnorrEOTSSigFromModNScalar(sig), nil
+	return eots.Sign(privKey, privRand, msg)
 }
 
 func (lm *LocalEOTSManager) SignSchnorrSig(valPk []byte, msg []byte) (*schnorr.Signature, error) {

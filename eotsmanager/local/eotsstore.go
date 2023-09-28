@@ -81,6 +81,11 @@ func (es *EOTSStore) getRandPair(pk []byte, chainID []byte, height uint64) (*pro
 	return pair, nil
 }
 
+func (es *EOTSStore) randPairExists(pk []byte, chainID []byte, height uint64) (bool, error) {
+	k := getRandPairKey(pk, chainID, height)
+	return es.s.Exists(k)
+}
+
 func getRandPairKey(pk []byte, chainID []byte, height uint64) []byte {
 	return append(getRandPairListKey(pk, chainID), sdktypes.Uint64ToBigEndian(height)...)
 }
