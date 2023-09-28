@@ -43,26 +43,26 @@ message GetInfoResponse {
 message CreateValidatorRequest {
     // key_name is the identifier key in keyring
     string key_name = 1;
+    // pass_phrase is used to encrypt the keys
+    string pass_phrase = 2;
     // description defines the description terms for the validator
-    cosmos.staking.v1beta1.Description description = 2;
+    cosmos.staking.v1beta1.Description description = 3;
     // commission defines the commission rate for the validator
     // TODO failed to use the customized type: github.com/cosmos/cosmos-sdk/types.Dec
-    string commission = 3  [
+    string commission = 4  [
         (cosmos_proto.scalar)  = "cosmos.Dec",
         (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
     ];
 }
 
 message CreateValidatorResponse {
-    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
-    string babylon_pk = 1;
-    // btc_pk is the BTC secp256k1 PK of the validator encoded in BIP-340 spec
-    string btc_pk = 2;
+    // btc_pk is the hex string of BTC secp256k1 public key of the validator encoded in BIP-340 spec
+    string btc_pk = 1;
 }
 
 message RegisterValidatorRequest {
-    // the key name of the BTC validator
-    string key_name = 1;
+    // btc_pk is hex string of the BTC secp256k1 public key of the validator encoded in BIP-340 spec
+    string btc_pk = 1;
 }
 
 message RegisterValidatorResponse {
@@ -89,8 +89,8 @@ message AddFinalitySignatureResponse {
 }
 
 message QueryValidatorRequest {
-    // babylon_pk is the Babylon secp256k1 PK of this BTC validator
-    bytes babylon_pk = 1;
+    // btc_pk is hex string of the BTC secp256k1 public key of the validator encoded in BIP-340 spec
+    string btc_pk = 1;
 }
 
 message QueryValidatorResponse {
@@ -123,16 +123,18 @@ message StoreValidator {
     ProofOfPossession pop = 5;
     // key_name is the identifier of the keyring
     string key_name = 6;
+    // chain_id is the identifier of the consumer chain that the validator connected to
+    string chain_id = 7;
     // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 7;
+    uint64 last_voted_height = 8;
     // last_committed_height defines the height of the last Babylon block
     // to which the validator committed a randomness pair
-    uint64 last_committed_height = 8;
+    uint64 last_committed_height = 9;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 9;
+    uint64 last_processed_height = 10;
     // status defines the current validator status
-    ValidatorStatus status = 10;
+    ValidatorStatus status = 11;
 }
 
 // ValidatorInfo is the basic information of a validator mainly for external usage

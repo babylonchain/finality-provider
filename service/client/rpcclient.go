@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	bbntypes "github.com/babylonchain/babylon/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
@@ -41,8 +42,8 @@ func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*proto.GetInf
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, keyName string) (*proto.RegisterValidatorResponse, error) {
-	req := &proto.RegisterValidatorRequest{KeyName: keyName}
+func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valPk *bbntypes.BIP340PubKey) (*proto.RegisterValidatorResponse, error) {
+	req := &proto.RegisterValidatorRequest{BtcPk: valPk.MarshalHex()}
 	res, err := c.client.RegisterValidator(ctx, req)
 	if err != nil {
 		return nil, err
@@ -51,8 +52,8 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, keyN
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName string, description *stakingtypes.Description, commission *sdktypes.Dec) (*proto.CreateValidatorResponse, error) {
-	req := &proto.CreateValidatorRequest{KeyName: keyName, Description: description, Commission: commission.String()}
+func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, passPhrase, keyName string, description *stakingtypes.Description, commission *sdktypes.Dec) (*proto.CreateValidatorResponse, error) {
+	req := &proto.CreateValidatorRequest{KeyName: keyName, PassPhrase: passPhrase, Description: description, Commission: commission.String()}
 	res, err := c.client.CreateValidator(ctx, req)
 	if err != nil {
 		return nil, err
@@ -86,8 +87,8 @@ func (c *ValidatorServiceGRpcClient) QueryValidatorList(ctx context.Context) (*p
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) QueryValidatorInfo(ctx context.Context, bbnPk []byte) (*proto.QueryValidatorResponse, error) {
-	req := &proto.QueryValidatorRequest{BabylonPk: bbnPk}
+func (c *ValidatorServiceGRpcClient) QueryValidatorInfo(ctx context.Context, valPk *bbntypes.BIP340PubKey) (*proto.QueryValidatorResponse, error) {
+	req := &proto.QueryValidatorRequest{BtcPk: valPk.MarshalHex()}
 	res, err := c.client.QueryValidator(ctx, req)
 	if err != nil {
 		return nil, err

@@ -79,14 +79,13 @@ func (app *ValidatorApp) eventLoop() {
 	for {
 		select {
 		case req := <-app.createValidatorRequestChan:
-			resp, err := app.handleCreateValidatorRequest(req)
-
+			res, err := app.handleCreateValidatorRequest(req)
 			if err != nil {
 				req.errResponse <- err
 				continue
 			}
 
-			req.successResponse <- resp
+			req.successResponse <- &createValidatorResponse{ValPk: res.ValPk}
 
 		case ev := <-app.validatorRegisteredEventChan:
 			valStored, err := app.vs.GetStoreValidator(ev.bbnPubKey.Key)
@@ -119,13 +118,7 @@ func (app *ValidatorApp) eventLoop() {
 	}
 }
 
-// Loop for handling requests to send stuff to babylon. It is necessart to properly
-// serialize bayblon sends as otherwise we would keep hitting sequence mismatch errors.
-// This could be done either by send loop or by lock. We choose send loop as it is
-// more flexible.
-// TODO: This could be probably separate component responsible for queuing stuff
-// and sending it to babylon.
-func (app *ValidatorApp) handleSentToBabylonLoop() {
+func (app *ValidatorApp) registrationLoop() {
 	defer app.sentWg.Done()
 	for {
 		select {

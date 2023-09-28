@@ -15,6 +15,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
@@ -24,12 +25,8 @@ import (
 const instanceTerminatingMsg = "terminating the validator instance due to critical error"
 
 type CriticalError struct {
-	err error
-	// TODO use validator BTC key as the unique id of
-	//  the validator; currently, the storage is keyed
-	//  the babylon public key
+	err      error
 	valBtcPk *bbntypes.BIP340PubKey
-	bbnPk    *secp256k1.PubKey
 }
 
 func (ce *CriticalError) Error() string {
@@ -50,6 +47,7 @@ type ValidatorManager struct {
 	config *valcfg.Config
 	kr     keyring.Keyring
 	cc     clientcontroller.ClientController
+	em     eotsmanager.EOTSManager
 	logger *logrus.Logger
 
 	criticalErrChan chan *CriticalError
@@ -61,6 +59,7 @@ func NewValidatorManager(vs *val.ValidatorStore,
 	config *valcfg.Config,
 	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
+	em eotsmanager.EOTSManager,
 	logger *logrus.Logger,
 ) (*ValidatorManager, error) {
 	return &ValidatorManager{
@@ -71,6 +70,7 @@ func NewValidatorManager(vs *val.ValidatorStore,
 		config:          config,
 		kr:              kr,
 		cc:              cc,
+		em:              em,
 		logger:          logger,
 		quit:            make(chan struct{}),
 	}, nil
@@ -87,7 +87,7 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 	for {
 		select {
 		case criticalErr = <-vm.criticalErrChan:
-			vi, err := vm.GetValidatorInstance(criticalErr.bbnPk)
+			vi, err := vm.GetValidatorInstance(criticalErr.valBtcPk)
 			if err != nil {
 				panic(fmt.Errorf("failed to get the validator instance: %w", err))
 			}
@@ -218,7 +218,7 @@ func (vm *ValidatorManager) Start() error {
 	go vm.monitorStatusUpdate()
 
 	for _, v := range storedValidators {
-		if err := vm.addValidatorInstance(v.GetBabylonPK()); err != nil {
+		if err := vm.addValidatorInstance(v.G); err != nil {
 			return err
 		}
 	}
@@ -261,11 +261,11 @@ func (vm *ValidatorManager) ListValidatorInstances() []*ValidatorInstance {
 	return valsList
 }
 
-func (vm *ValidatorManager) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
+func (vm *ValidatorManager) GetValidatorInstance(valPk *bbntypes.BIP340PubKey) (*ValidatorInstance, error) {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	keyHex := hex.EncodeToString(babylonPk.Key)
+	keyHex := valPk.MarshalHex()
 	v, exists := vm.vals[keyHex]
 	if !exists {
 		return nil, fmt.Errorf("cannot find the validator instance with PK: %s", keyHex)
@@ -295,17 +295,17 @@ func (vm *ValidatorManager) removeValidatorInstance(babylonPk *secp256k1.PubKey)
 
 // addValidatorInstance creates a validator instance, starts it and adds it into the validator manager
 func (vm *ValidatorManager) addValidatorInstance(
-	pk *secp256k1.PubKey,
+	pk *bbntypes.BIP340PubKey,
 ) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	pkHex := hex.EncodeToString(pk.Key)
+	pkHex := pk.MarshalHex()
 	if _, exists := vm.vals[pkHex]; exists {
 		return fmt.Errorf("validator instance already exists")
 	}
 
-	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.kr, vm.cc, vm.criticalErrChan, vm.logger)
+	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.kr, vm.cc, vm.em, vm.criticalErrChan, vm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator %s instance: %w", pkHex, err)
 	}

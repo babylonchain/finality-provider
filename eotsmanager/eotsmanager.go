@@ -5,12 +5,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/client"
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -25,12 +26,16 @@ type EOTSManager interface {
 	// that the validator wants to finalize and num means the number of public randomness
 	// It fails if the validator does not exist
 	// NOTE: the same Schnorr randomness pair should not be used twice in a global view
-	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*types.SchnorrPubRand, error)
+	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*bbntypes.SchnorrPubRand, error)
+
+	// GetValidatorRecord returns the validator record
+	// It fails if the validator does not exist or passPhrase is incorrect
+	GetValidatorRecord(uid []byte, passPhrase string) (*types.ValidatorRecord, error)
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height
 	// It fails if the validator does not exist or there's no randomness committed to the given height
-	SignEOTS(uid []byte, chainID []byte, msg []byte, height uint64) (*types.SchnorrEOTSSig, error)
+	SignEOTS(uid []byte, chainID []byte, msg []byte, height uint64) (*bbntypes.SchnorrEOTSSig, error)
 
 	// SignSchnorrSig signs a Schnorr signature using the private key of the validator
 	// It fails if the validator does not exist or the message size is not 32 bytes

@@ -121,13 +121,13 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdktypes.OneDec()
-		_, err := app.CreateValidator(valName, newDescription(moniker), &commission)
+		res, err := app.CreateValidator(valName, "", newDescription(moniker), &commission)
 		require.NoError(t, err)
-		_, bbnPk, err := app.RegisterValidator(valName)
+		_, err = app.RegisterValidator(valName)
 		require.NoError(t, err)
-		err = app.StartHandlingValidator(bbnPk)
+		err = app.StartHandlingValidator(res.ValPk)
 		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(bbnPk)
+		valIns, err := app.GetValidatorInstance(res.ValPk)
 		require.NoError(t, err)
 		require.True(t, valIns.IsRunning())
 		require.NoError(t, err)
@@ -288,9 +288,9 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	return blocks
 }
 
-func (tm *TestManager) WaitForValStopped(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForValStopped(t *testing.T, valPk *bbntypes.BIP340PubKey) {
 	require.Eventually(t, func() bool {
-		_, err := tm.Va.GetValidatorInstance(bbnPk)
+		_, err := tm.Va.GetValidatorInstance(valPk)
 		return err != nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }

@@ -1,4 +1,4 @@
-package eotsmanager
+package types
 
 import "errors"
 

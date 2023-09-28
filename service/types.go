@@ -16,11 +16,12 @@ import (
 )
 
 type createValidatorResponse struct {
-	BtcValidatorPk     btcec.PublicKey
-	BabylonValidatorPk secp256k1.PubKey
+	ValPk *bbntypes.BIP340PubKey
 }
 type createValidatorRequest struct {
 	keyName         string
+	passPhrase      string
+	chainID         string
 	description     *stakingtypes.Description
 	commission      *sdktypes.Dec
 	errResponse     chan error
@@ -45,7 +46,8 @@ type validatorRegisteredEvent struct {
 }
 
 type RegisterValidatorResponse struct {
-	TxHash string
+	bbnPubKey *secp256k1.PubKey
+	TxHash    string
 }
 
 type AddJurySigResponse struct {
@@ -53,8 +55,7 @@ type AddJurySigResponse struct {
 }
 
 type CreateValidatorResult struct {
-	BtcValidatorPk     btcec.PublicKey
-	BabylonValidatorPk secp256k1.PubKey
+	ValPk *bbntypes.BIP340PubKey
 }
 
 type unbondingTxSigData struct {
@@ -205,6 +206,16 @@ func (v *ValidatorInstance) MustUpdateStateAfterFinalitySigSubmission(height uin
 	}
 }
 
+func (v *ValidatorInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
+	// TODO ignore pass phrase for now
+	record, err := v.em.GetValidatorRecord(v.btcPk.MustMarshal(), "")
+	if err != nil {
+		return nil, err
+	}
+
+	return record.ValSk, nil
+}
+
 // only used for testing purpose
 func (v *ValidatorInstance) GetCommittedPubRandPairList() ([]*proto.SchnorrRandPair, error) {
 	return v.state.s.GetRandPairList(v.bbnPk.Key)
@@ -212,5 +223,5 @@ func (v *ValidatorInstance) GetCommittedPubRandPairList() ([]*proto.SchnorrRandP
 
 // only used for testing purposes
 func (v *ValidatorInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
-	return v.kc.GetBtcPrivKey()
+	return v.getEOTSPrivKey()
 }

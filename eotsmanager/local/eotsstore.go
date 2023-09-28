@@ -6,7 +6,7 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
 
-	"github.com/babylonchain/btc-validator/eotsmanager"
+	"github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/store"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -46,7 +46,7 @@ func (es *EOTSStore) saveValidatorKey(pk []byte, keyName string) error {
 		return nil
 	}
 	if exists {
-		return eotsmanager.ErrValidatorAlreadyExisted
+		return types.ErrValidatorAlreadyExisted
 	}
 
 	return es.s.Put(k, []byte(keyName))

@@ -9,7 +9,6 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/sirupsen/logrus"
@@ -109,17 +108,14 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 	if err != nil {
 		return nil, err
 	}
-	result, err := r.app.CreateValidator(req.KeyName, req.Description, &commissionRate)
+	result, err := r.app.CreateValidator(req.KeyName, req.PassPhrase, req.Description, &commissionRate)
 
 	if err != nil {
 		return nil, err
 	}
 
-	btcPk := bbntypes.BIP340PubKey(schnorr.SerializePubKey(&result.BtcValidatorPk))
-
 	return &proto.CreateValidatorResponse{
-		BtcPk:     btcPk.MarshalHex(),
-		BabylonPk: hex.EncodeToString(result.BabylonValidatorPk.Key),
+		BtcPk: result.ValPkStr,
 	}, nil
 
 }
@@ -128,14 +124,14 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterValidatorRequest) (
 	*proto.RegisterValidatorResponse, error) {
 
-	txRes, bbnPk, err := r.app.RegisterValidator(req.KeyName)
+	txRes, err := r.app.RegisterValidator(req.BtcPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register the validator to Babylon: %w", err)
 	}
 
 	// the validator instance should be started right after registration
-	if err := r.app.StartHandlingValidator(bbnPk); err != nil {
-		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(bbnPk.Key), err)
+	if err := r.app.StartHandlingValidator(txRes.bbnPubKey); err != nil {
+		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(txRes.bbnPubKey.Key), err)
 	}
 
 	return &proto.RegisterValidatorResponse{TxHash: txRes.TxHash}, nil
@@ -167,7 +163,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 	// if privKey is not empty, then this BTC validator
 	// has voted for a fork and will be slashed
 	if privKey != nil {
-		localPrivKey, err := r.app.getBtcPrivKey(v.GetStoreValidator().KeyName)
+		localPrivKey, err := r.app.getPrivKey(v.GetStoreValidator().KeyName)
 		res.ExtractedSkHex = privKey.Key.String()
 		if err != nil {
 			return nil, err
@@ -192,8 +188,8 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidatorRequest) (
 	*proto.QueryValidatorResponse, error) {
 
-	bbnPk := &secp256k1.PubKey{Key: req.BabylonPk}
-	val, err := r.app.GetValidatorInstance(bbnPk)
+	valPk, err := bbntypes.NewBIP340PubKeyFromHex(req.BtcPk)
+	val, err := r.app.GetValidatorInstance(valPk)
 	if err != nil {
 		return nil, err
 	}

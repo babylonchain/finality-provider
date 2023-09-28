@@ -25,7 +25,7 @@ func FuzzCreatePoP(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		kc, err := val.NewKeyringController(sdkCtx, keyName, "test")
+		kc, err := val.NewChainKeyringController(sdkCtx, keyName, "test")
 		require.NoError(t, err)
 		require.False(t, kc.ValidatorKeyExists())
 

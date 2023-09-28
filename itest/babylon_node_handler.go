@@ -145,7 +145,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	)
 	require.NoError(t, err)
 	juryKeyName := "jury-key"
-	krController, err := val.NewKeyringController(
+	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		juryKeyName,
 		"test",

@@ -74,14 +74,14 @@ func NewValidatorAppFromConfig(
 		}
 	}
 
-	vm, err := NewValidatorManager(valStore, config, kr, cc, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validator manager: %w", err)
-	}
-
 	em, err := eotsmanager.NewEOTSManager(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
+	}
+
+	vm, err := NewValidatorManager(valStore, config, kr, cc, em, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validator manager: %w", err)
 	}
 
 	return &ValidatorApp{
@@ -126,34 +126,28 @@ func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
 }
 
 // GetValidatorInstance returns the validator instance with the given Babylon public key
-func (app *ValidatorApp) GetValidatorInstance(babylonPk *secp256k1.PubKey) (*ValidatorInstance, error) {
-	return app.validatorManager.GetValidatorInstance(babylonPk)
+func (app *ValidatorApp) GetValidatorInstance(valPk *bbntypes.BIP340PubKey) (*ValidatorInstance, error) {
+	return app.validatorManager.GetValidatorInstance(valPk)
 }
 
-func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorResponse, *secp256k1.PubKey, error) {
-	kc, err := val.NewKeyringControllerWithKeyring(app.kr, keyName)
+func (app *ValidatorApp) RegisterValidator(valPkStr string) (*RegisterValidatorResponse, error) {
+	valPk, err := bbntypes.NewBIP340PubKeyFromHex(valPkStr)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if !kc.ValidatorKeyExists() {
-		return nil, nil, fmt.Errorf("key name %s does not exist", keyName)
-	}
-	babylonPublicKeyBytes, err := kc.GetBabylonPublicKeyBytes()
+
+	validator, err := app.vs.GetStoreValidator(valPk.MustMarshal())
 	if err != nil {
-		return nil, nil, err
-	}
-	validator, err := app.vs.GetStoreValidator(babylonPublicKeyBytes)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if validator.Status != proto.ValidatorStatus_CREATED {
-		return nil, nil, fmt.Errorf("validator is already registered")
+		return nil, fmt.Errorf("validator is already registered")
 	}
 
 	btcSig, err := bbntypes.NewBIP340Signature(validator.Pop.BtcSig)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	pop := &bstypes.ProofOfPossession{
@@ -164,7 +158,7 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 
 	commissionRate, err := math.LegacyNewDecFromStr(validator.Commission)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	request := &registerValidatorRequest{
@@ -181,18 +175,18 @@ func (app *ValidatorApp) RegisterValidator(keyName string) (*RegisterValidatorRe
 
 	select {
 	case err := <-request.errResponse:
-		return nil, nil, err
+		return nil, err
 	case successResponse := <-request.successResponse:
-		return successResponse, validator.GetBabylonPK(), nil
+		return successResponse, nil
 	case <-app.quit:
-		return nil, nil, fmt.Errorf("validator app is shutting down")
+		return nil, fmt.Errorf("validator app is shutting down")
 	}
 }
 
 // StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
-func (app *ValidatorApp) StartHandlingValidator(bbnPk *secp256k1.PubKey) error {
-	return app.validatorManager.addValidatorInstance(bbnPk)
+func (app *ValidatorApp) StartHandlingValidator(valPk *bbntypes.BIP340PubKey) error {
+	return app.validatorManager.addValidatorInstance(valPk)
 }
 
 func (app *ValidatorApp) StartHandlingValidators() error {
@@ -359,10 +353,6 @@ func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
 	return app.getPrivKey(app.config.JuryModeConfig.JuryKeyName)
 }
 
-func (app *ValidatorApp) getBtcPrivKey(name string) (*btcec.PrivateKey, error) {
-	return app.getPrivKey(val.KeyName(name).GetBtcKeyName())
-}
-
 func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
 	k, err := app.kr.Key(name)
 	if err != nil {
@@ -387,7 +377,7 @@ func (app *ValidatorApp) Start() error {
 		go app.eventLoop()
 
 		app.sentWg.Add(1)
-		go app.handleSentToBabylonLoop()
+		go app.registrationLoop()
 
 		if app.IsJury() {
 			app.wg.Add(1)
@@ -442,9 +432,10 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(keyName, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
 	req := &createValidatorRequest{
 		keyName:         keyName,
+		passPhrase:      passPhrase,
 		description:     description,
 		commission:      commission,
 		errResponse:     make(chan error, 1),
@@ -458,8 +449,7 @@ func (app *ValidatorApp) CreateValidator(keyName string, description *stakingtyp
 		return nil, err
 	case successResponse := <-req.successResponse:
 		return &CreateValidatorResult{
-			BtcValidatorPk:     successResponse.BtcValidatorPk,
-			BabylonValidatorPk: successResponse.BabylonValidatorPk,
+			ValPk: successResponse.ValPk,
 		}, nil
 	case <-app.quit:
 		return nil, fmt.Errorf("validator app is shutting down")
@@ -471,44 +461,51 @@ func (app *ValidatorApp) IsJury() bool {
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
-
-	app.logger.Debug("handling CreateValidator request")
-
-	kr, err := val.NewKeyringControllerWithKeyring(app.kr, req.keyName)
-
+	valPkBytes, err := app.eotsManager.CreateValidator(req.keyName, req.passPhrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create keyring controller: %w", err)
+		return nil, err
 	}
 
-	if kr.ValidatorKeyNameTaken() {
-		return nil, fmt.Errorf("the key name %s is taken", kr.GetKeyName())
-	}
-
-	// TODO should not expose direct proto here, as this is internal db representation
-	// connected to serialization
-	btcPk, bbnPk, err := kr.CreateValidatorKeys()
+	valPk, err := bbntypes.NewBIP340PubKey(valPkBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create validator: %w", err)
+		return nil, err
 	}
 
-	pop, err := kr.CreatePop()
+	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.config.BabylonConfig.ChainID)
+	if err != nil {
+		return nil, err
+	}
+	if kr.KeyExists() {
+		return nil, fmt.Errorf("the validator already exists")
+	}
+
+	bbnPk, err := kr.CreateChainKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
+	}
+
+	valRecord, err := app.eotsManager.GetValidatorRecord(valPk.MustMarshal(), req.passPhrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get validator record: %w", err)
+	}
+
+	pop, err := kr.CreatePop(valRecord.ValSk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}
 
-	validator := val.NewStoreValidator(bbnPk, btcPk, kr.GetKeyName(), pop, req.description, req.commission)
+	validator := val.NewStoreValidator(bbnPk, valPk, req.keyName, pop, req.description, req.commission)
 
 	if err := app.vs.SaveValidator(validator); err != nil {
 		return nil, fmt.Errorf("failed to save validator: %w", err)
 	}
 
 	app.logger.WithFields(logrus.Fields{
-		"btc_pub_key":     validator.MustGetBIP340BTCPK().MarshalHex(),
-		"babylon_pub_key": validator.GetBabylonPkHexString(),
+		"btc_pub_key": valPk.MarshalHex(),
+		"name":        req.keyName,
 	}).Debug("successfully created a validator")
 
 	return &createValidatorResponse{
-		BtcValidatorPk:     *validator.MustGetBTCPK(),
-		BabylonValidatorPk: *validator.GetBabylonPK(),
+		ValPk: valPk,
 	}, nil
 }

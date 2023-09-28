@@ -112,7 +112,7 @@ func FuzzAddJurySig(f *testing.F) {
 		btcPk := validator.MustGetBTCPK()
 
 		// create a Jury key pair in the keyring
-		juryKc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName)
+		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName)
 		require.NoError(t, err)
 		jurPk, err := juryKc.CreateJuryKey()
 		require.NoError(t, err)

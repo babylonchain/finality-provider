@@ -85,7 +85,7 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.StoreValidator {
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
-	kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+	kc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), keyName)
 	require.NoError(t, err)
 
 	// create validator using the keyring

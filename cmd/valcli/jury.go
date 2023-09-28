@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/babylonchain/babylon/types"
 
 	"github.com/urfave/cli"
@@ -64,9 +65,10 @@ func createJuryKey(ctx *cli.Context) error {
 		return err
 	}
 
-	krController, err := val.NewKeyringController(
+	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		ctx.String(keyNameFlag),
+		ctx.String(chainIdFlag),
 		ctx.String(keyringBackendFlag),
 	)
 	if err != nil {

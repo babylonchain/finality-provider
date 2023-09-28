@@ -22,6 +22,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
@@ -36,7 +37,8 @@ type ValidatorInstance struct {
 	cfg   *valcfg.Config
 
 	logger *logrus.Logger
-	kc     *val.KeyringController
+	kc     *val.ChainKeyringController
+	em     eotsmanager.EOTSManager
 	cc     clientcontroller.ClientController
 	poller *ChainPoller
 
@@ -54,15 +56,16 @@ type ValidatorInstance struct {
 // NewValidatorInstance returns a ValidatorInstance instance with the given Babylon public key
 // the validator should be registered before
 func NewValidatorInstance(
-	bbnPk *secp256k1.PubKey,
+	valPk *bbntypes.BIP340PubKey,
 	cfg *valcfg.Config,
 	s *val.ValidatorStore,
 	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
+	em eotsmanager.EOTSManager,
 	errChan chan<- *CriticalError,
 	logger *logrus.Logger,
 ) (*ValidatorInstance, error) {
-	v, err := s.GetStoreValidator(bbnPk.Key)
+	v, err := s.GetStoreValidator(valPk.MustMarshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrive the validator %s from DB: %w", v.GetBabylonPkHexString(), err)
 	}
@@ -72,13 +75,12 @@ func NewValidatorInstance(
 		return nil, fmt.Errorf("the validator %s has not been registered", v.KeyName)
 	}
 
-	kc, err := val.NewKeyringControllerWithKeyring(kr, v.KeyName)
+	kc, err := val.NewChainKeyringControllerWithKeyring(kr, v.KeyName, v.ChainId)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ValidatorInstance{
-		bbnPk: bbnPk,
 		btcPk: v.MustGetBIP340BTCPK(),
 		state: &valState{
 			v: v,
@@ -90,6 +92,7 @@ func NewValidatorInstance(
 		inSync:          atomic.NewBool(false),
 		isLagging:       atomic.NewBool(false),
 		criticalErrChan: errChan,
+		em:              em,
 		kc:              kc,
 		cc:              cc,
 	}, nil
@@ -291,7 +294,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 				"btc_pk_hex":      v.GetBtcPkHex(),
 			}).Debug("Retrieved delegations which need unbonding signatures")
 
-			validatorPrivKey, err := v.kc.GetBtcPrivKey()
+			validatorPrivKey, err := v.getEOTSPrivKey()
 
 			if err != nil {
 				// Kill the app, if we can't recover our private key, then we have some bug
@@ -585,7 +588,6 @@ func (v *ValidatorInstance) reportCriticalErr(err error) {
 	v.criticalErrChan <- &CriticalError{
 		err:      err,
 		valBtcPk: v.GetBtcPkBIP340(),
-		bbnPk:    v.GetBabylonPk(),
 	}
 }
 
@@ -746,7 +748,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	}
 
 	// sign the message hash using the validator's BTC private key
-	schnorrSig, err := v.kc.SchnorrSign(hash)
+	schnorrSig, err := v.em.SignSchnorrSig(v.btcPk.MustMarshal(), hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -841,7 +843,7 @@ func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEO
 	if err != nil {
 		return nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
 	}
-	btcPrivKey, err := v.kc.GetBtcPrivKey()
+	btcPrivKey, err := v.getEOTSPrivKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
 	}
