@@ -15,11 +15,11 @@ type EOTSManager interface {
 	// startHeight to startHeight+(num-1)*step where step means the gap between each block height
 	// that the validator wants to finalize and num means the number of public randomness
 	// It fails if the validator does not exist or a randomness pair has been created before
-	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*btcec.FieldVal, error)
+	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
 	// CreateRandomnessPairListWithOverwrite has the same functionalities as CreateRandomnessPairList
 	// except that it will not check if the randomness has been created but overwrite it directly
-	CreateRandomnessPairListWithOverwrite(uid []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*btcec.FieldVal, error)
+	CreateRandomnessPairListWithOverwrite(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height

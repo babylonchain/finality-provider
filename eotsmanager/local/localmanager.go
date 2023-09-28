@@ -109,7 +109,7 @@ func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) ([]byte, er
 	return eotsPk.MustMarshal(), nil
 }
 
-func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*btcec.FieldVal, error) {
+func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 
 	// TODO improve the security of randomness generation if concerned
@@ -117,7 +117,7 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byt
 
 	for i := uint32(0); i < num; i++ {
 		// check whether the randomness is created already
-		height := startHeight + uint64(i)*uint64(step)
+		height := startHeight + uint64(i)
 		exists, err := lm.es.randPairExists(valPk, chainID, height)
 		if err != nil {
 			return nil, err
@@ -149,7 +149,7 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byt
 	return prList, nil
 }
 
-func (lm *LocalEOTSManager) CreateRandomnessPairListWithOverwrite(valPk []byte, chainID []byte, startHeight uint64, step, num uint32) ([]*btcec.FieldVal, error) {
+func (lm *LocalEOTSManager) CreateRandomnessPairListWithOverwrite(valPk []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 
 	// TODO improve the security of randomness generation if concerned
@@ -163,7 +163,7 @@ func (lm *LocalEOTSManager) CreateRandomnessPairListWithOverwrite(valPk []byte, 
 		}
 
 		// persists randomness pair
-		height := startHeight + uint64(i)*uint64(step)
+		height := startHeight + uint64(i)
 		privRand := eotsSR.Bytes()
 		pubRand := eotsPR.Bytes()
 		randPair, err := types.NewSchnorrRandPair(privRand[:], pubRand[:])

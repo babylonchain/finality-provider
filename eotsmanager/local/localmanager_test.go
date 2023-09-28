@@ -71,14 +71,13 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 
 		chainID := datagen.GenRandomByteArray(r, 10)
 		startHeight := datagen.RandomInt(r, 100)
-		step := r.Intn(10) + 1
 		num := r.Intn(10) + 1
-		pubRandList, err := lm.CreateRandomnessPairList(valPk, chainID, startHeight, uint32(step), uint32(num))
+		pubRandList, err := lm.CreateRandomnessPairList(valPk, chainID, startHeight, uint32(num))
 		require.NoError(t, err)
 		require.Len(t, pubRandList, num)
 
 		for i := 0; i < num; i++ {
-			sig, err := lm.SignEOTS(valPk, chainID, datagen.GenRandomByteArray(r, 32), startHeight+uint64(step)*uint64(i))
+			sig, err := lm.SignEOTS(valPk, chainID, datagen.GenRandomByteArray(r, 32), startHeight+uint64(i))
 			require.NoError(t, err)
 			require.NotNil(t, sig)
 		}
