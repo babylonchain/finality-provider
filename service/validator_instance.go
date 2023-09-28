@@ -764,9 +764,12 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	for i, pr := range privRandList {
 		height := startHeight + uint64(i)
 		privRand := pr.Bytes()
-		randPair := &proto.SchnorrRandPair{
-			SecRand: privRand[:],
-			PubRand: pubRandList[i].MustMarshal(),
+		randPair, err := types.NewSchnorrRandPair(privRand[:], pubRandList[i].MustMarshal())
+		if err != nil {
+			v.logger.WithFields(logrus.Fields{
+				"err":        err,
+				"btc_pk_hex": v.GetBtcPkHex(),
+			}).Fatal("invalid Schnorr randomness")
 		}
 		err = v.state.s.SaveRandPair(v.GetBabylonPk().Key, height, randPair)
 		if err != nil {
@@ -957,8 +960,8 @@ func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.Privat
 		return nil, err
 	}
 
-	if len(randPair.SecRand) != 32 {
-		return nil, fmt.Errorf("the private randomness should be 32 bytes")
+	if len(randPair.SecRand) != types.SchnorrRandomnessLength {
+		return nil, fmt.Errorf("the private randomness should be %v bytes", types.SchnorrRandomnessLength)
 	}
 
 	privRand := new(eots.PrivateRand)

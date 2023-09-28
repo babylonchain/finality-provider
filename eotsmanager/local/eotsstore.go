@@ -52,7 +52,7 @@ func (es *EOTSStore) saveValidatorKey(pk []byte, keyName string) error {
 	return es.s.Put(k, []byte(keyName))
 }
 
-func (es *EOTSStore) saveRandPair(pk []byte, chainID string, height uint64, randPair *proto.SchnorrRandPair) error {
+func (es *EOTSStore) saveRandPair(pk []byte, chainID []byte, height uint64, randPair *proto.SchnorrRandPair) error {
 	k := getRandPairKey(pk, chainID, height)
 	v, err := gproto.Marshal(randPair)
 	if err != nil {
@@ -66,7 +66,7 @@ func (es *EOTSStore) saveRandPair(pk []byte, chainID string, height uint64, rand
 	return nil
 }
 
-func (es *EOTSStore) getRandPair(pk []byte, chainID string, height uint64) (*proto.SchnorrRandPair, error) {
+func (es *EOTSStore) getRandPair(pk []byte, chainID []byte, height uint64) (*proto.SchnorrRandPair, error) {
 	k := getRandPairKey(pk, chainID, height)
 	v, err := es.s.Get(k)
 	if err != nil {
@@ -81,12 +81,12 @@ func (es *EOTSStore) getRandPair(pk []byte, chainID string, height uint64) (*pro
 	return pair, nil
 }
 
-func getRandPairKey(pk []byte, chainID string, height uint64) []byte {
+func getRandPairKey(pk []byte, chainID []byte, height uint64) []byte {
 	return append(getRandPairListKey(pk, chainID), sdktypes.Uint64ToBigEndian(height)...)
 }
 
-func getRandPairListKey(pk []byte, chainID string) []byte {
-	return append(append([]byte(randPairPrefix), pk...), []byte(chainID)...)
+func getRandPairListKey(pk []byte, chainID []byte) []byte {
+	return append(append([]byte(randPairPrefix), pk...), chainID...)
 }
 
 func (es *EOTSStore) getValidatorKeyName(pk []byte) (string, error) {

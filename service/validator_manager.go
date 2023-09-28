@@ -32,6 +32,10 @@ type CriticalError struct {
 	bbnPk    *secp256k1.PubKey
 }
 
+func (ce *CriticalError) Error() string {
+	return fmt.Sprintf("critical err on validator %s: %s", ce.valBtcPk.MarshalHex(), ce.err.Error())
+}
+
 type ValidatorManager struct {
 	isStarted *atomic.Bool
 
@@ -90,14 +94,12 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 			if errors.Is(criticalErr.err, types.ErrValidatorSlashed) {
 				vm.setValidatorSlashed(vi)
 				vm.logger.WithFields(logrus.Fields{
-					"err":        criticalErr.err,
-					"val_btc_pk": vi.GetBtcPkHex(),
+					"err": criticalErr,
 				}).Debug("the validator status has been slashed")
 				continue
 			}
 			vi.logger.WithFields(logrus.Fields{
-				"err":        criticalErr.err,
-				"btc_pk_hex": vi.GetBtcPkHex(),
+				"err": criticalErr,
 			}).Fatal(instanceTerminatingMsg)
 		case <-vm.quit:
 			return
