@@ -83,7 +83,9 @@ type Config struct {
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
-	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaserpcconfig"`
+	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaseconfig"`
+
+	EOTSManagerConfig *EOTSManagerConfig `group:"eotsmanagerconfig" namespace:"eotsmanagerconfig"`
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
@@ -102,6 +104,7 @@ func DefaultConfig() Config {
 	juryCfg := DefaultJuryConfig()
 	pollerCfg := DefaultChainPollerConfig()
 	valCfg := DefaultValidatorConfig()
+	eotsMngrCfg := DefaultEOTSManagerConfig()
 	return Config{
 		ValdDir:                        DefaultValdDir,
 		ChainName:                      defaultChainName,
@@ -114,6 +117,7 @@ func DefaultConfig() Config {
 		ValidatorModeConfig:            &valCfg,
 		JuryModeConfig:                 &juryCfg,
 		PollerConfig:                   &pollerCfg,
+		EOTSManagerConfig:              &eotsMngrCfg,
 		NumPubRand:                     defaultNumPubRand,
 		NumPubRandMax:                  defaultNumPubRandMax,
 		MinRandHeightGap:               defaultMinRandHeightGap,

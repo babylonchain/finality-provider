@@ -87,13 +87,6 @@ func (vs *valState) setStatus(s proto.ValidatorStatus) error {
 	return vs.s.UpdateValidator(vs.v)
 }
 
-func (vs *valState) setLastVotedHeight(height uint64) error {
-	vs.mu.Lock()
-	vs.v.LastVotedHeight = height
-	vs.mu.Unlock()
-	return vs.s.UpdateValidator(vs.v)
-}
-
 func (vs *valState) setLastProcessedHeight(height uint64) error {
 	vs.mu.Lock()
 	vs.v.LastProcessedHeight = height
