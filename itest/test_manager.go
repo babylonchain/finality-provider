@@ -532,7 +532,7 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	// errors
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
-	cfg.BabylonConfig.GasAdjustment = 10
+	cfg.BabylonConfig.GasAdjustment = 20
 	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
 	cfg.JuryMode = isJury
 	cfg.JuryModeConfig.QueryInterval = 7 * time.Second
