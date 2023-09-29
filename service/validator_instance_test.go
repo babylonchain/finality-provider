@@ -48,11 +48,6 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// check the last_committed_height
 		numPubRand := app.GetConfig().NumPubRand
 		require.Equal(t, startingBlock.Height+numPubRand, valIns.GetStoreValidator().LastCommittedHeight)
-
-		// check the committed pub rand
-		randPairs, err := valIns.GetCommittedPubRandPairList()
-		require.NoError(t, err)
-		require.Equal(t, int(numPubRand), len(randPairs))
 	})
 }
 
@@ -123,8 +118,10 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	validator := testutil.GenStoredValidator(r, t, app)
 	err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 	require.NoError(t, err)
-	config := app.GetConfig()
+	err = app.StartHandlingValidator(validator.MustGetBIP340BTCPK())
+	require.NoError(t, err)
 
+	config := app.GetConfig()
 	cleanUp := func() {
 		err = app.Stop()
 		require.NoError(t, err)

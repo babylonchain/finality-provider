@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -10,7 +9,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 
@@ -196,7 +194,7 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 
 func (vm *ValidatorManager) setValidatorSlashed(vi *ValidatorInstance) {
 	vi.MustSetStatus(proto.ValidatorStatus_SLASHED)
-	if err := vm.removeValidatorInstance(vi.GetBabylonPk()); err != nil {
+	if err := vm.removeValidatorInstance(vi.GetBtcPkBIP340()); err != nil {
 		panic(fmt.Errorf("failed to terminate a slashed validator %s: %w", vi.GetBtcPkHex(), err))
 	}
 }
@@ -274,11 +272,11 @@ func (vm *ValidatorManager) GetValidatorInstance(valPk *bbntypes.BIP340PubKey) (
 	return v, nil
 }
 
-func (vm *ValidatorManager) removeValidatorInstance(babylonPk *secp256k1.PubKey) error {
+func (vm *ValidatorManager) removeValidatorInstance(valPk *bbntypes.BIP340PubKey) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
 
-	keyHex := hex.EncodeToString(babylonPk.Key)
+	keyHex := valPk.MarshalHex()
 	v, exists := vm.vals[keyHex]
 	if !exists {
 		return fmt.Errorf("cannot find the validator instance with PK: %s", keyHex)

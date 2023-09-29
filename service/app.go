@@ -9,7 +9,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
@@ -354,18 +353,19 @@ func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
-	k, err := app.kr.Key(name)
+	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, name, app.config.BabylonConfig.ChainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get key %s from the keyring: %w", name, err)
+		return nil, err
 	}
-	localKey := k.GetLocal().PrivKey.GetCachedValue()
-	switch v := localKey.(type) {
-	case *secp256k1.PrivKey:
-		privKey, _ := btcec.PrivKeyFromBytes(v.Key)
-		return privKey, nil
-	default:
-		return nil, fmt.Errorf("unsupported key type in keyring")
+
+	sdkPrivKey, err := kc.GetChainPrivKey()
+	if err != nil {
+		return nil, err
 	}
+
+	privKey, _ := btcec.PrivKeyFromBytes(sdkPrivKey.Key)
+
+	return privKey, nil
 }
 
 func (app *ValidatorApp) Start() error {

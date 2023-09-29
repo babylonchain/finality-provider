@@ -113,6 +113,16 @@ func FuzzAddJurySig(f *testing.F) {
 		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
 		require.NoError(t, err)
 
+		// create a Jury key pair in the keyring
+		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName, cfg.BabylonConfig.ChainID)
+		require.NoError(t, err)
+		sdkJurPk, err := juryKc.CreateChainKey()
+		require.NoError(t, err)
+		juryPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
+		require.NoError(t, err)
+		require.NotNil(t, juryPk)
+		cfg.JuryMode = true
+
 		err = app.Start()
 		require.NoError(t, err)
 		defer func() {
@@ -124,17 +134,6 @@ func FuzzAddJurySig(f *testing.F) {
 		validator := testutil.GenStoredValidator(r, t, app)
 		btcPkBIP340 := validator.MustGetBIP340BTCPK()
 		btcPk := validator.MustGetBTCPK()
-
-		// create a Jury key pair in the keyring
-		chainID := datagen.GenRandomHexStr(r, 4)
-		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName, chainID)
-		require.NoError(t, err)
-		sdkJurPk, err := juryKc.CreateChainKey()
-		require.NoError(t, err)
-		juryPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
-		require.NoError(t, err)
-		require.NotNil(t, juryPk)
-		cfg.JuryMode = true
 
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)

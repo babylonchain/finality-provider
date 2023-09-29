@@ -22,10 +22,6 @@ func FuzzCreatePoP(f *testing.F) {
 
 		keyName := testutil.GenRandomHexStr(r, 4)
 		sdkCtx := testutil.GenSdkContext(r, t)
-		defer func() {
-			err := os.RemoveAll(sdkCtx.KeyringDir)
-			require.NoError(t, err)
-		}()
 
 		chainID := testutil.GenRandomHexStr(r, 4)
 		kc, err := val.NewChainKeyringController(sdkCtx, keyName, chainID, "test")
@@ -33,6 +29,13 @@ func FuzzCreatePoP(f *testing.F) {
 
 		cfg := valcfg.DefaultEOTSManagerConfig()
 		em, err := local.NewLocalEOTSManager(sdkCtx, "test", &cfg)
+		defer func() {
+			err := os.RemoveAll(sdkCtx.KeyringDir)
+			require.NoError(t, err)
+			err = em.Close()
+			require.NoError(t, err)
+		}()
+
 		require.NoError(t, err)
 		btcPkBytes, err := em.CreateValidator(keyName, "")
 		require.NoError(t, err)

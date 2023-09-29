@@ -152,6 +152,10 @@ func (v *ValidatorInstance) GetLastCommittedHeight() uint64 {
 	return v.state.getStoreValidator().LastCommittedHeight
 }
 
+func (v *ValidatorInstance) GetChainID() []byte {
+	return []byte(v.state.getStoreValidator().ChainId)
+}
+
 func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
 	return v.state.setStatus(s)
 }
@@ -216,11 +220,6 @@ func (v *ValidatorInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
 	}
 
 	return record.ValSk, nil
-}
-
-// only used for testing purpose
-func (v *ValidatorInstance) GetCommittedPubRandPairList() ([]*proto.SchnorrRandPair, error) {
-	return v.state.s.GetRandPairList(v.bbnPk.Key)
 }
 
 // only used for testing purposes

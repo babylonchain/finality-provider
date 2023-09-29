@@ -142,6 +142,10 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 		require.NoError(t, err)
 		err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 		require.NoError(t, err)
+		err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
+		require.NoError(t, err)
+		err = em.Close()
+		require.NoError(t, err)
 	}
 
 	return vm, cleanUp

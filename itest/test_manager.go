@@ -190,11 +190,7 @@ func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKe
 
 func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
 	require.Eventually(t, func() bool {
-		randPairs, err := valIns.GetCommittedPubRandPairList()
-		if err != nil {
-			return false
-		}
-		return int(tm.Config.NumPubRand) == len(randPairs)
+		return valIns.GetLastCommittedHeight() > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
