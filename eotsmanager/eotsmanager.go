@@ -18,8 +18,9 @@ type EOTSManager interface {
 	// NOTE: it will overwrite the randomness regardless of whether there's one existed
 	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
-	// CreateRandomnessPairListWithExistenceCheck has the same functionalities as CreateRandomnessPairList
-	// except that it will return error if there's randomness existed before
+	// CreateRandomnessPairListWithExistenceCheck checks the existence of randomness by given height
+	// before calling CreateRandomnessPairList.
+	// It fails if there's randomness existed at a given height
 	CreateRandomnessPairListWithExistenceCheck(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
