@@ -22,11 +22,9 @@ func FuzzFastSync(f *testing.F) {
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
+		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		err := app.Start()
-		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
+		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 
 		// commit public randomness

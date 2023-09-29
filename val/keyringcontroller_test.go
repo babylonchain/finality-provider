@@ -8,8 +8,10 @@ import (
 	"github.com/babylonchain/babylon/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/eotsmanager/local"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/val"
+	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 // FuzzCreatePoP tests the creation of PoP
@@ -25,17 +27,23 @@ func FuzzCreatePoP(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		kc, err := val.NewChainKeyringController(sdkCtx, keyName, "test")
+		chainID := testutil.GenRandomHexStr(r, 4)
+		kc, err := val.NewChainKeyringController(sdkCtx, keyName, chainID, "test")
 		require.NoError(t, err)
-		require.False(t, kc.ValidatorKeyExists())
 
-		btcPk, bbnPk, err := kc.CreateValidatorKeys()
+		cfg := valcfg.DefaultEOTSManagerConfig()
+		em, err := local.NewLocalEOTSManager(sdkCtx, "test", &cfg)
 		require.NoError(t, err)
-		require.True(t, kc.ValidatorKeyExists() && kc.ValidatorKeyNameTaken())
-
-		pop, err := kc.CreatePop()
+		btcPkBytes, err := em.CreateValidator(keyName, "")
 		require.NoError(t, err)
-		validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
+		btcPk, err := types.NewBIP340PubKey(btcPkBytes)
+		require.NoError(t, err)
+		bbnPk, err := kc.CreateChainKey()
+		require.NoError(t, err)
+		valRecord, err := em.GetValidatorRecord(btcPk.MustMarshal(), "")
+		pop, err := kc.CreatePop(valRecord.ValSk)
+		require.NoError(t, err)
+		validator := val.NewStoreValidator(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
 
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)

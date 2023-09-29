@@ -109,6 +109,11 @@ var createValDaemonCmd = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
+			Name:     chainIdFlag,
+			Usage:    "The identifier of the consumer chain",
+			Required: true,
+		},
+		cli.StringFlag{
 			Name:  passPhraseFlag,
 			Usage: "The pass phrase used to encrypt the keys",
 		},
@@ -166,7 +171,7 @@ func createValDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	info, err := client.CreateValidator(context.Background(), ctx.String(passPhraseFlag), keyName, &description, &commissionRate)
+	info, err := client.CreateValidator(context.Background(), keyName, ctx.String(chainIdFlag), ctx.String(passPhraseFlag), &description, &commissionRate)
 
 	if err != nil {
 		return err
@@ -358,7 +363,7 @@ func addFinalitySig(ctx *cli.Context) error {
 	}
 
 	res, err := rpcClient.AddFinalitySignature(
-		context.Background(), valPk, ctx.Uint64(blockHeightFlag), lch)
+		context.Background(), valPk.MarshalHex(), ctx.Uint64(blockHeightFlag), lch)
 	if err != nil {
 		return err
 	}

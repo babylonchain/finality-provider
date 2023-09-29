@@ -116,12 +116,13 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	var (
 		valNamePrefix = "test-val-"
 		monikerPrefix = "moniker-"
+		chainID       = "test-chainid"
 	)
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdktypes.OneDec()
-		res, err := app.CreateValidator(valName, "", newDescription(moniker), &commission)
+		res, err := app.CreateValidator(valName, chainID, "", newDescription(moniker), &commission)
 		require.NoError(t, err)
 		_, err = app.RegisterValidator(valName)
 		require.NoError(t, err)

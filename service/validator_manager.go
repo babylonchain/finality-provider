@@ -218,7 +218,7 @@ func (vm *ValidatorManager) Start() error {
 	go vm.monitorStatusUpdate()
 
 	for _, v := range storedValidators {
-		if err := vm.addValidatorInstance(v.G); err != nil {
+		if err := vm.addValidatorInstance(v.MustGetBIP340BTCPK()); err != nil {
 			return err
 		}
 	}

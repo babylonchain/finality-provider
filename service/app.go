@@ -426,15 +426,22 @@ func (app *ValidatorApp) Stop() error {
 			return
 		}
 
+		app.logger.Debug("Stopping EOTS manager")
+		if err := app.eotsManager.Close(); err != nil {
+			stopErr = err
+			return
+		}
+
 		app.logger.Debug("ValidatorApp successfully stopped")
 
 	})
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(keyName, chainID, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
 	req := &createValidatorRequest{
 		keyName:         keyName,
+		chainID:         chainID,
 		passPhrase:      passPhrase,
 		description:     description,
 		commission:      commission,
@@ -471,12 +478,9 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.config.BabylonConfig.ChainID)
+	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, req.chainID)
 	if err != nil {
 		return nil, err
-	}
-	if kr.KeyExists() {
-		return nil, fmt.Errorf("the validator already exists")
 	}
 
 	bbnPk, err := kr.CreateChainKey()
@@ -494,7 +498,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}
 
-	validator := val.NewStoreValidator(bbnPk, valPk, req.keyName, pop, req.description, req.commission)
+	validator := val.NewStoreValidator(bbnPk, valPk, req.keyName, req.chainID, pop, req.description, req.commission)
 
 	if err := app.vs.SaveValidator(validator); err != nil {
 		return nil, fmt.Errorf("failed to save validator: %w", err)

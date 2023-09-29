@@ -41,12 +41,14 @@ type registerValidatorRequest struct {
 
 type validatorRegisteredEvent struct {
 	bbnPubKey       *secp256k1.PubKey
+	btcPubKey       *bbntypes.BIP340PubKey
 	txHash          string
 	successResponse chan *RegisterValidatorResponse
 }
 
 type RegisterValidatorResponse struct {
 	bbnPubKey *secp256k1.PubKey
+	btcPubKey *bbntypes.BIP340PubKey
 	TxHash    string
 }
 

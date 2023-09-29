@@ -9,7 +9,6 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -108,14 +107,14 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 	if err != nil {
 		return nil, err
 	}
-	result, err := r.app.CreateValidator(req.KeyName, req.PassPhrase, req.Description, &commissionRate)
+	result, err := r.app.CreateValidator(req.KeyName, req.ChainId, req.PassPhrase, req.Description, &commissionRate)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &proto.CreateValidatorResponse{
-		BtcPk: result.ValPkStr,
+		BtcPk: result.ValPk.MarshalHex(),
 	}, nil
 
 }
@@ -130,7 +129,7 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	}
 
 	// the validator instance should be started right after registration
-	if err := r.app.StartHandlingValidator(txRes.bbnPubKey); err != nil {
+	if err := r.app.StartHandlingValidator(txRes.btcPubKey); err != nil {
 		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(txRes.bbnPubKey.Key), err)
 	}
 
@@ -142,8 +141,12 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFinalitySignatureRequest) (
 	*proto.AddFinalitySignatureResponse, error) {
 
-	bbnPk := &secp256k1.PubKey{Key: req.BabylonPk}
-	v, err := r.app.GetValidatorInstance(bbnPk)
+	valPk, err := bbntypes.NewBIP340PubKeyFromHex(req.BtcPk)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := r.app.GetValidatorInstance(valPk)
 	if err != nil {
 		return nil, err
 	}

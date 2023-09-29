@@ -21,7 +21,7 @@ const (
 	randPairPrefix  = "rand-pair"
 )
 
-func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName string, pop *bstypes.ProofOfPossession, des *stakingtypes.Description, com *sdktypes.Dec) *proto.StoreValidator {
+func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName, chainID string, pop *bstypes.ProofOfPossession, des *stakingtypes.Description, com *sdktypes.Dec) *proto.StoreValidator {
 	return &proto.StoreValidator{
 		KeyName:   keyName,
 		BabylonPk: babylonPk.Bytes(),
@@ -30,6 +30,7 @@ func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, k
 			BabylonSig: pop.BabylonSig,
 			BtcSig:     pop.BtcSig,
 		},
+		ChainId:     chainID,
 		Status:      proto.ValidatorStatus_CREATED,
 		Description: des,
 		Commission:  com.String(),
@@ -66,7 +67,7 @@ func (vs *ValidatorStore) getRandPairListKey(pk []byte) []byte {
 }
 
 func (vs *ValidatorStore) SaveValidator(val *proto.StoreValidator) error {
-	k := getValidatorKey(val.BabylonPk)
+	k := getValidatorKey(val.BtcPk)
 	v, err := gproto.Marshal(val)
 	if err != nil {
 		return fmt.Errorf("failed to marshal the created validator object: %w", err)
@@ -80,7 +81,7 @@ func (vs *ValidatorStore) SaveValidator(val *proto.StoreValidator) error {
 }
 
 func (vs *ValidatorStore) UpdateValidator(val *proto.StoreValidator) error {
-	k := getValidatorKey(val.BabylonPk)
+	k := getValidatorKey(val.BtcPk)
 	exists, err := vs.s.Exists(k)
 	if err != nil {
 		return err

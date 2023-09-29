@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/service"
@@ -148,10 +149,13 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		juryKeyName,
+		"test-chain",
 		"test",
 	)
 	require.NoError(t, err)
-	juryPk, err := krController.CreateJuryKey()
+	sdkJuryPk, err := krController.CreateChainKey()
+	require.NoError(t, err)
+	juryPk, err := secp256k1.ParsePubKey(sdkJuryPk.Key)
 	require.NoError(t, err)
 	juryPkBip340 := types.NewBIP340PubKeyFromBTCPK(juryPk)
 

@@ -52,8 +52,8 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valP
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, passPhrase, keyName string, description *stakingtypes.Description, commission *sdktypes.Dec) (*proto.CreateValidatorResponse, error) {
-	req := &proto.CreateValidatorRequest{KeyName: keyName, PassPhrase: passPhrase, Description: description, Commission: commission.String()}
+func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName, chainID, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*proto.CreateValidatorResponse, error) {
+	req := &proto.CreateValidatorRequest{KeyName: keyName, ChainId: chainID, PassPhrase: passPhrase, Description: description, Commission: commission.String()}
 	res, err := c.client.CreateValidator(ctx, req)
 	if err != nil {
 		return nil, err
@@ -62,9 +62,9 @@ func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, passPh
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) AddFinalitySignature(ctx context.Context, bbnPk []byte, height uint64, lch []byte) (*proto.AddFinalitySignatureResponse, error) {
+func (c *ValidatorServiceGRpcClient) AddFinalitySignature(ctx context.Context, valPk string, height uint64, lch []byte) (*proto.AddFinalitySignatureResponse, error) {
 	req := &proto.AddFinalitySignatureRequest{
-		BabylonPk:      bbnPk,
+		BtcPk:          valPk,
 		Height:         height,
 		LastCommitHash: lch,
 	}

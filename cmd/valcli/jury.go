@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/urfave/cli"
 
@@ -75,18 +76,18 @@ func createJuryKey(ctx *cli.Context) error {
 		return err
 	}
 
-	if krController.JuryKeyTaken() {
-		return fmt.Errorf("the Jury key name %s is taken", krController.GetKeyName())
-	}
-
-	juryPk, err := krController.CreateJuryKey()
+	sdkJuryPk, err := krController.CreateChainKey()
 	if err != nil {
 		return fmt.Errorf("failed to create Jury key: %w", err)
+	}
+	juryPk, err := secp256k1.ParsePubKey(sdkJuryPk.Key)
+	if err != nil {
+		return err
 	}
 
 	bip340Key := types.NewBIP340PubKeyFromBTCPK(juryPk)
 	printRespJSON(&juryKey{
-		Name:      krController.GetKeyName(),
+		Name:      ctx.String(keyNameFlag),
 		PublicKey: bip340Key.MarshalHex(),
 	})
 

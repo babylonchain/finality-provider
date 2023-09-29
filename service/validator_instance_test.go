@@ -28,14 +28,12 @@ func FuzzCommitPubRandList(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
+		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		err := app.Start()
-		require.NoError(t, err)
 
-		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
+		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
@@ -68,13 +66,11 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
+		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		err := app.Start()
-		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
+		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 
 		// commit public randomness
@@ -109,7 +105,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
+func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
@@ -119,6 +115,8 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clien
 	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()
 	app, err := service.NewValidatorAppFromConfig(&cfg, logger, cc)
+	require.NoError(t, err)
+	err = app.Start()
 	require.NoError(t, err)
 
 	// create registered validator
@@ -134,6 +132,7 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clien
 		require.NoError(t, err)
 		err = os.RemoveAll(config.BabylonConfig.KeyDirectory)
 		require.NoError(t, err)
+		err = os.RemoveAll(config.EOTSManagerConfig.DBPath)
 	}
 
 	return app, validator, cleanUp

@@ -44,6 +44,11 @@ func NewChainKeyringController(ctx client.Context, name, chainID, keyringBackend
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
+	_, err = kr.Key(name + chainID)
+	if err == nil {
+		return nil, fmt.Errorf("the key %s already existed", name)
+	}
+
 	return &ChainKeyringController{
 		valName: name,
 		kr:      kr,
@@ -64,11 +69,6 @@ func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name, chainID stri
 		valName: name,
 		chainID: chainID,
 	}, nil
-}
-
-func (kc *ChainKeyringController) KeyExists() bool {
-	_, err := kc.kr.Key(kc.valName + kc.chainID)
-	return err == nil
 }
 
 func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {

@@ -171,7 +171,7 @@ func (v *ValidatorInstance) Stop() error {
 	close(v.quit)
 	v.wg.Wait()
 
-	v.logger.Debugf("The thread handling validator %s is successfully stopped", v.GetBtcPkHex())
+	v.logger.Debugf("the thread handling validator %s is successfully stopped", v.GetBtcPkHex())
 
 	return nil
 }
