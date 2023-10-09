@@ -84,7 +84,11 @@ func NewValidatorApp(
 	}
 
 	if config.JuryMode {
-		if _, err := kr.Key(config.JuryModeConfig.JuryKeyName); err != nil {
+		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.JuryModeConfig.JuryKeyName, config.BabylonConfig.ChainID)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := kc.GetChainPrivKey(); err != nil {
 			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
 				config.JuryModeConfig.JuryKeyName, err)
 		}
@@ -122,14 +126,6 @@ func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
 
 func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
-}
-
-func (app *ValidatorApp) GetJuryPk() (*btcec.PublicKey, error) {
-	juryPrivKey, err := app.getJuryPrivKey()
-	if err != nil {
-		return nil, err
-	}
-	return juryPrivKey.PubKey(), nil
 }
 
 func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {

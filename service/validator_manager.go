@@ -149,7 +149,6 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 					if v.GetStatus() != proto.ValidatorStatus_ACTIVE {
 						v.MustSetStatus(proto.ValidatorStatus_ACTIVE)
 						vm.logger.WithFields(logrus.Fields{
-							"err":        err,
 							"val_btc_pk": v.GetBtcPkHex(),
 							"old_status": v.GetStatus(),
 							"power":      power,
@@ -169,7 +168,6 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 				if slashedHeight > 0 {
 					vm.setValidatorSlashed(v)
 					vm.logger.WithFields(logrus.Fields{
-						"err":            err,
 						"val_btc_pk":     v.GetBtcPkHex(),
 						"old_status":     v.GetStatus(),
 						"slashed_height": slashedHeight,
@@ -180,7 +178,6 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 				if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
 					v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
 					vm.logger.WithFields(logrus.Fields{
-						"err":        err,
 						"val_btc_pk": v.GetBtcPkHex(),
 						"old_status": v.GetStatus(),
 					}).Debug("the validator status has changed to INACTIVE")

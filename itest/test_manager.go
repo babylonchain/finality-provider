@@ -122,7 +122,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	var (
 		valNamePrefix = "test-val-"
 		monikerPrefix = "moniker-"
-		chainID       = "test-chainid"
+		chainID       = "chain-test"
 	)
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
@@ -130,7 +130,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		commission := sdktypes.OneDec()
 		res, err := app.CreateValidator(valName, chainID, "", newDescription(moniker), &commission)
 		require.NoError(t, err)
-		_, err = app.RegisterValidator(valName)
+		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
 		require.NoError(t, err)
 		err = app.StartHandlingValidator(res.ValPk)
 		require.NoError(t, err)
@@ -400,7 +400,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
 	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-	juryPk, err := tm.Va.GetJuryPk()
+	juryPk := tm.GetJuryPrivKey(t).PubKey()
 	require.NoError(t, err)
 	require.Equal(t, params.JuryPk.SerializeCompressed()[1:], juryPk.SerializeCompressed()[1:])
 

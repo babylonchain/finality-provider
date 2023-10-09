@@ -40,14 +40,16 @@ type babylonNode struct {
 	pidFile      string
 	dataDir      string
 	juryKeyName  string
+	chainID      string
 	slashingAddr string
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd, juryKeyName, slashingAddr string) *babylonNode {
+func newBabylonNode(dataDir string, cmd *exec.Cmd, juryKeyName, chainID string, slashingAddr string) *babylonNode {
 	return &babylonNode{
 		dataDir:      dataDir,
 		cmd:          cmd,
 		juryKeyName:  juryKeyName,
+		chainID:      chainID,
 		slashingAddr: slashingAddr,
 	}
 }
@@ -149,7 +151,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		juryKeyName,
-		"test-chain",
+		chainID,
 		"test",
 	)
 	require.NoError(t, err)
@@ -196,7 +198,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd, juryKeyName, slashingAddr),
+		babylonNode: newBabylonNode(testDir, startCmd, juryKeyName, chainID, slashingAddr),
 	}
 }
 
@@ -223,7 +225,7 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 }
 
 func (w *BabylonNodeHandler) GetJuryKeyName() string {
-	return w.babylonNode.juryKeyName
+	return w.babylonNode.chainID + "-" + w.babylonNode.juryKeyName
 }
 
 func (w *BabylonNodeHandler) GetSlashingAddress() string {
