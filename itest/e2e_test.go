@@ -11,16 +11,12 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -216,26 +212,10 @@ func TestDoubleSigning(t *testing.T) {
 	_, extractedKey, err := valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)
 	require.NotNil(t, extractedKey)
-	localKey, err := getBtcPrivKey(app.GetKeyring(), val.KeyName(valIns.GetStoreValidator().KeyName))
-	require.NoError(t, err)
+	localKey := tm.GetValPrivKey(t, valIns.GetBtcPkBIP340().MustMarshal())
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 
 	t.Logf("the equivocation attack is successful")
-}
-
-func getBtcPrivKey(kr keyring.Keyring, keyName val.KeyName) (*btcec.PrivateKey, error) {
-	k, err := kr.Key(keyName.GetBtcKeyName())
-	if err != nil {
-		return nil, err
-	}
-	localKey := k.GetLocal().PrivKey.GetCachedValue()
-	switch v := localKey.(type) {
-	case *secp256k1.PrivKey:
-		privKey, _ := btcec.PrivKeyFromBytes(v.Key)
-		return privKey, nil
-	default:
-		return nil, err
-	}
 }
 
 // TestFastSync tests the fast sync process where the validator is terminated and restarted with fast sync

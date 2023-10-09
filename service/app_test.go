@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -45,7 +46,9 @@ func FuzzRegisterValidator(f *testing.F) {
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
+		em, err := eotsmanager.NewEOTSManager(&cfg)
+		require.NoError(t, err)
+		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
 		require.NoError(t, err)
 
 		err = app.Start()
@@ -110,7 +113,9 @@ func FuzzAddJurySig(f *testing.F) {
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
+		em, err := eotsmanager.NewEOTSManager(&cfg)
+		require.NoError(t, err)
+		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
 		require.NoError(t, err)
 
 		// create a Jury key pair in the keyring

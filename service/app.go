@@ -51,9 +51,26 @@ type ValidatorApp struct {
 func NewValidatorAppFromConfig(
 	config *valcfg.Config,
 	logger *logrus.Logger,
-	cc clientcontroller.ClientController,
 ) (*ValidatorApp, error) {
+	cc, err := clientcontroller.NewClientController(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", config.ChainName, err)
+	}
 
+	em, err := eotsmanager.NewEOTSManager(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
+	}
+
+	return NewValidatorApp(config, cc, em, logger)
+}
+
+func NewValidatorApp(
+	config *valcfg.Config,
+	cc clientcontroller.ClientController,
+	em eotsmanager.EOTSManager,
+	logger *logrus.Logger,
+) (*ValidatorApp, error) {
 	kr, err := CreateKeyring(config.BabylonConfig.KeyDirectory,
 		config.BabylonConfig.ChainID,
 		config.BabylonConfig.KeyringBackend)
@@ -71,11 +88,6 @@ func NewValidatorAppFromConfig(
 			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
 				config.JuryModeConfig.JuryKeyName, err)
 		}
-	}
-
-	em, err := eotsmanager.NewEOTSManager(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
 
 	vm, err := NewValidatorManager(valStore, config, kr, cc, em, logger)

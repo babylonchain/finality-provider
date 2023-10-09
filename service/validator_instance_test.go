@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -109,7 +110,9 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()
-	app, err := service.NewValidatorAppFromConfig(&cfg, logger, cc)
+	em, err := eotsmanager.NewEOTSManager(&cfg)
+	require.NoError(t, err)
+	app, err := service.NewValidatorApp(&cfg, cc, em, logger)
 	require.NoError(t, err)
 	err = app.Start()
 	require.NoError(t, err)

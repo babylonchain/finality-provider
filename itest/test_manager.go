@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -45,6 +46,7 @@ type TestManager struct {
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
 	Va             *service.ValidatorApp
+	Em             eotsmanager.EOTSManager
 	BabylonClient  *clientcontroller.BabylonController
 }
 
@@ -82,7 +84,10 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
+	em, err := eotsmanager.NewEOTSManager(cfg)
+	require.NoError(t, err)
+
+	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
 	require.NoError(t, err)
 
 	err = valApp.Start()
@@ -92,6 +97,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 		BabylonHandler: bh,
 		Config:         cfg,
 		Va:             valApp,
+		Em:             em,
 		BabylonClient:  bc,
 	}
 
@@ -377,6 +383,12 @@ func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 	require.IsType(t, &secp256k1.PrivKey{}, localKey)
 	juryPrivKey, _ := btcec.PrivKeyFromBytes(localKey.(*secp256k1.PrivKey).Key)
 	return juryPrivKey
+}
+
+func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
+	record, err := tm.Em.GetValidatorRecord(valPk, "")
+	require.NoError(t, err)
+	return record.ValSk
 }
 
 func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
