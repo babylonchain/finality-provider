@@ -44,6 +44,7 @@ func FuzzCreatePoP(f *testing.F) {
 		bbnPk, err := kc.CreateChainKey()
 		require.NoError(t, err)
 		valRecord, err := em.GetValidatorRecord(btcPk.MustMarshal(), "")
+		require.NoError(t, err)
 		pop, err := kc.CreatePop(valRecord.ValSk)
 		require.NoError(t, err)
 		validator := val.NewStoreValidator(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())

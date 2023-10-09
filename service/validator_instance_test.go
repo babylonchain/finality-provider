@@ -133,6 +133,7 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 		err = os.RemoveAll(config.BabylonConfig.KeyDirectory)
 		require.NoError(t, err)
 		err = os.RemoveAll(config.EOTSManagerConfig.DBPath)
+		require.NoError(t, err)
 	}
 
 	return app, validator, cleanUp

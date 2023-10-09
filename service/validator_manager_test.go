@@ -123,6 +123,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	btcPkBytes, err := em.CreateValidator(keyName, "")
 	require.NoError(t, err)
 	btcPk, err := types.NewBIP340PubKey(btcPkBytes)
+	require.NoError(t, err)
 	bbnPk, err := kc.CreateChainKey()
 	require.NoError(t, err)
 	valRecord, err := em.GetValidatorRecord(btcPk.MustMarshal(), "")

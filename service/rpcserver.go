@@ -192,6 +192,9 @@ func (r *rpcServer) QueryValidator(ctx context.Context, req *proto.QueryValidato
 	*proto.QueryValidatorResponse, error) {
 
 	valPk, err := bbntypes.NewBIP340PubKeyFromHex(req.BtcPk)
+	if err != nil {
+		return nil, err
+	}
 	val, err := r.app.GetValidatorInstance(valPk)
 	if err != nil {
 		return nil, err
