@@ -14,9 +14,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
 
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -29,15 +29,15 @@ type LocalEOTSManager struct {
 	es *EOTSStore
 }
 
-func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *valcfg.EOTSManagerConfig) (*LocalEOTSManager, error) {
-	if keyringBackend == "" {
+func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config) (*LocalEOTSManager, error) {
+	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
 
 	kr, err := keyring.New(
 		ctx.ChainID,
 		// TODO currently only support test backend
-		keyringBackend,
+		eotsCfg.KeyringBackend,
 		ctx.KeyringDir,
 		ctx.Input,
 		ctx.Codec,
@@ -57,7 +57,7 @@ func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *val
 	}, nil
 }
 
-func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) ([]byte, error) {
+func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 	if lm.keyExists(name) {
 		return nil, eotstypes.ErrValidatorAlreadyExisted
 	}
@@ -200,7 +200,7 @@ func (lm *LocalEOTSManager) getPrivRandomness(valPk []byte, chainID []byte, heig
 }
 
 // TODO: we ignore passPhrase in local implementation for now
-func (lm *LocalEOTSManager) ValidatorKey(valPk []byte, passPhrase string) (*eotstypes.ValidatorRecord, error) {
+func (lm *LocalEOTSManager) KeyRecord(valPk []byte, passPhrase string) (*eotstypes.KeyRecord, error) {
 	name, err := lm.es.getValidatorKeyName(valPk)
 	if err != nil {
 		return nil, err
@@ -210,9 +210,9 @@ func (lm *LocalEOTSManager) ValidatorKey(valPk []byte, passPhrase string) (*eots
 		return nil, err
 	}
 
-	return &eotstypes.ValidatorRecord{
-		ValName: name,
-		ValSk:   privKey,
+	return &eotstypes.KeyRecord{
+		Name:    name,
+		PrivKey: privKey,
 	}, nil
 }
 

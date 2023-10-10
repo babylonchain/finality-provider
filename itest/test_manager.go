@@ -84,7 +84,10 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	em, err := eotsmanager.NewEOTSManager(cfg)
+	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(cfg)
+	require.NoError(t, err)
+
+	em, err := eotsmanager.NewEOTSManager(eotsCfg)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
@@ -386,9 +389,9 @@ func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.Em.ValidatorKey(valPk, "")
+	record, err := tm.Em.KeyRecord(valPk, "")
 	require.NoError(t, err)
-	return record.ValSk
+	return record.PrivKey
 }
 
 func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {

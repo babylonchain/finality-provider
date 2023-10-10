@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
@@ -106,13 +107,17 @@ func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
 	return dbcfg
 }
 
-func GenEOTSConfig(r *rand.Rand, t *testing.T) *valcfg.EOTSManagerConfig {
+func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	path := filepath.Join(t.TempDir(), bucketName)
-	eotsCfg, err := valcfg.NewEOTSManagerConfig(
+	dir := t.TempDir()
+	path := filepath.Join(dir, bucketName)
+	eotsCfg, err := config.NewConfig(
+		"local",
 		"bbolt",
 		path,
 		bucketName,
+		dir,
+		"test",
 	)
 	require.NoError(t, err)
 	return eotsCfg

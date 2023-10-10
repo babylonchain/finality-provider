@@ -57,7 +57,11 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", config.ChainName, err)
 	}
 
-	em, err := eotsmanager.NewEOTSManager(config)
+	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	em, err := eotsmanager.NewEOTSManager(eotsCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
@@ -373,12 +377,12 @@ func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
-	record, err := app.eotsManager.ValidatorKey(valPk, "")
+	record, err := app.eotsManager.KeyRecord(valPk, "")
 	if err != nil {
 		return nil, err
 	}
 
-	return record.ValSk, nil
+	return record.PrivKey, nil
 }
 
 func (app *ValidatorApp) Start() error {
@@ -481,7 +485,7 @@ func (app *ValidatorApp) IsJury() bool {
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
-	valPkBytes, err := app.eotsManager.CreateValidator(req.keyName, req.passPhrase)
+	valPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase)
 	if err != nil {
 		return nil, err
 	}
@@ -501,12 +505,12 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
 
-	valRecord, err := app.eotsManager.ValidatorKey(valPk.MustMarshal(), req.passPhrase)
+	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator record: %w", err)
 	}
 
-	pop, err := kr.CreatePop(valRecord.ValSk)
+	pop, err := kr.CreatePop(valRecord.PrivKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}

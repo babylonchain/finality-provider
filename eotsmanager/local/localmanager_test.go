@@ -29,21 +29,21 @@ func FuzzCreateValidator(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, "test", eotsCfg)
+		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateValidator(valName, "")
+		valPk, err := lm.CreateKey(valName, "")
 		require.NoError(t, err)
 
-		valRecord, err := lm.ValidatorKey(valPk, "")
+		valRecord, err := lm.KeyRecord(valPk, "")
 		require.NoError(t, err)
-		require.Equal(t, valName, valRecord.ValName)
+		require.Equal(t, valName, valRecord.Name)
 
 		sig, err := lm.SignSchnorrSig(valPk, datagen.GenRandomByteArray(r, 32))
 		require.NoError(t, err)
 		require.NotNil(t, sig)
 
-		_, err = lm.CreateValidator(valName, "")
+		_, err = lm.CreateKey(valName, "")
 		require.ErrorIs(t, err, types.ErrValidatorAlreadyExisted)
 	})
 }
@@ -63,10 +63,10 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, "test", eotsCfg)
+		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateValidator(valName, "")
+		valPk, err := lm.CreateKey(valName, "")
 		require.NoError(t, err)
 
 		chainID := datagen.GenRandomByteArray(r, 10)

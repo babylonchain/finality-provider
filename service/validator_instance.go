@@ -697,6 +697,9 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 		return nil, fmt.Errorf("failed to query the consumer chain for the last committed height: %w", err)
 	}
 
+	// NOTE: this check will cause failure to the case when the program dies
+	// after committing randomness to babylon but before we update the last_committed_height
+	// TODO: consider remove this check
 	if v.GetLastCommittedHeight() != lastCommittedHeight {
 		// for some reason number of random numbers locally does not match the chain node
 		// log it and try to recover somehow
@@ -722,6 +725,11 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	}
 
 	// generate a list of Schnorr randomness pairs
+	// NOTE: currently, calling this will create and save a list of randomness
+	// in case of failure, randomness that has been created will be overwritten
+	// for safety reason as the same randomness must not be used twice
+	// TODO: should consider an implementation that deterministically create
+	//  randomness without saving it
 	pubRandList, err := v.createPubRandList(startHeight)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)

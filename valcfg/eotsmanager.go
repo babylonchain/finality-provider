@@ -2,6 +2,8 @@ package valcfg
 
 import (
 	"fmt"
+
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
 )
 
 const (
@@ -36,6 +38,17 @@ func NewEOTSManagerConfig(backend string, path string, name string) (*EOTSManage
 		DBPath:    path,
 		DBName:    name,
 	}, nil
+}
+
+func AppConfigToEOTSManagerConfig(appCfg *Config) (*config.Config, error) {
+	return config.NewConfig(
+		appCfg.EOTSManagerConfig.Mode,
+		appCfg.EOTSManagerConfig.DBBackend,
+		appCfg.EOTSManagerConfig.DBPath,
+		appCfg.EOTSManagerConfig.DBName,
+		appCfg.BabylonConfig.KeyDirectory,
+		appCfg.BabylonConfig.KeyringBackend,
+	)
 }
 
 func DefaultEOTSManagerConfig() EOTSManagerConfig {
