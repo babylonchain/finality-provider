@@ -8,7 +8,6 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 
@@ -43,7 +42,6 @@ type ValidatorManager struct {
 	// needed for initiating validator instances
 	vs     *val.ValidatorStore
 	config *valcfg.Config
-	kr     keyring.Keyring
 	cc     clientcontroller.ClientController
 	em     eotsmanager.EOTSManager
 	logger *logrus.Logger
