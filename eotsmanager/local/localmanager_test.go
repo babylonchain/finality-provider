@@ -35,7 +35,7 @@ func FuzzCreateValidator(f *testing.F) {
 		valPk, err := lm.CreateValidator(valName, "")
 		require.NoError(t, err)
 
-		valRecord, err := lm.GetValidatorRecord(valPk, "")
+		valRecord, err := lm.ValidatorKey(valPk, "")
 		require.NoError(t, err)
 		require.Equal(t, valName, valRecord.ValName)
 

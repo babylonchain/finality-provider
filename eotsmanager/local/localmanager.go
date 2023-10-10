@@ -200,7 +200,7 @@ func (lm *LocalEOTSManager) getPrivRandomness(valPk []byte, chainID []byte, heig
 }
 
 // TODO: we ignore passPhrase in local implementation for now
-func (lm *LocalEOTSManager) GetValidatorRecord(valPk []byte, passPhrase string) (*eotstypes.ValidatorRecord, error) {
+func (lm *LocalEOTSManager) ValidatorKey(valPk []byte, passPhrase string) (*eotstypes.ValidatorRecord, error) {
 	name, err := lm.es.getValidatorKeyName(valPk)
 	if err != nil {
 		return nil, err

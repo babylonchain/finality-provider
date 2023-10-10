@@ -44,11 +44,6 @@ func NewChainKeyringController(ctx client.Context, name, chainID, keyringBackend
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	_, err = kr.Key(name + chainID)
-	if err == nil {
-		return nil, fmt.Errorf("the key %s already existed", name)
-	}
-
 	return &ChainKeyringController{
 		valName: name,
 		kr:      kr,
@@ -97,7 +92,7 @@ func (kc *ChainKeyringController) CreateChainKey() (*secp256k1.PubKey, error) {
 	fmt.Printf("Generated mnemonic for the validator %s connected to chain %s is:\n%s\n", kc.valName, kc.chainID, mnemonic)
 
 	// TODO for now we leave bip39Passphrase and hdPath empty
-	record, err := kc.kr.NewAccount(kc.getKeyName(), mnemonic, "", "", algo)
+	record, err := kc.kr.NewAccount(GetKeyName(kc.chainID, kc.valName), mnemonic, "", "", algo)
 	if err != nil {
 		return nil, err
 	}
@@ -115,8 +110,8 @@ func (kc *ChainKeyringController) CreateChainKey() (*secp256k1.PubKey, error) {
 	}
 }
 
-func (kc *ChainKeyringController) getKeyName() string {
-	return kc.chainID + "-" + kc.valName
+func GetKeyName(chainID, valName string) string {
+	return chainID + "-" + valName
 }
 
 // CreatePop creates proof-of-possession of Babylon and BTC public keys
@@ -132,7 +127,7 @@ func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey) (*bsty
 }
 
 func (kc *ChainKeyringController) GetChainPrivKey() (*secp256k1.PrivKey, error) {
-	k, err := kc.kr.Key(kc.getKeyName())
+	k, err := kc.kr.Key(GetKeyName(kc.chainID, kc.valName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}

@@ -225,7 +225,7 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 }
 
 func (w *BabylonNodeHandler) GetJuryKeyName() string {
-	return w.babylonNode.chainID + "-" + w.babylonNode.juryKeyName
+	return val.GetKeyName(w.babylonNode.chainID, w.babylonNode.juryKeyName)
 }
 
 func (w *BabylonNodeHandler) GetSlashingAddress() string {

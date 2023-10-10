@@ -32,7 +32,7 @@ func FuzzCreatePoP(f *testing.F) {
 		defer func() {
 			err := os.RemoveAll(sdkCtx.KeyringDir)
 			require.NoError(t, err)
-			err = em.Close()
+			err = os.RemoveAll(cfg.DBPath)
 			require.NoError(t, err)
 		}()
 
@@ -43,7 +43,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		bbnPk, err := kc.CreateChainKey()
 		require.NoError(t, err)
-		valRecord, err := em.GetValidatorRecord(btcPk.MustMarshal(), "")
+		valRecord, err := em.ValidatorKey(btcPk.MustMarshal(), "")
 		require.NoError(t, err)
 		pop, err := kc.CreatePop(valRecord.ValSk)
 		require.NoError(t, err)

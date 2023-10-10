@@ -166,7 +166,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 	// if privKey is not empty, then this BTC validator
 	// has voted for a fork and will be slashed
 	if privKey != nil {
-		localPrivKey, err := r.app.getPrivKey(v.GetStoreValidator().KeyName)
+		localPrivKey, err := r.app.getValPrivKey(valPk.MustMarshal())
 		res.ExtractedSkHex = privKey.Key.String()
 		if err != nil {
 			return nil, err

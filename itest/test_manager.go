@@ -386,7 +386,7 @@ func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.Em.GetValidatorRecord(valPk, "")
+	record, err := tm.Em.ValidatorKey(valPk, "")
 	require.NoError(t, err)
 	return record.ValSk
 }

@@ -55,7 +55,6 @@ type ValidatorManager struct {
 
 func NewValidatorManager(vs *val.ValidatorStore,
 	config *valcfg.Config,
-	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	logger *logrus.Logger,
@@ -66,7 +65,6 @@ func NewValidatorManager(vs *val.ValidatorStore,
 		isStarted:       atomic.NewBool(false),
 		vs:              vs,
 		config:          config,
-		kr:              kr,
 		cc:              cc,
 		em:              em,
 		logger:          logger,
@@ -300,7 +298,7 @@ func (vm *ValidatorManager) addValidatorInstance(
 		return fmt.Errorf("validator instance already exists")
 	}
 
-	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.kr, vm.cc, vm.em, vm.criticalErrChan, vm.logger)
+	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.cc, vm.em, vm.criticalErrChan, vm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator %s instance: %w", pkHex, err)
 	}

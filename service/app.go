@@ -94,7 +94,7 @@ func NewValidatorApp(
 		}
 	}
 
-	vm, err := NewValidatorManager(valStore, config, kr, cc, em, logger)
+	vm, err := NewValidatorManager(valStore, config, cc, em, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator manager: %w", err)
 	}
@@ -357,11 +357,7 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 }
 
 func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
-	return app.getPrivKey(app.config.JuryModeConfig.JuryKeyName)
-}
-
-func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
-	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, name, app.config.BabylonConfig.ChainID)
+	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.JuryModeConfig.JuryKeyName, app.config.BabylonConfig.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +370,15 @@ func (app *ValidatorApp) getPrivKey(name string) (*btcec.PrivateKey, error) {
 	privKey, _ := btcec.PrivKeyFromBytes(sdkPrivKey.Key)
 
 	return privKey, nil
+}
+
+func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
+	record, err := app.eotsManager.ValidatorKey(valPk, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return record.ValSk, nil
 }
 
 func (app *ValidatorApp) Start() error {
@@ -496,7 +501,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
 
-	valRecord, err := app.eotsManager.GetValidatorRecord(valPk.MustMarshal(), req.passPhrase)
+	valRecord, err := app.eotsManager.ValidatorKey(valPk.MustMarshal(), req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator record: %w", err)
 	}

@@ -15,6 +15,11 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+const (
+	EOTSManagerTypeLocal  = "local"
+	EOTSManagerTypeRemote = "remote"
+)
+
 type EOTSManager interface {
 	// CreateValidator generates a key pair to create a unique validator object
 	// and persists it in storage. The key pair is formatted by BIP-340 (Schnorr Signatures)
@@ -33,9 +38,9 @@ type EOTSManager interface {
 	// It fails if there's randomness existed at a given height
 	CreateRandomnessPairListWithExistenceCheck(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
-	// GetValidatorRecord returns the validator record
+	// ValidatorKey returns the validator record
 	// It fails if the validator does not exist or passPhrase is incorrect
-	GetValidatorRecord(uid []byte, passPhrase string) (*types.ValidatorRecord, error)
+	ValidatorKey(uid []byte, passPhrase string) (*types.ValidatorRecord, error)
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height
@@ -51,7 +56,7 @@ type EOTSManager interface {
 
 func NewEOTSManager(cfg *valcfg.Config) (EOTSManager, error) {
 	switch cfg.EOTSManagerConfig.Mode {
-	case "local":
+	case EOTSManagerTypeLocal:
 		keyringDir := cfg.BabylonConfig.KeyDirectory
 		if keyringDir == "" {
 			homeDir, err := os.UserHomeDir()

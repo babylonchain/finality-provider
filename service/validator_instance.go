@@ -12,7 +12,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/gogo/protobuf/jsonpb"
@@ -36,7 +35,6 @@ type ValidatorInstance struct {
 	cfg   *valcfg.Config
 
 	logger *logrus.Logger
-	kc     *val.ChainKeyringController
 	em     eotsmanager.EOTSManager
 	cc     clientcontroller.ClientController
 	poller *ChainPoller
@@ -58,7 +56,6 @@ func NewValidatorInstance(
 	valPk *bbntypes.BIP340PubKey,
 	cfg *valcfg.Config,
 	s *val.ValidatorStore,
-	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	errChan chan<- *CriticalError,
@@ -72,11 +69,6 @@ func NewValidatorInstance(
 	// ensure the validator has been registered
 	if v.Status < proto.ValidatorStatus_REGISTERED {
 		return nil, fmt.Errorf("the validator %s has not been registered", v.KeyName)
-	}
-
-	kc, err := val.NewChainKeyringControllerWithKeyring(kr, v.KeyName, v.ChainId)
-	if err != nil {
-		return nil, err
 	}
 
 	return &ValidatorInstance{
@@ -93,7 +85,6 @@ func NewValidatorInstance(
 		isLagging:       atomic.NewBool(false),
 		criticalErrChan: errChan,
 		em:              em,
-		kc:              kc,
 		cc:              cc,
 	}, nil
 }

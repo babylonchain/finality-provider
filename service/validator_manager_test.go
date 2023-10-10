@@ -112,7 +112,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	em, err := eotsmanager.NewEOTSManager(&cfg)
 	require.NoError(t, err)
 
-	vm, err := service.NewValidatorManager(valStore, &cfg, kr, cc, em, logger)
+	vm, err := service.NewValidatorManager(valStore, &cfg, cc, em, logger)
 	require.NoError(t, err)
 
 	// create registered validator
@@ -126,7 +126,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	bbnPk, err := kc.CreateChainKey()
 	require.NoError(t, err)
-	valRecord, err := em.GetValidatorRecord(btcPk.MustMarshal(), "")
+	valRecord, err := em.ValidatorKey(btcPk.MustMarshal(), "")
 	require.NoError(t, err)
 	pop, err := kc.CreatePop(valRecord.ValSk)
 	require.NoError(t, err)
@@ -144,8 +144,6 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 		err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 		require.NoError(t, err)
 		err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
-		require.NoError(t, err)
-		err = em.Close()
 		require.NoError(t, err)
 	}
 
