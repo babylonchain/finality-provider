@@ -13,12 +13,12 @@ const (
 )
 
 type Config struct {
-	Mode           string `long:"mode" description:"Indicates in which mode the EOTS manager is running" choice:"local" choice:"remote"`
-	KeyDirectory   string `long:"key-dir" description:"directory to store keys in"`
-	KeyringBackend string `long:"keyring-type" description:"type of keyring to use"`
+	Mode           string `long:"mode" description:"Indicates in which mode the EOTS manager is running"`
 	DBBackend      string `long:"dbbackend" description:"Possible database to choose as backend"`
 	DBPath         string `long:"dbpath" description:"The path that stores the database file"`
 	DBName         string `long:"dbname" description:"The name of the database"`
+	KeyDirectory   string `long:"key-dir" description:"Directory to store keys in"`
+	KeyringBackend string `long:"keyring-type" description:"Type of keyring to use"`
 }
 
 func NewConfig(mode, backend, path, name, keyDir, keyringBackend string) (*Config, error) {
