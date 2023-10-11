@@ -11,10 +11,12 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -33,6 +35,10 @@ func FuzzRegisterValidator(f *testing.F) {
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
+			err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
+			require.NoError(t, err)
+			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
+			require.NoError(t, err)
 		}()
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		cfg.ValidatorModeConfig.AutoChainScanningMode = false
@@ -40,7 +46,11 @@ func FuzzRegisterValidator(f *testing.F) {
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
+		eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
+		require.NoError(t, err)
+		em, err := eotsmanager.NewEOTSManager(eotsCfg)
+		require.NoError(t, err)
+		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
 		require.NoError(t, err)
 
 		err = app.Start()
@@ -71,14 +81,14 @@ func FuzzRegisterValidator(f *testing.F) {
 				testutil.EmptyDescription(),
 			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
 
-		res, _, err := app.RegisterValidator(validator.KeyName)
+		res, err := app.RegisterValidator(validator.MustGetBIP340BTCPK().MarshalHex())
 		require.NoError(t, err)
 		require.Equal(t, txHash, res.TxHash)
 
-		err = app.StartHandlingValidator(validator.GetBabylonPK())
+		err = app.StartHandlingValidator(validator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 
-		valAfterReg, err := app.GetValidatorInstance(validator.GetBabylonPK())
+		valAfterReg, err := app.GetValidatorInstance(validator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 		require.Equal(t, valAfterReg.GetStoreValidator().Status, proto.ValidatorStatus_REGISTERED)
 	})
@@ -96,6 +106,8 @@ func FuzzAddJurySig(f *testing.F) {
 		defer func() {
 			err := os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
+			err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
+			require.NoError(t, err)
 			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
 			require.NoError(t, err)
 		}()
@@ -103,20 +115,21 @@ func FuzzAddJurySig(f *testing.F) {
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		app, err := service.NewValidatorAppFromConfig(&cfg, logrus.New(), mockClientController)
+		eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
 		require.NoError(t, err)
-
-		// create a validator object and save it to db
-		validator := testutil.GenStoredValidator(r, t, app)
-		btcPkBIP340 := validator.MustGetBIP340BTCPK()
-		btcPk := validator.MustGetBTCPK()
+		em, err := eotsmanager.NewEOTSManager(eotsCfg)
+		require.NoError(t, err)
+		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
+		require.NoError(t, err)
 
 		// create a Jury key pair in the keyring
-		juryKc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName)
+		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName, cfg.BabylonConfig.ChainID)
 		require.NoError(t, err)
-		jurPk, err := juryKc.CreateJuryKey()
+		sdkJurPk, err := juryKc.CreateChainKey()
 		require.NoError(t, err)
-		require.NotNil(t, jurPk)
+		juryPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
+		require.NoError(t, err)
+		require.NotNil(t, juryPk)
 		cfg.JuryMode = true
 
 		err = app.Start()
@@ -126,6 +139,11 @@ func FuzzAddJurySig(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
+		// create a validator object and save it to db
+		validator := testutil.GenStoredValidator(r, t, app)
+		btcPkBIP340 := validator.MustGetBIP340BTCPK()
+		btcPk := validator.MustGetBTCPK()
+
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
 		require.NoError(t, err)
@@ -133,7 +151,7 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, jurPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
+		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, juryPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
 		require.NoError(t, err)
 		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
 		require.NoError(t, err)

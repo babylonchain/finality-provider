@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/service"
@@ -39,14 +40,16 @@ type babylonNode struct {
 	pidFile      string
 	dataDir      string
 	juryKeyName  string
+	chainID      string
 	slashingAddr string
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd, juryKeyName, slashingAddr string) *babylonNode {
+func newBabylonNode(dataDir string, cmd *exec.Cmd, juryKeyName, chainID string, slashingAddr string) *babylonNode {
 	return &babylonNode{
 		dataDir:      dataDir,
 		cmd:          cmd,
 		juryKeyName:  juryKeyName,
+		chainID:      chainID,
 		slashingAddr: slashingAddr,
 	}
 }
@@ -145,13 +148,16 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	)
 	require.NoError(t, err)
 	juryKeyName := "jury-key"
-	krController, err := val.NewKeyringController(
+	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		juryKeyName,
+		chainID,
 		"test",
 	)
 	require.NoError(t, err)
-	juryPk, err := krController.CreateJuryKey()
+	sdkJuryPk, err := krController.CreateChainKey()
+	require.NoError(t, err)
+	juryPk, err := secp256k1.ParsePubKey(sdkJuryPk.Key)
 	require.NoError(t, err)
 	juryPkBip340 := types.NewBIP340PubKeyFromBTCPK(juryPk)
 
@@ -192,7 +198,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd, juryKeyName, slashingAddr),
+		babylonNode: newBabylonNode(testDir, startCmd, juryKeyName, chainID, slashingAddr),
 	}
 }
 
@@ -219,7 +225,7 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 }
 
 func (w *BabylonNodeHandler) GetJuryKeyName() string {
-	return w.babylonNode.juryKeyName
+	return val.GetKeyName(w.babylonNode.chainID, w.babylonNode.juryKeyName)
 }
 
 func (w *BabylonNodeHandler) GetSlashingAddress() string {

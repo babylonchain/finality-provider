@@ -8,12 +8,10 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/babylonchain/babylon/crypto/eots"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/gogo/protobuf/jsonpb"
@@ -22,6 +20,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
@@ -36,7 +35,7 @@ type ValidatorInstance struct {
 	cfg   *valcfg.Config
 
 	logger *logrus.Logger
-	kc     *val.KeyringController
+	em     eotsmanager.EOTSManager
 	cc     clientcontroller.ClientController
 	poller *ChainPoller
 
@@ -54,15 +53,15 @@ type ValidatorInstance struct {
 // NewValidatorInstance returns a ValidatorInstance instance with the given Babylon public key
 // the validator should be registered before
 func NewValidatorInstance(
-	bbnPk *secp256k1.PubKey,
+	valPk *bbntypes.BIP340PubKey,
 	cfg *valcfg.Config,
 	s *val.ValidatorStore,
-	kr keyring.Keyring,
 	cc clientcontroller.ClientController,
+	em eotsmanager.EOTSManager,
 	errChan chan<- *CriticalError,
 	logger *logrus.Logger,
 ) (*ValidatorInstance, error) {
-	v, err := s.GetStoreValidator(bbnPk.Key)
+	v, err := s.GetStoreValidator(valPk.MustMarshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrive the validator %s from DB: %w", v.GetBabylonPkHexString(), err)
 	}
@@ -72,14 +71,9 @@ func NewValidatorInstance(
 		return nil, fmt.Errorf("the validator %s has not been registered", v.KeyName)
 	}
 
-	kc, err := val.NewKeyringControllerWithKeyring(kr, v.KeyName)
-	if err != nil {
-		return nil, err
-	}
-
 	return &ValidatorInstance{
-		bbnPk: bbnPk,
 		btcPk: v.MustGetBIP340BTCPK(),
+		bbnPk: v.GetBabylonPK(),
 		state: &valState{
 			v: v,
 			s: s,
@@ -90,7 +84,7 @@ func NewValidatorInstance(
 		inSync:          atomic.NewBool(false),
 		isLagging:       atomic.NewBool(false),
 		criticalErrChan: errChan,
-		kc:              kc,
+		em:              em,
 		cc:              cc,
 	}, nil
 }
@@ -168,7 +162,7 @@ func (v *ValidatorInstance) Stop() error {
 	close(v.quit)
 	v.wg.Wait()
 
-	v.logger.Debugf("The thread handling validator %s is successfully stopped", v.GetBtcPkHex())
+	v.logger.Debugf("the thread handling validator %s is successfully stopped", v.GetBtcPkHex())
 
 	return nil
 }
@@ -291,7 +285,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 				"btc_pk_hex":      v.GetBtcPkHex(),
 			}).Debug("Retrieved delegations which need unbonding signatures")
 
-			validatorPrivKey, err := v.kc.GetBtcPrivKey()
+			validatorPrivKey, err := v.getEOTSPrivKey()
 
 			if err != nil {
 				// Kill the app, if we can't recover our private key, then we have some bug
@@ -585,7 +579,6 @@ func (v *ValidatorInstance) reportCriticalErr(err error) {
 	v.criticalErrChan <- &CriticalError{
 		err:      err,
 		valBtcPk: v.GetBtcPkBIP340(),
-		bbnPk:    v.GetBabylonPk(),
 	}
 }
 
@@ -704,6 +697,9 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 		return nil, fmt.Errorf("failed to query the consumer chain for the last committed height: %w", err)
 	}
 
+	// NOTE: this check will cause failure to the case when the program dies
+	// after committing randomness to babylon but before we update the last_committed_height
+	// TODO: consider remove this check
 	if v.GetLastCommittedHeight() != lastCommittedHeight {
 		// for some reason number of random numbers locally does not match the chain node
 		// log it and try to recover somehow
@@ -729,7 +725,12 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	}
 
 	// generate a list of Schnorr randomness pairs
-	privRandList, pubRandList, err := GenerateRandPairList(v.cfg.NumPubRand)
+	// NOTE: currently, calling this will create and save a list of randomness
+	// in case of failure, randomness that has been created will be overwritten
+	// for safety reason as the same randomness must not be used twice
+	// TODO: should consider an implementation that deterministically create
+	//  randomness without saving it
+	pubRandList, err := v.createPubRandList(startHeight)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)
 	}
@@ -746,7 +747,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	}
 
 	// sign the message hash using the validator's BTC private key
-	schnorrSig, err := v.kc.SchnorrSign(hash)
+	schnorrSig, err := v.em.SignSchnorrSig(v.btcPk.MustMarshal(), hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -758,33 +759,30 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
 
-	// save the committed random list to DB
-	// TODO 1: Optimize the db interface to batch the saving operations
-	// TODO 2: Consider safety after recovery
-	for i, pr := range privRandList {
-		height := startHeight + uint64(i)
-		privRand := pr.Bytes()
-		randPair, err := types.NewSchnorrRandPair(privRand[:], pubRandList[i].MustMarshal())
-		if err != nil {
-			v.logger.WithFields(logrus.Fields{
-				"err":        err,
-				"btc_pk_hex": v.GetBtcPkHex(),
-			}).Fatal("invalid Schnorr randomness")
-		}
-		err = v.state.s.SaveRandPair(v.GetBabylonPk().Key, height, randPair)
-		if err != nil {
-			v.logger.WithFields(logrus.Fields{
-				"err":        err,
-				"btc_pk_hex": v.GetBtcPkHex(),
-			}).Fatal("err while saving committed random pair to DB")
-		}
-	}
-
 	newLastCommittedHeight := startHeight + uint64(len(pubRandList)-1)
 
 	v.MustSetLastCommittedHeight(newLastCommittedHeight)
 
 	return res, nil
+}
+
+func (v *ValidatorInstance) createPubRandList(startHeight uint64) ([]bbntypes.SchnorrPubRand, error) {
+	pubRandList, err := v.em.CreateRandomnessPairList(
+		v.btcPk.MustMarshal(),
+		v.GetChainID(),
+		startHeight,
+		uint32(v.cfg.NumPubRand),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
+	for _, pr := range pubRandList {
+		schnorrPubRandList = append(schnorrPubRandList, *bbntypes.NewSchnorrPubRandFromFieldVal(pr))
+	}
+
+	return schnorrPubRandList, nil
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
@@ -837,21 +835,13 @@ func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockI
 
 func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
 	// build proper finality signature request
-	privRand, err := v.getCommittedPrivPubRand(b.Height)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get the randomness pair from DB: %w", err)
-	}
-	btcPrivKey, err := v.kc.GetBtcPrivKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get BTC private key from the keyring: %w", err)
-	}
 	msg := &ftypes.MsgAddFinalitySig{
 		ValBtcPk:            v.btcPk,
 		BlockHeight:         b.Height,
 		BlockLastCommitHash: b.LastCommitHash,
 	}
 	msgToSign := msg.MsgToSign()
-	sig, err := eots.Sign(btcPrivKey, privRand, msgToSign)
+	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}
@@ -952,22 +942,6 @@ func (v *ValidatorInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*typ
 		return nil, err
 	}
 	return response, nil
-}
-
-func (v *ValidatorInstance) getCommittedPrivPubRand(height uint64) (*eots.PrivateRand, error) {
-	randPair, err := v.state.s.GetRandPair(v.bbnPk.Key, height)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(randPair.SecRand) != types.SchnorrRandomnessLength {
-		return nil, fmt.Errorf("the private randomness should be %v bytes", types.SchnorrRandomnessLength)
-	}
-
-	privRand := new(eots.PrivateRand)
-	privRand.SetByteSlice(randPair.SecRand)
-
-	return privRand, nil
 }
 
 func (v *ValidatorInstance) getLatestBlockWithRetry() (*types.BlockInfo, error) {

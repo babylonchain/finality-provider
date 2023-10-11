@@ -79,22 +79,22 @@ func (app *ValidatorApp) eventLoop() {
 	for {
 		select {
 		case req := <-app.createValidatorRequestChan:
-			resp, err := app.handleCreateValidatorRequest(req)
-
+			res, err := app.handleCreateValidatorRequest(req)
 			if err != nil {
 				req.errResponse <- err
 				continue
 			}
 
-			req.successResponse <- resp
+			req.successResponse <- &createValidatorResponse{ValPk: res.ValPk}
 
 		case ev := <-app.validatorRegisteredEventChan:
-			valStored, err := app.vs.GetStoreValidator(ev.bbnPubKey.Key)
+			valStored, err := app.vs.GetStoreValidator(ev.btcPubKey.MustMarshal())
 
 			if err != nil {
 				// we always check if the validator is in the DB before sending the registration request
 				app.logger.WithFields(logrus.Fields{
-					"bbn_pk": ev.bbnPubKey,
+					"btc_pk":     ev.btcPubKey.MarshalHex(),
+					"babylon_pk": hex.EncodeToString(ev.bbnPubKey.Key),
 				}).Fatal("registered validator not found in DB")
 			}
 
@@ -119,13 +119,7 @@ func (app *ValidatorApp) eventLoop() {
 	}
 }
 
-// Loop for handling requests to send stuff to babylon. It is necessart to properly
-// serialize bayblon sends as otherwise we would keep hitting sequence mismatch errors.
-// This could be done either by send loop or by lock. We choose send loop as it is
-// more flexible.
-// TODO: This could be probably separate component responsible for queuing stuff
-// and sending it to babylon.
-func (app *ValidatorApp) handleSentToBabylonLoop() {
+func (app *ValidatorApp) registrationLoop() {
 	defer app.sentWg.Done()
 	for {
 		select {
@@ -137,21 +131,22 @@ func (app *ValidatorApp) handleSentToBabylonLoop() {
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
-					"err":       err,
-					"bbnPubKey": hex.EncodeToString(req.bbnPubKey.Key),
-					"btcPubKey": req.btcPubKey.MarshalHex(),
+					"err":        err,
+					"btc_pk":     req.btcPubKey.MarshalHex(),
+					"babylon_pk": hex.EncodeToString(req.bbnPubKey.Key),
 				}).Error("failed to register validator")
 				req.errResponse <- err
 				continue
 			}
 
 			app.logger.WithFields(logrus.Fields{
-				"bbnPk":     hex.EncodeToString(req.bbnPubKey.Key),
-				"btcPubKey": req.btcPubKey.MarshalHex(),
-				"txHash":    res.TxHash,
+				"btc_pk":     req.btcPubKey.MarshalHex(),
+				"babylon_pk": hex.EncodeToString(req.bbnPubKey.Key),
+				"txHash":     res.TxHash,
 			}).Info("successfully registered validator on babylon")
 
 			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
+				btcPubKey: req.btcPubKey,
 				bbnPubKey: req.bbnPubKey,
 				txHash:    res.TxHash,
 				// pass the channel to the event so that we can send the response to the user which requested

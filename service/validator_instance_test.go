@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -28,14 +29,12 @@ func FuzzCommitPubRandList(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
+		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		err := app.Start()
-		require.NoError(t, err)
 
-		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
+		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
@@ -50,11 +49,6 @@ func FuzzCommitPubRandList(f *testing.F) {
 		// check the last_committed_height
 		numPubRand := app.GetConfig().NumPubRand
 		require.Equal(t, startingBlock.Height+numPubRand, valIns.GetStoreValidator().LastCommittedHeight)
-
-		// check the committed pub rand
-		randPairs, err := valIns.GetCommittedPubRandPairList()
-		require.NoError(t, err)
-		require.Equal(t, int(numPubRand), len(randPairs))
 	})
 }
 
@@ -68,13 +62,11 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, storeValidator, cleanUp := newValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
+		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		err := app.Start()
-		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(storeValidator.GetBabylonPK())
+		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 
 		// commit public randomness
@@ -109,7 +101,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
+func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
@@ -118,21 +110,31 @@ func newValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clien
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()
-	app, err := service.NewValidatorAppFromConfig(&cfg, logger, cc)
+	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
+	require.NoError(t, err)
+	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	require.NoError(t, err)
+	app, err := service.NewValidatorApp(&cfg, cc, em, logger)
+	require.NoError(t, err)
+	err = app.Start()
 	require.NoError(t, err)
 
 	// create registered validator
 	validator := testutil.GenStoredValidator(r, t, app)
 	err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 	require.NoError(t, err)
-	config := app.GetConfig()
+	err = app.StartHandlingValidator(validator.MustGetBIP340BTCPK())
+	require.NoError(t, err)
 
+	config := app.GetConfig()
 	cleanUp := func() {
 		err = app.Stop()
 		require.NoError(t, err)
 		err := os.RemoveAll(config.DatabaseConfig.Path)
 		require.NoError(t, err)
 		err = os.RemoveAll(config.BabylonConfig.KeyDirectory)
+		require.NoError(t, err)
+		err = os.RemoveAll(config.EOTSManagerConfig.DBPath)
 		require.NoError(t, err)
 	}
 

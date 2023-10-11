@@ -2,15 +2,19 @@ package valcfg
 
 import (
 	"fmt"
+
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
 )
 
 const (
 	DefaultEOTSManagerDBBackend = "bbolt"
 	DefaultEOTSManagerDBPath    = "bbolt-eots.db"
 	DefaultEOTSManagerDBName    = "eots-default"
+	DefaultEOTSManagerMode      = "local"
 )
 
 type EOTSManagerConfig struct {
+	Mode      string `long:"mode" description:"Indicates in which mode the EOTS manager is running" choice:"local" choice:"remote"`
 	DBBackend string `long:"dbbackend" description:"Possible database to choose as backend"`
 	DBPath    string `long:"dbpath" description:"The path that stores the database file"`
 	DBName    string `long:"dbname" description:"The name of the database"`
@@ -36,10 +40,22 @@ func NewEOTSManagerConfig(backend string, path string, name string) (*EOTSManage
 	}, nil
 }
 
+func AppConfigToEOTSManagerConfig(appCfg *Config) (*config.Config, error) {
+	return config.NewConfig(
+		appCfg.EOTSManagerConfig.Mode,
+		appCfg.EOTSManagerConfig.DBBackend,
+		appCfg.EOTSManagerConfig.DBPath,
+		appCfg.EOTSManagerConfig.DBName,
+		appCfg.BabylonConfig.KeyDirectory,
+		appCfg.BabylonConfig.KeyringBackend,
+	)
+}
+
 func DefaultEOTSManagerConfig() EOTSManagerConfig {
 	return EOTSManagerConfig{
 		DBBackend: DefaultEOTSManagerDBBackend,
 		DBPath:    DefaultEOTSManagerDBPath,
 		DBName:    DefaultEOTSManagerDBName,
+		Mode:      DefaultEOTSManagerMode,
 	}
 }

@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -85,24 +85,14 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.StoreValidator {
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
-	kc, err := val.NewKeyringControllerWithKeyring(app.GetKeyring(), keyName)
+	chainID := GenRandomHexStr(r, 4)
+
+	res, err := app.CreateValidator(keyName, chainID, "", EmptyDescription(), ZeroCommissionRate())
 	require.NoError(t, err)
 
-	// create validator using the keyring
-	btcPk, bbnPk, err := kc.CreateValidatorKeys()
+	storedVal, err := app.GetValidatorStore().GetStoreValidator(res.ValPk.MustMarshal())
 	require.NoError(t, err)
-
-	pop, err := kc.CreatePop()
-	require.NoError(t, err)
-
-	validator := val.NewStoreValidator(bbnPk, btcPk, kc.GetKeyName(), pop, EmptyDescription(), ZeroCommissionRate())
-
-	// save the validator
-	s := app.GetValidatorStore()
-	err = s.SaveValidator(validator)
-	require.NoError(t, err)
-
-	return validator
+	return storedVal
 }
 
 func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
@@ -117,13 +107,17 @@ func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
 	return dbcfg
 }
 
-func GenEOTSConfig(r *rand.Rand, t *testing.T) *valcfg.EOTSManagerConfig {
+func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	path := filepath.Join(t.TempDir(), bucketName)
-	eotsCfg, err := valcfg.NewEOTSManagerConfig(
+	dir := t.TempDir()
+	path := filepath.Join(dir, bucketName)
+	eotsCfg, err := config.NewConfig(
+		"local",
 		"bbolt",
 		path,
 		bucketName,
+		dir,
+		"test",
 	)
 	require.NoError(t, err)
 	return eotsCfg

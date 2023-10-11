@@ -2,16 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"strconv"
 
 	"cosmossdk.io/math"
+	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/babylon/x/checkpointing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/btc-validator/proto"
 	dc "github.com/babylonchain/btc-validator/service/client"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -36,9 +35,15 @@ var daemonCommands = []cli.Command{
 const (
 	valdDaemonAddressFlag = "daemon-address"
 	keyNameFlag           = "key-name"
-	valBabylonPkFlag      = "babylon-pk"
+	valBTCPkFlag          = "btc-pk"
 	blockHeightFlag       = "height"
 	lastCommitHashFlag    = "last-commit-hash"
+	passPhraseFlag        = "pass-phrase"
+	chainIdFlag           = "chain-id"
+	keyringDirFlag        = "keyring-dir"
+	keyringBackendFlag    = "keyring-backend"
+	defaultChainID        = "chain-test"
+	defaultKeyringBackend = "test"
 
 	// flags for description
 	monikerFlag          = "moniker"
@@ -104,6 +109,15 @@ var createValDaemonCmd = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
+			Name:     chainIdFlag,
+			Usage:    "The identifier of the consumer chain",
+			Required: true,
+		},
+		cli.StringFlag{
+			Name:  passPhraseFlag,
+			Usage: "The pass phrase used to encrypt the keys",
+		},
+		cli.StringFlag{
 			Name:  commissionRateFlag,
 			Usage: "The commission rate for the validator, e.g., 0.05",
 			Value: "0.05",
@@ -157,7 +171,7 @@ func createValDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	info, err := client.CreateValidator(context.Background(), keyName, &description, &commissionRate)
+	info, err := client.CreateValidator(context.Background(), keyName, ctx.String(chainIdFlag), ctx.String(passPhraseFlag), &description, &commissionRate)
 
 	if err != nil {
 		return err
@@ -169,7 +183,6 @@ func createValDaemon(ctx *cli.Context) error {
 }
 
 func getDesciptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
-
 	// get information for description
 	monikerStr := ctx.String(monikerFlag)
 	identityStr := ctx.String(identityFlag)
@@ -224,8 +237,8 @@ var valInfoDaemonCmd = cli.Command{
 			Value: defaultValdDaemonAddress,
 		},
 		cli.StringFlag{
-			Name:     valBabylonPkFlag,
-			Usage:    "The hex string of the Babylon public key",
+			Name:     valBTCPkFlag,
+			Usage:    "The hex string of the BTC public key",
 			Required: true,
 		},
 	},
@@ -240,12 +253,12 @@ func valInfoDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	bbnPkBytes, err := hex.DecodeString(ctx.String(valBabylonPkFlag))
+	valPk, err := bbntypes.NewBIP340PubKeyFromHex(ctx.String(valBTCPkFlag))
 	if err != nil {
 		return err
 	}
 
-	resp, err := rpcClient.QueryValidatorInfo(context.Background(), bbnPkBytes)
+	resp, err := rpcClient.QueryValidatorInfo(context.Background(), valPk)
 	if err != nil {
 		return err
 	}
@@ -267,8 +280,8 @@ var registerValDaemonCmd = cli.Command{
 			Value: defaultValdDaemonAddress,
 		},
 		cli.StringFlag{
-			Name:     keyNameFlag,
-			Usage:    "The unique name of the validator key",
+			Name:     valBTCPkFlag,
+			Usage:    "The hex string of the validator BTC public key",
 			Required: true,
 		},
 	},
@@ -276,7 +289,11 @@ var registerValDaemonCmd = cli.Command{
 }
 
 func registerVal(ctx *cli.Context) error {
-	keyName := ctx.String(keyNameFlag)
+	valPkStr := ctx.String(valBTCPkFlag)
+	valPk, err := bbntypes.NewBIP340PubKeyFromHex(valPkStr)
+	if err != nil {
+		return fmt.Errorf("invalid BTC public key: %w", err)
+	}
 
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
@@ -285,7 +302,7 @@ func registerVal(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.RegisterValidator(context.Background(), keyName)
+	res, err := rpcClient.RegisterValidator(context.Background(), valPk)
 	if err != nil {
 		return err
 	}
@@ -300,8 +317,8 @@ func registerVal(ctx *cli.Context) error {
 var addFinalitySigDaemonCmd = cli.Command{
 	Name:      "add-finality-sig",
 	ShortName: "afs",
-	Usage:     "Send a finality signature to Babylon. This command should only be used for presentation/testing purposes",
-	UsageText: fmt.Sprintf("add-finality-sig --%s [babylon_pk_hex]", valBabylonPkFlag),
+	Usage:     "Send a finality signature to the consumer chain. This command should only be used for presentation/testing purposes",
+	UsageText: fmt.Sprintf("add-finality-sig --%s [btc_pk_hex]", valBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  valdDaemonAddressFlag,
@@ -309,18 +326,18 @@ var addFinalitySigDaemonCmd = cli.Command{
 			Value: defaultValdDaemonAddress,
 		},
 		cli.StringFlag{
-			Name:     valBabylonPkFlag,
-			Usage:    "The hex string of the Babylon public key",
+			Name:     valBTCPkFlag,
+			Usage:    "The hex string of the BTC public key",
 			Required: true,
 		},
 		cli.Uint64Flag{
 			Name:     blockHeightFlag,
-			Usage:    "The height of the Babylon block",
+			Usage:    "The height of the chain block",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:  lastCommitHashFlag,
-			Usage: "The last commit hash of the Babylon block",
+			Usage: "The last commit hash of the chain block",
 			Value: defaultLastCommitHashStr,
 		},
 	},
@@ -335,7 +352,7 @@ func addFinalitySig(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	bbnPk, err := proto.NewBabylonPkFromHex(ctx.String(valBabylonPkFlag))
+	valPk, err := bbntypes.NewBIP340PubKeyFromHex(ctx.String(valBTCPkFlag))
 	if err != nil {
 		return err
 	}
@@ -346,7 +363,7 @@ func addFinalitySig(ctx *cli.Context) error {
 	}
 
 	res, err := rpcClient.AddFinalitySignature(
-		context.Background(), bbnPk.Key, ctx.Uint64(blockHeightFlag), lch)
+		context.Background(), valPk.MarshalHex(), ctx.Uint64(blockHeightFlag), lch)
 	if err != nil {
 		return err
 	}

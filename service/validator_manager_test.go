@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	cometbfttypes "github.com/cometbft/cometbft/types"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -107,19 +109,31 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	valStore, err := val.NewValidatorStore(cfg.DatabaseConfig)
 	require.NoError(t, err)
 
-	vm, err := service.NewValidatorManager(valStore, &cfg, kr, cc, logger)
+	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
+	require.NoError(t, err)
+	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	require.NoError(t, err)
+
+	vm, err := service.NewValidatorManager(valStore, &cfg, cc, em, logger)
 	require.NoError(t, err)
 
 	// create registered validator
 	keyName := datagen.GenRandomHexStr(r, 10)
-	kc, err := val.NewKeyringControllerWithKeyring(kr, keyName)
+	chainID := datagen.GenRandomHexStr(r, 10)
+	kc, err := val.NewChainKeyringControllerWithKeyring(kr, keyName, chainID)
 	require.NoError(t, err)
-	btcPk, bbnPk, err := kc.CreateValidatorKeys()
+	btcPkBytes, err := em.CreateKey(keyName, "")
 	require.NoError(t, err)
-	pop, err := kc.CreatePop()
+	btcPk, err := types.NewBIP340PubKey(btcPkBytes)
+	require.NoError(t, err)
+	bbnPk, err := kc.CreateChainKey()
+	require.NoError(t, err)
+	valRecord, err := em.KeyRecord(btcPk.MustMarshal(), "")
+	require.NoError(t, err)
+	pop, err := kc.CreatePop(valRecord.PrivKey)
 	require.NoError(t, err)
 
-	storedValidator := val.NewStoreValidator(bbnPk, btcPk, keyName, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
+	storedValidator := val.NewStoreValidator(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
 	storedValidator.Status = proto.ValidatorStatus_REGISTERED
 	err = valStore.SaveValidator(storedValidator)
 	require.NoError(t, err)
@@ -130,6 +144,8 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 		err := os.RemoveAll(cfg.DatabaseConfig.Path)
 		require.NoError(t, err)
 		err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
+		require.NoError(t, err)
+		err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
 		require.NoError(t, err)
 	}
 

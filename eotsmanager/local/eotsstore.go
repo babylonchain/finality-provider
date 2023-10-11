@@ -6,10 +6,10 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	gproto "google.golang.org/protobuf/proto"
 
-	"github.com/babylonchain/btc-validator/eotsmanager"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/store"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -21,7 +21,7 @@ type EOTSStore struct {
 	s store.Store
 }
 
-func NewEOTSStore(cfg *valcfg.EOTSManagerConfig) (*EOTSStore, error) {
+func NewEOTSStore(cfg *config.Config) (*EOTSStore, error) {
 	s, err := openStore(cfg)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (es *EOTSStore) saveValidatorKey(pk []byte, keyName string) error {
 		return nil
 	}
 	if exists {
-		return eotsmanager.ErrValidatorAlreadyExisted
+		return types.ErrValidatorAlreadyExisted
 	}
 
 	return es.s.Put(k, []byte(keyName))
@@ -108,7 +108,7 @@ func getValidatorKeyNameKey(pk []byte) []byte {
 	return append([]byte(validatorKeyNamePrefix), pk...)
 }
 
-func openStore(dbcfg *valcfg.EOTSManagerConfig) (store.Store, error) {
+func openStore(dbcfg *config.Config) (store.Store, error) {
 	switch dbcfg.DBBackend {
 	case "bbolt":
 		return store.NewBboltStore(dbcfg.DBPath, dbcfg.DBName)

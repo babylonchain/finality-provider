@@ -14,9 +14,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
 
-	"github.com/babylonchain/btc-validator/eotsmanager"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -29,15 +29,15 @@ type LocalEOTSManager struct {
 	es *EOTSStore
 }
 
-func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *valcfg.EOTSManagerConfig) (*LocalEOTSManager, error) {
-	if keyringBackend == "" {
+func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config) (*LocalEOTSManager, error) {
+	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
 
 	kr, err := keyring.New(
 		ctx.ChainID,
 		// TODO currently only support test backend
-		keyringBackend,
+		eotsCfg.KeyringBackend,
 		ctx.KeyringDir,
 		ctx.Input,
 		ctx.Codec,
@@ -57,9 +57,9 @@ func NewLocalEOTSManager(ctx client.Context, keyringBackend string, eotsCfg *val
 	}, nil
 }
 
-func (lm *LocalEOTSManager) CreateValidator(name, passPhrase string) ([]byte, error) {
+func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 	if lm.keyExists(name) {
-		return nil, eotsmanager.ErrValidatorAlreadyExisted
+		return nil, eotstypes.ErrValidatorAlreadyExisted
 	}
 
 	keyringAlgos, _ := lm.kr.SupportedAlgorithms()
@@ -118,7 +118,7 @@ func (lm *LocalEOTSManager) CreateRandomnessPairListWithExistenceCheck(valPk []b
 			return nil, err
 		}
 		if exists {
-			return nil, eotsmanager.ErrSchnorrRandomnessALreadyCreated
+			return nil, eotstypes.ErrSchnorrRandomnessAlreadyCreated
 		}
 	}
 
@@ -199,8 +199,21 @@ func (lm *LocalEOTSManager) getPrivRandomness(valPk []byte, chainID []byte, heig
 	return privRand, nil
 }
 
-func (lm *LocalEOTSManager) GetValidatorKeyName(valPk []byte) (string, error) {
-	return lm.es.getValidatorKeyName(valPk)
+// TODO: we ignore passPhrase in local implementation for now
+func (lm *LocalEOTSManager) KeyRecord(valPk []byte, passPhrase string) (*eotstypes.KeyRecord, error) {
+	name, err := lm.es.getValidatorKeyName(valPk)
+	if err != nil {
+		return nil, err
+	}
+	privKey, err := lm.getEOTSPrivKey(valPk)
+	if err != nil {
+		return nil, err
+	}
+
+	return &eotstypes.KeyRecord{
+		Name:    name,
+		PrivKey: privKey,
+	}, nil
 }
 
 func (lm *LocalEOTSManager) getEOTSPrivKey(valPk []byte) (*btcec.PrivateKey, error) {

@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -45,6 +46,7 @@ type TestManager struct {
 	BabylonHandler *BabylonNodeHandler
 	Config         *valcfg.Config
 	Va             *service.ValidatorApp
+	Em             eotsmanager.EOTSManager
 	BabylonClient  *clientcontroller.BabylonController
 }
 
@@ -82,7 +84,13 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
+	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(cfg)
+	require.NoError(t, err)
+
+	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	require.NoError(t, err)
+
+	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
 	require.NoError(t, err)
 
 	err = valApp.Start()
@@ -92,6 +100,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 		BabylonHandler: bh,
 		Config:         cfg,
 		Va:             valApp,
+		Em:             em,
 		BabylonClient:  bc,
 	}
 
@@ -116,18 +125,19 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	var (
 		valNamePrefix = "test-val-"
 		monikerPrefix = "moniker-"
+		chainID       = "chain-test"
 	)
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdktypes.OneDec()
-		_, err := app.CreateValidator(valName, newDescription(moniker), &commission)
+		res, err := app.CreateValidator(valName, chainID, "", newDescription(moniker), &commission)
 		require.NoError(t, err)
-		_, bbnPk, err := app.RegisterValidator(valName)
+		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingValidator(bbnPk)
+		err = app.StartHandlingValidator(res.ValPk)
 		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(bbnPk)
+		valIns, err := app.GetValidatorInstance(res.ValPk)
 		require.NoError(t, err)
 		require.True(t, valIns.IsRunning())
 		require.NoError(t, err)
@@ -189,11 +199,7 @@ func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKe
 
 func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
 	require.Eventually(t, func() bool {
-		randPairs, err := valIns.GetCommittedPubRandPairList()
-		if err != nil {
-			return false
-		}
-		return int(tm.Config.NumPubRand) == len(randPairs)
+		return valIns.GetLastCommittedHeight() > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
@@ -288,9 +294,9 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	return blocks
 }
 
-func (tm *TestManager) WaitForValStopped(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForValStopped(t *testing.T, valPk *bbntypes.BIP340PubKey) {
 	require.Eventually(t, func() bool {
-		_, err := tm.Va.GetValidatorInstance(bbnPk)
+		_, err := tm.Va.GetValidatorInstance(valPk)
 		return err != nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
@@ -382,6 +388,12 @@ func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 	return juryPrivKey
 }
 
+func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
+	record, err := tm.Em.KeyRecord(valPk, "")
+	require.NoError(t, err)
+	return record.PrivKey
+}
+
 func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -391,7 +403,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
 	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-	juryPk, err := tm.Va.GetJuryPk()
+	juryPk := tm.GetJuryPrivKey(t).PubKey()
 	require.NoError(t, err)
 	require.Equal(t, params.JuryPk.SerializeCompressed()[1:], juryPk.SerializeCompressed()[1:])
 

@@ -8,8 +8,8 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/testutil"
 )
 
@@ -29,22 +29,22 @@ func FuzzCreateValidator(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, "test", eotsCfg)
+		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateValidator(valName, "")
+		valPk, err := lm.CreateKey(valName, "")
 		require.NoError(t, err)
 
-		storedKeyName, err := lm.GetValidatorKeyName(valPk)
+		valRecord, err := lm.KeyRecord(valPk, "")
 		require.NoError(t, err)
-		require.Equal(t, valName, storedKeyName)
+		require.Equal(t, valName, valRecord.Name)
 
 		sig, err := lm.SignSchnorrSig(valPk, datagen.GenRandomByteArray(r, 32))
 		require.NoError(t, err)
 		require.NotNil(t, sig)
 
-		_, err = lm.CreateValidator(valName, "")
-		require.ErrorIs(t, err, eotsmanager.ErrValidatorAlreadyExisted)
+		_, err = lm.CreateKey(valName, "")
+		require.ErrorIs(t, err, types.ErrValidatorAlreadyExisted)
 	})
 }
 
@@ -63,10 +63,10 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, "test", eotsCfg)
+		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateValidator(valName, "")
+		valPk, err := lm.CreateKey(valName, "")
 		require.NoError(t, err)
 
 		chainID := datagen.GenRandomByteArray(r, 10)

@@ -1,15 +1,25 @@
 package eotsmanager
 
 import (
+	"fmt"
+	"os"
+	"path"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/cosmos/cosmos-sdk/client"
+
+	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager/types"
 )
 
 type EOTSManager interface {
-	// CreateValidator generates a key pair to create a unique validator object
-	// and persists it in storage. The key pair is formatted by BIP-340 (Schnorr Signatures)
+	// CreateKey generates a key pair at the given name and persists it in storage.
+	// The key pair is formatted by BIP-340 (Schnorr Signatures)
 	// It fails if there is an existing key Info with the same name or public key.
-	CreateValidator(name, passPhrase string) ([]byte, error)
+	CreateKey(name, passPhrase string) ([]byte, error)
 
 	// CreateRandomnessPairList generates and persists a list of Schnorr randomness pairs from
 	// startHeight to startHeight+(num-1)*step where step means the gap between each block height
@@ -23,6 +33,10 @@ type EOTSManager interface {
 	// It fails if there's randomness existed at a given height
 	CreateRandomnessPairListWithExistenceCheck(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
+	// KeyRecord returns the validator record
+	// It fails if the validator does not exist or passPhrase is incorrect
+	KeyRecord(uid []byte, passPhrase string) (*types.KeyRecord, error)
+
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height
 	// It fails if the validator does not exist or there's no randomness committed to the given height
@@ -33,4 +47,26 @@ type EOTSManager interface {
 	SignSchnorrSig(uid []byte, msg []byte) (*schnorr.Signature, error)
 
 	Close() error
+}
+
+func NewEOTSManager(cfg *config.Config) (EOTSManager, error) {
+	switch cfg.Mode {
+	case config.TypeLocal:
+		keyringDir := cfg.KeyDirectory
+		if keyringDir == "" {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return nil, err
+			}
+			keyringDir = path.Join(homeDir, ".btc-validator")
+		}
+
+		sdkCtx := client.Context{}.
+			WithCodec(codec.MakeCodec()).
+			WithKeyringDir(keyringDir)
+
+		return local.NewLocalEOTSManager(sdkCtx, cfg)
+	default:
+		return nil, fmt.Errorf("unsupported EOTS manager mode")
+	}
 }
