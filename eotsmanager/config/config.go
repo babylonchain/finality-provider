@@ -1,9 +1,13 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"net"
+)
 
 const (
-	TypeLocal = "local"
+	defaultLogLevel = "debug"
+	TypeLocal       = "local"
 
 	DefaultDBBackend      = "bbolt"
 	DefaultDBPath         = "bbolt-eots.db"
@@ -13,12 +17,16 @@ const (
 )
 
 type Config struct {
+	LogLevel string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+
 	Mode           string `long:"mode" description:"Indicates in which mode the EOTS manager is running"`
 	DBBackend      string `long:"dbbackend" description:"Possible database to choose as backend"`
 	DBPath         string `long:"dbpath" description:"The path that stores the database file"`
 	DBName         string `long:"dbname" description:"The name of the database"`
 	KeyDirectory   string `long:"key-dir" description:"Directory to store keys in"`
 	KeyringBackend string `long:"keyring-type" description:"Type of keyring to use"`
+
+	RpcListeners []net.Addr
 }
 
 func NewConfig(mode, backend, path, name, keyDir, keyringBackend string) (*Config, error) {
@@ -46,6 +54,7 @@ func NewConfig(mode, backend, path, name, keyDir, keyringBackend string) (*Confi
 
 func DefaultEOTSManagerConfig() Config {
 	return Config{
+		LogLevel:       defaultLogLevel,
 		DBBackend:      DefaultDBBackend,
 		DBPath:         DefaultDBPath,
 		DBName:         DefaultDBName,

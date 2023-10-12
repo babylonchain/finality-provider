@@ -65,6 +65,7 @@ proto-all: proto-gen
 
 proto-gen:
 	./proto/scripts/protocgen.sh
+	./eotsmanager/proto/scripts/protocgen.sh
 
 .PHONY: proto-gen
 
