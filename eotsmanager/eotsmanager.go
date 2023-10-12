@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
@@ -49,7 +50,7 @@ type EOTSManager interface {
 	Close() error
 }
 
-func NewEOTSManager(cfg *config.Config) (EOTSManager, error) {
+func NewEOTSManagerFromConfig(cfg *config.Config, logger *logrus.Logger) (EOTSManager, error) {
 	switch cfg.Mode {
 	case config.TypeLocal:
 		keyringDir := cfg.KeyDirectory
@@ -65,7 +66,7 @@ func NewEOTSManager(cfg *config.Config) (EOTSManager, error) {
 			WithCodec(codec.MakeCodec()).
 			WithKeyringDir(keyringDir)
 
-		return local.NewLocalEOTSManager(sdkCtx, cfg)
+		return local.NewLocalEOTSManager(sdkCtx, cfg, logger)
 	default:
 		return nil, fmt.Errorf("unsupported EOTS manager mode")
 	}

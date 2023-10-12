@@ -13,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
+	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
@@ -25,11 +26,12 @@ const (
 )
 
 type LocalEOTSManager struct {
-	kr keyring.Keyring
-	es *EOTSStore
+	kr     keyring.Keyring
+	es     *EOTSStore
+	logger *logrus.Logger
 }
 
-func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config, logger *logrus.Logger) (*LocalEOTSManager, error) {
 	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}

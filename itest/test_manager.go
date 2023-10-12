@@ -87,7 +87,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(cfg)
 	require.NoError(t, err)
 
-	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	em, err := eotsmanager.NewEOTSManagerFromConfig(eotsCfg, logger)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)

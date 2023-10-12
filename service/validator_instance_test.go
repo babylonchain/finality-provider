@@ -112,7 +112,7 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	logger := logrus.New()
 	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
 	require.NoError(t, err)
-	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	em, err := eotsmanager.NewEOTSManagerFromConfig(eotsCfg, logger)
 	require.NoError(t, err)
 	app, err := service.NewValidatorApp(&cfg, cc, em, logger)
 	require.NoError(t, err)

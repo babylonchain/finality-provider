@@ -61,7 +61,7 @@ func NewValidatorAppFromConfig(
 	if err != nil {
 		return nil, err
 	}
-	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	em, err := eotsmanager.NewEOTSManagerFromConfig(eotsCfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
