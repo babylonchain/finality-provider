@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/eotsmanager/local"
@@ -29,7 +30,7 @@ func FuzzCreateValidator(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
+		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg, logrus.New())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, "")
@@ -63,7 +64,7 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
+		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg, logrus.New())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, "")
