@@ -12,7 +12,6 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/eotsmanager/proto"
-	"github.com/babylonchain/btc-validator/version"
 )
 
 // rpcServer is the main RPC server for the BTC-Validator daemon that handles
@@ -85,14 +84,6 @@ func (r *rpcServer) RegisterWithGrpcServer(grpcServer *grpc.Server) error {
 	// Register the main RPC server.
 	proto.RegisterEOTSManagerServer(grpcServer, r)
 	return nil
-}
-
-// GetInfo returns general information relating to the active daemon
-func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetInfoResponse, error) {
-
-	return &proto.GetInfoResponse{
-		Version: version.Version(),
-	}, nil
 }
 
 // CreateKey generates and saves an EOTS key

@@ -19,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	EOTSManager_GetInfo_FullMethodName                  = "/proto.EOTSManager/GetInfo"
 	EOTSManager_CreateKey_FullMethodName                = "/proto.EOTSManager/CreateKey"
 	EOTSManager_CreateRandomnessPairList_FullMethodName = "/proto.EOTSManager/CreateRandomnessPairList"
 	EOTSManager_KeyRecord_FullMethodName                = "/proto.EOTSManager/KeyRecord"
@@ -31,8 +30,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EOTSManagerClient interface {
-	// GetInfo returns the information of the daemon
-	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error)
 	// CreateKey generates and saves an EOTS key
 	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error)
 	// CreateRandomnessPairList returns a list of Schnorr randomness pairs
@@ -51,15 +48,6 @@ type eOTSManagerClient struct {
 
 func NewEOTSManagerClient(cc grpc.ClientConnInterface) EOTSManagerClient {
 	return &eOTSManagerClient{cc}
-}
-
-func (c *eOTSManagerClient) GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error) {
-	out := new(GetInfoResponse)
-	err := c.cc.Invoke(ctx, EOTSManager_GetInfo_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *eOTSManagerClient) CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error) {
@@ -111,8 +99,6 @@ func (c *eOTSManagerClient) SignSchnorrSig(ctx context.Context, in *SignSchnorrS
 // All implementations must embed UnimplementedEOTSManagerServer
 // for forward compatibility
 type EOTSManagerServer interface {
-	// GetInfo returns the information of the daemon
-	GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error)
 	// CreateKey generates and saves an EOTS key
 	CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error)
 	// CreateRandomnessPairList returns a list of Schnorr randomness pairs
@@ -130,9 +116,6 @@ type EOTSManagerServer interface {
 type UnimplementedEOTSManagerServer struct {
 }
 
-func (UnimplementedEOTSManagerServer) GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetInfo not implemented")
-}
 func (UnimplementedEOTSManagerServer) CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateKey not implemented")
 }
@@ -159,24 +142,6 @@ type UnsafeEOTSManagerServer interface {
 
 func RegisterEOTSManagerServer(s grpc.ServiceRegistrar, srv EOTSManagerServer) {
 	s.RegisterService(&EOTSManager_ServiceDesc, srv)
-}
-
-func _EOTSManager_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EOTSManagerServer).GetInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: EOTSManager_GetInfo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EOTSManagerServer).GetInfo(ctx, req.(*GetInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _EOTSManager_CreateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -276,10 +241,6 @@ var EOTSManager_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.EOTSManager",
 	HandlerType: (*EOTSManagerServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "GetInfo",
-			Handler:    _EOTSManager_GetInfo_Handler,
-		},
 		{
 			MethodName: "CreateKey",
 			Handler:    _EOTSManager_CreateKey_Handler,

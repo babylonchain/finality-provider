@@ -3,6 +3,8 @@ package local
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"path"
 	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -15,6 +17,8 @@ import (
 	"github.com/cosmos/go-bip39"
 	"github.com/sirupsen/logrus"
 
+	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/types"
@@ -25,13 +29,28 @@ const (
 	mnemonicEntropySize = 256
 )
 
+var _ eotsmanager.EOTSManager = &LocalEOTSManager{}
+
 type LocalEOTSManager struct {
 	kr     keyring.Keyring
 	es     *EOTSStore
 	logger *logrus.Logger
 }
 
-func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config, logger *logrus.Logger) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalEOTSManager, error) {
+	keyringDir := eotsCfg.KeyDirectory
+	if keyringDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		keyringDir = path.Join(homeDir, ".eots-manager")
+	}
+
+	ctx := client.Context{}.
+		WithCodec(codec.MakeCodec()).
+		WithKeyringDir(keyringDir)
+
 	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
@@ -48,14 +67,15 @@ func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config, logger *log
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	es, err := NewEOTSStore(eotsCfg)
+	es, err := NewEOTSStore(eotsCfg.DatabaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
 	return &LocalEOTSManager{
-		kr: kr,
-		es: es,
+		kr:     kr,
+		es:     es,
+		logger: logger,
 	}, nil
 }
 

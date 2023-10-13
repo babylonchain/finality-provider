@@ -1,54 +1,38 @@
 package valcfg
 
 import (
-	"fmt"
-
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 )
 
 const (
 	DefaultEOTSManagerDBBackend = "bbolt"
 	DefaultEOTSManagerDBPath    = "bbolt-eots.db"
 	DefaultEOTSManagerDBName    = "eots-default"
-	DefaultEOTSManagerMode      = "local"
 )
 
 type EOTSManagerConfig struct {
-	Mode      string `long:"mode" description:"Indicates in which mode the EOTS manager is running" choice:"local" choice:"remote"`
 	DBBackend string `long:"dbbackend" description:"Possible database to choose as backend"`
 	DBPath    string `long:"dbpath" description:"The path that stores the database file"`
 	DBName    string `long:"dbname" description:"The name of the database"`
 }
 
-func NewEOTSManagerConfig(backend string, path string, name string) (*EOTSManagerConfig, error) {
-	if backend != DefaultEOTSManagerDBBackend {
-		return nil, fmt.Errorf("unsupported DB backend")
-	}
-
-	if path == "" {
-		return nil, fmt.Errorf("DB path should not be empty")
-	}
-
-	if name == "" {
-		return nil, fmt.Errorf("bucket name should not be empty")
-	}
-
-	return &EOTSManagerConfig{
-		DBBackend: backend,
-		DBPath:    path,
-		DBName:    name,
-	}, nil
-}
-
-func AppConfigToEOTSManagerConfig(appCfg *Config) (*config.Config, error) {
-	return config.NewConfig(
-		appCfg.EOTSManagerConfig.Mode,
+func AppConfigToEOTSManagerConfig(appCfg *Config) (*eotscfg.Config, error) {
+	dbCfg, err := eotscfg.NewDatabaseConfig(
 		appCfg.EOTSManagerConfig.DBBackend,
 		appCfg.EOTSManagerConfig.DBPath,
 		appCfg.EOTSManagerConfig.DBName,
-		appCfg.BabylonConfig.KeyDirectory,
-		appCfg.BabylonConfig.KeyringBackend,
 	)
+	if err != nil {
+		return nil, err
+	}
+	return &eotscfg.Config{
+		LogLevel:       appCfg.DebugLevel,
+		EOTSDir:        appCfg.ValdDir,
+		ConfigFile:     appCfg.ConfigFile,
+		KeyDirectory:   appCfg.BabylonConfig.KeyDirectory,
+		KeyringBackend: appCfg.BabylonConfig.KeyringBackend,
+		DatabaseConfig: dbCfg,
+	}, nil
 }
 
 func DefaultEOTSManagerConfig() EOTSManagerConfig {
@@ -56,6 +40,5 @@ func DefaultEOTSManagerConfig() EOTSManagerConfig {
 		DBBackend: DefaultEOTSManagerDBBackend,
 		DBPath:    DefaultEOTSManagerDBPath,
 		DBName:    DefaultEOTSManagerDBName,
-		Mode:      DefaultEOTSManagerMode,
 	}
 }

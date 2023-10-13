@@ -111,15 +111,13 @@ func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
 	dir := t.TempDir()
 	path := filepath.Join(dir, bucketName)
-	eotsCfg, err := config.NewConfig(
-		"local",
-		"bbolt",
-		path,
-		bucketName,
-		dir,
-		"test",
-	)
+	dbCfg, err := config.NewDatabaseConfig("bbolt", path, bucketName)
 	require.NoError(t, err)
+	eotsCfg := &config.Config{
+		KeyDirectory:   dir,
+		KeyringBackend: "test",
+		DatabaseConfig: dbCfg,
+	}
 	return eotsCfg
 }
 

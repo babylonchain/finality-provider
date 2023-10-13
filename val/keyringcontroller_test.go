@@ -28,11 +28,13 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 
 		cfg := testutil.GenEOTSConfig(r, t)
-		em, err := local.NewLocalEOTSManager(sdkCtx, cfg, logrus.New())
+		em, err := local.NewLocalEOTSManager(cfg, logrus.New())
 		defer func() {
 			err := os.RemoveAll(sdkCtx.KeyringDir)
 			require.NoError(t, err)
-			err = os.RemoveAll(cfg.DBPath)
+			err = os.RemoveAll(cfg.KeyringBackend)
+			require.NoError(t, err)
+			err = os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
 

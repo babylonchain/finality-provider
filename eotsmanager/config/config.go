@@ -22,14 +22,8 @@ const (
 	defaultLogDirname     = "logs"
 	defaultLogFilename    = "eotsd.log"
 	defaultConfigFileName = "eotsd.conf"
-	DefaultRPCPort        = 15813
-	TypeLocal             = "local"
-
-	defaultDBBackend      = "bbolt"
-	defaultDBPath         = "bbolt-eots.db"
-	defaultDBName         = "eots-default"
+	defaultRPCPort        = 15813
 	defaultKeyringBackend = "test"
-	DefaultMode           = TypeLocal
 )
 
 var (
@@ -45,19 +39,16 @@ var (
 )
 
 type Config struct {
-	LogLevel   string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
-	EOTSDir    string `long:"workdir" description:"The base directory that contains the EOTS manager's data, logs, configuration file, etc."`
-	ConfigFile string `long:"configfile" description:"Path to configuration file"`
-	DataDir    string `long:"datadir" description:"The directory to store validator's data within"`
-	LogDir     string `long:"logdir" description:"Directory to log output."`
-	DumpCfg    bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
-
-	Mode           string `long:"mode" description:"Indicates in which mode the EOTS manager is running"`
-	DBBackend      string `long:"dbbackend" description:"Possible database to choose as backend"`
-	DBPath         string `long:"dbpath" description:"The path that stores the database file"`
-	DBName         string `long:"dbname" description:"The name of the database"`
+	LogLevel       string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	EOTSDir        string `long:"workdir" description:"The base directory that contains the EOTS manager's data, logs, configuration file, etc."`
+	ConfigFile     string `long:"configfile" description:"Path to configuration file"`
+	DataDir        string `long:"datadir" description:"The directory to store validator's data within"`
+	LogDir         string `long:"logdir" description:"Directory to log output."`
+	DumpCfg        bool   `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
 	KeyDirectory   string `long:"key-dir" description:"Directory to store keys in"`
 	KeyringBackend string `long:"keyring-type" description:"Type of keyring to use"`
+
+	DatabaseConfig *DatabaseConfig
 
 	GRpcServerConfig *GRpcServerConfig
 
@@ -66,29 +57,6 @@ type Config struct {
 
 type GRpcServerConfig struct {
 	RawRPCListeners []string `long:"rpclisten" description:"Add an interface/port/socket to listen for RPC connections"`
-}
-
-func NewConfig(mode, backend, path, name, keyDir, keyringBackend string) (*Config, error) {
-	if backend != defaultDBBackend {
-		return nil, fmt.Errorf("unsupported DB backend")
-	}
-
-	if path == "" {
-		return nil, fmt.Errorf("DB path should not be empty")
-	}
-
-	if name == "" {
-		return nil, fmt.Errorf("bucket name should not be empty")
-	}
-
-	return &Config{
-		Mode:           mode,
-		KeyDirectory:   keyDir,
-		DBBackend:      backend,
-		DBPath:         path,
-		DBName:         name,
-		KeyringBackend: keyringBackend,
-	}, nil
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -264,7 +232,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	// At least one RPCListener is required. So listen on localhost per
 	// default.
 	if len(cfg.GRpcServerConfig.RawRPCListeners) == 0 {
-		addr := fmt.Sprintf("localhost:%d", DefaultRPCPort)
+		addr := fmt.Sprintf("localhost:%d", defaultRPCPort)
 		cfg.GRpcServerConfig.RawRPCListeners = append(
 			cfg.GRpcServerConfig.RawRPCListeners, addr,
 		)
@@ -279,7 +247,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	// Add default port to all RPC listener addresses if needed and remove
 	// duplicate addresses.
 	cfg.RpcListeners, err = lncfg.NormalizeAddresses(
-		cfg.GRpcServerConfig.RawRPCListeners, strconv.Itoa(DefaultRPCPort),
+		cfg.GRpcServerConfig.RawRPCListeners, strconv.Itoa(defaultRPCPort),
 		net.ResolveTCPAddr,
 	)
 
@@ -329,18 +297,16 @@ func CleanAndExpandPath(path string) string {
 }
 
 func DefaultConfig() Config {
+	dbCfg := DefaultDatabaseConfig()
 	return Config{
 		LogLevel:       defaultLogLevel,
 		EOTSDir:        DefaultEOTSDir,
 		ConfigFile:     DefaultConfigFile,
 		DataDir:        defaultDataDir,
 		LogDir:         defaultLogDir,
-		DBBackend:      defaultDBBackend,
-		DBPath:         defaultDBPath,
-		DBName:         defaultDBName,
 		KeyringBackend: defaultKeyringBackend,
 		KeyDirectory:   defaultDataDir,
-		Mode:           DefaultMode,
+		DatabaseConfig: &dbCfg,
 	}
 }
 

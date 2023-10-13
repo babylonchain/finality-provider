@@ -5,9 +5,6 @@ package proto;
 option go_package = "github.com/babylonchain/btc-validator/eotsmanager/proto";
 
 service EOTSManager {
-  // GetInfo returns the information of the daemon
-  rpc GetInfo (GetInfoRequest) returns (GetInfoResponse);
-
   // CreateKey generates and saves an EOTS key
   rpc CreateKey (CreateKeyRequest)
       returns (CreateKeyResponse);
@@ -27,13 +24,6 @@ service EOTSManager {
   // SignSchnorrSig signs a Schnorr sig with teh EOTS private key
   rpc SignSchnorrSig (SignSchnorrSigRequest)
       returns (SignSchnorrSigResponse);
-}
-
-message GetInfoRequest {
-}
-
-message GetInfoResponse {
-  string version = 1;
 }
 
 message CreateKeyRequest {
