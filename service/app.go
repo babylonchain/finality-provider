@@ -71,11 +71,15 @@ func NewValidatorAppFromConfig(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EOTS manager locally: %w", err)
 		}
+
+		logger.Info("running EOTS manager locally")
 	} else {
 		em, err = client.NewEOTSManagerGRpcClient(config.EOTSManagerAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
 		}
+		// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
+		logger.Infof("successfully connected to a remote EOTS manager at %s", config.EOTSManagerAddress)
 	}
 
 	return NewValidatorApp(config, cc, em, logger)

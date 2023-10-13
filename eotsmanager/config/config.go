@@ -22,14 +22,14 @@ const (
 	defaultLogDirname     = "logs"
 	defaultLogFilename    = "eotsd.log"
 	defaultConfigFileName = "eotsd.conf"
-	defaultRPCPort        = 15813
+	DefaultRPCPort        = 15813
 	defaultKeyringBackend = "test"
 )
 
 var (
 	//   C:\Users\<username>\AppData\Local\ on Windows
 	//   ~/.vald on Linux
-	//   ~/Library/Application Support/Vald on MacOS
+	//   ~/Library/Application Support/Eotsd on MacOS
 	DefaultEOTSDir = btcutil.AppDataDir("eotsd", false)
 
 	DefaultConfigFile = filepath.Join(DefaultEOTSDir, defaultConfigFileName)
@@ -232,7 +232,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	// At least one RPCListener is required. So listen on localhost per
 	// default.
 	if len(cfg.GRpcServerConfig.RawRPCListeners) == 0 {
-		addr := fmt.Sprintf("localhost:%d", defaultRPCPort)
+		addr := fmt.Sprintf("localhost:%d", DefaultRPCPort)
 		cfg.GRpcServerConfig.RawRPCListeners = append(
 			cfg.GRpcServerConfig.RawRPCListeners, addr,
 		)
@@ -247,7 +247,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	// Add default port to all RPC listener addresses if needed and remove
 	// duplicate addresses.
 	cfg.RpcListeners, err = lncfg.NormalizeAddresses(
-		cfg.GRpcServerConfig.RawRPCListeners, strconv.Itoa(defaultRPCPort),
+		cfg.GRpcServerConfig.RawRPCListeners, strconv.Itoa(DefaultRPCPort),
 		net.ResolveTCPAddr,
 	)
 

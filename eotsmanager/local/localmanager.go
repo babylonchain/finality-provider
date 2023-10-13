@@ -128,6 +128,8 @@ func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 		return nil, err
 	}
 
+	lm.logger.Infof("successfully created an EOTS key %s: %s", name, eotsPk.MarshalHex())
+
 	return eotsPk.MustMarshal(), nil
 }
 

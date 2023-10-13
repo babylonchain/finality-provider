@@ -16,6 +16,8 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/sirupsen/logrus"
+
+	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 )
 
 const (
@@ -48,9 +50,10 @@ var (
 
 	DefaultConfigFile = filepath.Join(DefaultValdDir, defaultConfigFileName)
 
-	defaultDataDir         = filepath.Join(DefaultValdDir, defaultDataDirname)
-	defaultLogDir          = filepath.Join(DefaultValdDir, defaultLogDirname)
-	defaultActiveNetParams = chaincfg.SimNetParams
+	defaultDataDir            = filepath.Join(DefaultValdDir, defaultDataDirname)
+	defaultLogDir             = filepath.Join(DefaultValdDir, defaultLogDirname)
+	defaultActiveNetParams    = chaincfg.SimNetParams
+	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
 )
 
 // Config is the main config for the vald cli command
@@ -132,6 +135,7 @@ func DefaultConfig() Config {
 		MaxSubmissionRetries:           defaultMaxSubmissionRetries,
 		BitcoinNetwork:                 defaultBitcoinNetwork,
 		ActiveNetParams:                defaultActiveNetParams,
+		EOTSManagerAddress:             defaultEOTSManagerAddress,
 	}
 }
 
