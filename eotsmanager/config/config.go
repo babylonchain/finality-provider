@@ -175,10 +175,6 @@ func (cfg *Config) Validate() error {
 		cfg.LogDir = filepath.Join(eotsdDir, defaultLogDirname)
 	}
 
-	funcName := "ValidateConfig"
-	mkErr := func(format string, args ...interface{}) error {
-		return fmt.Errorf(funcName+": "+format, args...)
-	}
 	makeDirectory := func(dir string) error {
 		err := os.MkdirAll(dir, 0700)
 		if err != nil {
@@ -193,8 +189,7 @@ func (cfg *Config) Validate() error {
 				}
 			}
 
-			str := "Failed to create eotsd directory '%s': %v"
-			return mkErr(str, dir, err)
+			return fmt.Errorf("failed to create eotsd directory '%s': %w", dir, err)
 		}
 
 		return nil
@@ -230,7 +225,7 @@ func (cfg *Config) Validate() error {
 	_, err := logrus.ParseLevel(cfg.LogLevel)
 
 	if err != nil {
-		return mkErr("error parsing debuglevel: %v", err)
+		return err
 	}
 
 	// Add default port to all RPC listener addresses if needed and remove
@@ -241,7 +236,7 @@ func (cfg *Config) Validate() error {
 	)
 
 	if err != nil {
-		return mkErr("error normalizing RPC listen addrs: %v", err)
+		return err
 	}
 
 	return nil
