@@ -533,39 +533,26 @@ func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *bbntypes.BIP3
 	return ks[0], nil
 }
 
-// QueryPendingBTCDelegations queries BTC delegations that need a Jury sig
+// QueryBTCDelegations queries BTC delegations that need a Jury signature
+// with the given status (either pending or unbonding)
 // it is only used when the program is running in Jury mode
-func (bc *BabylonController) QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCDelegations(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
-	// query all the unsigned delegations
-	queryRequest := &btcstakingtypes.QueryPendingBTCDelegationsRequest{}
-	res, err := queryClient.PendingBTCDelegations(ctx, queryRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+	pagination := &sdkquery.PageRequest{
+		Limit: limit,
 	}
 
-	return res.BtcDelegations, nil
-}
-
-// QueryUnbondindBTCDelegations queries BTC delegations that need a Jury sig for unbodning
-// it is only used when the program is running in Jury mode
-func (bc *BabylonController) QueryUnbondindBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
 	// query all the unsigned delegations
-	queryRequest := &btcstakingtypes.QueryUnbondingBTCDelegationsRequest{}
-	res, err := queryClient.UnbondingBTCDelegations(ctx, queryRequest)
+	queryRequest := &btcstakingtypes.QueryBTCDelegationsRequest{
+		Status:     status,
+		Pagination: pagination,
+	}
+	res, err := queryClient.BTCDelegations(ctx, queryRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
