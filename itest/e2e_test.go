@@ -247,7 +247,7 @@ func TestFastSync(t *testing.T) {
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
-	tm.Config.FastSyncGap = uint64(n)
+	tm.ValConfig.FastSyncGap = uint64(n)
 	tm.StopAndRestartValidatorAfterNBlocks(t, n, valIns)
 
 	// check there are n+1 blocks finalized
@@ -306,7 +306,7 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCDelegations(
 			btcstakingtypes.BTCDelegationStatus_PENDING,
-			tm.Config.JuryModeConfig.DelegationLimit,
+			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {
 			return false

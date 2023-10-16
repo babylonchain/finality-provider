@@ -46,7 +46,8 @@ type TestManager struct {
 	Wg                sync.WaitGroup
 	BabylonHandler    *BabylonNodeHandler
 	EOTSServerHandler *EOTSServerHandler
-	Config            *valcfg.Config
+	ValConfig         *valcfg.Config
+	EOTSConfig        *eotsconfig.Config
 	Va                *service.ValidatorApp
 	Em                eotsmanager.EOTSManager
 	BabylonClient     *clientcontroller.BabylonController
@@ -86,10 +87,12 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	eotsCfg :=
-	eh := NewEOTSServerHandler(t, cfg)
+	eotsCfg := defaultEOTSConfig(t, testDir)
 
-	em, err := client.NewEOTSManagerGRpcClient(eotsCfg)
+	eh := NewEOTSServerHandler(t, eotsCfg)
+	eh.Start()
+
+	em, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
@@ -100,7 +103,8 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 
 	tm := &TestManager{
 		BabylonHandler: bh,
-		Config:         cfg,
+		ValConfig:      cfg,
+		EOTSConfig:     eotsCfg,
 		Va:             valApp,
 		Em:             em,
 		BabylonClient:  bc,
@@ -181,10 +185,14 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
+	err = os.RemoveAll(tm.ValConfig.DatabaseConfig.Path)
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
+	err = os.RemoveAll(tm.ValConfig.BabylonConfig.KeyDirectory)
 	require.NoError(t, err)
+	tm.EOTSServerHandler.Stop()
+	err = os.RemoveAll(tm.EOTSConfig.DatabaseConfig.Path)
+	require.NoError(t, err)
+	err = os.RemoveAll(tm.EOTSConfig.KeyDirectory)
 }
 
 func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
@@ -215,7 +223,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCDelegations(
 			bstypes.BTCDelegationStatus_PENDING,
-			tm.Config.JuryModeConfig.DelegationLimit,
+			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {
 			return false
@@ -323,7 +331,7 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 
 	t.Log("restarting the validator instance")
 
-	tm.Config.ValidatorModeConfig.AutoChainScanningMode = true
+	tm.ValConfig.ValidatorModeConfig.AutoChainScanningMode = true
 	err = valIns.Start()
 	require.NoError(t, err)
 }
@@ -341,7 +349,7 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
-		&tm.Config.ActiveNetParams,
+		&tm.ValConfig.ActiveNetParams,
 	)
 	require.NoError(t, err)
 
@@ -556,10 +564,31 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	return &cfg
 }
 
-func defaultEOTSConfig(keyringDir, testDir string) *eotsconfig.Config {
+func defaultEOTSConfig(t *testing.T, testDir string) *eotsconfig.Config {
 	cfg := eotsconfig.DefaultConfig()
-	cfg.KeyDirectory = keyringDir
-	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
+
+	eotsDir := filepath.Join(testDir, "eotsd")
+	err := os.Mkdir(eotsDir, os.ModeDir)
+	require.NoError(t, err)
+
+	err = os.Chmod(eotsDir, 0755)
+	require.NoError(t, err)
+
+	configFile := filepath.Join(eotsDir, "eotsd-test.conf")
+	dataDir := filepath.Join(eotsDir, "data")
+	logDir := filepath.Join(eotsDir, "log")
+
+	cfg.EOTSDir = eotsDir
+	cfg.ConfigFile = configFile
+	cfg.LogDir = logDir
+	cfg.KeyDirectory = dataDir
+	cfg.DatabaseConfig.Path = dataDir
+
+	err = os.Mkdir(dataDir, os.ModeDir)
+	require.NoError(t, err)
+
+	err = os.Chmod(dataDir, 0755)
+	require.NoError(t, err)
 
 	return &cfg
 }
