@@ -16,7 +16,7 @@ type EOTSManagerConfig struct {
 	DBName    string `long:"dbname" description:"The name of the database"`
 }
 
-func AppConfigToEOTSManagerConfig(appCfg *Config) (*eotscfg.Config, error) {
+func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) {
 	dbCfg, err := eotscfg.NewDatabaseConfig(
 		appCfg.EOTSManagerConfig.DBBackend,
 		appCfg.EOTSManagerConfig.DBPath,

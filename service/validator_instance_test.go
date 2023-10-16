@@ -110,7 +110,7 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := logrus.New()
-	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
+	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 	require.NoError(t, err)
 	em, err := local.NewLocalEOTSManager(eotsCfg, logger)
 	require.NoError(t, err)

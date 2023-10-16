@@ -38,7 +38,7 @@ type EOTSManagerClient interface {
 	KeyRecord(ctx context.Context, in *KeyRecordRequest, opts ...grpc.CallOption) (*KeyRecordResponse, error)
 	// SignEOTS signs an EOTS with the EOTS private key and the relevant randomness
 	SignEOTS(ctx context.Context, in *SignEOTSRequest, opts ...grpc.CallOption) (*SignEOTSResponse, error)
-	// SignSchnorrSig signs a Schnorr sig with teh EOTS private key
+	// SignSchnorrSig signs a Schnorr sig with the EOTS private key
 	SignSchnorrSig(ctx context.Context, in *SignSchnorrSigRequest, opts ...grpc.CallOption) (*SignSchnorrSigResponse, error)
 }
 
@@ -107,7 +107,7 @@ type EOTSManagerServer interface {
 	KeyRecord(context.Context, *KeyRecordRequest) (*KeyRecordResponse, error)
 	// SignEOTS signs an EOTS with the EOTS private key and the relevant randomness
 	SignEOTS(context.Context, *SignEOTSRequest) (*SignEOTSResponse, error)
-	// SignSchnorrSig signs a Schnorr sig with teh EOTS private key
+	// SignSchnorrSig signs a Schnorr sig with the EOTS private key
 	SignSchnorrSig(context.Context, *SignSchnorrSigRequest) (*SignSchnorrSigResponse, error)
 	mustEmbedUnimplementedEOTSManagerServer()
 }

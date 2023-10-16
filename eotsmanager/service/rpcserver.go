@@ -2,80 +2,29 @@ package service
 
 import (
 	"context"
-	"sync"
-	"sync/atomic"
 
-	"github.com/lightningnetwork/lnd/signal"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/eotsmanager/proto"
 )
 
 // rpcServer is the main RPC server for the BTC-Validator daemon that handles
 // gRPC incoming requests.
 type rpcServer struct {
-	started  int32
-	shutdown int32
-
 	proto.UnimplementedEOTSManagerServer
 
-	interceptor signal.Interceptor
-
 	em eotsmanager.EOTSManager
-
-	logger *logrus.Logger
-
-	cfg *config.Config
-
-	quit chan struct{}
-	wg   sync.WaitGroup
 }
 
 // newRPCServer creates a new RPC sever from the set of input dependencies.
 func newRPCServer(
-	interceptor signal.Interceptor,
-	l *logrus.Logger,
-	cfg *config.Config,
 	em eotsmanager.EOTSManager,
-) (*rpcServer, error) {
+) *rpcServer {
 
 	return &rpcServer{
-		interceptor: interceptor,
-		logger:      l,
-		quit:        make(chan struct{}),
-		cfg:         cfg,
-		em:          em,
-	}, nil
-}
-
-// Start signals that the RPC server starts accepting requests.
-func (r *rpcServer) Start() error {
-	if atomic.AddInt32(&r.started, 1) != 1 {
-		return nil
+		em: em,
 	}
-
-	r.logger.Infof("Starting RPC Server")
-
-	return nil
-}
-
-// Stop signals that the RPC server should attempt a graceful shutdown and
-// cancel any outstanding requests.
-func (r *rpcServer) Stop() error {
-	if atomic.AddInt32(&r.shutdown, 1) != 1 {
-		return nil
-	}
-
-	r.logger.Infof("Stopping RPC Server")
-
-	close(r.quit)
-
-	r.wg.Wait()
-
-	return nil
 }
 
 // RegisterWithGrpcServer registers the rpcServer with the passed root gRPC
@@ -150,7 +99,7 @@ func (r *rpcServer) SignEOTS(ctx context.Context, req *proto.SignEOTSRequest) (
 	return &proto.SignEOTSResponse{Sig: sigBytes[:]}, nil
 }
 
-// SignSchnorrSig signs a Schnorr sig with teh EOTS private key
+// SignSchnorrSig signs a Schnorr sig with the EOTS private key
 func (r *rpcServer) SignSchnorrSig(ctx context.Context, req *proto.SignSchnorrSigRequest) (
 	*proto.SignSchnorrSigResponse, error) {
 

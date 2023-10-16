@@ -78,7 +78,6 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	// Show the version and exit if the version flag was specified.
 	appName := filepath.Base(os.Args[0])
 	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-	usageMessage := fmt.Sprintf("Use %s -h to show usage", appName)
 
 	// If the config file path has not been modified by the user, then
 	// we'll use the default config file path. However, if the user has
@@ -129,23 +128,17 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	cfgLogger := logrus.New()
 	cfgLogger.Out = os.Stdout
 	// Make sure everything we just loaded makes sense.
-	cleanCfg, err := ValidateConfig(cfg)
-	if err != nil {
-		// Log help message in case of usage error.
-		if _, ok := err.(*usageError); ok {
-			cfgLogger.Warnf("Incorrect usage: %v", usageMessage)
-		}
-
+	if err := cfg.Validate(); err != nil {
 		cfgLogger.Warnf("Error validating config: %v", err)
 		return nil, nil, err
 	}
 
 	// ignore error here as we already validated the value
-	logRuslLevel, _ := logrus.ParseLevel(cleanCfg.LogLevel)
+	logRuslLevel, _ := logrus.ParseLevel(cfg.LogLevel)
 
 	// TODO: Add log rotation
 	// At this point we know config is valid, create logger which also log to file
-	logFilePath := filepath.Join(cleanCfg.LogDir, defaultLogFilename)
+	logFilePath := filepath.Join(cfg.LogDir, defaultLogFilename)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, nil, err
@@ -160,7 +153,7 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	// options.  Note this should go directly before the return.
 	if configFileError != nil {
 		cfgLogger.Warnf("%v", configFileError)
-		if cleanCfg.DumpCfg {
+		if cfg.DumpCfg {
 			cfgLogger.Infof("Writing configuration file to %s", configFilePath)
 			fileParser := flags.NewParser(&cfg, flags.Default)
 			err := flags.NewIniParser(fileParser).WriteFile(configFilePath, flags.IniIncludeComments|flags.IniIncludeDefaults)
@@ -171,14 +164,14 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 		}
 	}
 
-	return cleanCfg, cfgLogger, nil
+	return &cfg, cfgLogger, nil
 }
 
-// ValidateConfig check the given configuration to be sane. This makes sure no
+// Validate check the given configuration to be sane. This makes sure no
 // illegal values or combination of values are set. All file system paths are
 // normalized. The cleaned up config is returned on success.
-func ValidateConfig(cfg Config) (*Config, error) {
-	// If the provided stakerd directory is not the default, we'll modify the
+func (cfg *Config) Validate() error {
+	// If the provided eotsd directory is not the default, we'll modify the
 	// path to all the files and directories that will live within it.
 	eotsdDir := CleanAndExpandPath(cfg.EOTSDir)
 	if eotsdDir != DefaultEOTSDir {
@@ -225,7 +218,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	}
 	for _, dir := range dirs {
 		if err := makeDirectory(dir); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -241,7 +234,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	_, err := logrus.ParseLevel(cfg.LogLevel)
 
 	if err != nil {
-		return nil, mkErr("error parsing debuglevel: %v", err)
+		return mkErr("error parsing debuglevel: %v", err)
 	}
 
 	// Add default port to all RPC listener addresses if needed and remove
@@ -252,11 +245,10 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	)
 
 	if err != nil {
-		return nil, mkErr("error normalizing RPC listen addrs: %v", err)
+		return mkErr("error normalizing RPC listen addrs: %v", err)
 	}
 
-	// All good, return the sanitized result.
-	return &cfg, nil
+	return nil
 }
 
 // FileExists reports whether the named file or directory exists.
@@ -308,16 +300,4 @@ func DefaultConfig() Config {
 		KeyDirectory:   defaultDataDir,
 		DatabaseConfig: &dbCfg,
 	}
-}
-
-// usageError is an error type that signals a problem with the supplied flags.
-type usageError struct {
-	err error
-}
-
-// Error returns the error string.
-//
-// NOTE: This is part of the error interface.
-func (u *usageError) Error() string {
-	return u.err.Error()
 }
