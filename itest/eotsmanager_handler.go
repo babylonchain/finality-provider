@@ -18,7 +18,7 @@ type EOTSServerHandler struct {
 	eotsServer  *service.Server
 }
 
-func (eh *EOTSServerHandler) NewEOTSServerHandler(t *testing.T, cfg *config.Config) *EOTSServerHandler {
+func NewEOTSServerHandler(t *testing.T, cfg *config.Config) *EOTSServerHandler {
 	shutdownInterceptor, err := signal.Intercept()
 	require.NoError(t, err)
 

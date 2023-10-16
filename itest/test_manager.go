@@ -28,7 +28,8 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager/client"
+	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -42,12 +43,13 @@ var (
 var btcNetworkParams = &chaincfg.SimNetParams
 
 type TestManager struct {
-	Wg             sync.WaitGroup
-	BabylonHandler *BabylonNodeHandler
-	Config         *valcfg.Config
-	Va             *service.ValidatorApp
-	Em             eotsmanager.EOTSManager
-	BabylonClient  *clientcontroller.BabylonController
+	Wg                sync.WaitGroup
+	BabylonHandler    *BabylonNodeHandler
+	EOTSServerHandler *EOTSServerHandler
+	Config            *valcfg.Config
+	Va                *service.ValidatorApp
+	Em                eotsmanager.EOTSManager
+	BabylonClient     *clientcontroller.BabylonController
 }
 
 type TestDelegationData struct {
@@ -84,10 +86,10 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(cfg)
-	require.NoError(t, err)
+	eotsCfg :=
+	eh := NewEOTSServerHandler(t, cfg)
 
-	em, err := local.NewLocalEOTSManager(eotsCfg, logger)
+	em, err := client.NewEOTSManagerGRpcClient(eotsCfg)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
@@ -550,6 +552,14 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	cfg.JuryMode = isJury
 	cfg.JuryModeConfig.QueryInterval = 7 * time.Second
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
+
+	return &cfg
+}
+
+func defaultEOTSConfig(keyringDir, testDir string) *eotsconfig.Config {
+	cfg := eotsconfig.DefaultConfig()
+	cfg.KeyDirectory = keyringDir
+	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
 
 	return &cfg
 }
