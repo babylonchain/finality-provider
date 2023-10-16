@@ -75,10 +75,6 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 		return nil, nil, err
 	}
 
-	// Show the version and exit if the version flag was specified.
-	appName := filepath.Base(os.Args[0])
-	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-
 	// If the config file path has not been modified by the user, then
 	// we'll use the default config file path. However, if the user has
 	// modified their default dir, then we should assume they intend to use
