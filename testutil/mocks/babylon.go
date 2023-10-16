@@ -86,6 +86,21 @@ func (mr *MockClientControllerMockRecorder) GetStakingParams() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockClientController)(nil).GetStakingParams))
 }
 
+// QueryBTCDelegations mocks base method.
+func (m *MockClientController) QueryBTCDelegations(status types0.BTCDelegationStatus, limit uint64) ([]*types0.BTCDelegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBTCDelegations", status, limit)
+	ret0, _ := ret[0].([]*types0.BTCDelegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBTCDelegations indicates an expected call of QueryBTCDelegations.
+func (mr *MockClientControllerMockRecorder) QueryBTCDelegations(status, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCDelegations", reflect.TypeOf((*MockClientController)(nil).QueryBTCDelegations), status, limit)
+}
+
 // QueryBTCValidatorUnbondingDelegations mocks base method.
 func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valBtcPk *types.BIP340PubKey, max uint64) ([]*types0.BTCDelegation, error) {
 	m.ctrl.T.Helper()
@@ -204,36 +219,6 @@ func (m *MockClientController) QueryNodeStatus() (*coretypes.ResultStatus, error
 func (mr *MockClientControllerMockRecorder) QueryNodeStatus() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryNodeStatus", reflect.TypeOf((*MockClientController)(nil).QueryNodeStatus))
-}
-
-// QueryPendingBTCDelegations mocks base method.
-func (m *MockClientController) QueryPendingBTCDelegations() ([]*types0.BTCDelegation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryPendingBTCDelegations")
-	ret0, _ := ret[0].([]*types0.BTCDelegation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryPendingBTCDelegations indicates an expected call of QueryPendingBTCDelegations.
-func (mr *MockClientControllerMockRecorder) QueryPendingBTCDelegations() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingBTCDelegations", reflect.TypeOf((*MockClientController)(nil).QueryPendingBTCDelegations))
-}
-
-// QueryUnbondindBTCDelegations mocks base method.
-func (m *MockClientController) QueryUnbondindBTCDelegations() ([]*types0.BTCDelegation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryUnbondindBTCDelegations")
-	ret0, _ := ret[0].([]*types0.BTCDelegation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryUnbondindBTCDelegations indicates an expected call of QueryUnbondindBTCDelegations.
-func (mr *MockClientControllerMockRecorder) QueryUnbondindBTCDelegations() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryUnbondindBTCDelegations", reflect.TypeOf((*MockClientController)(nil).QueryUnbondindBTCDelegations))
 }
 
 // QueryValidator mocks base method.

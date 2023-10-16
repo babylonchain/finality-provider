@@ -131,6 +131,7 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 			}
 			vals := vm.ListValidatorInstances()
 			for _, v := range vals {
+				oldStatus := v.GetStatus()
 				power, err := v.GetVotingPowerWithRetry(latestBlock.Height)
 				if err != nil {
 					vm.logger.WithFields(logrus.Fields{
@@ -142,11 +143,11 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 				}
 				// power > 0 (slashed_height must > 0), set status to ACTIVE
 				if power > 0 {
-					if v.GetStatus() != proto.ValidatorStatus_ACTIVE {
+					if oldStatus != proto.ValidatorStatus_ACTIVE {
 						v.MustSetStatus(proto.ValidatorStatus_ACTIVE)
 						vm.logger.WithFields(logrus.Fields{
 							"val_btc_pk": v.GetBtcPkHex(),
-							"old_status": v.GetStatus(),
+							"old_status": oldStatus,
 							"power":      power,
 						}).Debug("the validator status has changed to ACTIVE")
 					}
@@ -165,17 +166,17 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 					vm.setValidatorSlashed(v)
 					vm.logger.WithFields(logrus.Fields{
 						"val_btc_pk":     v.GetBtcPkHex(),
-						"old_status":     v.GetStatus(),
+						"old_status":     oldStatus,
 						"slashed_height": slashedHeight,
 					}).Debug("the validator status has been slashed")
 					continue
 				}
 				// power == 0 and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
-				if v.GetStatus() == proto.ValidatorStatus_ACTIVE {
+				if oldStatus == proto.ValidatorStatus_ACTIVE {
 					v.MustSetStatus(proto.ValidatorStatus_INACTIVE)
 					vm.logger.WithFields(logrus.Fields{
 						"val_btc_pk": v.GetBtcPkHex(),
-						"old_status": v.GetStatus(),
+						"old_status": oldStatus,
 					}).Debug("the validator status has changed to INACTIVE")
 				}
 			}

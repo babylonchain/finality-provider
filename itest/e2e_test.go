@@ -304,7 +304,10 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 		err  error
 	)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		dels, err = tm.BabylonClient.QueryBTCDelegations(
+			btcstakingtypes.BTCDelegationStatus_PENDING,
+			tm.Config.JuryModeConfig.DelegationLimit,
+		)
 		if err != nil {
 			return false
 		}

@@ -86,13 +86,11 @@ type ClientController interface {
 
 	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
 	QueryHeightWithLastPubRand(btcPubKey *bbntypes.BIP340PubKey) (uint64, error)
-	// QueryPendingBTCDelegations queries BTC delegations that need a Jury signature
-	// it is only used when the program is running in Jury mode
-	QueryPendingBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
 
-	// QueryUnbondindBTCDelegations queries BTC delegations that need a Jury sig for unbodning
+	// QueryBTCDelegations queries BTC delegations that need a Jury signature
+	// with the given status (either pending or unbonding)
 	// it is only used when the program is running in Jury mode
-	QueryUnbondindBTCDelegations() ([]*btcstakingtypes.BTCDelegation, error)
+	QueryBTCDelegations(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error)
 
 	// QueryValidatorVotingPower queries the voting power of the validator at a given height
 	QueryValidatorVotingPower(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64) (uint64, error)
