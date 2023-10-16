@@ -21,7 +21,7 @@ service EOTSManager {
   rpc SignEOTS (SignEOTSRequest)
       returns (SignEOTSResponse);
 
-  // SignSchnorrSig signs a Schnorr sig with teh EOTS private key
+  // SignSchnorrSig signs a Schnorr sig with the EOTS private key
   rpc SignSchnorrSig (SignSchnorrSigRequest)
       returns (SignSchnorrSigResponse);
 }

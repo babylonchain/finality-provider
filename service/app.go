@@ -63,7 +63,7 @@ func NewValidatorAppFromConfig(
 	// otherwise connect a remote one with a gRPC client
 	var em eotsmanager.EOTSManager
 	if config.EOTSManagerAddress == "" {
-		eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(config)
+		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(config)
 		if err != nil {
 			return nil, err
 		}

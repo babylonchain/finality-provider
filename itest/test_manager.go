@@ -18,7 +18,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -85,7 +84,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(cfg)
+	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(cfg)
 	require.NoError(t, err)
 
 	em, err := local.NewLocalEOTSManager(eotsCfg, logger)
@@ -212,7 +211,10 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 		err  error
 	)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		dels, err = tm.BabylonClient.QueryBTCDelegations(
+			bstypes.BTCDelegationStatus_PENDING,
+			tm.Config.JuryModeConfig.DelegationLimit,
+		)
 		if err != nil {
 			return false
 		}
@@ -492,8 +494,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 	slashingAddr := params.SlashingAddress
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
-	stakingTxHash := stakingTx.MustGetTxHash()
-	stakingTxChainHash, err := chainhash.NewHashFromStr(stakingTxHash)
+	stakingTxChainHash := stakingTx.MustGetTxHash()
 	require.NoError(t, err)
 
 	stakingOutputIdx, err := btcstaking.GetIdxOutputCommitingToScript(
@@ -510,7 +511,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 		stakerPrivKey,
 		validatorPk,
 		params.JuryPk,
-		wire.NewOutPoint(stakingTxChainHash, uint32(stakingOutputIdx)),
+		wire.NewOutPoint(&stakingTxChainHash, uint32(stakingOutputIdx)),
 		uint16(params.FinalizationTimeoutBlocks)+1,
 		stakingValue-fee,
 		slashingAddr,

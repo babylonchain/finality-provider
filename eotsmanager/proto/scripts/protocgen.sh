@@ -2,9 +2,9 @@
 
 set -eo pipefail
 
-cd eotsmanager/proto
+cd proto
 buf mod update
 buf generate .
-cd ../..
+cd ..
 
 go mod tidy -compat=1.20

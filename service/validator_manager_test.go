@@ -109,7 +109,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	valStore, err := val.NewValidatorStore(cfg.DatabaseConfig)
 	require.NoError(t, err)
 
-	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(&cfg)
+	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 	require.NoError(t, err)
 	em, err := local.NewLocalEOTSManager(eotsCfg, logger)
 	require.NoError(t, err)
