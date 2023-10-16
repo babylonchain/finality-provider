@@ -170,7 +170,7 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().QueryPendingBTCDelegations().
+		mockClientController.EXPECT().QueryBTCDelegations(bstypes.BTCDelegationStatus_PENDING, gomock.Any()).
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
 		mockClientController.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()

@@ -10,6 +10,7 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/stretchr/testify/require"
 
@@ -54,7 +55,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 	// generate and verify PoP, correct case
 	pop, err := bstypes.NewPoP(babylonSK, btcSK)
 	require.NoError(t, err)
-	err = pop.Verify(babylonPK, bip340PK)
+	err = pop.Verify(babylonPK, bip340PK, &chaincfg.SigNetParams)
 	require.NoError(t, err)
 
 	return &proto.StoreValidator{

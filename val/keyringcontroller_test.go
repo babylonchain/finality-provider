@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/eotsmanager/local"
@@ -51,7 +52,7 @@ func FuzzCreatePoP(f *testing.F) {
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
-		err = pop.Verify(bbnPk, btcPk)
+		err = pop.Verify(bbnPk, btcPk, &chaincfg.SimNetParams)
 		require.NoError(t, err)
 	})
 }

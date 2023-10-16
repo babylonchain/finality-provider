@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"time"
 
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -14,13 +15,14 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	defer app.wg.Done()
 
 	interval := app.config.JuryModeConfig.QueryInterval
+	limit := app.config.JuryModeConfig.DelegationLimit
 	jurySigTicker := time.NewTicker(interval)
 
 	for {
 		select {
 		case <-jurySigTicker.C:
 			// 1. Get all pending delegations first, this are more important than the unbonding ones
-			dels, err := app.cc.QueryPendingBTCDelegations()
+			dels, err := app.cc.QueryBTCDelegations(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
@@ -41,7 +43,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 				}
 			}
 			// 2. Get all unbonding delegations
-			unbondingDels, err := app.cc.QueryUnbondindBTCDelegations()
+			unbondingDels, err := app.cc.QueryBTCDelegations(btcstakingtypes.BTCDelegationStatus_UNBONDING, limit)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
