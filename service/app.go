@@ -98,7 +98,7 @@ func NewValidatorApp(
 			return nil, fmt.Errorf("failed to create Jury key %s: %w",
 				config.JuryModeConfig.JuryKeyName, err)
 		}
-		logger.Debug("the program is running in Jury mode with public key: %s", hex.EncodeToString(juryPk.Key))
+		logger.Debugf("the program is running in Jury mode with public key: %s", hex.EncodeToString(juryPk.Key))
 	}
 
 	vm, err := NewValidatorManager(valStore, config, cc, em, logger)
