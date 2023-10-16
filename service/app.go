@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sync"
 
@@ -92,10 +93,12 @@ func NewValidatorApp(
 		if err != nil {
 			return nil, err
 		}
-		if _, err := kc.GetChainPrivKey(); err != nil {
-			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
+		juryPk, err := kc.CreateChainKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Jury key %s: %w",
 				config.JuryModeConfig.JuryKeyName, err)
 		}
+		logger.Debug("the program is running in Jury mode with public key: %s", hex.EncodeToString(juryPk.Key))
 	}
 
 	vm, err := NewValidatorManager(valStore, config, cc, em, logger)
