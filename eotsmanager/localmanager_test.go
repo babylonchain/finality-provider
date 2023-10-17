@@ -1,4 +1,4 @@
-package local_test
+package eotsmanager_test
 
 import (
 	"math/rand"
@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/testutil"
 )
@@ -29,7 +29,7 @@ func FuzzCreateKey(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(eotsCfg, logrus.New())
+		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, "")
@@ -62,7 +62,7 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(eotsCfg, logrus.New())
+		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, "")

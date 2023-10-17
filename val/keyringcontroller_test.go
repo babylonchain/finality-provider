@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/val"
 )
@@ -29,7 +29,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 
 		cfg := testutil.GenEOTSConfig(r, t)
-		em, err := local.NewLocalEOTSManager(cfg, logrus.New())
+		em, err := eotsmanager.NewLocalEOTSManager(cfg, logrus.New())
 		defer func() {
 			err := os.RemoveAll(sdkCtx.KeyringDir)
 			require.NoError(t, err)

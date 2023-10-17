@@ -28,7 +28,6 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -87,7 +86,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(cfg)
 	require.NoError(t, err)
 
-	em, err := local.NewLocalEOTSManager(eotsCfg, logger)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)

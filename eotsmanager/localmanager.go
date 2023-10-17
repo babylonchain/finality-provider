@@ -1,4 +1,4 @@
-package local
+package eotsmanager
 
 import (
 	"fmt"
@@ -18,7 +18,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/codec"
-	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/types"
@@ -29,7 +28,7 @@ const (
 	mnemonicEntropySize = 256
 )
 
-var _ eotsmanager.EOTSManager = &LocalEOTSManager{}
+var _ EOTSManager = &LocalEOTSManager{}
 
 type LocalEOTSManager struct {
 	kr     keyring.Keyring

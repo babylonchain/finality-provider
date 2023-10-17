@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -111,7 +111,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 
 	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 	require.NoError(t, err)
-	em, err := local.NewLocalEOTSManager(eotsCfg, logger)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 	require.NoError(t, err)
 
 	vm, err := service.NewValidatorManager(valStore, &cfg, cc, em, logger)
