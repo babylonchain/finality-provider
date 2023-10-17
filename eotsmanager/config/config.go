@@ -12,7 +12,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/jessevdk/go-flags"
-	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,8 +33,9 @@ var (
 
 	DefaultConfigFile = filepath.Join(DefaultEOTSDir, defaultConfigFileName)
 
-	defaultDataDir = filepath.Join(DefaultEOTSDir, defaultDataDirname)
-	defaultLogDir  = filepath.Join(DefaultEOTSDir, defaultLogDirname)
+	defaultDataDir     = filepath.Join(DefaultEOTSDir, defaultDataDirname)
+	defaultLogDir      = filepath.Join(DefaultEOTSDir, defaultLogDirname)
+	defaultRpcListener = "localhost:" + strconv.Itoa(DefaultRPCPort)
 )
 
 type Config struct {
@@ -50,13 +50,7 @@ type Config struct {
 
 	DatabaseConfig *DatabaseConfig
 
-	GRpcServerConfig *GRpcServerConfig
-
-	RpcListeners []net.Addr
-}
-
-type GRpcServerConfig struct {
-	RawRPCListeners []string `long:"rpclisten" description:"Add an interface/port/socket to listen for RPC connections"`
+	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., localhost:1234"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -79,8 +73,8 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	// we'll use the default config file path. However, if the user has
 	// modified their default dir, then we should assume they intend to use
 	// the config file within it.
-	configFileDir := CleanAndExpandPath(preCfg.EOTSDir)
-	configFilePath := CleanAndExpandPath(preCfg.ConfigFile)
+	configFileDir := cleanAndExpandPath(preCfg.EOTSDir)
+	configFilePath := cleanAndExpandPath(preCfg.ConfigFile)
 	switch {
 	case configFileDir != DefaultEOTSDir &&
 		configFilePath == DefaultConfigFile:
@@ -125,12 +119,13 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	cfgLogger.Out = os.Stdout
 	// Make sure everything we just loaded makes sense.
 	if err := cfg.Validate(); err != nil {
-		cfgLogger.Warnf("Error validating config: %v", err)
 		return nil, nil, err
 	}
 
-	// ignore error here as we already validated the value
-	logRuslLevel, _ := logrus.ParseLevel(cfg.LogLevel)
+	logRuslLevel, err := logrus.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// TODO: Add log rotation
 	// At this point we know config is valid, create logger which also log to file
@@ -141,8 +136,8 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	}
 	mw := io.MultiWriter(os.Stdout, f)
 
-	cfgLogger.Out = mw
-	cfgLogger.Level = logRuslLevel
+	cfgLogger.SetOutput(mw)
+	cfgLogger.SetLevel(logRuslLevel)
 
 	// Warn about missing config file only after all other configuration is
 	// done. This prevents the warning on help messages and invalid
@@ -169,7 +164,7 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 func (cfg *Config) Validate() error {
 	// If the provided eotsd directory is not the default, we'll modify the
 	// path to all the files and directories that will live within it.
-	eotsdDir := CleanAndExpandPath(cfg.EOTSDir)
+	eotsdDir := cleanAndExpandPath(cfg.EOTSDir)
 	if eotsdDir != DefaultEOTSDir {
 		cfg.DataDir = filepath.Join(eotsdDir, defaultDataDirname)
 		cfg.LogDir = filepath.Join(eotsdDir, defaultLogDirname)
@@ -198,8 +193,8 @@ func (cfg *Config) Validate() error {
 	// As soon as we're done parsing configuration options, ensure all
 	// paths to directories and files are cleaned and expanded before
 	// attempting to use them later on.
-	cfg.DataDir = CleanAndExpandPath(cfg.DataDir)
-	cfg.LogDir = CleanAndExpandPath(cfg.LogDir)
+	cfg.DataDir = cleanAndExpandPath(cfg.DataDir)
+	cfg.LogDir = cleanAndExpandPath(cfg.LogDir)
 
 	// Create the eotsd directory and all other subdirectories if they
 	// don't already exist. This makes sure that directory trees are also
@@ -213,37 +208,20 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	// At least one RPCListener is required. So listen on localhost per
-	// default.
-	if len(cfg.GRpcServerConfig.RawRPCListeners) == 0 {
-		addr := fmt.Sprintf("localhost:%d", DefaultRPCPort)
-		cfg.GRpcServerConfig.RawRPCListeners = append(
-			cfg.GRpcServerConfig.RawRPCListeners, addr,
-		)
-	}
-
 	_, err := logrus.ParseLevel(cfg.LogLevel)
 
 	if err != nil {
 		return err
 	}
 
-	// Add default port to all RPC listener addresses if needed and remove
-	// duplicate addresses.
-	cfg.RpcListeners, err = lncfg.NormalizeAddresses(
-		cfg.GRpcServerConfig.RawRPCListeners, strconv.Itoa(DefaultRPCPort),
-		net.ResolveTCPAddr,
-	)
-
+	_, err = net.ResolveTCPAddr("tcp", cfg.RpcListener)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
 	}
 
 	return nil
 }
 
-// FileExists reports whether the named file or directory exists.
-// This function is taken from https://github.com/btcsuite/btcd
 func FileExists(name string) bool {
 	if _, err := os.Stat(name); err != nil {
 		if os.IsNotExist(err) {
@@ -253,10 +231,9 @@ func FileExists(name string) bool {
 	return true
 }
 
-// CleanAndExpandPath expands environment variables and leading ~ in the
+// cleanAndExpandPath expands environment variables and leading ~ in the
 // passed path, cleans the result, and returns it.
-// This function is taken from https://github.com/btcsuite/btcd
-func CleanAndExpandPath(path string) string {
+func cleanAndExpandPath(path string) string {
 	if path == "" {
 		return ""
 	}
@@ -290,5 +267,6 @@ func DefaultConfig() Config {
 		KeyringBackend: defaultKeyringBackend,
 		KeyDirectory:   defaultDataDir,
 		DatabaseConfig: &dbCfg,
+		RpcListener:    defaultRpcListener,
 	}
 }

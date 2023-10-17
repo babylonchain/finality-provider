@@ -151,6 +151,25 @@ func (u *usageError) Error() string {
 	return u.err.Error()
 }
 
+func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) {
+	dbCfg, err := eotscfg.NewDatabaseConfig(
+		appCfg.EOTSManagerConfig.DBBackend,
+		appCfg.EOTSManagerConfig.DBPath,
+		appCfg.EOTSManagerConfig.DBName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &eotscfg.Config{
+		LogLevel:       appCfg.DebugLevel,
+		EOTSDir:        appCfg.ValdDir,
+		ConfigFile:     appCfg.ConfigFile,
+		KeyDirectory:   appCfg.BabylonConfig.KeyDirectory,
+		KeyringBackend: appCfg.BabylonConfig.KeyringBackend,
+		DatabaseConfig: dbCfg,
+	}, nil
+}
+
 // LoadConfig initializes and parses the config using a config file and command
 // line options.
 //
