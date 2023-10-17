@@ -716,6 +716,26 @@ func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP
 	)
 }
 
+func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	// query all the unsigned delegations
+	queryRequest := &finalitytypes.QueryVotesAtHeightRequest{
+		Height: height,
+	}
+	res, err := queryClient.VotesAtHeight(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
+	}
+
+	return res.BtcPks, nil
+}
+
 func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
 	// TODO Check what is the order of returned delegations. Ideally we would return
 	// delegation here from the first one which received undelegation

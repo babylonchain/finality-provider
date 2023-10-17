@@ -299,6 +299,42 @@ func CheckDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, 
 	return allChecked
 }
 
+func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
+	// we need to ensure votes are collected at the given height
+	require.Eventually(t, func() bool {
+		votes, err := tm.BabylonClient.QueryVotesAtHeight(height)
+		if err != nil {
+			t.Logf("failed to get the votes at height %v: %s", height, err.Error())
+			return false
+		}
+		return len(votes) == num
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// as the votes have been collected, the block should be finalized
+	require.Eventually(t, func() bool {
+		finalized, err := tm.BabylonClient.QueryBlockFinalization(height)
+		if err != nil {
+			t.Logf("failed to query block at height %v: %s", height, err.Error())
+			return false
+		}
+		return finalized
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func (tm *TestManager) WaitForValVoteCast(t *testing.T, valIns *service.ValidatorInstance) uint64 {
+	var lastVotedHeight uint64
+	require.Eventually(t, func() bool {
+		if valIns.GetLastVotedHeight() > 0 {
+			lastVotedHeight = valIns.GetLastVotedHeight()
+			return true
+		} else {
+			return false
+		}
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return lastVotedHeight
+}
+
 func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
 	var (
 		blocks []*types.BlockInfo
