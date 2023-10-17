@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"os"
 	"testing"
 
 	"github.com/lightningnetwork/lnd/signal"
@@ -16,6 +17,7 @@ type EOTSServerHandler struct {
 	t           *testing.T
 	interceptor *signal.Interceptor
 	eotsServer  *service.Server
+	baseDir     string
 }
 
 func NewEOTSServerHandler(t *testing.T, cfg *config.Config) *EOTSServerHandler {
@@ -46,4 +48,6 @@ func (eh *EOTSServerHandler) startServer() {
 
 func (eh *EOTSServerHandler) Stop() {
 	eh.interceptor.RequestShutdown()
+	err := os.RemoveAll(eh.baseDir)
+	require.NoError(eh.t, err)
 }

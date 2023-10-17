@@ -87,7 +87,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	eotsCfg := defaultEOTSConfig(t, testDir)
+	eotsCfg := defaultEOTSConfig(t)
 
 	eh := NewEOTSServerHandler(t, eotsCfg)
 	eh.Start()
@@ -102,26 +102,38 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	require.NoError(t, err)
 
 	tm := &TestManager{
-		BabylonHandler: bh,
-		ValConfig:      cfg,
-		EOTSConfig:     eotsCfg,
-		Va:             valApp,
-		Em:             em,
-		BabylonClient:  bc,
+		BabylonHandler:    bh,
+		EOTSServerHandler: eh,
+		ValConfig:         cfg,
+		EOTSConfig:        eotsCfg,
+		Va:                valApp,
+		Em:                em,
+		BabylonClient:     bc,
 	}
 
-	tm.WaitForNodeStart(t)
+	tm.WaitForServicesStart(t)
 
 	return tm
 }
 
-func (tm *TestManager) WaitForNodeStart(t *testing.T) {
+func (tm *TestManager) WaitForServicesStart(t *testing.T) {
+	// wait for EOTS manager server starts
+	require.Eventually(t, func() bool {
+		err := tm.Em.Ping()
+		return err == nil
 
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("EOTS manager server is started")
+
+	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
 		_, err := tm.BabylonClient.GetStakingParams()
 
 		return err == nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("Babylon node is started")
 }
 
 func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
@@ -190,9 +202,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 	err = os.RemoveAll(tm.ValConfig.BabylonConfig.KeyDirectory)
 	require.NoError(t, err)
 	tm.EOTSServerHandler.Stop()
-	err = os.RemoveAll(tm.EOTSConfig.DatabaseConfig.Path)
-	require.NoError(t, err)
-	err = os.RemoveAll(tm.EOTSConfig.KeyDirectory)
+	err = os.RemoveAll(tm.EOTSServerHandler.baseDir)
 }
 
 func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
@@ -564,14 +574,10 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	return &cfg
 }
 
-func defaultEOTSConfig(t *testing.T, testDir string) *eotsconfig.Config {
+func defaultEOTSConfig(t *testing.T) *eotsconfig.Config {
 	cfg := eotsconfig.DefaultConfig()
 
-	eotsDir := filepath.Join(testDir, "eotsd")
-	err := os.Mkdir(eotsDir, os.ModeDir)
-	require.NoError(t, err)
-
-	err = os.Chmod(eotsDir, 0755)
+	eotsDir, err := baseDir("zEOTSTest")
 	require.NoError(t, err)
 
 	configFile := filepath.Join(eotsDir, "eotsd-test.conf")
@@ -582,13 +588,7 @@ func defaultEOTSConfig(t *testing.T, testDir string) *eotsconfig.Config {
 	cfg.ConfigFile = configFile
 	cfg.LogDir = logDir
 	cfg.KeyDirectory = dataDir
-	cfg.DatabaseConfig.Path = dataDir
-
-	err = os.Mkdir(dataDir, os.ModeDir)
-	require.NoError(t, err)
-
-	err = os.Chmod(dataDir, 0755)
-	require.NoError(t, err)
+	cfg.DatabaseConfig.Path = filepath.Join(eotsDir, "db")
 
 	return &cfg
 }

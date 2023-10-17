@@ -35,6 +35,10 @@ func (r *rpcServer) RegisterWithGrpcServer(grpcServer *grpc.Server) error {
 	return nil
 }
 
+func (r *rpcServer) Ping(ctx context.Context, req *proto.PingRequest) (*proto.PingResponse, error) {
+	return &proto.PingResponse{}, nil
+}
+
 // CreateKey generates and saves an EOTS key
 func (r *rpcServer) CreateKey(ctx context.Context, req *proto.CreateKeyRequest) (
 	*proto.CreateKeyResponse, error) {
@@ -60,7 +64,9 @@ func (r *rpcServer) CreateRandomnessPairList(ctx context.Context, req *proto.Cre
 
 	pubRandBytesList := make([][]byte, 0, len(pubRandList))
 	for _, p := range pubRandList {
-		pubRandBytesList = append(pubRandBytesList, p.Bytes()[:])
+		var prBytes [32]byte
+		p.PutBytesUnchecked(prBytes[:])
+		pubRandBytesList = append(pubRandBytesList, prBytes[:])
 	}
 
 	return &proto.CreateRandomnessPairListResponse{
