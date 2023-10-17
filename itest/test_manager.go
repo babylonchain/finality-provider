@@ -203,6 +203,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	tm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(tm.EOTSServerHandler.baseDir)
+	require.NoError(t, err)
 }
 
 func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {

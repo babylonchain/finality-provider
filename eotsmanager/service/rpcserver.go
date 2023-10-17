@@ -64,9 +64,7 @@ func (r *rpcServer) CreateRandomnessPairList(ctx context.Context, req *proto.Cre
 
 	pubRandBytesList := make([][]byte, 0, len(pubRandList))
 	for _, p := range pubRandList {
-		var prBytes [32]byte
-		p.PutBytesUnchecked(prBytes[:])
-		pubRandBytesList = append(pubRandBytesList, prBytes[:])
+		pubRandBytesList = append(pubRandBytesList, p.Bytes()[:])
 	}
 
 	return &proto.CreateRandomnessPairListResponse{
