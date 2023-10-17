@@ -1,8 +1,10 @@
-package local
+package eotsmanager
 
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"path"
 	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -13,7 +15,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
+	"github.com/sirupsen/logrus"
 
+	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/types"
@@ -24,12 +28,28 @@ const (
 	mnemonicEntropySize = 256
 )
 
+var _ EOTSManager = &LocalEOTSManager{}
+
 type LocalEOTSManager struct {
-	kr keyring.Keyring
-	es *EOTSStore
+	kr     keyring.Keyring
+	es     *EOTSStore
+	logger *logrus.Logger
 }
 
-func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalEOTSManager, error) {
+	keyringDir := eotsCfg.KeyDirectory
+	if keyringDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		keyringDir = path.Join(homeDir, ".eots-manager")
+	}
+
+	ctx := client.Context{}.
+		WithCodec(codec.MakeCodec()).
+		WithKeyringDir(keyringDir)
+
 	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
@@ -46,14 +66,15 @@ func NewLocalEOTSManager(ctx client.Context, eotsCfg *config.Config) (*LocalEOTS
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	es, err := NewEOTSStore(eotsCfg)
+	es, err := NewEOTSStore(eotsCfg.DatabaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
 	return &LocalEOTSManager{
-		kr: kr,
-		es: es,
+		kr:     kr,
+		es:     es,
+		logger: logger,
 	}, nil
 }
 
@@ -105,6 +126,8 @@ func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 	if err := lm.es.saveValidatorKey(eotsPk.MustMarshal(), name); err != nil {
 		return nil, err
 	}
+
+	lm.logger.Infof("successfully created an EOTS key %s: %s", name, eotsPk.MarshalHex())
 
 	return eotsPk.MustMarshal(), nil
 }

@@ -1,17 +1,9 @@
 package eotsmanager
 
 import (
-	"fmt"
-	"os"
-	"path"
-
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/cosmos/cosmos-sdk/client"
 
-	"github.com/babylonchain/btc-validator/codec"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
 	"github.com/babylonchain/btc-validator/eotsmanager/types"
 )
 
@@ -47,26 +39,4 @@ type EOTSManager interface {
 	SignSchnorrSig(uid []byte, msg []byte) (*schnorr.Signature, error)
 
 	Close() error
-}
-
-func NewEOTSManager(cfg *config.Config) (EOTSManager, error) {
-	switch cfg.Mode {
-	case config.TypeLocal:
-		keyringDir := cfg.KeyDirectory
-		if keyringDir == "" {
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				return nil, err
-			}
-			keyringDir = path.Join(homeDir, ".btc-validator")
-		}
-
-		sdkCtx := client.Context{}.
-			WithCodec(codec.MakeCodec()).
-			WithKeyringDir(keyringDir)
-
-		return local.NewLocalEOTSManager(sdkCtx, cfg)
-	default:
-		return nil, fmt.Errorf("unsupported EOTS manager mode")
-	}
 }

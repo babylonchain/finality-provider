@@ -83,10 +83,10 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(cfg)
+	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(cfg)
 	require.NoError(t, err)
 
-	em, err := eotsmanager.NewEOTSManager(eotsCfg)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 	require.NoError(t, err)
 
 	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)

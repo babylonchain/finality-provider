@@ -15,6 +15,7 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
+	"github.com/babylonchain/btc-validator/eotsmanager/client"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
 
@@ -57,13 +58,27 @@ func NewValidatorAppFromConfig(
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", config.ChainName, err)
 	}
 
-	eotsCfg, err := valcfg.AppConfigToEOTSManagerConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	em, err := eotsmanager.NewEOTSManager(eotsCfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create EOTS manager: %w", err)
+	// if the EOTSManagerAddress is empty, run a local EOTS manager;
+	// otherwise connect a remote one with a gRPC client
+	var em eotsmanager.EOTSManager
+	if config.EOTSManagerAddress == "" {
+		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		em, err = eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EOTS manager locally: %w", err)
+		}
+
+		logger.Info("running EOTS manager locally")
+	} else {
+		em, err = client.NewEOTSManagerGRpcClient(config.EOTSManagerAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
+		}
+		// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
+		logger.Infof("successfully connected to a remote EOTS manager at %s", config.EOTSManagerAddress)
 	}
 
 	return NewValidatorApp(config, cc, em, logger)

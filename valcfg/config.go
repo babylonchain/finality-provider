@@ -16,6 +16,8 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/sirupsen/logrus"
+
+	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 )
 
 const (
@@ -48,9 +50,10 @@ var (
 
 	DefaultConfigFile = filepath.Join(DefaultValdDir, defaultConfigFileName)
 
-	defaultDataDir         = filepath.Join(DefaultValdDir, defaultDataDirname)
-	defaultLogDir          = filepath.Join(DefaultValdDir, defaultLogDirname)
-	defaultActiveNetParams = chaincfg.SimNetParams
+	defaultDataDir            = filepath.Join(DefaultValdDir, defaultDataDirname)
+	defaultLogDir             = filepath.Join(DefaultValdDir, defaultLogDirname)
+	defaultActiveNetParams    = chaincfg.SimNetParams
+	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
 )
 
 // Config is the main config for the vald cli command
@@ -74,6 +77,7 @@ type Config struct {
 	FastSyncInterval               time.Duration `long:"fastsyncinterval" description:"The interval between each try of fast sync, which is disabled if the value is 0"`
 	FastSyncLimit                  uint64        `long:"fastsynclimit" description:"The maximum number of blocks to catch up for each fast sync"`
 	FastSyncGap                    uint64        `long:"fastsyncgap" description:"The block gap that will trigger the fast sync"`
+	EOTSManagerAddress             string        `long:"eotsmanageraddress" description:"The address of the remote EOTS manager; Empty if the EOTS manager is running locally"`
 
 	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
@@ -131,6 +135,7 @@ func DefaultConfig() Config {
 		MaxSubmissionRetries:           defaultMaxSubmissionRetries,
 		BitcoinNetwork:                 defaultBitcoinNetwork,
 		ActiveNetParams:                defaultActiveNetParams,
+		EOTSManagerAddress:             defaultEOTSManagerAddress,
 	}
 }
 
@@ -144,6 +149,25 @@ type usageError struct {
 // NOTE: This is part of the error interface.
 func (u *usageError) Error() string {
 	return u.err.Error()
+}
+
+func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) {
+	dbCfg, err := eotscfg.NewDatabaseConfig(
+		appCfg.EOTSManagerConfig.DBBackend,
+		appCfg.EOTSManagerConfig.DBPath,
+		appCfg.EOTSManagerConfig.DBName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &eotscfg.Config{
+		LogLevel:       appCfg.DebugLevel,
+		EOTSDir:        appCfg.ValdDir,
+		ConfigFile:     appCfg.ConfigFile,
+		KeyDirectory:   appCfg.BabylonConfig.KeyDirectory,
+		KeyringBackend: appCfg.BabylonConfig.KeyringBackend,
+		DatabaseConfig: dbCfg,
+	}, nil
 }
 
 // LoadConfig initializes and parses the config using a config file and command

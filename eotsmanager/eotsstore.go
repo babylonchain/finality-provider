@@ -1,4 +1,4 @@
-package local
+package eotsmanager
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ type EOTSStore struct {
 	s store.Store
 }
 
-func NewEOTSStore(cfg *config.Config) (*EOTSStore, error) {
+func NewEOTSStore(cfg *config.DatabaseConfig) (*EOTSStore, error) {
 	s, err := openStore(cfg)
 	if err != nil {
 		return nil, err
@@ -108,10 +108,10 @@ func getValidatorKeyNameKey(pk []byte) []byte {
 	return append([]byte(validatorKeyNamePrefix), pk...)
 }
 
-func openStore(dbcfg *config.Config) (store.Store, error) {
-	switch dbcfg.DBBackend {
+func openStore(dbcfg *config.DatabaseConfig) (store.Store, error) {
+	switch dbcfg.Backend {
 	case "bbolt":
-		return store.NewBboltStore(dbcfg.DBPath, dbcfg.DBName)
+		return store.NewBboltStore(dbcfg.Path, dbcfg.Name)
 	default:
 		return nil, fmt.Errorf("unsupported database type")
 	}

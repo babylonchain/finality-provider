@@ -1,4 +1,4 @@
-package local_test
+package eotsmanager_test
 
 import (
 	"math/rand"
@@ -6,30 +6,30 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/types"
 	"github.com/babylonchain/btc-validator/testutil"
 )
 
-// FuzzCreateValidator tests the creation of validator
-func FuzzCreateValidator(f *testing.F) {
+// FuzzCreateKey tests the creation of an EOTS key
+func FuzzCreateKey(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
 		valName := testutil.GenRandomHexStr(r, 4)
-		sdkCtx := testutil.GenSdkContext(r, t)
 		eotsCfg := testutil.GenEOTSConfig(r, t)
 		defer func() {
-			err := os.RemoveAll(sdkCtx.KeyringDir)
+			err := os.RemoveAll(eotsCfg.KeyDirectory)
 			require.NoError(t, err)
-			err = os.RemoveAll(eotsCfg.DBPath)
+			err = os.RemoveAll(eotsCfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
+		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, "")
@@ -54,16 +54,15 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		valName := testutil.GenRandomHexStr(r, 4)
-		sdkCtx := testutil.GenSdkContext(r, t)
 		eotsCfg := testutil.GenEOTSConfig(r, t)
 		defer func() {
-			err := os.RemoveAll(sdkCtx.KeyringDir)
+			err := os.RemoveAll(eotsCfg.KeyDirectory)
 			require.NoError(t, err)
-			err = os.RemoveAll(eotsCfg.DBPath)
+			err = os.RemoveAll(eotsCfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
 
-		lm, err := local.NewLocalEOTSManager(sdkCtx, eotsCfg)
+		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, "")
