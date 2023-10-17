@@ -111,7 +111,9 @@ func (app *ValidatorApp) eventLoop() {
 
 			// return to the caller
 			ev.successResponse <- &RegisterValidatorResponse{
-				TxHash: ev.txHash,
+				bbnPubKey: valStored.GetBabylonPK(),
+				btcPubKey: valStored.MustGetBIP340BTCPK(),
+				TxHash:    ev.txHash,
 			}
 
 		case <-app.eventQuit:

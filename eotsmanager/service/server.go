@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -52,42 +51,26 @@ func (s *Server) RunUntilShutdown() error {
 		s.logger.Info("Shutdown complete")
 	}()
 
-	mkErr := func(format string, args ...interface{}) error {
-		logFormat := strings.ReplaceAll(format, "%w", "%v")
-		s.logger.Errorf("Shutting down because error in main "+
-			"method: "+logFormat, args...)
-		return fmt.Errorf(format, args...)
-	}
-
+	listenAddr := s.cfg.RpcListener
 	// we create listeners from the RPCListeners defined
 	// in the config.
-	grpcListeners := make([]net.Listener, 0)
-	for _, grpcEndpoint := range s.cfg.RpcListeners {
-		// Start a gRPC server listening for HTTP/2
-		// connections.
-		lis, err := net.Listen(parseNetwork(grpcEndpoint), grpcEndpoint.String())
-		if err != nil {
-			return mkErr("unable to listen on %s: %v",
-				grpcEndpoint, err)
-		}
-		defer lis.Close()
-
-		grpcListeners = append(grpcListeners, lis)
+	lis, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", listenAddr, err)
 	}
+	defer lis.Close()
 
 	grpcServer := grpc.NewServer()
 	defer grpcServer.Stop()
 
-	err := s.rpcServer.RegisterWithGrpcServer(grpcServer)
-	if err != nil {
-		return mkErr("error registering gRPC server: %v", err)
+	if err := s.rpcServer.RegisterWithGrpcServer(grpcServer); err != nil {
+		return fmt.Errorf("failed to register gRPC server: %w", err)
 	}
 
 	// All the necessary components have been registered, so we can
 	// actually start listening for requests.
-	err = s.startGrpcListen(grpcServer, grpcListeners)
-	if err != nil {
-		return mkErr("error starting gRPC listener: %v", err)
+	if err := s.startGrpcListen(grpcServer, []net.Listener{lis}); err != nil {
+		return fmt.Errorf("failed to start gRPC listener: %v", err)
 	}
 
 	s.logger.Infof("EOTS Manager Daemon is fully active!")
@@ -123,22 +106,4 @@ func (s *Server) startGrpcListen(grpcServer *grpc.Server, listeners []net.Listen
 	wg.Wait()
 
 	return nil
-}
-
-// parseNetwork parses the network type of the given address.
-func parseNetwork(addr net.Addr) string {
-	switch addr := addr.(type) {
-	// TCP addresses resolved through net.ResolveTCPAddr give a default
-	// network of "tcp", so we'll map back the correct network for the given
-	// address. This ensures that we can listen on the correct interface
-	// (IPv4 vs IPv6).
-	case *net.TCPAddr:
-		if addr.IP.To4() != nil {
-			return "tcp4"
-		}
-		return "tcp6"
-
-	default:
-		return addr.Network()
-	}
 }

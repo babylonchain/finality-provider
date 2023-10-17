@@ -7,8 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
 	"github.com/babylonchain/btc-validator/eotsmanager/service"
 )
 
@@ -23,7 +23,7 @@ func NewEOTSServerHandler(t *testing.T, cfg *config.Config) *EOTSServerHandler {
 	require.NoError(t, err)
 
 	logger := logrus.New()
-	eotsManager, err := local.NewLocalEOTSManager(cfg, logger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, logger)
 	require.NoError(t, err)
 
 	eotsServer := service.NewEOTSManagerServer(cfg, logger, eotsManager, shutdownInterceptor)

@@ -7,8 +7,8 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/signal"
 
+	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
 	eotsservice "github.com/babylonchain/btc-validator/eotsmanager/service"
 )
 
@@ -33,7 +33,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	eotsManager, err := local.NewLocalEOTSManager(cfg, cfgLogger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, cfgLogger)
 	if err != nil {
 		cfgLogger.Errorf("failed to create EOTS manager: %v", err)
 		os.Exit(1)

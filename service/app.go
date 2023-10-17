@@ -16,7 +16,6 @@ import (
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/client"
-	"github.com/babylonchain/btc-validator/eotsmanager/local"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/valcfg"
 
@@ -67,7 +66,7 @@ func NewValidatorAppFromConfig(
 		if err != nil {
 			return nil, err
 		}
-		em, err = local.NewLocalEOTSManager(eotsCfg, logger)
+		em, err = eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EOTS manager locally: %w", err)
 		}
