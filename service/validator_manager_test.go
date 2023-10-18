@@ -120,7 +120,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	// create registered validator
 	keyName := datagen.GenRandomHexStr(r, 10)
 	chainID := datagen.GenRandomHexStr(r, 10)
-	kc, err := val.NewChainKeyringControllerWithKeyring(kr, keyName, chainID)
+	kc, err := val.NewChainKeyringControllerWithKeyring(kr, keyName)
 	require.NoError(t, err)
 	btcPkBytes, err := em.CreateKey(keyName, "")
 	require.NoError(t, err)

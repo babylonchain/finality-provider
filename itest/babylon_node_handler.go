@@ -134,7 +134,6 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		juryKeyName,
-		chainID,
 		"test",
 	)
 	require.NoError(t, err)
@@ -208,7 +207,7 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 }
 
 func (w *BabylonNodeHandler) GetJuryKeyName() string {
-	return val.GetKeyName(w.babylonNode.chainID, w.babylonNode.juryKeyName)
+	return w.babylonNode.juryKeyName
 }
 
 func (w *BabylonNodeHandler) GetSlashingAddress() string {

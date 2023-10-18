@@ -125,7 +125,7 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 
 		// create a Jury key pair in the keyring
-		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName, cfg.BabylonConfig.ChainID)
+		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName)
 		require.NoError(t, err)
 		sdkJurPk, err := juryKc.CreateChainKey()
 		require.NoError(t, err)

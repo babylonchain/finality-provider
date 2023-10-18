@@ -25,7 +25,7 @@ func FuzzCreatePoP(f *testing.F) {
 		sdkCtx := testutil.GenSdkContext(r, t)
 
 		chainID := testutil.GenRandomHexStr(r, 4)
-		kc, err := val.NewChainKeyringController(sdkCtx, keyName, chainID, "test")
+		kc, err := val.NewChainKeyringController(sdkCtx, keyName, "test")
 		require.NoError(t, err)
 
 		cfg := testutil.GenEOTSConfig(r, t)

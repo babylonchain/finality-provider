@@ -69,7 +69,6 @@ func createJuryKey(ctx *cli.Context) error {
 	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		ctx.String(keyNameFlag),
-		ctx.String(chainIdFlag),
 		ctx.String(keyringBackendFlag),
 	)
 	if err != nil {
