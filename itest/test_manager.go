@@ -27,7 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/eotsmanager"
+	"github.com/babylonchain/btc-validator/eotsmanager/client"
+	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -41,12 +42,14 @@ var (
 var btcNetworkParams = &chaincfg.SimNetParams
 
 type TestManager struct {
-	Wg             sync.WaitGroup
-	BabylonHandler *BabylonNodeHandler
-	Config         *valcfg.Config
-	Va             *service.ValidatorApp
-	Em             eotsmanager.EOTSManager
-	BabylonClient  *clientcontroller.BabylonController
+	Wg                sync.WaitGroup
+	BabylonHandler    *BabylonNodeHandler
+	EOTSServerHandler *EOTSServerHandler
+	ValConfig         *valcfg.Config
+	EOTSConfig        *eotsconfig.Config
+	Va                *service.ValidatorApp
+	EOTSClient        *client.EOTSManagerGRpcClient
+	BabylonClient     *clientcontroller.BabylonController
 }
 
 type TestDelegationData struct {
@@ -83,38 +86,44 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
-	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(cfg)
+	eotsCfg := defaultEOTSConfig(t)
+
+	eh := NewEOTSServerHandler(t, eotsCfg)
+	eh.Start()
+
+	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
-	require.NoError(t, err)
-
-	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
+	valApp, err := service.NewValidatorApp(cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
 
 	err = valApp.Start()
 	require.NoError(t, err)
 
 	tm := &TestManager{
-		BabylonHandler: bh,
-		Config:         cfg,
-		Va:             valApp,
-		Em:             em,
-		BabylonClient:  bc,
+		BabylonHandler:    bh,
+		EOTSServerHandler: eh,
+		ValConfig:         cfg,
+		EOTSConfig:        eotsCfg,
+		Va:                valApp,
+		EOTSClient:        eotsCli,
+		BabylonClient:     bc,
 	}
 
-	tm.WaitForNodeStart(t)
+	tm.WaitForServicesStart(t)
 
 	return tm
 }
 
-func (tm *TestManager) WaitForNodeStart(t *testing.T) {
-
+func (tm *TestManager) WaitForServicesStart(t *testing.T) {
+	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
 		_, err := tm.BabylonClient.GetStakingParams()
 
 		return err == nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("Babylon node is started")
 }
 
 func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
@@ -178,9 +187,12 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
+	err = os.RemoveAll(tm.ValConfig.DatabaseConfig.Path)
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
+	err = os.RemoveAll(tm.ValConfig.BabylonConfig.KeyDirectory)
+	require.NoError(t, err)
+	tm.EOTSServerHandler.Stop()
+	err = os.RemoveAll(tm.EOTSServerHandler.baseDir)
 	require.NoError(t, err)
 }
 
@@ -212,7 +224,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCDelegations(
 			bstypes.BTCDelegationStatus_PENDING,
-			tm.Config.JuryModeConfig.DelegationLimit,
+			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {
 			return false
@@ -277,6 +289,42 @@ func CheckDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, 
 	return allChecked
 }
 
+func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
+	// we need to ensure votes are collected at the given height
+	require.Eventually(t, func() bool {
+		votes, err := tm.BabylonClient.QueryVotesAtHeight(height)
+		if err != nil {
+			t.Logf("failed to get the votes at height %v: %s", height, err.Error())
+			return false
+		}
+		return len(votes) == num
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// as the votes have been collected, the block should be finalized
+	require.Eventually(t, func() bool {
+		finalized, err := tm.BabylonClient.QueryBlockFinalization(height)
+		if err != nil {
+			t.Logf("failed to query block at height %v: %s", height, err.Error())
+			return false
+		}
+		return finalized
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func (tm *TestManager) WaitForValVoteCast(t *testing.T, valIns *service.ValidatorInstance) uint64 {
+	var lastVotedHeight uint64
+	require.Eventually(t, func() bool {
+		if valIns.GetLastVotedHeight() > 0 {
+			lastVotedHeight = valIns.GetLastVotedHeight()
+			return true
+		} else {
+			return false
+		}
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return lastVotedHeight
+}
+
 func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
 	var (
 		blocks []*types.BlockInfo
@@ -320,7 +368,7 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 
 	t.Log("restarting the validator instance")
 
-	tm.Config.ValidatorModeConfig.AutoChainScanningMode = true
+	tm.ValConfig.ValidatorModeConfig.AutoChainScanningMode = true
 	err = valIns.Start()
 	require.NoError(t, err)
 }
@@ -338,7 +386,7 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
-		&tm.Config.ActiveNetParams,
+		&tm.ValConfig.ActiveNetParams,
 	)
 	require.NoError(t, err)
 
@@ -391,7 +439,7 @@ func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.Em.KeyRecord(valPk, "")
+	record, err := tm.EOTSClient.KeyRecord(valPk, "")
 	require.NoError(t, err)
 	return record.PrivKey
 }
@@ -549,6 +597,25 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	cfg.JuryMode = isJury
 	cfg.JuryModeConfig.QueryInterval = 7 * time.Second
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
+
+	return &cfg
+}
+
+func defaultEOTSConfig(t *testing.T) *eotsconfig.Config {
+	cfg := eotsconfig.DefaultConfig()
+
+	eotsDir, err := baseDir("zEOTSTest")
+	require.NoError(t, err)
+
+	configFile := filepath.Join(eotsDir, "eotsd-test.conf")
+	dataDir := filepath.Join(eotsDir, "data")
+	logDir := filepath.Join(eotsDir, "log")
+
+	cfg.EOTSDir = eotsDir
+	cfg.ConfigFile = configFile
+	cfg.LogDir = logDir
+	cfg.KeyDirectory = dataDir
+	cfg.DatabaseConfig.Path = filepath.Join(eotsDir, "db")
 
 	return &cfg
 }
