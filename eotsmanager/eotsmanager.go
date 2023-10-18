@@ -8,9 +8,6 @@ import (
 )
 
 type EOTSManager interface {
-	// Ping checks whether the EOTS manager is available
-	Ping() error
-
 	// CreateKey generates a key pair at the given name and persists it in storage.
 	// The key pair is formatted by BIP-340 (Schnorr Signatures)
 	// It fails if there is an existing key Info with the same name or public key.

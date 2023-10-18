@@ -78,10 +78,6 @@ func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalE
 	}, nil
 }
 
-func (lm *LocalEOTSManager) Ping() error {
-	return nil
-}
-
 func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 	if lm.keyExists(name) {
 		return nil, eotstypes.ErrValidatorAlreadyExisted

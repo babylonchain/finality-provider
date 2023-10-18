@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/service"
@@ -49,7 +48,7 @@ type TestManager struct {
 	ValConfig         *valcfg.Config
 	EOTSConfig        *eotsconfig.Config
 	Va                *service.ValidatorApp
-	Em                eotsmanager.EOTSManager
+	EOTSClient        *client.EOTSManagerGRpcClient
 	BabylonClient     *clientcontroller.BabylonController
 }
 
@@ -92,10 +91,10 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	eh := NewEOTSServerHandler(t, eotsCfg)
 	eh.Start()
 
-	em, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
+	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	valApp, err := service.NewValidatorApp(cfg, bc, em, logger)
+	valApp, err := service.NewValidatorApp(cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
 
 	err = valApp.Start()
@@ -107,7 +106,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 		ValConfig:         cfg,
 		EOTSConfig:        eotsCfg,
 		Va:                valApp,
-		Em:                em,
+		EOTSClient:        eotsCli,
 		BabylonClient:     bc,
 	}
 
@@ -117,15 +116,6 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 }
 
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
-	// wait for EOTS manager server starts
-	require.Eventually(t, func() bool {
-		err := tm.Em.Ping()
-		return err == nil
-
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	t.Logf("EOTS manager server is started")
-
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
 		_, err := tm.BabylonClient.GetStakingParams()
@@ -449,7 +439,7 @@ func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.Em.KeyRecord(valPk, "")
+	record, err := tm.EOTSClient.KeyRecord(valPk, "")
 	require.NoError(t, err)
 	return record.PrivKey
 }
