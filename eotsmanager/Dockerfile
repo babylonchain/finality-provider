@@ -19,7 +19,7 @@ ENV GOPRIVATE=github.com/babylonchain/babylon-private
 # Build
 WORKDIR /go/src/github.com/babylonchain/eots-manager
 # Cache dependencies
-COPY go.mod go.sum /go/src/github.com/babylonchain/eots-manager/
+COPY ./../go.mod ./../go.sum /go/src/github.com/babylonchain/eots-manager/
 RUN --mount=type=secret,id=sshKey,target=/root/.ssh/id_rsa go mod download
 # Copy the rest of the files
 COPY ./ /go/src/github.com/babylonchain/eots-manager/
