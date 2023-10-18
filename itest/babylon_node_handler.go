@@ -18,23 +18,6 @@ import (
 	"github.com/babylonchain/btc-validator/val"
 )
 
-func baseDir() (string, error) {
-	tempPath := os.TempDir()
-
-	tempName, err := os.MkdirTemp(tempPath, "zBabylonTest")
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Chmod(tempName, 0755)
-
-	if err != nil {
-		return "", err
-	}
-
-	return tempName, nil
-}
-
 type babylonNode struct {
 	cmd          *exec.Cmd
 	pidFile      string
@@ -129,7 +112,7 @@ type BabylonNodeHandler struct {
 }
 
 func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
-	testDir, err := baseDir()
+	testDir, err := baseDir("zBabylonTest")
 	require.NoError(t, err)
 	defer func() {
 		if err != nil {

@@ -103,8 +103,10 @@ func TestValidatorLifeCycle(t *testing.T) {
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
-	// check there's a block finalized
-	_ = tm.WaitForNFinalizedBlocks(t, 1)
+	// check the last voted block is finalized
+	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
+	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
+	t.Logf("the block at height %v is finalized", lastVotedHeight)
 }
 
 // TestMultipleValidators tests starting with multiple validators
@@ -199,7 +201,11 @@ func TestDoubleSigning(t *testing.T) {
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
-	// check there's a block finalized
+	// check the last voted block is finalized
+	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
+	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
+	t.Logf("the block at height %v is finalized", lastVotedHeight)
+
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 
 	// attack: manually submit a finality vote over a conflicting block
@@ -242,12 +248,16 @@ func TestFastSync(t *testing.T) {
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
-	// check there's a block finalized
+	// check the last voted block is finalized
+	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
+	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
+	t.Logf("the block at height %v is finalized", lastVotedHeight)
+	
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
-	tm.Config.FastSyncGap = uint64(n)
+	tm.ValConfig.FastSyncGap = uint64(n)
 	tm.StopAndRestartValidatorAfterNBlocks(t, n, valIns)
 
 	// check there are n+1 blocks finalized
@@ -306,7 +316,7 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCDelegations(
 			btcstakingtypes.BTCDelegationStatus_PENDING,
-			tm.Config.JuryModeConfig.DelegationLimit,
+			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {
 			return false

@@ -33,6 +33,17 @@ func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error)
 	}, nil
 }
 
+func (c *EOTSManagerGRpcClient) Ping() error {
+	req := &proto.PingRequest{}
+
+	_, err := c.client.Ping(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *EOTSManagerGRpcClient) CreateKey(name, passPhrase string) ([]byte, error) {
 	req := &proto.CreateKeyRequest{Name: name, PassPhrase: passPhrase}
 	res, err := c.client.CreateKey(context.Background(), req)
@@ -57,9 +68,9 @@ func (c *EOTSManagerGRpcClient) CreateRandomnessPairList(uid, chainID []byte, st
 
 	pubRandFieldValList := make([]*btcec.FieldVal, 0, len(res.PubRandList))
 	for _, r := range res.PubRandList {
-		var fieldVal *btcec.FieldVal
+		var fieldVal btcec.FieldVal
 		fieldVal.SetByteSlice(r)
-		pubRandFieldValList = append(pubRandFieldValList, fieldVal)
+		pubRandFieldValList = append(pubRandFieldValList, &fieldVal)
 	}
 
 	return pubRandFieldValList, nil
@@ -98,10 +109,10 @@ func (c *EOTSManagerGRpcClient) SignEOTS(uid, chaiID, msg []byte, height uint64)
 		return nil, err
 	}
 
-	var s *btcec.ModNScalar
+	var s btcec.ModNScalar
 	s.SetByteSlice(res.Sig)
 
-	return s, nil
+	return &s, nil
 }
 
 func (c *EOTSManagerGRpcClient) SignSchnorrSig(uid, msg []byte) (*schnorr.Signature, error) {

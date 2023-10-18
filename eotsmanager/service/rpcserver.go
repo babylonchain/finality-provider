@@ -35,6 +35,10 @@ func (r *rpcServer) RegisterWithGrpcServer(grpcServer *grpc.Server) error {
 	return nil
 }
 
+func (r *rpcServer) Ping(ctx context.Context, req *proto.PingRequest) (*proto.PingResponse, error) {
+	return &proto.PingResponse{}, nil
+}
+
 // CreateKey generates and saves an EOTS key
 func (r *rpcServer) CreateKey(ctx context.Context, req *proto.CreateKeyRequest) (
 	*proto.CreateKeyResponse, error) {

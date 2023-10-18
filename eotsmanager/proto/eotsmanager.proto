@@ -5,6 +5,8 @@ package proto;
 option go_package = "github.com/babylonchain/btc-validator/eotsmanager/proto";
 
 service EOTSManager {
+  rpc Ping (PingRequest) returns (PingResponse);
+
   // CreateKey generates and saves an EOTS key
   rpc CreateKey (CreateKeyRequest)
       returns (CreateKeyResponse);
@@ -25,6 +27,10 @@ service EOTSManager {
   rpc SignSchnorrSig (SignSchnorrSigRequest)
       returns (SignSchnorrSigResponse);
 }
+
+message PingRequest {}
+
+message PingResponse {}
 
 message CreateKeyRequest {
   // name is the identifier key in keyring
