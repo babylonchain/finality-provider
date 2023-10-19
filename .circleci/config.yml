@@ -59,7 +59,7 @@ jobs:
           push-image: false
           dockerfile: Dockerfile
           path: ./eotsmanager
-          build-path: ./eotsmanager
+          build-path: ./
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
           repo: "eotsmanager"
           extra-build-args: "--secret id=sshKey,src=/home/circleci/.ssh/$DEPLOY_KEY_NAME"
