@@ -103,7 +103,7 @@ func NewValidatorApp(
 	}
 
 	if config.JuryMode {
-		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.JuryModeConfig.JuryKeyName, config.BabylonConfig.ChainID)
+		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.JuryModeConfig.JuryKeyName)
 		if err != nil {
 			return nil, err
 		}
@@ -376,7 +376,7 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 }
 
 func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
-	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.JuryModeConfig.JuryKeyName, app.config.BabylonConfig.ChainID)
+	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.JuryModeConfig.JuryKeyName)
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +510,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, req.chainID)
+	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName)
 	if err != nil {
 		return nil, err
 	}
