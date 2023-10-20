@@ -2,10 +2,8 @@ package eotsmanager
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"path"
-	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -14,13 +12,15 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/go-bip39"
+	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/eotsmanager/randgenerator"
 	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
-	"github.com/babylonchain/btc-validator/types"
 )
 
 const (
@@ -132,55 +132,28 @@ func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 	return eotsPk.MustMarshal(), nil
 }
 
-func (lm *LocalEOTSManager) CreateRandomnessPairListWithExistenceCheck(valPk []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error) {
-	// check whether the randomness is created already
-	for i := uint32(0); i < num; i++ {
-		height := startHeight + uint64(i)
-		exists, err := lm.es.randPairExists(valPk, chainID, height)
-		if err != nil {
-			return nil, err
-		}
-		if exists {
-			return nil, eotstypes.ErrSchnorrRandomnessAlreadyCreated
-		}
-	}
-
-	return lm.CreateRandomnessPairList(valPk, chainID, startHeight, num)
-}
-
+// TODO the current implementation is a PoC, which does not contain any anti-slasher mechanism
+//
+//	a simple anti-slasher mechanism could be that the manager remembers the tuple (valPk, chainID, height) or
+//	the hash of each generated randomness and return error if the same randomness is requested tweice
 func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 
-	// TODO improve the security of randomness generation if concerned
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	for i := uint32(0); i < num; i++ {
-		// generate randomness pair
-		eotsSR, eotsPR, err := eots.RandGen(r)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate randomness pair: %w", err)
-		}
-
-		// persists randomness pair
 		height := startHeight + uint64(i)
-		privRand := eotsSR.Bytes()
-		pubRand := eotsPR.Bytes()
-		randPair, err := types.NewSchnorrRandPair(privRand[:], pubRand[:])
+		_, pubRand, err := lm.getRandomnessPair(valPk, chainID, height)
 		if err != nil {
-			return nil, fmt.Errorf("invalid Schnorr randomness")
-		}
-		if err := lm.es.saveRandPair(valPk, chainID, height, randPair); err != nil {
-			return nil, fmt.Errorf("failed to save randomness pair: %w", err)
+			return nil, err
 		}
 
-		prList = append(prList, eotsPR)
+		prList = append(prList, pubRand)
 	}
 
 	return prList, nil
 }
 
 func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, height uint64) (*btcec.ModNScalar, error) {
-	privRand, err := lm.getPrivRandomness(valPk, chainID, height)
+	privRand, _, err := lm.getRandomnessPair(valPk, chainID, height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private randomness: %w", err)
 	}
@@ -206,20 +179,16 @@ func (lm *LocalEOTSManager) Close() error {
 	return lm.es.Close()
 }
 
-func (lm *LocalEOTSManager) getPrivRandomness(valPk []byte, chainID []byte, height uint64) (*eots.PrivateRand, error) {
-	randPair, err := lm.es.getRandPair(valPk, chainID, height)
+// getRandomnessPair returns a randomness pair generated based on the given validator key, chainID and height
+func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64) (*eots.PrivateRand, *secp256k12.FieldVal, error) {
+	record, err := lm.KeyRecord(valPk, "")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	if len(randPair.SecRand) != types.SchnorrRandomnessLength {
-		return nil, fmt.Errorf("the private randomness should be 32 bytes")
-	}
-
-	privRand := new(eots.PrivateRand)
-	privRand.SetByteSlice(randPair.SecRand)
-
-	return privRand, nil
+	privRand := randgenerator.GenerateRandomness(record.PrivKey.Serialize(), append(sdk.Uint64ToBigEndian(height), chainID...))
+	var j secp256k12.JacobianPoint
+	secp256k12.NewPrivateKey(privRand).PubKey().AsJacobian(&j)
+	return privRand, &j.X, nil
 }
 
 // TODO: we ignore passPhrase in local implementation for now
