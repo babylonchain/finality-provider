@@ -12,9 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/go-bip39"
-	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/codec"
@@ -180,15 +178,13 @@ func (lm *LocalEOTSManager) Close() error {
 }
 
 // getRandomnessPair returns a randomness pair generated based on the given validator key, chainID and height
-func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64) (*eots.PrivateRand, *secp256k12.FieldVal, error) {
+func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64) (*eots.PrivateRand, *eots.PublicRand, error) {
 	record, err := lm.KeyRecord(valPk, "")
 	if err != nil {
 		return nil, nil, err
 	}
-	privRand := randgenerator.GenerateRandomness(record.PrivKey.Serialize(), append(sdk.Uint64ToBigEndian(height), chainID...))
-	var j secp256k12.JacobianPoint
-	secp256k12.NewPrivateKey(privRand).PubKey().AsJacobian(&j)
-	return privRand, &j.X, nil
+	privRand, pubRand := randgenerator.GenerateRandomness(record.PrivKey.Serialize(), chainID, height)
+	return privRand, pubRand, nil
 }
 
 // TODO: we ignore passPhrase in local implementation for now
