@@ -837,11 +837,16 @@ func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP34
 	return res.BtcPks, nil
 }
 
-func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
 	// TODO Check what is the order of returned delegations. Ideally we would return
 	// delegation here from the first one which received undelegation
+
+	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
 	return bc.getNValidatorDelegationsMatchingCriteria(
-		valBtcPk,
+		valPubKey,
 		max,
 		func(del *btcstakingtypes.BTCDelegation) bool {
 			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig == nil

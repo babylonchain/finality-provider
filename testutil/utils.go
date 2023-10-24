@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"testing"
 
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/golang/mock/gomock"
@@ -25,9 +24,6 @@ func ZeroCommissionRate() *sdktypes.Dec {
 func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
 	mockClientController := mocks.NewMockClientController(ctl)
-	status := &coretypes.ResultStatus{
-		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(currentHeight)},
-	}
 
 	for i := startHeight + 1; i <= currentHeight; i++ {
 		resBlock := &types.BlockInfo{
@@ -42,7 +38,6 @@ func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, curr
 		LastCommitHash: GenRandomByteArray(r, 32),
 	}
 
-	mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 	mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
 

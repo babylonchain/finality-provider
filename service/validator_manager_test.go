@@ -8,7 +8,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -46,10 +45,6 @@ func FuzzStatusUpdate(f *testing.F) {
 			LastCommitHash: datagen.GenRandomByteArray(r, 32),
 		}
 		mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
-		status := &coretypes.ResultStatus{
-			SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(currentHeight)},
-		}
-		mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 		mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()

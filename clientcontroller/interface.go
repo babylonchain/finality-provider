@@ -3,7 +3,6 @@ package clientcontroller
 import (
 	"fmt"
 
-	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/sirupsen/logrus"
 
@@ -88,7 +87,7 @@ type ClientController interface {
 	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
 	// - already received unbodning transaction on babylon chain
 	// - not received validator signature yet
-	QueryBTCValidatorUnbondingDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error)
+	QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*btcstakingtypes.BTCDelegation, error)
 
 	Close() error
 }
