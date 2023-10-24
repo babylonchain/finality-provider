@@ -10,7 +10,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -177,8 +176,13 @@ func FuzzAddJurySig(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().QueryBTCDelegations(bstypes.BTCDelegationStatus_PENDING, gomock.Any()).
 			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
-		mockClientController.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitJurySig(
+			delegation.ValBtcPk.MustMarshal(),
+			delegation.BtcPk.MustMarshal(),
+			stakingMsgTx.TxHash().String(),
+			gomock.Any(),
+		).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)

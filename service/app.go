@@ -251,7 +251,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
-	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, jurySig)
+	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk.MustMarshal(), btcDel.BtcPk.MustMarshal(), stakingTxHash, jurySig.MustMarshal())
 
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
@@ -345,11 +345,11 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
 	res, err := app.cc.SubmitJuryUnbondingSigs(
-		btcDel.ValBtcPk,
-		btcDel.BtcPk,
+		btcDel.ValBtcPk.MustMarshal(),
+		btcDel.BtcPk.MustMarshal(),
 		stakingTxHash,
-		juryUnbondingSig,
-		jurySlashingUnbondingSig,
+		juryUnbondingSig.MustMarshal(),
+		jurySlashingUnbondingSig.MustMarshal(),
 	)
 
 	if err != nil {

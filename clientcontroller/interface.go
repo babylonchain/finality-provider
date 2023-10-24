@@ -32,19 +32,19 @@ type ClientController interface {
 	// it returns tx hash and error
 	CommitPubRandList(valPk []byte, startHeight uint64, pubRandList [][]byte, sig []byte) (*types.TxResponse, error)
 
-	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
+	// SubmitJurySig submits the Jury signature to the consumer chain if the daemon runs in Jury mode
 	// it returns tx hash and error
-	SubmitJurySig(btcPubKey *bbntypes.BIP340PubKey, delPubKey *bbntypes.BIP340PubKey, stakingTxHash string, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)
+	SubmitJurySig(valPk []byte, delPk []byte, stakingTxHash string, sig []byte) (*types.TxResponse, error)
 
-	// SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
+	// SubmitJuryUnbondingSigs submits the Jury signatures to the consumer chain if the daemon runs in Jury mode
 	// it returns tx hash and error
 	SubmitJuryUnbondingSigs(
-		btcPubKey *bbntypes.BIP340PubKey,
-		delPubKey *bbntypes.BIP340PubKey,
+		valPk []byte,
+		delPk []byte,
 		stakingTxHash string,
-		unbondingSig *bbntypes.BIP340Signature,
-		slashUnbondingSig *bbntypes.BIP340Signature,
-	) (*provider.RelayerTxResponse, error)
+		unbondingSig []byte,
+		slashUnbondingSig []byte,
+	) (*types.TxResponse, error)
 
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 	SubmitFinalitySig(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)

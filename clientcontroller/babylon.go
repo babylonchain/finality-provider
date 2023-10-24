@@ -371,13 +371,28 @@ func (bc *BabylonController) CommitPubRandList(valPk []byte, startHeight uint64,
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitJurySig(btcPubKey *bbntypes.BIP340PubKey, delPubKey *bbntypes.BIP340PubKey, stakingTxHash string, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) SubmitJurySig(valPk []byte, delPk []byte, stakingTxHash string, sig []byte) (*types.TxResponse, error) {
+	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	delPubKey, err := bbntypes.NewBIP340PubKey(delPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	bip340Sig, err := bbntypes.NewBIP340Signature(sig)
+	if err != nil {
+		return nil, fmt.Errorf("invalid BIP340 sig: %w", err)
+	}
+
 	msg := &btcstakingtypes.MsgAddJurySig{
 		Signer:        bc.MustGetTxSigner(),
 		ValPk:         btcPubKey,
 		DelPk:         delPubKey,
 		StakingTxHash: stakingTxHash,
-		Sig:           sig,
+		Sig:           bip340Sig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -385,25 +400,45 @@ func (bc *BabylonController) SubmitJurySig(btcPubKey *bbntypes.BIP340PubKey, del
 		return nil, err
 	}
 
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitJuryUnbondingSigs(
-	btcPubKey *bbntypes.BIP340PubKey,
-	delPubKey *bbntypes.BIP340PubKey,
+	valPk []byte,
+	delPk []byte,
 	stakingTxHash string,
-	unbondingSig *bbntypes.BIP340Signature,
-	slashUnbondingSig *bbntypes.BIP340Signature,
-) (*provider.RelayerTxResponse, error) {
+	unbondingSig []byte,
+	slashUnbondingSig []byte,
+) (*types.TxResponse, error) {
+	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	delPubKey, err := bbntypes.NewBIP340PubKey(delPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	bip340UnbondingSig, err := bbntypes.NewBIP340Signature(unbondingSig)
+	if err != nil {
+		return nil, fmt.Errorf("invalid unbonding sig: %w", err)
+	}
+
+	bip340SlashUnbondingSig, err := bbntypes.NewBIP340Signature(slashUnbondingSig)
+	if err != nil {
+		return nil, fmt.Errorf("invalid unbonding sig: %w", err)
+	}
+
 	msg := &btcstakingtypes.MsgAddJuryUnbondingSigs{
 		Signer:                 bc.MustGetTxSigner(),
 		ValPk:                  btcPubKey,
 		DelPk:                  delPubKey,
 		StakingTxHash:          stakingTxHash,
-		UnbondingTxSig:         unbondingSig,
-		SlashingUnbondingTxSig: slashUnbondingSig,
+		UnbondingTxSig:         bip340UnbondingSig,
+		SlashingUnbondingTxSig: bip340SlashUnbondingSig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -411,7 +446,7 @@ func (bc *BabylonController) SubmitJuryUnbondingSigs(
 		return nil, err
 	}
 
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon

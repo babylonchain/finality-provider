@@ -22,7 +22,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -373,7 +372,7 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *provider.RelayerTxResponse {
+func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *types.TxResponse {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
@@ -390,7 +389,12 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 	)
 	require.NoError(t, err)
 
-	res, err := tm.BabylonClient.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingMsgTx.TxHash().String(), jurySig)
+	res, err := tm.BabylonClient.SubmitJurySig(
+		btcDel.ValBtcPk.MustMarshal(),
+		btcDel.BtcPk.MustMarshal(),
+		stakingMsgTx.TxHash().String(),
+		jurySig.MustMarshal(),
+	)
 	require.NoError(t, err)
 
 	return res
