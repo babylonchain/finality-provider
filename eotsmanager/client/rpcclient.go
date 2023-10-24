@@ -76,11 +76,6 @@ func (c *EOTSManagerGRpcClient) CreateRandomnessPairList(uid, chainID []byte, st
 	return pubRandFieldValList, nil
 }
 
-func (c *EOTSManagerGRpcClient) CreateRandomnessPairListWithExistenceCheck(uid, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error) {
-	// TODO consider remove this API when we no longer store randomness
-	return c.CreateRandomnessPairList(uid, chainID, startHeight, num)
-}
-
 func (c *EOTSManagerGRpcClient) KeyRecord(uid []byte, passPhrase string) (*types.KeyRecord, error) {
 	req := &proto.KeyRecordRequest{Uid: uid, PassPhrase: passPhrase}
 

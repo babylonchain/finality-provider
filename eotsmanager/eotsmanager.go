@@ -13,17 +13,12 @@ type EOTSManager interface {
 	// It fails if there is an existing key Info with the same name or public key.
 	CreateKey(name, passPhrase string) ([]byte, error)
 
-	// CreateRandomnessPairList generates and persists a list of Schnorr randomness pairs from
+	// CreateRandomnessPairList generates a list of Schnorr randomness pairs from
 	// startHeight to startHeight+(num-1)*step where step means the gap between each block height
 	// that the validator wants to finalize and num means the number of public randomness
 	// It fails if the validator does not exist or a randomness pair has been created before
 	// NOTE: it will overwrite the randomness regardless of whether there's one existed
 	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
-
-	// CreateRandomnessPairListWithExistenceCheck checks the existence of randomness by given height
-	// before calling CreateRandomnessPairList.
-	// It fails if there's randomness existed at a given height
-	CreateRandomnessPairListWithExistenceCheck(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
 	// KeyRecord returns the validator record
 	// It fails if the validator does not exist or passPhrase is incorrect
