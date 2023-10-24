@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -47,8 +46,8 @@ func FuzzFastSync(f *testing.F) {
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.GetBtcPkBIP340(), catchUpBlocks, gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.GetBtcPkBIP340().MustMarshal(), catchUpBlocks, gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := valIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)

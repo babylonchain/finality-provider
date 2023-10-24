@@ -47,9 +47,10 @@ type ClientController interface {
 	) (*types.TxResponse, error)
 
 	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-	SubmitFinalitySig(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)
+	SubmitFinalitySig(valPk []byte, blockHeight uint64, blockHash []byte, sig []byte) (*types.TxResponse, error)
+
 	// SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
-	SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340PubKey, blocks []*types.BlockInfo, sigs []*bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error)
+	SubmitBatchFinalitySigs(valPk []byte, blocks []*types.BlockInfo, sigs [][]byte) (*types.TxResponse, error)
 
 	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction
 	SubmitValidatorUnbondingSig(

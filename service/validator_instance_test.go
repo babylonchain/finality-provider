@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -89,8 +88,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		}
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			SubmitFinalitySig(valIns.GetBtcPkBIP340().MustMarshal(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		providerRes, err := valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, providerRes.TxHash)

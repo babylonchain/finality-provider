@@ -13,7 +13,6 @@ import (
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
@@ -589,7 +588,7 @@ func (v *ValidatorInstance) checkLagging(currentBlock *types.BlockInfo) bool {
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
-func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*types.TxResponse, error) {
 	var failedCycles uint64
 
 	// we break the for loop if the block is finalized or the signature is successfully submitted
@@ -789,14 +788,14 @@ func (v *ValidatorInstance) createPubRandList(startHeight uint64) ([]bbntypes.Sc
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
-func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.TxResponse, error) {
 	eotsSig, err := v.signEotsSig(b)
 	if err != nil {
 		return nil, err
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
+	res, err := v.cc.SubmitFinalitySig(v.GetBtcPkBIP340().MustMarshal(), b.Height, b.LastCommitHash, eotsSig.MustMarshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -809,22 +808,22 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*provid
 
 // SubmitBatchFinalitySignatures builds and sends a finality signature over the given block to the consumer chain
 // NOTE: the input blocks should be in the ascending order of height
-func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockInfo) (*types.TxResponse, error) {
 	if len(blocks) == 0 {
 		return nil, fmt.Errorf("should not submit batch finality signature with zero block")
 	}
 
-	sigs := make([]*bbntypes.SchnorrEOTSSig, 0, len(blocks))
+	sigs := make([][]byte, 0, len(blocks))
 	for _, b := range blocks {
 		eotsSig, err := v.signEotsSig(b)
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, eotsSig)
+		sigs = append(sigs, eotsSig.MustMarshal())
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitBatchFinalitySigs(v.GetBtcPkBIP340(), blocks, sigs)
+	res, err := v.cc.SubmitBatchFinalitySigs(v.GetBtcPkBIP340().MustMarshal(), blocks, sigs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
 	}
@@ -855,7 +854,7 @@ func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEO
 // TestSubmitFinalitySignatureAndExtractPrivKey is exposed for presentation/testing purpose to allow manual sending finality signature
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
-func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (*provider.RelayerTxResponse, *btcec.PrivateKey, error) {
+func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (*types.TxResponse, *btcec.PrivateKey, error) {
 	// check last committed height
 	if v.GetLastCommittedHeight() < b.Height {
 		return nil, nil, fmt.Errorf("the validator's last committed height %v is lower than the current block height %v",
@@ -868,7 +867,7 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitFinalitySig(v.GetBtcPkBIP340(), b.Height, b.LastCommitHash, eotsSig)
+	res, err := v.cc.SubmitFinalitySig(v.GetBtcPkBIP340().MustMarshal(), b.Height, b.LastCommitHash, eotsSig.MustMarshal())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}

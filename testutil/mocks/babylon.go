@@ -248,33 +248,33 @@ func (mr *MockClientControllerMockRecorder) RegisterValidator(chainPk, valPk, po
 }
 
 // SubmitBatchFinalitySigs mocks base method.
-func (m *MockClientController) SubmitBatchFinalitySigs(btcPubKey *types.BIP340PubKey, blocks []*types1.BlockInfo, sigs []*types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) SubmitBatchFinalitySigs(valPk []byte, blocks []*types1.BlockInfo, sigs [][]byte) (*types1.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", btcPubKey, blocks, sigs)
-	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", valPk, blocks, sigs)
+	ret0, _ := ret[0].(*types1.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitBatchFinalitySigs indicates an expected call of SubmitBatchFinalitySigs.
-func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(btcPubKey, blocks, sigs interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(valPk, blocks, sigs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockClientController)(nil).SubmitBatchFinalitySigs), btcPubKey, blocks, sigs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockClientController)(nil).SubmitBatchFinalitySigs), valPk, blocks, sigs)
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockClientController) SubmitFinalitySig(btcPubKey *types.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *types.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) SubmitFinalitySig(valPk []byte, blockHeight uint64, blockHash, sig []byte) (*types1.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitFinalitySig", btcPubKey, blockHeight, blockHash, sig)
-	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret := m.ctrl.Call(m, "SubmitFinalitySig", valPk, blockHeight, blockHash, sig)
+	ret0, _ := ret[0].(*types1.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitFinalitySig indicates an expected call of SubmitFinalitySig.
-func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(btcPubKey, blockHeight, blockHash, sig interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockClientController)(nil).SubmitFinalitySig), btcPubKey, blockHeight, blockHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockClientController)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
 }
 
 // SubmitJurySig mocks base method.

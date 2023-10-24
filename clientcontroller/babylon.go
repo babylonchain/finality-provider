@@ -328,7 +328,7 @@ func (bc *BabylonController) RegisterValidator(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
@@ -366,7 +366,7 @@ func (bc *BabylonController) CommitPubRandList(valPk []byte, startHeight uint64,
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
@@ -400,7 +400,7 @@ func (bc *BabylonController) SubmitJurySig(valPk []byte, delPk []byte, stakingTx
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
@@ -446,17 +446,27 @@ func (bc *BabylonController) SubmitJuryUnbondingSigs(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (bc *BabylonController) SubmitFinalitySig(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64, blockHash []byte, sig *bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) SubmitFinalitySig(valPk []byte, blockHeight uint64, blockHash []byte, sig []byte) (*types.TxResponse, error) {
+	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	eotsSig, err := bbntypes.NewSchnorrEOTSSig(sig)
+	if err != nil {
+		return nil, fmt.Errorf("invalid EOTS sig: %w", err)
+	}
+
 	msg := &finalitytypes.MsgAddFinalitySig{
 		Signer:              bc.MustGetTxSigner(),
 		ValBtcPk:            btcPubKey,
 		BlockHeight:         blockHeight,
 		BlockLastCommitHash: blockHash,
-		FinalitySig:         sig,
+		FinalitySig:         eotsSig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -464,23 +474,33 @@ func (bc *BabylonController) SubmitFinalitySig(btcPubKey *bbntypes.BIP340PubKey,
 		return nil, err
 	}
 
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
-func (bc *BabylonController) SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340PubKey, blocks []*types.BlockInfo, sigs []*bbntypes.SchnorrEOTSSig) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) SubmitBatchFinalitySigs(valPk []byte, blocks []*types.BlockInfo, sigs [][]byte) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
 
+	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
 	msgs := make([]sdk.Msg, 0, len(blocks))
 	for i, b := range blocks {
+		eotsSig, err := bbntypes.NewSchnorrEOTSSig(sigs[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid EOTS sig: %w", err)
+		}
+
 		msg := &finalitytypes.MsgAddFinalitySig{
 			Signer:              bc.MustGetTxSigner(),
 			ValBtcPk:            btcPubKey,
 			BlockHeight:         b.Height,
 			BlockLastCommitHash: b.LastCommitHash,
-			FinalitySig:         sigs[i],
+			FinalitySig:         eotsSig,
 		}
 		msgs = append(msgs, msg)
 	}
@@ -490,7 +510,7 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(btcPubKey *bbntypes.BIP340P
 		return nil, err
 	}
 
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 func (bc *BabylonController) SubmitValidatorUnbondingSig(

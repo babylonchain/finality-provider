@@ -3,14 +3,13 @@ package service
 import (
 	"fmt"
 
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/types"
 )
 
 type FastSyncResult struct {
-	Responses           []*provider.RelayerTxResponse
+	Responses           []*types.TxResponse
 	SyncedHeight        uint64
 	LastProcessedHeight uint64
 }
@@ -30,7 +29,7 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 	}
 
 	var syncedHeight uint64
-	responses := make([]*provider.RelayerTxResponse, 0)
+	responses := make([]*types.TxResponse, 0)
 	// we may need several rounds to catch-up as we need to limit
 	// the catch-up distance for each round to avoid memory overflow
 	for startHeight <= endHeight {
