@@ -20,6 +20,7 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -71,16 +72,18 @@ func FuzzRegisterValidator(f *testing.F) {
 			BtcSig:     btcSig.MustMarshal(),
 			BtcSigType: bstypes.BTCSigType_BIP340,
 		}
+		popBytes, err := pop.Marshal()
+		require.NoError(t, err)
 
 		txHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			RegisterValidator(
-				validator.GetBabylonPK(),
-				validator.MustGetBIP340BTCPK(),
-				pop,
-				testutil.ZeroCommissionRate(),
-				testutil.EmptyDescription(),
-			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
+				validator.GetBabylonPK().Key,
+				validator.MustGetBIP340BTCPK().MustMarshal(),
+				popBytes,
+				testutil.ZeroCommissionRate().String(),
+				testutil.EmptyDescription().String(),
+			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, err := app.RegisterValidator(validator.MustGetBIP340BTCPK().MarshalHex())
 		require.NoError(t, err)

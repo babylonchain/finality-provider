@@ -131,7 +131,19 @@ func (app *ValidatorApp) registrationLoop() {
 			// we won't do any retries here to not block the loop for more important messages.
 			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop, req.commission, req.description)
+			popBytes, err := req.pop.Marshal()
+			if err != nil {
+				req.errResponse <- err
+				continue
+			}
+
+			res, err := app.cc.RegisterValidator(
+				req.bbnPubKey.Key,
+				req.btcPubKey.MustMarshal(),
+				popBytes,
+				req.commission.String(),
+				req.description.String(),
+			)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

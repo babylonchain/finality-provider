@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/avast/retry-go/v4"
 	bbnapp "github.com/babylonchain/babylon/app"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -16,12 +17,12 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkTypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sttypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -34,12 +35,32 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
+	"sigs.k8s.io/yaml"
 
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var _ ClientController = &BabylonController{}
+
+type StakingParams struct {
+	// K-deep
+	ComfirmationTimeBlocks uint64
+	// W-deep
+	FinalizationTimeoutBlocks uint64
+
+	// Minimum amount of satoshis required for slashing transaction
+	MinSlashingTxFeeSat btcutil.Amount
+
+	// Bitcoin public key of the current jury
+	JuryPk *btcec.PublicKey
+
+	// Address to which slashing transactions are sent
+	SlashingAddress string
+
+	// Minimum commission required by the consumer chain
+	MinCommissionRate string
+}
 
 type BabylonController struct {
 	provider *cosmos.CosmosProvider
@@ -167,7 +188,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		JuryPk:                    juryPk,
 		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
-		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate,
+		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate.String(),
 	}, nil
 }
 
@@ -265,20 +286,41 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(
-	bbnPubKey *secp256k1.PubKey,
-	btcPubKey *bbntypes.BIP340PubKey,
-	pop *btcstakingtypes.ProofOfPossession,
-	commission *sdkTypes.Dec,
-	description *sttypes.Description,
-) (*provider.RelayerTxResponse, error) {
+	chainPk []byte,
+	valPk []byte,
+	pop []byte,
+	commission string,
+	description string,
+) (*types.TxResponse, error) {
+	bbnPubKey := &secp256k1.PubKey{Key: chainPk}
+
+	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	var bbnPop btcstakingtypes.ProofOfPossession
+	if err := bbnPop.Unmarshal(pop); err != nil {
+		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
+	}
+
+	sdkCommission, err := math.LegacyNewDecFromStr(commission)
+	if err != nil {
+		return nil, fmt.Errorf("invalid commission: %w", err)
+	}
+
+	var sdkDescription sttypes.Description
+	if err := yaml.Unmarshal([]byte(description), sdkDescription); err != nil {
+		return nil, fmt.Errorf("invalid descirption: %w", err)
+	}
 
 	msg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:      bc.MustGetTxSigner(),
 		BabylonPk:   bbnPubKey,
 		BtcPk:       btcPubKey,
-		Pop:         pop,
-		Commission:  commission,
-		Description: description,
+		Pop:         &bbnPop,
+		Commission:  &sdkCommission,
+		Description: &sdkDescription,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -286,7 +328,7 @@ func (bc *BabylonController) RegisterValidator(
 		return nil, err
 	}
 
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon

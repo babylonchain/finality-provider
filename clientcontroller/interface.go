@@ -5,12 +5,7 @@ import (
 
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdkTypes "github.com/cosmos/cosmos-sdk/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 
@@ -22,38 +17,18 @@ const (
 	babylonConsumerChainName = "babylon"
 )
 
-type StakingParams struct {
-	// K-deep
-	ComfirmationTimeBlocks uint64
-	// W-deep
-	FinalizationTimeoutBlocks uint64
-
-	// Minimum amount of satoshis required for slashing transaction
-	MinSlashingTxFeeSat btcutil.Amount
-
-	// Bitcoin public key of the current jury
-	JuryPk *btcec.PublicKey
-
-	// Address to which slashing transactions are sent
-	SlashingAddress string
-
-	// Minimum commission required by babylon
-	MinCommissionRate sdkTypes.Dec
-}
-
-// TODO replace babylon types with general ones
 type ClientController interface {
-	GetStakingParams() (*StakingParams, error)
-	// RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
+	// RegisterValidator registers a BTC validator to the consumer chain
 	// it returns tx hash and error
 	RegisterValidator(
-		bbnPubKey *secp256k1.PubKey,
-		btcPubKey *bbntypes.BIP340PubKey,
-		pop *btcstakingtypes.ProofOfPossession,
-		commission *sdkTypes.Dec,
-		description *stakingtypes.Description,
-	) (*provider.RelayerTxResponse, error)
-	// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
+		chainPk []byte,
+		valPk []byte,
+		pop []byte,
+		commission string,
+		description string,
+	) (*types.TxResponse, error)
+
+	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
 	// it returns tx hash and error
 	CommitPubRandList(btcPubKey *bbntypes.BIP340PubKey, startHeight uint64, pubRandList []bbntypes.SchnorrPubRand, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode

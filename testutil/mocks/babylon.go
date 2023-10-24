@@ -9,12 +9,8 @@ import (
 
 	types "github.com/babylonchain/babylon/types"
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
-	clientcontroller "github.com/babylonchain/btc-validator/clientcontroller"
 	types1 "github.com/babylonchain/btc-validator/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	secp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	types2 "github.com/cosmos/cosmos-sdk/types"
-	types3 "github.com/cosmos/cosmos-sdk/x/staking/types"
 	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -69,21 +65,6 @@ func (m *MockClientController) CommitPubRandList(btcPubKey *types.BIP340PubKey, 
 func (mr *MockClientControllerMockRecorder) CommitPubRandList(btcPubKey, startHeight, pubRandList, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockClientController)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
-}
-
-// GetStakingParams mocks base method.
-func (m *MockClientController) GetStakingParams() (*clientcontroller.StakingParams, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStakingParams")
-	ret0, _ := ret[0].(*clientcontroller.StakingParams)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetStakingParams indicates an expected call of GetStakingParams.
-func (mr *MockClientControllerMockRecorder) GetStakingParams() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStakingParams", reflect.TypeOf((*MockClientController)(nil).GetStakingParams))
 }
 
 // QueryBTCDelegations mocks base method.
@@ -252,18 +233,18 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(btcPubKey,
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(bbnPubKey *secp256k1.PubKey, btcPubKey *types.BIP340PubKey, pop *types0.ProofOfPossession, commission *types2.Dec, description *types3.Description) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) RegisterValidator(chainPk, valPk, pop []byte, commission, description string) (*types1.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterValidator", bbnPubKey, btcPubKey, pop, commission, description)
-	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
+	ret0, _ := ret[0].(*types1.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RegisterValidator indicates an expected call of RegisterValidator.
-func (mr *MockClientControllerMockRecorder) RegisterValidator(bbnPubKey, btcPubKey, pop, commission, description interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) RegisterValidator(chainPk, valPk, pop, commission, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), bbnPubKey, btcPubKey, pop, commission, description)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockClientController)(nil).RegisterValidator), chainPk, valPk, pop, commission, description)
 }
 
 // SubmitBatchFinalitySigs mocks base method.
