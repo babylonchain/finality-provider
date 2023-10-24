@@ -333,13 +333,32 @@ func (bc *BabylonController) RegisterValidator(
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) CommitPubRandList(btcPubKey *bbntypes.BIP340PubKey, startHeight uint64, pubRandList []bbntypes.SchnorrPubRand, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) CommitPubRandList(valPk []byte, startHeight uint64, pubRandList [][]byte, sig []byte) (*types.TxResponse, error) {
+	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
+	for _, r := range pubRandList {
+		schnorrPubRand, err := bbntypes.NewSchnorrPubRand(r)
+		if err != nil {
+			return nil, fmt.Errorf("invalid public randomness: %w", err)
+		}
+		schnorrPubRandList = append(schnorrPubRandList, *schnorrPubRand)
+	}
+
+	bip340Sig, err := bbntypes.NewBIP340Signature(sig)
+	if err != nil {
+		return nil, fmt.Errorf("invalid BIP340 sig: %w", err)
+	}
+
 	msg := &finalitytypes.MsgCommitPubRandList{
 		Signer:      bc.MustGetTxSigner(),
 		ValBtcPk:    btcPubKey,
 		StartHeight: startHeight,
-		PubRandList: pubRandList,
-		Sig:         sig,
+		PubRandList: schnorrPubRandList,
+		Sig:         bip340Sig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -347,7 +366,7 @@ func (bc *BabylonController) CommitPubRandList(btcPubKey *bbntypes.BIP340PubKey,
 		return nil, err
 	}
 
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode

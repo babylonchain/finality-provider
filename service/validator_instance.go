@@ -639,7 +639,7 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 
 // retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
-func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *types.BlockInfo) (*types.TxResponse, error) {
 	var failedCycles uint64
 
 	// we break the for loop if the block is finalized or the public rand is successfully committed
@@ -691,7 +691,7 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 // CommitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
-func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.RelayerTxResponse, error) {
+func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxResponse, error) {
 	lastCommittedHeight, err := v.cc.QueryHeightWithLastPubRand(v.btcPk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query the consumer chain for the last committed height: %w", err)
@@ -751,9 +751,12 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*provider.
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
-	sig := bbntypes.NewBIP340SignatureFromBTCSig(schnorrSig)
 
-	res, err := v.cc.CommitPubRandList(v.btcPk, startHeight, pubRandList, &sig)
+	pubRandByteList := make([][]byte, 0, len(pubRandList))
+	for _, r := range pubRandList {
+		pubRandByteList = append(pubRandByteList, r.MustMarshal())
+	}
+	res, err := v.cc.CommitPubRandList(v.btcPk.MustMarshal(), startHeight, pubRandByteList, schnorrSig.Serialize())
 	if err != nil {
 		// TODO Add retry. check issue: https://github.com/babylonchain/btc-validator/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)

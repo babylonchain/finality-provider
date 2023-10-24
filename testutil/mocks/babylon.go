@@ -53,18 +53,18 @@ func (mr *MockClientControllerMockRecorder) Close() *gomock.Call {
 }
 
 // CommitPubRandList mocks base method.
-func (m *MockClientController) CommitPubRandList(btcPubKey *types.BIP340PubKey, startHeight uint64, pubRandList []types.SchnorrPubRand, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) CommitPubRandList(valPk []byte, startHeight uint64, pubRandList [][]byte, sig []byte) (*types1.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CommitPubRandList", btcPubKey, startHeight, pubRandList, sig)
-	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret := m.ctrl.Call(m, "CommitPubRandList", valPk, startHeight, pubRandList, sig)
+	ret0, _ := ret[0].(*types1.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CommitPubRandList indicates an expected call of CommitPubRandList.
-func (mr *MockClientControllerMockRecorder) CommitPubRandList(btcPubKey, startHeight, pubRandList, sig interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) CommitPubRandList(valPk, startHeight, pubRandList, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockClientController)(nil).CommitPubRandList), btcPubKey, startHeight, pubRandList, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockClientController)(nil).CommitPubRandList), valPk, startHeight, pubRandList, sig)
 }
 
 // QueryBTCDelegations mocks base method.

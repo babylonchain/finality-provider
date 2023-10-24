@@ -30,7 +30,8 @@ type ClientController interface {
 
 	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
 	// it returns tx hash and error
-	CommitPubRandList(btcPubKey *bbntypes.BIP340PubKey, startHeight uint64, pubRandList []bbntypes.SchnorrPubRand, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)
+	CommitPubRandList(valPk []byte, startHeight uint64, pubRandList [][]byte, sig []byte) (*types.TxResponse, error)
+
 	// SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 	// it returns tx hash and error
 	SubmitJurySig(btcPubKey *bbntypes.BIP340PubKey, delPubKey *bbntypes.BIP340PubKey, stakingTxHash string, sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)

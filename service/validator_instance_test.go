@@ -38,8 +38,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			CommitPubRandList(valIns.GetBtcPkBIP340().MustMarshal(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
@@ -72,8 +72,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			CommitPubRandList(valIns.GetBtcPkBIP340().MustMarshal(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
@@ -91,9 +91,9 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		mockClientController.EXPECT().
 			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
 			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err = valIns.SubmitFinalitySignature(nextBlock)
+		providerRes, err := valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.Equal(t, expectedTxHash, providerRes.TxHash)
 
 		// check the last_voted_height
 		require.Equal(t, nextBlock.Height, valIns.GetLastVotedHeight())

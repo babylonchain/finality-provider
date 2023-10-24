@@ -30,8 +30,8 @@ func FuzzFastSync(f *testing.F) {
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			CommitPubRandList(valIns.GetBtcPkBIP340().MustMarshal(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
 			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
