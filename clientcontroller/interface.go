@@ -5,7 +5,6 @@ import (
 
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/types"
@@ -45,13 +44,13 @@ type ClientController interface {
 		slashUnbondingSig []byte,
 	) (*types.TxResponse, error)
 
-	// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
+	// SubmitFinalitySig submits the finality signature to the consumer chain
 	SubmitFinalitySig(valPk []byte, blockHeight uint64, blockHash []byte, sig []byte) (*types.TxResponse, error)
 
-	// SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
+	// SubmitBatchFinalitySigs submits a batch of finality signatures to the consumer chain
 	SubmitBatchFinalitySigs(valPk []byte, blocks []*types.BlockInfo, sigs [][]byte) (*types.TxResponse, error)
 
-	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction
+	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction to the consumer chain
 	SubmitValidatorUnbondingSig(
 		valPk []byte,
 		delPk []byte,
@@ -61,33 +60,30 @@ type ClientController interface {
 
 	// Note: the following queries are only for PoC
 
-	// QueryHeightWithLastPubRand queries the height of the last block with public randomness
-	QueryHeightWithLastPubRand(btcPubKey *bbntypes.BIP340PubKey) (uint64, error)
-
-	// QueryBTCDelegations queries BTC delegations that need a Jury signature
-	// with the given status (either pending or unbonding)
+	// QueryBTCDelegations queries BTC delegations with the given status
 	// it is only used when the program is running in Jury mode
-	QueryBTCDelegations(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error)
+	QueryBTCDelegations(status types.DelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error)
 
 	// QueryValidatorVotingPower queries the voting power of the validator at a given height
-	QueryValidatorVotingPower(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64) (uint64, error)
+	QueryValidatorVotingPower(valPk []byte, blockHeight uint64) (uint64, error)
+
+	// QueryValidatorSlashed queries if the validator is slashed
+	QueryValidatorSlashed(valPk []byte) (bool, error)
+
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
+
+	// QueryBlock queries the block at the given height
+	QueryBlock(height uint64) (*types.BlockInfo, error)
+
 	// QueryBlocks returns a list of blocks from startHeight to endHeight
 	QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error)
-	// QueryValidator returns a BTC validator object
-	QueryValidator(btcPk *bbntypes.BIP340PubKey) (*btcstakingtypes.BTCValidator, error)
+
+	// QueryBestBlock queries the tip block of the consumer chain
+	QueryBestBlock() (*types.BlockInfo, error)
+
 	// QueryBlockFinalization queries whether the block has been finalized
 	QueryBlockFinalization(height uint64) (bool, error)
-
-	// QueryBestHeader queries the tip header of the Babylon chain, if header is not found
-	// it returns result with nil header
-	QueryBestHeader() (*ctypes.ResultHeader, error)
-	// QueryNodeStatus returns current node status, with info about latest block
-	QueryNodeStatus() (*ctypes.ResultStatus, error)
-	// QueryHeader queries the header at the given height, if header is not found
-	// it returns result with nil header
-	QueryHeader(height int64) (*ctypes.ResultHeader, error)
 
 	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
 	// - already received unbodning transaction on babylon chain

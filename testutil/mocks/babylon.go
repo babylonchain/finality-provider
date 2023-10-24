@@ -67,7 +67,7 @@ func (mr *MockClientControllerMockRecorder) CommitPubRandList(valPk, startHeight
 }
 
 // QueryBTCDelegations mocks base method.
-func (m *MockClientController) QueryBTCDelegations(status types0.BTCDelegationStatus, limit uint64) ([]*types0.BTCDelegation, error) {
+func (m *MockClientController) QueryBTCDelegations(status types1.DelegationStatus, limit uint64) ([]*types0.BTCDelegation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryBTCDelegations", status, limit)
 	ret0, _ := ret[0].([]*types0.BTCDelegation)
@@ -96,19 +96,34 @@ func (mr *MockClientControllerMockRecorder) QueryBTCValidatorUnbondingDelegation
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryBTCValidatorUnbondingDelegations), valBtcPk, max)
 }
 
-// QueryBestHeader mocks base method.
-func (m *MockClientController) QueryBestHeader() (*coretypes.ResultHeader, error) {
+// QueryBestBlock mocks base method.
+func (m *MockClientController) QueryBestBlock() (*types1.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBestHeader")
-	ret0, _ := ret[0].(*coretypes.ResultHeader)
+	ret := m.ctrl.Call(m, "QueryBestBlock")
+	ret0, _ := ret[0].(*types1.BlockInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryBestHeader indicates an expected call of QueryBestHeader.
-func (mr *MockClientControllerMockRecorder) QueryBestHeader() *gomock.Call {
+// QueryBestBlock indicates an expected call of QueryBestBlock.
+func (mr *MockClientControllerMockRecorder) QueryBestBlock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestHeader", reflect.TypeOf((*MockClientController)(nil).QueryBestHeader))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestBlock", reflect.TypeOf((*MockClientController)(nil).QueryBestBlock))
+}
+
+// QueryBlock mocks base method.
+func (m *MockClientController) QueryBlock(height uint64) (*types1.BlockInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBlock", height)
+	ret0, _ := ret[0].(*types1.BlockInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBlock indicates an expected call of QueryBlock.
+func (mr *MockClientControllerMockRecorder) QueryBlock(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlock", reflect.TypeOf((*MockClientController)(nil).QueryBlock), height)
 }
 
 // QueryBlockFinalization mocks base method.
@@ -141,36 +156,6 @@ func (mr *MockClientControllerMockRecorder) QueryBlocks(startHeight, endHeight, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockClientController)(nil).QueryBlocks), startHeight, endHeight, limit)
 }
 
-// QueryHeader mocks base method.
-func (m *MockClientController) QueryHeader(height int64) (*coretypes.ResultHeader, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryHeader", height)
-	ret0, _ := ret[0].(*coretypes.ResultHeader)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryHeader indicates an expected call of QueryHeader.
-func (mr *MockClientControllerMockRecorder) QueryHeader(height interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeader", reflect.TypeOf((*MockClientController)(nil).QueryHeader), height)
-}
-
-// QueryHeightWithLastPubRand mocks base method.
-func (m *MockClientController) QueryHeightWithLastPubRand(btcPubKey *types.BIP340PubKey) (uint64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryHeightWithLastPubRand", btcPubKey)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryHeightWithLastPubRand indicates an expected call of QueryHeightWithLastPubRand.
-func (mr *MockClientControllerMockRecorder) QueryHeightWithLastPubRand(btcPubKey interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryHeightWithLastPubRand", reflect.TypeOf((*MockClientController)(nil).QueryHeightWithLastPubRand), btcPubKey)
-}
-
 // QueryLatestFinalizedBlocks mocks base method.
 func (m *MockClientController) QueryLatestFinalizedBlocks(count uint64) ([]*types1.BlockInfo, error) {
 	m.ctrl.T.Helper()
@@ -201,34 +186,34 @@ func (mr *MockClientControllerMockRecorder) QueryNodeStatus() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryNodeStatus", reflect.TypeOf((*MockClientController)(nil).QueryNodeStatus))
 }
 
-// QueryValidator mocks base method.
-func (m *MockClientController) QueryValidator(btcPk *types.BIP340PubKey) (*types0.BTCValidator, error) {
+// QueryValidatorSlashed mocks base method.
+func (m *MockClientController) QueryValidatorSlashed(valPk []byte) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryValidator", btcPk)
-	ret0, _ := ret[0].(*types0.BTCValidator)
+	ret := m.ctrl.Call(m, "QueryValidatorSlashed", valPk)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryValidator indicates an expected call of QueryValidator.
-func (mr *MockClientControllerMockRecorder) QueryValidator(btcPk interface{}) *gomock.Call {
+// QueryValidatorSlashed indicates an expected call of QueryValidatorSlashed.
+func (mr *MockClientControllerMockRecorder) QueryValidatorSlashed(valPk interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidator", reflect.TypeOf((*MockClientController)(nil).QueryValidator), btcPk)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorSlashed", reflect.TypeOf((*MockClientController)(nil).QueryValidatorSlashed), valPk)
 }
 
 // QueryValidatorVotingPower mocks base method.
-func (m *MockClientController) QueryValidatorVotingPower(btcPubKey *types.BIP340PubKey, blockHeight uint64) (uint64, error) {
+func (m *MockClientController) QueryValidatorVotingPower(valPk []byte, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryValidatorVotingPower", btcPubKey, blockHeight)
+	ret := m.ctrl.Call(m, "QueryValidatorVotingPower", valPk, blockHeight)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QueryValidatorVotingPower indicates an expected call of QueryValidatorVotingPower.
-func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(btcPubKey, blockHeight interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(valPk, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorVotingPower", reflect.TypeOf((*MockClientController)(nil).QueryValidatorVotingPower), btcPubKey, blockHeight)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorVotingPower", reflect.TypeOf((*MockClientController)(nil).QueryValidatorVotingPower), valPk, blockHeight)
 }
 
 // RegisterValidator mocks base method.

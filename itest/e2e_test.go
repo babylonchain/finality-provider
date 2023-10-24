@@ -252,7 +252,7 @@ func TestFastSync(t *testing.T) {
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
-	
+
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 
 	n := 3
@@ -266,8 +266,8 @@ func TestFastSync(t *testing.T) {
 	t.Logf("the latest finalized block is at %v", finalizedHeight)
 
 	// check if the fast sync works by checking if the gap is not more than 1
-	currentHeaderRes, err := tm.BabylonClient.QueryBestHeader()
-	currentHeight := currentHeaderRes.Header.Height
+	currentHeaderRes, err := tm.BabylonClient.QueryBestBlock()
+	currentHeight := currentHeaderRes.Height
 	t.Logf("the current block is at %v", currentHeight)
 	require.NoError(t, err)
 	require.True(t, currentHeight < int64(finalizedHeight)+int64(n))

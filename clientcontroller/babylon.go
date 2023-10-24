@@ -19,7 +19,6 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -34,7 +33,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/exp/maps"
 	"sigs.k8s.io/yaml"
 
 	"github.com/babylonchain/btc-validator/types"
@@ -629,46 +627,10 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*bbntypes.BTCHeader
 	return res, nil
 }
 
-// Note: the following queries are only for PoC
-// QueryHeightWithLastPubRand queries the height of the last block with public randomness
-func (bc *BabylonController) QueryHeightWithLastPubRand(btcPubKey *bbntypes.BIP340PubKey) (uint64, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	// query the last committed public randomness
-	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
-		ValBtcPkHex: btcPubKey.MarshalHex(),
-		Pagination: &sdkquery.PageRequest{
-			Limit:   1,
-			Reverse: true,
-		},
-	}
-
-	res, err := queryClient.ListPublicRandomness(ctx, queryRequest)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(res.PubRandMap) == 0 {
-		return 0, nil
-	}
-
-	ks := maps.Keys(res.PubRandMap)
-	if len(ks) > 1 {
-		return 0, fmt.Errorf("the query should not return more than one public rand item")
-	}
-
-	return ks[0], nil
-}
-
 // QueryBTCDelegations queries BTC delegations that need a Jury signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Jury mode
-func (bc *BabylonController) QueryBTCDelegations(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCDelegations(status types.DelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 	pagination := &sdkquery.PageRequest{
@@ -681,7 +643,7 @@ func (bc *BabylonController) QueryBTCDelegations(status btcstakingtypes.BTCDeleg
 
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryBTCDelegationsRequest{
-		Status:     status,
+		Status:     btcstakingtypes.BTCDelegationStatus(status),
 		Pagination: pagination,
 	}
 	res, err := queryClient.BTCDelegations(ctx, queryRequest)
@@ -692,21 +654,28 @@ func (bc *BabylonController) QueryBTCDelegations(status btcstakingtypes.BTCDeleg
 	return res.BtcDelegations, nil
 }
 
-func (bc *BabylonController) QueryValidator(btcPk *bbntypes.BIP340PubKey) (*btcstakingtypes.BTCValidator, error) {
+func (bc *BabylonController) QueryValidatorSlashed(valPk []byte) (bool, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
 
-	queryRequest := &btcstakingtypes.QueryBTCValidatorRequest{ValBtcPkHex: btcPk.MarshalHex()}
+	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return false, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
+	queryRequest := &btcstakingtypes.QueryBTCValidatorRequest{ValBtcPkHex: valPubKey.MarshalHex()}
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 	res, err := queryClient.BTCValidator(ctx, queryRequest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query the validator %s: %v", btcPk.MarshalHex(), err)
+		return false, fmt.Errorf("failed to query the validator %s: %v", valPubKey.MarshalHex(), err)
 	}
 
-	return res.BtcValidator, nil
+	slashed := res.BtcValidator.SlashedBtcHeight > 0
+
+	return slashed, nil
 }
 
 // QueryValidators queries BTC validators
@@ -881,7 +850,7 @@ func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valBtcPk *bbn
 }
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
-func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *bbntypes.BIP340PubKey, blockHeight uint64) (uint64, error) {
+func (bc *BabylonController) QueryValidatorVotingPower(valPk []byte, blockHeight uint64) (uint64, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -889,9 +858,14 @@ func (bc *BabylonController) QueryValidatorVotingPower(btcPubKey *bbntypes.BIP34
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
+	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
+	if err != nil {
+		return 0, fmt.Errorf("invalid validator public key: %w", err)
+	}
+
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryBTCValidatorPowerAtHeightRequest{
-		ValBtcPkHex: btcPubKey.MarshalHex(),
+		ValBtcPkHex: valPubKey.MarshalHex(),
 		Height:      blockHeight,
 	}
 	res, err := queryClient.BTCValidatorPowerAtHeight(ctx, queryRequest)
@@ -978,21 +952,29 @@ func getContextWithCancel(timeout time.Duration) (context.Context, context.Cance
 	return ctx, cancel
 }
 
-func (bc *BabylonController) QueryHeader(height int64) (*ctypes.ResultHeader, error) {
+func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
-	headerResp, err := bc.provider.RPCClient.Header(ctx, &height)
+	intHeight := int64(height)
+	headerResp, err := bc.provider.RPCClient.Header(ctx, &intHeight)
 	defer cancel()
 
 	if err != nil {
 		return nil, err
 	}
 
+	if headerResp == nil {
+		return nil, fmt.Errorf("the block at height %v does not exist", height)
+	}
+
 	// Returning response directly, if header with specified number did not exist
 	// at request will contain nil header
-	return headerResp, nil
+	return &types.BlockInfo{
+		Height:         uint64(headerResp.Header.Height),
+		LastCommitHash: headerResp.Header.LastCommitHash,
+	}, nil
 }
 
-func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
+func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := bc.provider.RPCClient.BlockchainInfo(ctx, 0, 0)
@@ -1004,20 +986,10 @@ func (bc *BabylonController) QueryBestHeader() (*ctypes.ResultHeader, error) {
 
 	// Returning response directly, if header with specified number did not exist
 	// at request will contain nil header
-	return &ctypes.ResultHeader{
-		Header: &chainInfo.BlockMetas[0].Header,
+	return &types.BlockInfo{
+		Height:         uint64(chainInfo.BlockMetas[0].Header.Height),
+		LastCommitHash: chainInfo.BlockMetas[0].Header.LastCommitHash,
 	}, nil
-}
-
-func (bc *BabylonController) QueryNodeStatus() (*ctypes.ResultStatus, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	status, err := bc.provider.QueryStatus(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return status, nil
 }
 
 // accessKeyWithLock triggers a function that access key ring while acquiring

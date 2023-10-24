@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	cometbfttypes "github.com/cometbft/cometbft/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/btc-validator/testutil/mocks"
+	"github.com/babylonchain/btc-validator/types"
 )
 
 func EmptyDescription() *stakingtypes.Description {
@@ -30,25 +30,21 @@ func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, curr
 	}
 
 	for i := startHeight + 1; i <= currentHeight; i++ {
-		resHeader := &coretypes.ResultHeader{
-			Header: &cometbfttypes.Header{
-				Height:         int64(currentHeight),
-				LastCommitHash: GenRandomByteArray(r, 32),
-			},
+		resBlock := &types.BlockInfo{
+			Height:         currentHeight,
+			LastCommitHash: GenRandomByteArray(r, 32),
 		}
-		mockClientController.EXPECT().QueryHeader(int64(i)).Return(resHeader, nil).AnyTimes()
+		mockClientController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
 	}
 
-	currentHeaderRes := &coretypes.ResultHeader{
-		Header: &cometbfttypes.Header{
-			Height:         int64(currentHeight),
-			LastCommitHash: GenRandomByteArray(r, 32),
-		},
+	currentBlockRes := &types.BlockInfo{
+		Height:         currentHeight,
+		LastCommitHash: GenRandomByteArray(r, 32),
 	}
 
 	mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
-	mockClientController.EXPECT().QueryBestHeader().Return(currentHeaderRes, nil).AnyTimes()
+	mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
 
 	return mockClientController
 }

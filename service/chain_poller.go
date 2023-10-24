@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -98,36 +97,40 @@ func (cp *ChainPoller) GetBlockInfoChan() <-chan *types.BlockInfo {
 	return cp.blockInfoChan
 }
 
-func (cp *ChainPoller) nodeStatusWithRetry() (*ctypes.ResultStatus, error) {
-	var response *ctypes.ResultStatus
+func (cp *ChainPoller) latestBlockWithRetry() (*types.BlockInfo, error) {
+	var (
+		latestBlock *types.BlockInfo
+		err         error
+	)
 
 	if err := retry.Do(func() error {
-		status, err := cp.cc.QueryNodeStatus()
+		latestBlock, err = cp.cc.QueryBestBlock()
 		if err != nil {
 			return err
 		}
-		response = status
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		cp.logger.WithFields(logrus.Fields{
 			"attempt":      n + 1,
 			"max_attempts": RtyAttNum,
 			"error":        err,
-		}).Debug("Failed to query babylon For the latest height")
+		}).Debug("failed to query the consumer chain for the latest height")
 	})); err != nil {
 		return nil, err
 	}
-	return response, nil
+	return latestBlock, nil
 }
 
-func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, error) {
-	var response *ctypes.ResultHeader
+func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
+	var (
+		block *types.BlockInfo
+		err   error
+	)
 	if err := retry.Do(func() error {
-		headerResult, err := cp.cc.QueryHeader(int64(height))
+		block, err = cp.cc.QueryBlock(height)
 		if err != nil {
 			return err
 		}
-		response = headerResult
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		cp.logger.WithFields(logrus.Fields{
@@ -140,7 +143,7 @@ func (cp *ChainPoller) headerWithRetry(height uint64) (*ctypes.ResultHeader, err
 		return nil, err
 	}
 
-	return response, nil
+	return block, nil
 }
 
 func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
@@ -153,7 +156,7 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 
 	var currentBestChainHeight uint64
 	for {
-		status, err := cp.nodeStatusWithRetry()
+		lastestBlock, err := cp.latestBlockWithRetry()
 		if err != nil {
 			cp.logger.WithFields(logrus.Fields{
 				"error": err,
@@ -161,7 +164,7 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 			continue
 		}
 
-		currentBestChainHeight = uint64(status.SyncInfo.LatestBlockHeight)
+		currentBestChainHeight = lastestBlock.Height
 		break
 	}
 
@@ -181,44 +184,30 @@ func (cp *ChainPoller) pollChain() {
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		headerToRetrieve := cp.GetNextHeight()
-		result, err := cp.headerWithRetry(headerToRetrieve)
-		if err == nil && result.Header != nil {
+		blockToRetrieve := cp.GetNextHeight()
+		block, err := cp.blockWithRetry(blockToRetrieve)
+		if err != nil {
+			failedCycles++
+
+			cp.logger.WithFields(logrus.Fields{
+				"error":        err,
+				"currFailures": failedCycles,
+				"blockToGet":   blockToRetrieve,
+			}).Error("failed to query the consumer chain for the block")
+		} else {
 			// no error and we got the header we wanted to get, bump the state and push
 			// notification about data
-			cp.SetNextHeight(headerToRetrieve + 1)
+			cp.SetNextHeight(blockToRetrieve + 1)
 			failedCycles = 0
 
 			cp.logger.WithFields(logrus.Fields{
-				"height": result.Header.Height,
-			}).Info("the poller retrieved the header from the consumer chain")
+				"height": block.Height,
+			}).Info("the poller retrieved the block from the consumer chain")
 
 			// Push the data to the channel.
 			// If the cosumers are to slow i.e the buffer is full, this will block and we will
 			// stop retrieving data from the node.
-			cp.blockInfoChan <- &types.BlockInfo{
-				Height:         uint64(result.Header.Height),
-				LastCommitHash: result.Header.LastCommitHash,
-			}
-
-		} else if err == nil && result.Header == nil {
-			// no error but header is nil, means the header is not found on node
-			failedCycles++
-
-			cp.logger.WithFields(logrus.Fields{
-				"error":        err,
-				"currFailures": failedCycles,
-				"headerToGet":  headerToRetrieve,
-			}).Error("failed to retrieve header from the consumer chain. Header did not produced yet")
-
-		} else {
-			failedCycles++
-
-			cp.logger.WithFields(logrus.Fields{
-				"error":        err,
-				"currFailures": failedCycles,
-				"headerToGet":  headerToRetrieve,
-			}).Error("failed to query the consumer chain for the header")
+			cp.blockInfoChan <- block
 		}
 
 		if failedCycles > maxFailedCycles {

@@ -691,20 +691,7 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 // commits the public randomness for the managed validators,
 // and save the randomness pair to DB
 func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxResponse, error) {
-	lastCommittedHeight, err := v.cc.QueryHeightWithLastPubRand(v.btcPk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query the consumer chain for the last committed height: %w", err)
-	}
-
-	// NOTE: this check will cause failure to the case when the program dies
-	// after committing randomness to babylon but before we update the last_committed_height
-	// TODO: consider remove this check
-	if v.GetLastCommittedHeight() != lastCommittedHeight {
-		// for some reason number of random numbers locally does not match the chain node
-		// log it and try to recover somehow
-		return nil, fmt.Errorf("the local last committed height %v does not match the remote last committed height %v",
-			v.GetLastCommittedHeight(), lastCommittedHeight)
-	}
+	lastCommittedHeight := v.GetLastCommittedHeight()
 
 	var startHeight uint64
 	if lastCommittedHeight == uint64(0) {
@@ -947,16 +934,15 @@ func (v *ValidatorInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*typ
 }
 
 func (v *ValidatorInstance) getLatestBlockWithRetry() (*types.BlockInfo, error) {
-	var latestBlock *types.BlockInfo
+	var (
+		latestBlock *types.BlockInfo
+		err         error
+	)
 
 	if err := retry.Do(func() error {
-		headerResult, err := v.cc.QueryBestHeader()
+		latestBlock, err = v.cc.QueryBestBlock()
 		if err != nil {
 			return err
-		}
-		latestBlock = &types.BlockInfo{
-			Height:         uint64(headerResult.Header.Height),
-			LastCommitHash: headerResult.Header.LastCommitHash,
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
@@ -979,7 +965,7 @@ func (v *ValidatorInstance) GetVotingPowerWithRetry(height uint64) (uint64, erro
 	)
 
 	if err := retry.Do(func() error {
-		power, err = v.cc.QueryValidatorVotingPower(v.GetBtcPkBIP340(), height)
+		power, err = v.cc.QueryValidatorVotingPower(v.GetBtcPkBIP340().MustMarshal(), height)
 		if err != nil {
 			return err
 		}
@@ -997,17 +983,17 @@ func (v *ValidatorInstance) GetVotingPowerWithRetry(height uint64) (uint64, erro
 	return power, nil
 }
 
-func (v *ValidatorInstance) GetSlashedHeightWithRetry() (uint64, error) {
+func (v *ValidatorInstance) GetValidatorSlashedWithRetry() (bool, error) {
 	var (
-		slashedHeight uint64
+		slashed bool
+		err     error
 	)
 
 	if err := retry.Do(func() error {
-		res, err := v.cc.QueryValidator(v.GetBtcPkBIP340())
+		slashed, err = v.cc.QueryValidatorSlashed(v.GetBtcPkBIP340().MustMarshal())
 		if err != nil {
 			return err
 		}
-		slashedHeight = res.SlashedBtcHeight
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		v.logger.WithFields(logrus.Fields{
@@ -1016,8 +1002,8 @@ func (v *ValidatorInstance) GetSlashedHeightWithRetry() (uint64, error) {
 			"error":        err,
 		}).Debug("failed to query the voting power")
 	})); err != nil {
-		return 0, err
+		return false, err
 	}
 
-	return slashedHeight, nil
+	return slashed, nil
 }

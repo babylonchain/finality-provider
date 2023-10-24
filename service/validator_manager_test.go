@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/babylon/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	cometbfttypes "github.com/cometbft/cometbft/types"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -21,6 +19,7 @@ import (
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/testutil/mocks"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -42,29 +41,25 @@ func FuzzStatusUpdate(f *testing.F) {
 
 		// setup mocks
 		currentHeight := uint64(r.Int63n(100) + 1)
-		currentHeaderRes := &coretypes.ResultHeader{
-			Header: &cometbfttypes.Header{
-				Height:         int64(currentHeight),
-				LastCommitHash: datagen.GenRandomByteArray(r, 32),
-			},
+		currentBlockRes := &types.BlockInfo{
+			Height:         currentHeight,
+			LastCommitHash: datagen.GenRandomByteArray(r, 32),
 		}
-		mockClientController.EXPECT().QueryBestHeader().Return(currentHeaderRes, nil).AnyTimes()
+		mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
 		status := &coretypes.ResultStatus{
 			SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(currentHeight)},
 		}
 		mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 		mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		mockClientController.EXPECT().QueryBestHeader().Return(currentHeaderRes, nil).AnyTimes()
-		mockClientController.EXPECT().QueryHeader(gomock.Any()).Return(currentHeaderRes, nil).AnyTimes()
+		mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
+		mockClientController.EXPECT().QueryBlock(gomock.Any()).Return(currentBlockRes, nil).AnyTimes()
 
 		votingPower := uint64(r.Intn(2))
 		mockClientController.EXPECT().QueryValidatorVotingPower(gomock.Any(), currentHeight).Return(votingPower, nil).AnyTimes()
 		var slashedHeight uint64
 		if votingPower == 0 {
-			slashedHeight = uint64(r.Intn(2))
-			btcVal := &bstypes.BTCValidator{SlashedBtcHeight: slashedHeight}
-			mockClientController.EXPECT().QueryValidator(gomock.Any()).Return(btcVal, nil).AnyTimes()
+			mockClientController.EXPECT().QueryValidatorSlashed(gomock.Any()).Return(true, nil).AnyTimes()
 		}
 
 		err := vm.Start()
@@ -124,7 +119,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	btcPkBytes, err := em.CreateKey(keyName, "")
 	require.NoError(t, err)
-	btcPk, err := types.NewBIP340PubKey(btcPkBytes)
+	btcPk, err := bbntypes.NewBIP340PubKey(btcPkBytes)
 	require.NoError(t, err)
 	bbnPk, err := kc.CreateChainKey()
 	require.NoError(t, err)

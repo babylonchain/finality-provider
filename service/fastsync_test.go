@@ -31,12 +31,10 @@ func FuzzFastSync(f *testing.F) {
 		mockClientController.EXPECT().
 			CommitPubRandList(valIns.GetBtcPkBIP340().MustMarshal(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
-			Return(uint64(0), nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK().MustMarshal(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// fast sync

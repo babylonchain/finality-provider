@@ -222,7 +222,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	)
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCDelegations(
-			bstypes.BTCDelegationStatus_PENDING,
+			types.DelegationStatus_PENDING,
 			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {
@@ -351,18 +351,18 @@ func (tm *TestManager) WaitForValStopped(t *testing.T, valPk *bbntypes.BIP340Pub
 }
 
 func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
-	headerBeforeStop, err := tm.BabylonClient.QueryBestHeader()
+	blockBeforeStop, err := tm.BabylonClient.QueryBestBlock()
 	require.NoError(t, err)
 	err = valIns.Stop()
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
-		headerAfterStop, err := tm.BabylonClient.QueryBestHeader()
+		headerAfterStop, err := tm.BabylonClient.QueryBestBlock()
 		if err != nil {
 			return false
 		}
 
-		return headerAfterStop.Header.Height >= int64(n)+headerBeforeStop.Header.Height
+		return headerAfterStop.Height >= uint64(n)+blockBeforeStop.Height
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Log("restarting the validator instance")
