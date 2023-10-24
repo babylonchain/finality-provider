@@ -218,10 +218,10 @@ func (v *ValidatorInstance) sendSignaturesForUnbondingTransactions(sigsToSend []
 		sd := sigData
 		eg.Go(func() error {
 			_, err := v.cc.SubmitValidatorUnbondingSig(
-				v.GetBtcPkBIP340(),
-				sd.stakerPk,
+				v.GetBtcPkBIP340().MustMarshal(),
+				sd.stakerPk.MustMarshal(),
 				sd.stakingTxHash,
-				sd.signature,
+				sd.signature.MustMarshal(),
 			)
 
 			mu.Lock()

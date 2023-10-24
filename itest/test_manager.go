@@ -423,10 +423,10 @@ func (tm *TestManager) AddValidatorUnbondingSignature(
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
 	_, err = tm.BabylonClient.SubmitValidatorUnbondingSig(
-		btcDel.ValBtcPk,
-		btcDel.BtcPk,
+		btcDel.ValBtcPk.MustMarshal(),
+		btcDel.BtcPk.MustMarshal(),
 		stakingTxHash,
-		valSig,
+		valSig.MustMarshal(),
 	)
 	require.NoError(t, err)
 }

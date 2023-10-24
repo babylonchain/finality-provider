@@ -6,7 +6,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/types"
@@ -54,10 +53,11 @@ type ClientController interface {
 
 	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction
 	SubmitValidatorUnbondingSig(
-		valPubKey *bbntypes.BIP340PubKey,
-		delPubKey *bbntypes.BIP340PubKey,
+		valPk []byte,
+		delPk []byte,
 		stakingTxHash string,
-		sig *bbntypes.BIP340Signature) (*provider.RelayerTxResponse, error)
+		sig []byte,
+	) (*types.TxResponse, error)
 
 	// Note: the following queries are only for PoC
 

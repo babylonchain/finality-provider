@@ -11,7 +11,6 @@ import (
 	types0 "github.com/babylonchain/babylon/x/btcstaking/types"
 	types1 "github.com/babylonchain/btc-validator/types"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	provider "github.com/cosmos/relayer/v2/relayer/provider"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -308,16 +307,16 @@ func (mr *MockClientControllerMockRecorder) SubmitJuryUnbondingSigs(valPk, delPk
 }
 
 // SubmitValidatorUnbondingSig mocks base method.
-func (m *MockClientController) SubmitValidatorUnbondingSig(valPubKey, delPubKey *types.BIP340PubKey, stakingTxHash string, sig *types.BIP340Signature) (*provider.RelayerTxResponse, error) {
+func (m *MockClientController) SubmitValidatorUnbondingSig(valPk, delPk []byte, stakingTxHash string, sig []byte) (*types1.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPubKey, delPubKey, stakingTxHash, sig)
-	ret0, _ := ret[0].(*provider.RelayerTxResponse)
+	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPk, delPk, stakingTxHash, sig)
+	ret0, _ := ret[0].(*types1.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitValidatorUnbondingSig indicates an expected call of SubmitValidatorUnbondingSig.
-func (mr *MockClientControllerMockRecorder) SubmitValidatorUnbondingSig(valPubKey, delPubKey, stakingTxHash, sig interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) SubmitValidatorUnbondingSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockClientController)(nil).SubmitValidatorUnbondingSig), valPubKey, delPubKey, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockClientController)(nil).SubmitValidatorUnbondingSig), valPk, delPk, stakingTxHash, sig)
 }
