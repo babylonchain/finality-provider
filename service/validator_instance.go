@@ -109,7 +109,7 @@ func (v *ValidatorInstance) Start() error {
 
 	v.poller = poller
 
-	v.laggingTargetChan = make(chan *types.BlockInfo)
+	v.laggingTargetChan = make(chan *types.BlockInfo, 1)
 
 	v.quit = make(chan struct{})
 
@@ -456,6 +456,7 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 	for {
 		select {
 		case <-fastSyncTicker.C:
+			v.logger.Debug("check lagging")
 			if v.isLagging.Load() {
 				// we are in fast sync mode, skip do not do checks
 				continue
@@ -475,6 +476,7 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 				v.laggingTargetChan <- latestBlock
 			}
 
+			v.logger.Debug("check lagging done")
 		case <-v.quit:
 			v.logger.Debug("the fast sync loop is closing")
 			return
@@ -526,6 +528,8 @@ func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSync
 	if startHeight > targetBlock.Height {
 		return nil, fmt.Errorf("the start height %v should not be higher than the current block %v", startHeight, targetBlock.Height)
 	}
+
+	v.logger.Debug("the validator is entering fast sync")
 
 	return v.FastSync(startHeight, targetBlock.Height)
 }
