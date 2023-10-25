@@ -456,7 +456,6 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 	for {
 		select {
 		case <-fastSyncTicker.C:
-			v.logger.Debug("check lagging")
 			if v.isLagging.Load() {
 				// we are in fast sync mode, skip do not do checks
 				continue
@@ -475,8 +474,6 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 				v.isLagging.Store(true)
 				v.laggingTargetChan <- latestBlock
 			}
-
-			v.logger.Debug("check lagging done")
 		case <-v.quit:
 			v.logger.Debug("the fast sync loop is closing")
 			return
