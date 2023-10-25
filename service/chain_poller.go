@@ -114,7 +114,7 @@ func (cp *ChainPoller) latestBlockWithRetry() (*types.BlockInfo, error) {
 			"attempt":      n + 1,
 			"max_attempts": RtyAttNum,
 			"error":        err,
-		}).Debug("failed to query the consumer chain for the latest height")
+		}).Debug("failed to query the consumer chain for the latest block")
 	})); err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
 			"max_attempts": RtyAttNum,
 			"height":       height,
 			"error":        err,
-		}).Debug("failed to query the consumer chain for the header")
+		}).Debug("failed to query the consumer chain for the block")
 	})); err != nil {
 		return nil, err
 	}
@@ -176,8 +176,36 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	return nil
 }
 
+// waitForActivation waits until BTC staking is activated
+func (cp *ChainPoller) waitForActivation() {
+	// ensure that the startHeight is no lower than the activated height
+	for {
+		activatedHeight, err := cp.cc.QueryActivatedHeight()
+		if err != nil {
+			cp.logger.WithFields(logrus.Fields{
+				"error": err,
+			}).Debug("failed to query the consumer chain for the activated height")
+		} else {
+			if cp.GetNextHeight() < activatedHeight {
+				cp.SetNextHeight(activatedHeight)
+			}
+			return
+		}
+
+		select {
+		case <-time.After(cp.cfg.PollInterval):
+
+		case <-cp.quit:
+			return
+		}
+	}
+
+}
+
 func (cp *ChainPoller) pollChain() {
 	defer cp.wg.Done()
+
+	cp.waitForActivation()
 
 	var failedCycles uint64
 
@@ -188,7 +216,6 @@ func (cp *ChainPoller) pollChain() {
 		block, err := cp.blockWithRetry(blockToRetrieve)
 		if err != nil {
 			failedCycles++
-
 			cp.logger.WithFields(logrus.Fields{
 				"error":        err,
 				"currFailures": failedCycles,

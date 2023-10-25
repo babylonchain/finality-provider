@@ -881,27 +881,6 @@ func (bc *BabylonController) QueryValidatorVotingPower(valPk []byte, blockHeight
 	return res.VotingPower, nil
 }
 
-// QueryBlockFinalization queries whether the block has been finalized
-func (bc *BabylonController) QueryBlockFinalization(blockHeight uint64) (bool, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	// query the indexed block at the given height
-	queryRequest := &finalitytypes.QueryBlockRequest{
-		Height: blockHeight,
-	}
-	res, err := queryClient.Block(ctx, queryRequest)
-	if err != nil {
-		return false, fmt.Errorf("failed to query indexed block at height %v: %w", blockHeight, err)
-	}
-
-	return res.Block.Finalized, nil
-}
-
 func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
 }
@@ -959,24 +938,44 @@ func getContextWithCancel(timeout time.Duration) (context.Context, context.Cance
 
 func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
-	intHeight := int64(height)
-	headerResp, err := bc.provider.RPCClient.Header(ctx, &intHeight)
 	defer cancel()
 
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	// query the indexed block at the given height
+	queryRequest := &finalitytypes.QueryBlockRequest{
+		Height: height,
+	}
+	res, err := queryClient.Block(ctx, queryRequest)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
 	}
 
-	if headerResp == nil {
-		return nil, fmt.Errorf("the block at height %v does not exist", height)
-	}
-
-	// Returning response directly, if header with specified number did not exist
-	// at request will contain nil header
 	return &types.BlockInfo{
-		Height:         uint64(headerResp.Header.Height),
-		LastCommitHash: headerResp.Header.LastCommitHash,
+		Height:         height,
+		LastCommitHash: res.Block.LastCommitHash,
+		Finalized:      res.Block.Finalized,
 	}, nil
+}
+
+func (bc *BabylonController) QueryActivatedHeight() (uint64, error) {
+	ctx, cancel := getContextWithCancel(bc.timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	// query the indexed block at the given height
+	queryRequest := &btcstakingtypes.QueryActivatedHeightRequest{}
+	res, err := queryClient.ActivatedHeight(ctx, queryRequest)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query activated height: %w", err)
+	}
+
+	return res.Height, nil
 }
 
 func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {

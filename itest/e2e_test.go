@@ -5,75 +5,21 @@ package e2etest
 
 import (
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var (
 	stakingTime   = uint16(100)
 	stakingAmount = int64(20000)
 )
-
-func TestPoller(t *testing.T) {
-	handler := NewBabylonNodeHandler(t)
-
-	err := handler.Start()
-	require.NoError(t, err)
-	defer handler.Stop()
-
-	defaultConfig := valcfg.DefaultBBNConfig()
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
-	logger.Out = os.Stdout
-	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
-
-	bc, err := clientcontroller.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
-	require.NoError(t, err)
-
-	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
-	require.NoError(t, err)
-
-	// Set auto calculated start height to 1, as we have disabled automatic start height calculation
-	err = poller.Start(1)
-	require.NoError(t, err)
-	defer poller.Stop()
-
-	// Get 3 blocks which should be received in order
-	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(1), info.Height)
-
-	case <-time.After(10 * time.Second):
-		t.Fatalf("Failed to get block info")
-	}
-
-	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(2), info.Height)
-
-	case <-time.After(10 * time.Second):
-		t.Fatalf("Failed to get block info")
-	}
-
-	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(3), info.Height)
-
-	case <-time.After(10 * time.Second):
-		t.Fatalf("Failed to get block info")
-	}
-}
 
 // TestValidatorLifeCycle tests the whole life cycle of a validator
 // creation -> registration -> randomness commitment ->
@@ -270,7 +216,7 @@ func TestFastSync(t *testing.T) {
 	currentHeight := currentHeaderRes.Height
 	t.Logf("the current block is at %v", currentHeight)
 	require.NoError(t, err)
-	require.True(t, currentHeight < int64(finalizedHeight)+int64(n))
+	require.True(t, currentHeight < finalizedHeight+uint64(n))
 }
 
 func TestValidatorUnbondingSigSubmission(t *testing.T) {
@@ -315,7 +261,7 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 	)
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCDelegations(
-			btcstakingtypes.BTCDelegationStatus_PENDING,
+			types.DelegationStatus_PENDING,
 			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {

@@ -40,6 +40,7 @@ func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, curr
 
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 	mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
+	mockClientController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
 
 	return mockClientController
 }

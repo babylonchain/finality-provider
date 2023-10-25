@@ -64,6 +64,21 @@ func (mr *MockClientControllerMockRecorder) CommitPubRandList(valPk, startHeight
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockClientController)(nil).CommitPubRandList), valPk, startHeight, pubRandList, sig)
 }
 
+// QueryActivatedHeight mocks base method.
+func (m *MockClientController) QueryActivatedHeight() (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryActivatedHeight")
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryActivatedHeight indicates an expected call of QueryActivatedHeight.
+func (mr *MockClientControllerMockRecorder) QueryActivatedHeight() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockClientController)(nil).QueryActivatedHeight))
+}
+
 // QueryBTCDelegations mocks base method.
 func (m *MockClientController) QueryBTCDelegations(status types0.DelegationStatus, limit uint64) ([]*types.BTCDelegation, error) {
 	m.ctrl.T.Helper()
@@ -122,21 +137,6 @@ func (m *MockClientController) QueryBlock(height uint64) (*types0.BlockInfo, err
 func (mr *MockClientControllerMockRecorder) QueryBlock(height interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlock", reflect.TypeOf((*MockClientController)(nil).QueryBlock), height)
-}
-
-// QueryBlockFinalization mocks base method.
-func (m *MockClientController) QueryBlockFinalization(height uint64) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBlockFinalization", height)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryBlockFinalization indicates an expected call of QueryBlockFinalization.
-func (mr *MockClientControllerMockRecorder) QueryBlockFinalization(height interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlockFinalization", reflect.TypeOf((*MockClientController)(nil).QueryBlockFinalization), height)
 }
 
 // QueryBlocks mocks base method.

@@ -617,7 +617,7 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 		select {
 		case <-time.After(v.cfg.SubmissionRetryInterval):
 			// periodically query the index block to be later checked whether it is Finalized
-			finalized, err := v.cc.QueryBlockFinalization(targetBlock.Height)
+			finalized, err := v.checkBlockFinalization(targetBlock.Height)
 			if err != nil {
 				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}
@@ -634,6 +634,15 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 			return nil, nil
 		}
 	}
+}
+
+func (v *ValidatorInstance) checkBlockFinalization(height uint64) (bool, error) {
+	b, err := v.cc.QueryBlock(height)
+	if err != nil {
+		return false, err
+	}
+
+	return b.Finalized, nil
 }
 
 // retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
@@ -668,7 +677,7 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 		select {
 		case <-time.After(v.cfg.SubmissionRetryInterval):
 			// periodically query the index block to be later checked whether it is Finalized
-			finalized, err := v.cc.QueryBlockFinalization(targetBlock.Height)
+			finalized, err := v.checkBlockFinalization(targetBlock.Height)
 			if err != nil {
 				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}

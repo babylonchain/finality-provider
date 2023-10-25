@@ -81,8 +81,9 @@ type ClientController interface {
 	// QueryBestBlock queries the tip block of the consumer chain
 	QueryBestBlock() (*types.BlockInfo, error)
 
-	// QueryBlockFinalization queries whether the block has been finalized
-	QueryBlockFinalization(height uint64) (bool, error)
+	// QueryActivatedHeight returns the activated height of the consumer chain
+	// error will be returned if the consumer chain has not been activated
+	QueryActivatedHeight() (uint64, error)
 
 	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
 	// - already received unbodning transaction on babylon chain
