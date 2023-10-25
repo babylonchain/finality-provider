@@ -308,7 +308,7 @@ func (bc *BabylonController) RegisterValidator(
 	}
 
 	var sdkDescription sttypes.Description
-	if err := yaml.Unmarshal([]byte(description), sdkDescription); err != nil {
+	if err := yaml.Unmarshal([]byte(description), &sdkDescription); err != nil {
 		return nil, fmt.Errorf("invalid descirption: %w", err)
 	}
 
