@@ -9,7 +9,6 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -172,7 +171,7 @@ func (v *ValidatorInstance) IsRunning() bool {
 
 func (v *ValidatorInstance) signUnbondingTransactions(
 	privKey *btcec.PrivateKey,
-	toSign []*bstypes.BTCDelegation) ([]unbondingTxSigData, error) {
+	toSign []*types.Delegation) ([]unbondingTxSigData, error) {
 
 	var dataWithSignatures []unbondingTxSigData
 	for _, delegation := range toSign {

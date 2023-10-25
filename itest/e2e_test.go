@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/service"
@@ -84,7 +83,7 @@ func TestMultipleValidators(t *testing.T) {
 	// submit Jury sigs for each delegation
 	for _, del := range dels {
 		tm.Wg.Add(1)
-		go func(btcDel *btcstakingtypes.BTCDelegation) {
+		go func(btcDel *types.Delegation) {
 			defer tm.Wg.Done()
 			_ = tm.AddJurySignature(t, btcDel)
 		}(del)
@@ -256,7 +255,7 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	var (
-		dels []*btcstakingtypes.BTCDelegation
+		dels []*types.Delegation
 		err  error
 	)
 	require.Eventually(t, func() bool {
@@ -281,7 +280,7 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 			return false
 		}
 		status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
-		return len(dels) == 1 && status == btcstakingtypes.BTCDelegationStatus_ACTIVE
+		return len(dels) == 1 && status == types.DelegationStatus_ACTIVE
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 

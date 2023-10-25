@@ -630,7 +630,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []*bbntypes.BTCHeader
 // QueryBTCDelegations queries BTC delegations that need a Jury signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Jury mode
-func (bc *BabylonController) QueryBTCDelegations(status types.DelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCDelegations(status types.DelegationStatus, limit uint64) ([]*types.Delegation, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 	pagination := &sdkquery.PageRequest{
@@ -651,7 +651,12 @@ func (bc *BabylonController) QueryBTCDelegations(status types.DelegationStatus, 
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
 
-	return res.BtcDelegations, nil
+	dels := make([]*types.Delegation, 0, len(res.BtcDelegations))
+	for _, d := range res.BtcDelegations {
+		dels = append(dels, ConvertDelegationType(d))
+	}
+
+	return dels, nil
 }
 
 func (bc *BabylonController) QueryValidatorSlashed(valPk []byte) (bool, error) {
@@ -733,7 +738,7 @@ func (bc *BabylonController) getNDelegations(
 	valBtcPk *bbntypes.BIP340PubKey,
 	startKey []byte,
 	n uint64,
-) ([]*btcstakingtypes.BTCDelegation, []byte, error) {
+) ([]*types.Delegation, []byte, error) {
 	pagination := &sdkquery.PageRequest{
 		Key:   startKey,
 		Limit: n,
@@ -756,10 +761,12 @@ func (bc *BabylonController) getNDelegations(
 		return nil, nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
 
-	var delegations []*btcstakingtypes.BTCDelegation
+	var delegations []*types.Delegation
 
 	for _, dels := range res.BtcDelegatorDelegations {
-		delegations = append(delegations, dels.Dels...)
+		for _, d := range dels.Dels {
+			delegations = append(delegations, ConvertDelegationType(d))
+		}
 	}
 
 	var nextKey []byte
@@ -774,10 +781,10 @@ func (bc *BabylonController) getNDelegations(
 func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
 	valBtcPk *bbntypes.BIP340PubKey,
 	n uint64,
-	match func(*btcstakingtypes.BTCDelegation) bool,
-) ([]*btcstakingtypes.BTCDelegation, error) {
+	match func(*types.Delegation) bool,
+) ([]*types.Delegation, error) {
 	batchSize := 100
-	var delegations []*btcstakingtypes.BTCDelegation
+	var delegations []*types.Delegation
 	var startKey []byte
 
 	for {
@@ -808,12 +815,12 @@ func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*types.Delegation, error) {
 	return bc.getNValidatorDelegationsMatchingCriteria(
 		valBtcPk,
 		max,
 		// fitlering function which always returns true as we want all delegations
-		func(*btcstakingtypes.BTCDelegation) bool { return true },
+		func(*types.Delegation) bool { return true },
 	)
 }
 
@@ -837,7 +844,7 @@ func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP34
 	return res.BtcPks, nil
 }
 
-func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*types.Delegation, error) {
 	// TODO Check what is the order of returned delegations. Ideally we would return
 	// delegation here from the first one which received undelegation
 
@@ -848,7 +855,7 @@ func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk []byte,
 	return bc.getNValidatorDelegationsMatchingCriteria(
 		valPubKey,
 		max,
-		func(del *btcstakingtypes.BTCDelegation) bool {
+		func(del *types.Delegation) bool {
 			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig == nil
 		},
 	)
@@ -1053,5 +1060,22 @@ func ConvertErrType(err error) error {
 		return types.ErrDuplicatedFinalitySig
 	default:
 		return err
+	}
+}
+
+func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
+	return &types.Delegation{
+		BabylonPk:       del.BabylonPk,
+		BtcPk:           del.BtcPk,
+		Pop:             del.Pop,
+		ValBtcPk:        del.ValBtcPk,
+		StartHeight:     del.StartHeight,
+		EndHeight:       del.EndHeight,
+		TotalSat:        del.TotalSat,
+		StakingTx:       del.StakingTx,
+		SlashingTx:      del.SlashingTx,
+		DelegatorSig:    del.DelegatorSig,
+		JurySig:         del.JurySig,
+		BtcUndelegation: del.BtcUndelegation,
 	}
 }

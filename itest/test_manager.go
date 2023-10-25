@@ -215,9 +215,9 @@ func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.
 	t.Logf("public randomness is successfully committed")
 }
 
-func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegation {
 	var (
-		dels []*bstypes.BTCDelegation
+		dels []*types.Delegation
 		err  error
 	)
 	require.Eventually(t, func() bool {
@@ -236,8 +236,8 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	return dels
 }
 
-func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
-	var dels []*bstypes.BTCDelegation
+func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*types.Delegation {
+	var dels []*types.Delegation
 	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
 	params, err := tm.BabylonClient.GetStakingParams()
@@ -247,7 +247,7 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 		if err != nil {
 			return false
 		}
-		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
+		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, types.DelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("the delegation is active, validators should start voting")
@@ -255,9 +255,9 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 	return dels
 }
 
-func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*types.Delegation {
 	var (
-		dels []*bstypes.BTCDelegation
+		dels []*types.Delegation
 		err  error
 	)
 	// wait for our validator to:
@@ -276,7 +276,7 @@ func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BI
 	return dels
 }
 
-func CheckDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
+func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, status types.DelegationStatus) bool {
 	allChecked := true
 	for _, d := range dels {
 		s := d.GetStatus(btcHeight, w)
@@ -372,9 +372,9 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *types.TxResponse {
-	slashingTx := btcDel.SlashingTx
-	stakingTx := btcDel.StakingTx
+func (tm *TestManager) AddJurySignature(t *testing.T, del *types.Delegation) *types.TxResponse {
+	slashingTx := del.SlashingTx
+	stakingTx := del.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
 
@@ -390,8 +390,8 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 	require.NoError(t, err)
 
 	res, err := tm.BabylonClient.SubmitJurySig(
-		btcDel.ValBtcPk.MustMarshal(),
-		btcDel.BtcPk.MustMarshal(),
+		del.ValBtcPk.MustMarshal(),
+		del.BtcPk.MustMarshal(),
 		stakingMsgTx.TxHash().String(),
 		jurySig.MustMarshal(),
 	)
@@ -403,14 +403,14 @@ func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegat
 // delegation must containt undelgation object
 func (tm *TestManager) AddValidatorUnbondingSignature(
 	t *testing.T,
-	btcDel *bstypes.BTCDelegation,
+	del *types.Delegation,
 	validatorSk *btcec.PrivateKey,
 ) {
-	stakingTx := btcDel.StakingTx
+	stakingTx := del.StakingTx
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
 
-	unbondingTx := btcDel.BtcUndelegation.UnbondingTx
+	unbondingTx := del.BtcUndelegation.UnbondingTx
 
 	valSig, err := unbondingTx.Sign(
 		stakingMsgTx,
@@ -423,8 +423,8 @@ func (tm *TestManager) AddValidatorUnbondingSignature(
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
 	_, err = tm.BabylonClient.SubmitValidatorUnbondingSig(
-		btcDel.ValBtcPk.MustMarshal(),
-		btcDel.BtcPk.MustMarshal(),
+		del.ValBtcPk.MustMarshal(),
+		del.BtcPk.MustMarshal(),
 		stakingTxHash,
 		valSig.MustMarshal(),
 	)

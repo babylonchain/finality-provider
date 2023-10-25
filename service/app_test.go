@@ -162,7 +162,7 @@ func FuzzAddJurySig(f *testing.F) {
 		pop, err := bstypes.NewPoP(delBabylonSK, delSK)
 		require.NoError(t, err)
 		require.NoError(t, err)
-		delegation := &bstypes.BTCDelegation{
+		delegation := &types.Delegation{
 			ValBtcPk:   btcPkBIP340,
 			BtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delPK),
 			BabylonPk:  delBabylonPK.(*secp256k1.PubKey),
@@ -174,8 +174,8 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().QueryBTCDelegations(bstypes.BTCDelegationStatus_PENDING, gomock.Any()).
-			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
+		mockClientController.EXPECT().QueryBTCDelegations(types.DelegationStatus_PENDING, gomock.Any()).
+			Return([]*types.Delegation{delegation}, nil).AnyTimes()
 		mockClientController.EXPECT().SubmitJurySig(
 			delegation.ValBtcPk.MustMarshal(),
 			delegation.BtcPk.MustMarshal(),

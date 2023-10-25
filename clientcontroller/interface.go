@@ -3,7 +3,6 @@ package clientcontroller
 import (
 	"fmt"
 
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/types"
@@ -61,7 +60,7 @@ type ClientController interface {
 
 	// QueryBTCDelegations queries BTC delegations with the given status
 	// it is only used when the program is running in Jury mode
-	QueryBTCDelegations(status types.DelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error)
+	QueryBTCDelegations(status types.DelegationStatus, limit uint64) ([]*types.Delegation, error)
 
 	// QueryValidatorVotingPower queries the voting power of the validator at a given height
 	QueryValidatorVotingPower(valPk []byte, blockHeight uint64) (uint64, error)
@@ -88,7 +87,7 @@ type ClientController interface {
 	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations.UnbondingDelegations:
 	// - already received unbodning transaction on babylon chain
 	// - not received validator signature yet
-	QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*btcstakingtypes.BTCDelegation, error)
+	QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*types.Delegation, error)
 
 	Close() error
 }
