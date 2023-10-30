@@ -842,25 +842,104 @@ func ConvertErrType(err error) error {
 
 func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
 	var (
+		stakingTxHex   string
+		slashingTxHex  string
 		jurySchnorrSig *schnorr.Signature
+		undelegation   *types.Undelegation
 		err            error
 	)
+
+	if del.StakingTx == nil {
+		panic(fmt.Errorf("staking tx should not be empty in delegation"))
+	}
+
+	if del.SlashingTx == nil {
+		panic(fmt.Errorf("slashing tx should not be empty in delegation"))
+	}
+
+	stakingTxHex, err = del.StakingTx.ToHexStr()
+	if err != nil {
+		panic(err)
+	}
+
+	slashingTxHex = del.SlashingTx.ToHexStr()
+
 	if del.JurySig != nil {
 		jurySchnorrSig, err = del.JurySig.ToBTCSig()
 		if err != nil {
 			panic(err)
 		}
 	}
+
+	if del.BtcUndelegation != nil {
+		undelegation = ConvertUndelegationType(del.BtcUndelegation)
+	}
+
 	return &types.Delegation{
 		BtcPk:           del.BtcPk.MustToBTCPK(),
 		ValBtcPk:        del.ValBtcPk.MustToBTCPK(),
 		StartHeight:     del.StartHeight,
 		EndHeight:       del.EndHeight,
 		TotalSat:        del.TotalSat,
-		StakingTx:       del.StakingTx,
-		SlashingTx:      del.SlashingTx,
+		StakingTxHex:    stakingTxHex,
+		SlashingTxHex:   slashingTxHex,
 		JurySig:         jurySchnorrSig,
-		BtcUndelegation: del.BtcUndelegation,
+		BtcUndelegation: undelegation,
+	}
+}
+
+func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Undelegation {
+	var (
+		unbondingTxHex          string
+		slashingTxHex           string
+		jurySlashingSchnorrSig  *schnorr.Signature
+		juryUnbondingSchnorrSig *schnorr.Signature
+		valUnbondingSchnorrSig  *schnorr.Signature
+		err                     error
+	)
+
+	if undel.UnbondingTx == nil {
+		panic(fmt.Errorf("staking tx should not be empty in undelegation"))
+	}
+
+	if undel.SlashingTx == nil {
+		panic(fmt.Errorf("slashing tx should not be empty in undelegation"))
+	}
+
+	unbondingTxHex, err = undel.UnbondingTx.ToHexStr()
+	if err != nil {
+		panic(err)
+	}
+
+	slashingTxHex = undel.SlashingTx.ToHexStr()
+
+	if undel.JurySlashingSig != nil {
+		jurySlashingSchnorrSig, err = undel.JurySlashingSig.ToBTCSig()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if undel.JuryUnbondingSig != nil {
+		juryUnbondingSchnorrSig, err = undel.JuryUnbondingSig.ToBTCSig()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if undel.ValidatorUnbondingSig != nil {
+		valUnbondingSchnorrSig, err = undel.ValidatorUnbondingSig.ToBTCSig()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return &types.Undelegation{
+		UnbondingTxHex:        unbondingTxHex,
+		SlashingTxHex:         slashingTxHex,
+		JurySlashingSig:       jurySlashingSchnorrSig,
+		JuryUnbondingSig:      juryUnbondingSchnorrSig,
+		ValidatorUnbondingSig: valUnbondingSchnorrSig,
 	}
 }
 

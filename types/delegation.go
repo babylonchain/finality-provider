@@ -1,10 +1,8 @@
 package types
 
 import (
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/wire"
 )
 
 type Delegation struct {
@@ -22,12 +20,12 @@ type Delegation struct {
 	// total_sat is the total amount of BTC stakes in this delegation
 	// quantified in satoshi
 	TotalSat uint64
-	// staking_tx is the staking tx
-	StakingTx *btcstakingtypes.BabylonBTCTaprootTx
+	// staking_tx_hex is the hex string of the staking tx
+	StakingTxHex string
 	// slashing_tx is the slashing tx
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or jury yet.
-	SlashingTx *btcstakingtypes.BTCSlashingTx
+	SlashingTxHex string
 	// jury_sig is the signature on the slashing tx
 	// by the jury (i.e., SK corresponding to jury_pk in params)
 	// It will be a part of the witness for the staking tx output.
@@ -35,19 +33,19 @@ type Delegation struct {
 	// if this object is present it menans that staker requested undelegation, and whole
 	// delegation is being undelegated.
 	// directly in delegation object
-	BtcUndelegation *btcstakingtypes.BTCUndelegation
+	BtcUndelegation *Undelegation
 }
 
-// BTCUndelegation signalizes that the delegation is being undelegated
-type BTCUndelegation struct {
+// Undelegation signalizes that the delegation is being undelegated
+type Undelegation struct {
 	// unbonding_tx is the transaction which will transfer the funds from staking
 	// output to unbonding output. Unbonding output will usually have lower timelock
 	// than staking output.
-	UnbondingTx *wire.MsgTx
+	UnbondingTxHex string
 	// slashing_tx is the slashing tx for unbodning transactions
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or jury yet.
-	SlashingTx *wire.MsgTx
+	SlashingTxHex string
 	// jury_slashing_sig is the signature on the slashing tx
 	// by the jury (i.e., SK corresponding to jury_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain

@@ -289,7 +289,9 @@ func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, statu
 
 func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTCDelegationStatus {
 	if del.BtcUndelegation != nil {
-		if del.BtcUndelegation.HasAllSignatures() {
+		if del.BtcUndelegation.JurySlashingSig != nil &&
+			del.BtcUndelegation.JuryUnbondingSig != nil &&
+			del.BtcUndelegation.ValidatorUnbondingSig != nil {
 			return bstypes.BTCDelegationStatus_UNBONDED
 		}
 		// If we received an undelegation but is still does not have all required signature,
@@ -397,8 +399,10 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 }
 
 func (tm *TestManager) AddJurySignature(t *testing.T, del *types.Delegation) *types.TxResponse {
-	slashingTx := del.SlashingTx
-	stakingTx := del.StakingTx
+	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(del.SlashingTxHex)
+	require.NoError(t, err)
+	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
+	require.NoError(t, err)
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
 
@@ -432,11 +436,13 @@ func (tm *TestManager) AddValidatorUnbondingSignature(
 	del *types.Delegation,
 	validatorSk *btcec.PrivateKey,
 ) {
-	stakingTx := del.StakingTx
+	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
+	require.NoError(t, err)
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
 
-	unbondingTx := del.BtcUndelegation.UnbondingTx
+	unbondingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.BtcUndelegation.UnbondingTxHex)
+	require.NoError(t, err)
 
 	valSig, err := unbondingTx.Sign(
 		stakingMsgTx,

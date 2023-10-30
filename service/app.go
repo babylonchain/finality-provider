@@ -227,8 +227,14 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
 	}
 
-	slashingTx := btcDel.SlashingTx
-	stakingTx := btcDel.StakingTx
+	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
+	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(btcDel.StakingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	if err != nil {
 		return nil, err
@@ -312,14 +318,21 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	}
 
 	// 1. Sign unbonding transaction
-	stakingTx := del.StakingTx
+	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
 	}
 
-	juryUnbondingSig, err := del.BtcUndelegation.UnbondingTx.Sign(
+	unbondingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.BtcUndelegation.UnbondingTxHex)
+	if err != nil {
+		return nil, err
+	}
+	juryUnbondingSig, err := unbondingTx.Sign(
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
@@ -331,15 +344,17 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	}
 
 	// 2. Sign slash unbonding transaction
-	slashUnbondigTx := del.BtcUndelegation.SlashingTx
-	unbondingTx := del.BtcUndelegation.UnbondingTx
+	slashUnbondingTx, err := bstypes.NewBTCSlashingTxFromHex(del.BtcUndelegation.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	unbondingMsgTx, err := unbondingTx.ToMsgTx()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize unbonding tx: %w", err)
 	}
 
-	jurySlashingUnbondingSig, err := slashUnbondigTx.Sign(
+	jurySlashingUnbondingSig, err := slashUnbondingTx.Sign(
 		unbondingMsgTx,
 		unbondingTx.Script,
 		juryPrivKey,

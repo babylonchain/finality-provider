@@ -157,11 +157,13 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, juryPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
 		require.NoError(t, err)
 		require.NoError(t, err)
+		stakingTxHex, err := stakingTx.ToHexStr()
+		require.NoError(t, err)
 		delegation := &types.Delegation{
-			ValBtcPk:   btcPkBIP340.MustToBTCPK(),
-			BtcPk:      delPK,
-			StakingTx:  stakingTx,
-			SlashingTx: slashingTx,
+			ValBtcPk:      btcPkBIP340.MustToBTCPK(),
+			BtcPk:         delPK,
+			StakingTxHex:  stakingTxHex,
+			SlashingTxHex: slashingTx.ToHexStr(),
 		}
 
 		stakingMsgTx, err := stakingTx.ToMsgTx()

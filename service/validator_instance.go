@@ -9,6 +9,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
+	types2 "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -175,7 +176,11 @@ func (v *ValidatorInstance) signUnbondingTransactions(
 
 	var dataWithSignatures []unbondingTxSigData
 	for _, delegation := range toSign {
-		fundingTx, err := delegation.StakingTx.ToMsgTx()
+		stakingTx, err := types2.NewBabylonTaprootTxFromHex(delegation.StakingTxHex)
+		if err != nil {
+			return nil, err
+		}
+		fundingTx, err := stakingTx.ToMsgTx()
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
@@ -183,11 +188,14 @@ func (v *ValidatorInstance) signUnbondingTransactions(
 
 		fundingTxHash := fundingTx.TxHash().String()
 
-		txToSign := delegation.BtcUndelegation.UnbondingTx
+		txToSign, err := types2.NewBabylonTaprootTxFromHex(delegation.BtcUndelegation.UnbondingTxHex)
+		if err != nil {
+			return nil, err
+		}
 
 		sig, err := txToSign.Sign(
 			fundingTx,
-			delegation.StakingTx.Script,
+			stakingTx.Script,
 			privKey,
 			&v.cfg.ActiveNetParams,
 		)
