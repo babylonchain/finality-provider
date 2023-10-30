@@ -266,7 +266,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 	for {
 		select {
 		case <-sendUnbondingSigTicker.C:
-			delegationsNeedingSignatures, err := v.cc.QueryBTCValidatorUnbondingDelegations(
+			delegationsNeedingSignatures, err := v.cc.QueryValidatorUnbondingDelegations(
 				v.MustGetBtcPk(),
 				// TODO: parameterize the max number of delegations to be queried
 				// it should not be to high to not take too long time to sign them
@@ -754,9 +754,9 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
 
-	pubRandByteList := make([][]byte, 0, len(pubRandList))
+	pubRandByteList := make([]*btcec.FieldVal, 0, len(pubRandList))
 	for _, r := range pubRandList {
-		pubRandByteList = append(pubRandByteList, r.MustMarshal())
+		pubRandByteList = append(pubRandByteList, r.ToFieldVal())
 	}
 	res, err := v.cc.CommitPubRandList(v.MustGetBtcPk(), startHeight, pubRandByteList, schnorrSig)
 	if err != nil {

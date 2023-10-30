@@ -7,7 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/types"
 )
 
 // jurySigSubmissionLoop is the reactor to submit Jury signature for pending BTC delegations
@@ -22,7 +21,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 		select {
 		case <-jurySigTicker.C:
 			// 1. Get all pending delegations first, this are more important than the unbonding ones
-			dels, err := app.cc.QueryBTCDelegations(types.DelegationStatus_PENDING, limit)
+			dels, err := app.cc.QueryPendingDelegations(limit)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
@@ -43,7 +42,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 				}
 			}
 			// 2. Get all unbonding delegations
-			unbondingDels, err := app.cc.QueryBTCDelegations(types.DelegationStatus_UNBONDING, limit)
+			unbondingDels, err := app.cc.QueryUnbondingDelegations(limit)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

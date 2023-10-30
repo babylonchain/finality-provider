@@ -103,22 +103,6 @@ func TestMultipleValidators(t *testing.T) {
 	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
-func TestJurySigSubmission(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, true)
-	// changing the mode because we need to ensure the validator is also stopped when the test is finished
-	defer tm.Stop(t)
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
-
-	// send BTC delegation and make sure it's deep enough in btclightclient module
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
-
-	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
-	err := valIns.Stop()
-	require.NoError(t, err)
-}
-
 // TestDoubleSigning tests the attack scenario where the validator
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
@@ -245,7 +229,7 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	_ = tm.WaitForValNUnbondingDels(t, valIns.GetBtcPkBIP340(), 1)
 }
 
-func TestJuryUnbondingSigSubmission(t *testing.T) {
+func TestJuryLifeCycle(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, true)
 	defer tm.Stop(t)
 	app := tm.Va
@@ -254,35 +238,10 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
-	var (
-		dels []*types.Delegation
-		err  error
-	)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCDelegations(
-			types.DelegationStatus_PENDING,
-			tm.ValConfig.JuryModeConfig.DelegationLimit,
-		)
-		if err != nil {
-			return false
-		}
-		return len(dels) == 1
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
-
-	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	err := valIns.Stop()
 	require.NoError(t, err)
-	params, err := tm.BabylonClient.GetStakingParams()
-	require.NoError(t, err)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
-		if err != nil {
-			return false
-		}
-		status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
-		return len(dels) == 1 && status == types.DelegationStatus_ACTIVE
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
 

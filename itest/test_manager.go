@@ -221,8 +221,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 		err  error
 	)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCDelegations(
-			types.DelegationStatus_PENDING,
+		dels, err = tm.BabylonClient.QueryPendingDelegations(
 			tm.ValConfig.JuryModeConfig.DelegationLimit,
 		)
 		if err != nil {
@@ -247,7 +246,7 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 		if err != nil {
 			return false
 		}
-		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, types.DelegationStatus_ACTIVE)
+		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("the delegation is active, validators should start voting")
@@ -276,16 +275,41 @@ func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BI
 	return dels
 }
 
-func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, status types.DelegationStatus) bool {
+func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
 	allChecked := true
 	for _, d := range dels {
-		s := d.GetStatus(btcHeight, w)
+		s := getDelStatus(d, btcHeight, w)
 		if s != status {
 			allChecked = false
 		}
 	}
 
 	return allChecked
+}
+
+func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTCDelegationStatus {
+	if del.BtcUndelegation != nil {
+		if del.BtcUndelegation.HasAllSignatures() {
+			return bstypes.BTCDelegationStatus_UNBONDED
+		}
+		// If we received an undelegation but is still does not have all required signature,
+		// delegation receives UNBONING status.
+		// Voting power from this delegation is removed from the total voting power and now we
+		// are waiting for signatures from validator and jury for delegation to become expired.
+		// For now we do not have any unbonding time on the consumer chain, only time lock on BTC chain
+		// we may consider adding unbonding time on the consumer chain later to avoid situation where
+		// we can lose to much voting power in to short time.
+		return bstypes.BTCDelegationStatus_UNBONDING
+	}
+
+	if del.StartHeight <= btcHeight && btcHeight+w <= del.EndHeight {
+		if del.JurySig != nil {
+			return bstypes.BTCDelegationStatus_ACTIVE
+		} else {
+			return bstypes.BTCDelegationStatus_PENDING
+		}
+	}
+	return bstypes.BTCDelegationStatus_UNBONDED
 }
 
 func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
