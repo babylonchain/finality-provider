@@ -137,7 +137,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
-		commission := sdktypes.OneDec()
+		commission := sdktypes.ZeroDec()
 		res, err := app.CreateValidator(valName, chainID, "", newDescription(moniker), &commission)
 		require.NoError(t, err)
 		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
@@ -165,7 +165,7 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
 					return false
 				}
-				if !v.Commission.Equal(sdktypes.OneDec()) {
+				if !v.Commission.Equal(sdktypes.ZeroDec()) {
 					return false
 				}
 			}
