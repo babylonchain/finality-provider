@@ -878,7 +878,6 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		ValBtcPk:        del.ValBtcPk.MustToBTCPK(),
 		StartHeight:     del.StartHeight,
 		EndHeight:       del.EndHeight,
-		TotalSat:        del.TotalSat,
 		StakingTxHex:    stakingTxHex,
 		SlashingTxHex:   slashingTxHex,
 		JurySig:         jurySchnorrSig,

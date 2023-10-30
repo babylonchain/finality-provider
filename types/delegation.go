@@ -17,9 +17,6 @@ type Delegation struct {
 	// end_height is the end height of the BTC delegation
 	// it is the end BTC height of the timelock - w
 	EndHeight uint64
-	// total_sat is the total amount of BTC stakes in this delegation
-	// quantified in satoshi
-	TotalSat uint64
 	// staking_tx_hex is the hex string of the staking tx
 	StakingTxHex string
 	// slashing_tx is the slashing tx
