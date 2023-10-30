@@ -389,11 +389,13 @@ func (tm *TestManager) AddJurySignature(t *testing.T, del *types.Delegation) *ty
 	)
 	require.NoError(t, err)
 
+	jurySchnorrSig, err := jurySig.ToBTCSig()
+	require.NoError(t, err)
 	res, err := tm.BabylonClient.SubmitJurySig(
-		del.ValBtcPk.MustMarshal(),
-		del.BtcPk.MustMarshal(),
+		del.ValBtcPk,
+		del.BtcPk,
 		stakingMsgTx.TxHash().String(),
-		jurySig.MustMarshal(),
+		jurySchnorrSig,
 	)
 	require.NoError(t, err)
 
@@ -422,11 +424,13 @@ func (tm *TestManager) AddValidatorUnbondingSignature(
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
+	valSchnorrSig, err := valSig.ToBTCSig()
+	require.NoError(t, err)
 	_, err = tm.BabylonClient.SubmitValidatorUnbondingSig(
-		del.ValBtcPk.MustMarshal(),
-		del.BtcPk.MustMarshal(),
+		del.ValBtcPk,
+		del.BtcPk,
 		stakingTxHash,
-		valSig.MustMarshal(),
+		valSchnorrSig,
 	)
 	require.NoError(t, err)
 }

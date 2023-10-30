@@ -1,9 +1,10 @@
 package types
 
 import (
-	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/wire"
 )
 
 type DelegationStatus int32
@@ -27,17 +28,11 @@ const (
 )
 
 type Delegation struct {
-	// babylon_pk is the Babylon secp256k1 PK of this BTC delegation
-	BabylonPk *secp256k1.PubKey
 	// btc_pk is the Bitcoin secp256k1 PK of this BTC delegation
-	// the PK follows encoding in BIP-340 spec
-	BtcPk *bbntypes.BIP340PubKey
-	// pop is the proof of possession of babylon_pk and btc_pk
-	Pop *btcstakingtypes.ProofOfPossession
+	BtcPk *btcec.PublicKey
 	// val_btc_pk is the Bitcoin secp256k1 PK of the BTC validator that
 	// this BTC delegation delegates to
-	// the PK follows encoding in BIP-340 spec
-	ValBtcPk *bbntypes.BIP340PubKey
+	ValBtcPk *btcec.PublicKey
 	// start_height is the start BTC height of the BTC delegation
 	// it is the start BTC height of the timelock
 	StartHeight uint64
@@ -53,18 +48,39 @@ type Delegation struct {
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or jury yet.
 	SlashingTx *btcstakingtypes.BTCSlashingTx
-	// delegator_sig is the signature on the slashing tx
-	// by the delegator (i.e., SK corresponding to btc_pk).
-	// It will be a part of the witness for the staking tx output.
-	DelegatorSig *bbntypes.BIP340Signature
 	// jury_sig is the signature signature on the slashing tx
 	// by the jury (i.e., SK corresponding to jury_pk in params)
 	// It will be a part of the witness for the staking tx output.
-	JurySig *bbntypes.BIP340Signature
+	JurySig *schnorr.Signature
 	// if this object is present it menans that staker requested undelegation, and whole
 	// delegation is being undelegated.
 	// directly in delegation object
 	BtcUndelegation *btcstakingtypes.BTCUndelegation
+}
+
+// BTCUndelegation signalizes that the delegation is being undelegated
+type BTCUndelegation struct {
+	// unbonding_tx is the transaction which will transfer the funds from staking
+	// output to unbonding output. Unbonding output will usually have lower timelock
+	// than staking output.
+	UnbondingTx *wire.MsgTx
+	// slashing_tx is the slashing tx for unbodning transactions
+	// It is partially signed by SK corresponding to btc_pk, but not signed by
+	// validator or jury yet.
+	SlashingTx *wire.MsgTx
+	// jury_slashing_sig is the signature on the slashing tx
+	// by the jury (i.e., SK corresponding to jury_pk in params)
+	// It must be provided after processing undelagate message by the consumer chain
+	JurySlashingSig *schnorr.Signature
+	// jury_unbonding_sig is the signature on the unbonding tx
+	// by the jury (i.e., SK corresponding to jury_pk in params)
+	// It must be provided after processing undelagate message by the consumer chain and after
+	// validator sig will be provided by validator
+	JuryUnbondingSig *schnorr.Signature
+	// validator_unbonding_sig is the signature on the unbonding tx
+	// by the validator (i.e., SK corresponding to jury_pk in params)
+	// It must be provided after processing undelagate message by the consumer chain
+	ValidatorUnbondingSig *schnorr.Signature
 }
 
 func (d *Delegation) GetStatus(btcHeight uint64, w uint64) DelegationStatus {
@@ -76,8 +92,8 @@ func (d *Delegation) GetStatus(btcHeight uint64, w uint64) DelegationStatus {
 		// delegation receives UNBONING status.
 		// Voting power from this delegation is removed from the total voting power and now we
 		// are waiting for signatures from validator and jury for delegation to become expired.
-		// For now we do not have any unbonding time on Babylon chain, only time lock on BTC chain
-		// we may consider adding unbonding time on Babylon chain later to avoid situation where
+		// For now we do not have any unbonding time on the consumer chain, only time lock on BTC chain
+		// we may consider adding unbonding time on the consumer chain later to avoid situation where
 		// we can lose to much voting power in to short time.
 		return DelegationStatus_UNBONDING
 	}

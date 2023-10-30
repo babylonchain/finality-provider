@@ -18,6 +18,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -285,18 +286,11 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 // it returns tx hash and error
 func (bc *BabylonController) RegisterValidator(
 	chainPk []byte,
-	valPk []byte,
+	valPk *btcec.PublicKey,
 	pop []byte,
 	commission string,
 	description string,
 ) (*types.TxResponse, error) {
-	bbnPubKey := &secp256k1.PubKey{Key: chainPk}
-
-	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
 		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
@@ -314,8 +308,8 @@ func (bc *BabylonController) RegisterValidator(
 
 	msg := &btcstakingtypes.MsgCreateBTCValidator{
 		Signer:      bc.MustGetTxSigner(),
-		BabylonPk:   bbnPubKey,
-		BtcPk:       btcPubKey,
+		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
+		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		Pop:         &bbnPop,
 		Commission:  &sdkCommission,
 		Description: &sdkDescription,
@@ -331,12 +325,7 @@ func (bc *BabylonController) RegisterValidator(
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
-func (bc *BabylonController) CommitPubRandList(valPk []byte, startHeight uint64, pubRandList [][]byte, sig []byte) (*types.TxResponse, error) {
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
+func (bc *BabylonController) CommitPubRandList(valPk *btcec.PublicKey, startHeight uint64, pubRandList [][]byte, sig *schnorr.Signature) (*types.TxResponse, error) {
 	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
 	for _, r := range pubRandList {
 		schnorrPubRand, err := bbntypes.NewSchnorrPubRand(r)
@@ -346,17 +335,14 @@ func (bc *BabylonController) CommitPubRandList(valPk []byte, startHeight uint64,
 		schnorrPubRandList = append(schnorrPubRandList, *schnorrPubRand)
 	}
 
-	bip340Sig, err := bbntypes.NewBIP340Signature(sig)
-	if err != nil {
-		return nil, fmt.Errorf("invalid BIP340 sig: %w", err)
-	}
+	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
 
 	msg := &finalitytypes.MsgCommitPubRandList{
 		Signer:      bc.MustGetTxSigner(),
-		ValBtcPk:    valPubKey,
+		ValBtcPk:    bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		StartHeight: startHeight,
 		PubRandList: schnorrPubRandList,
-		Sig:         bip340Sig,
+		Sig:         &bip340Sig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -369,28 +355,15 @@ func (bc *BabylonController) CommitPubRandList(valPk []byte, startHeight uint64,
 
 // SubmitJurySig submits the Jury signature via a MsgAddJurySig to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitJurySig(valPk []byte, delPk []byte, stakingTxHash string, sig []byte) (*types.TxResponse, error) {
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
-	delPubKey, err := bbntypes.NewBIP340PubKey(delPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
-	bip340Sig, err := bbntypes.NewBIP340Signature(sig)
-	if err != nil {
-		return nil, fmt.Errorf("invalid BIP340 sig: %w", err)
-	}
+func (bc *BabylonController) SubmitJurySig(valPk *btcec.PublicKey, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
+	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
 
 	msg := &btcstakingtypes.MsgAddJurySig{
 		Signer:        bc.MustGetTxSigner(),
-		ValPk:         valPubKey,
-		DelPk:         delPubKey,
+		ValPk:         bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
+		DelPk:         bbntypes.NewBIP340PubKeyFromBTCPK(delPk),
 		StakingTxHash: stakingTxHash,
-		Sig:           bip340Sig,
+		Sig:           &bip340Sig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -404,39 +377,23 @@ func (bc *BabylonController) SubmitJurySig(valPk []byte, delPk []byte, stakingTx
 // SubmitJuryUnbondingSigs submits the Jury signatures via a MsgAddJuryUnbondingSigs to Babylon if the daemon runs in Jury mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitJuryUnbondingSigs(
-	valPk []byte,
-	delPk []byte,
+	valPk *btcec.PublicKey,
+	delPk *btcec.PublicKey,
 	stakingTxHash string,
-	unbondingSig []byte,
-	slashUnbondingSig []byte,
+	unbondingSig *schnorr.Signature,
+	slashUnbondingSig *schnorr.Signature,
 ) (*types.TxResponse, error) {
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
+	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
 
-	delPubKey, err := bbntypes.NewBIP340PubKey(delPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
-	bip340UnbondingSig, err := bbntypes.NewBIP340Signature(unbondingSig)
-	if err != nil {
-		return nil, fmt.Errorf("invalid unbonding sig: %w", err)
-	}
-
-	bip340SlashUnbondingSig, err := bbntypes.NewBIP340Signature(slashUnbondingSig)
-	if err != nil {
-		return nil, fmt.Errorf("invalid unbonding sig: %w", err)
-	}
+	bip340SlashUnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(slashUnbondingSig)
 
 	msg := &btcstakingtypes.MsgAddJuryUnbondingSigs{
 		Signer:                 bc.MustGetTxSigner(),
-		ValPk:                  valPubKey,
-		DelPk:                  delPubKey,
+		ValPk:                  bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
+		DelPk:                  bbntypes.NewBIP340PubKeyFromBTCPK(delPk),
 		StakingTxHash:          stakingTxHash,
-		UnbondingTxSig:         bip340UnbondingSig,
-		SlashingUnbondingTxSig: bip340SlashUnbondingSig,
+		UnbondingTxSig:         &bip340UnbondingSig,
+		SlashingUnbondingTxSig: &bip340SlashUnbondingSig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -448,23 +405,13 @@ func (bc *BabylonController) SubmitJuryUnbondingSigs(
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (bc *BabylonController) SubmitFinalitySig(valPk []byte, blockHeight uint64, blockHash []byte, sig []byte) (*types.TxResponse, error) {
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
-	eotsSig, err := bbntypes.NewSchnorrEOTSSig(sig)
-	if err != nil {
-		return nil, fmt.Errorf("invalid EOTS sig: %w", err)
-	}
-
+func (bc *BabylonController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
 		Signer:              bc.MustGetTxSigner(),
-		ValBtcPk:            valPubKey,
+		ValBtcPk:            bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		BlockHeight:         blockHeight,
 		BlockLastCommitHash: blockHash,
-		FinalitySig:         eotsSig,
+		FinalitySig:         bbntypes.NewSchnorrEOTSSigFromModNScalar(sig),
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -476,29 +423,19 @@ func (bc *BabylonController) SubmitFinalitySig(valPk []byte, blockHeight uint64,
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
-func (bc *BabylonController) SubmitBatchFinalitySigs(valPk []byte, blocks []*types.BlockInfo, sigs [][]byte) (*types.TxResponse, error) {
+func (bc *BabylonController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
 
-	btcPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
 	msgs := make([]sdk.Msg, 0, len(blocks))
 	for i, b := range blocks {
-		eotsSig, err := bbntypes.NewSchnorrEOTSSig(sigs[i])
-		if err != nil {
-			return nil, fmt.Errorf("invalid EOTS sig: %w", err)
-		}
-
 		msg := &finalitytypes.MsgAddFinalitySig{
 			Signer:              bc.MustGetTxSigner(),
-			ValBtcPk:            btcPubKey,
+			ValBtcPk:            bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 			BlockHeight:         b.Height,
 			BlockLastCommitHash: b.LastCommitHash,
-			FinalitySig:         eotsSig,
+			FinalitySig:         bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]),
 		}
 		msgs = append(msgs, msg)
 	}
@@ -512,33 +449,21 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(valPk []byte, blocks []*typ
 }
 
 func (bc *BabylonController) SubmitValidatorUnbondingSig(
-	valPk []byte,
-	delPk []byte,
+	valPk *btcec.PublicKey,
+	delPk *btcec.PublicKey,
 	stakingTxHash string,
-	sig []byte,
+	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
+	valBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(valPk)
 
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
-	delPubKey, err := bbntypes.NewBIP340PubKey(delPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
-	bip340Sig, err := bbntypes.NewBIP340Signature(sig)
-	if err != nil {
-		return nil, fmt.Errorf("invalid BIP340 sig: %w", err)
-	}
+	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
 
 	msg := &btcstakingtypes.MsgAddValidatorUnbondingSig{
 		Signer:         bc.MustGetTxSigner(),
-		ValPk:          valPubKey,
-		DelPk:          delPubKey,
+		ValPk:          valBtcPk,
+		DelPk:          bbntypes.NewBIP340PubKeyFromBTCPK(delPk),
 		StakingTxHash:  stakingTxHash,
-		UnbondingTxSig: bip340Sig,
+		UnbondingTxSig: &bip340Sig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -548,7 +473,7 @@ func (bc *BabylonController) SubmitValidatorUnbondingSig(
 	}
 
 	bc.logger.WithFields(logrus.Fields{
-		"validator": valPubKey.MarshalHex(),
+		"validator": valBtcPk.MarshalHex(),
 		"code":      res.Code,
 		"height":    res.Height,
 		"tx_hash":   res.TxHash,
@@ -659,16 +584,13 @@ func (bc *BabylonController) QueryBTCDelegations(status types.DelegationStatus, 
 	return dels, nil
 }
 
-func (bc *BabylonController) QueryValidatorSlashed(valPk []byte) (bool, error) {
+func (bc *BabylonController) QueryValidatorSlashed(valPk *btcec.PublicKey) (bool, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
 	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
 
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return false, fmt.Errorf("invalid validator public key: %w", err)
-	}
+	valPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(valPk)
 
 	queryRequest := &btcstakingtypes.QueryBTCValidatorRequest{ValBtcPkHex: valPubKey.MarshalHex()}
 
@@ -844,16 +766,12 @@ func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP34
 	return res.BtcPks, nil
 }
 
-func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*types.Delegation, error) {
+func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
 	// TODO Check what is the order of returned delegations. Ideally we would return
 	// delegation here from the first one which received undelegation
 
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid validator public key: %w", err)
-	}
 	return bc.getNValidatorDelegationsMatchingCriteria(
-		valPubKey,
+		bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		max,
 		func(del *types.Delegation) bool {
 			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig == nil
@@ -862,7 +780,7 @@ func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk []byte,
 }
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
-func (bc *BabylonController) QueryValidatorVotingPower(valPk []byte, blockHeight uint64) (uint64, error) {
+func (bc *BabylonController) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -870,14 +788,9 @@ func (bc *BabylonController) QueryValidatorVotingPower(valPk []byte, blockHeight
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
-	valPubKey, err := bbntypes.NewBIP340PubKey(valPk)
-	if err != nil {
-		return 0, fmt.Errorf("invalid validator public key: %w", err)
-	}
-
 	// query all the unsigned delegations
 	queryRequest := &btcstakingtypes.QueryBTCValidatorPowerAtHeightRequest{
-		ValBtcPkHex: valPubKey.MarshalHex(),
+		ValBtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(valPk).MarshalHex(),
 		Height:      blockHeight,
 	}
 	res, err := queryClient.BTCValidatorPowerAtHeight(ctx, queryRequest)
@@ -1064,18 +977,19 @@ func ConvertErrType(err error) error {
 }
 
 func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
+	jurySchnorrSig, err := del.JurySig.ToBTCSig()
+	if err != nil {
+		panic(err)
+	}
 	return &types.Delegation{
-		BabylonPk:       del.BabylonPk,
-		BtcPk:           del.BtcPk,
-		Pop:             del.Pop,
-		ValBtcPk:        del.ValBtcPk,
+		BtcPk:           del.BtcPk.MustToBTCPK(),
+		ValBtcPk:        del.ValBtcPk.MustToBTCPK(),
 		StartHeight:     del.StartHeight,
 		EndHeight:       del.EndHeight,
 		TotalSat:        del.TotalSat,
 		StakingTx:       del.StakingTx,
 		SlashingTx:      del.SlashingTx,
-		DelegatorSig:    del.DelegatorSig,
-		JurySig:         del.JurySig,
+		JurySig:         jurySchnorrSig,
 		BtcUndelegation: del.BtcUndelegation,
 	}
 }

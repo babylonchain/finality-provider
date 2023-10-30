@@ -9,7 +9,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -78,7 +77,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockClientController.EXPECT().
 			RegisterValidator(
 				validator.GetBabylonPK().Key,
-				validator.MustGetBIP340BTCPK().MustMarshal(),
+				validator.MustGetBIP340BTCPK().MustToBTCPK(),
 				popBytes,
 				testutil.ZeroCommissionRate().String(),
 				testutil.EmptyDescription().String(),
@@ -157,16 +156,10 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingValue := int64(2 * 10e8)
 		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, juryPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
 		require.NoError(t, err)
-		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
-		require.NoError(t, err)
-		pop, err := bstypes.NewPoP(delBabylonSK, delSK)
-		require.NoError(t, err)
 		require.NoError(t, err)
 		delegation := &types.Delegation{
-			ValBtcPk:   btcPkBIP340,
-			BtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delPK),
-			BabylonPk:  delBabylonPK.(*secp256k1.PubKey),
-			Pop:        pop,
+			ValBtcPk:   btcPkBIP340.MustToBTCPK(),
+			BtcPk:      delPK,
 			StakingTx:  stakingTx,
 			SlashingTx: slashingTx,
 		}
@@ -177,8 +170,8 @@ func FuzzAddJurySig(f *testing.F) {
 		mockClientController.EXPECT().QueryBTCDelegations(types.DelegationStatus_PENDING, gomock.Any()).
 			Return([]*types.Delegation{delegation}, nil).AnyTimes()
 		mockClientController.EXPECT().SubmitJurySig(
-			delegation.ValBtcPk.MustMarshal(),
-			delegation.BtcPk.MustMarshal(),
+			delegation.ValBtcPk,
+			delegation.BtcPk,
 			stakingMsgTx.TxHash().String(),
 			gomock.Any(),
 		).

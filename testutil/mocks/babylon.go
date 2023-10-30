@@ -8,6 +8,8 @@ import (
 	reflect "reflect"
 
 	types "github.com/babylonchain/btc-validator/types"
+	btcec "github.com/btcsuite/btcd/btcec/v2"
+	schnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -49,7 +51,7 @@ func (mr *MockClientControllerMockRecorder) Close() *gomock.Call {
 }
 
 // CommitPubRandList mocks base method.
-func (m *MockClientController) CommitPubRandList(valPk []byte, startHeight uint64, pubRandList [][]byte, sig []byte) (*types.TxResponse, error) {
+func (m *MockClientController) CommitPubRandList(valPk *btcec.PublicKey, startHeight uint64, pubRandList [][]byte, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CommitPubRandList", valPk, startHeight, pubRandList, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -94,7 +96,7 @@ func (mr *MockClientControllerMockRecorder) QueryBTCDelegations(status, limit in
 }
 
 // QueryBTCValidatorUnbondingDelegations mocks base method.
-func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valPk []byte, max uint64) ([]*types.Delegation, error) {
+func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valPk, max)
 	ret0, _ := ret[0].([]*types.Delegation)
@@ -169,7 +171,7 @@ func (mr *MockClientControllerMockRecorder) QueryLatestFinalizedBlocks(count int
 }
 
 // QueryValidatorSlashed mocks base method.
-func (m *MockClientController) QueryValidatorSlashed(valPk []byte) (bool, error) {
+func (m *MockClientController) QueryValidatorSlashed(valPk *btcec.PublicKey) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryValidatorSlashed", valPk)
 	ret0, _ := ret[0].(bool)
@@ -184,7 +186,7 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorSlashed(valPk interfac
 }
 
 // QueryValidatorVotingPower mocks base method.
-func (m *MockClientController) QueryValidatorVotingPower(valPk []byte, blockHeight uint64) (uint64, error) {
+func (m *MockClientController) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryValidatorVotingPower", valPk, blockHeight)
 	ret0, _ := ret[0].(uint64)
@@ -199,7 +201,7 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(valPk, blo
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(chainPk, valPk, pop []byte, commission, description string) (*types.TxResponse, error) {
+func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission, description string) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -214,7 +216,7 @@ func (mr *MockClientControllerMockRecorder) RegisterValidator(chainPk, valPk, po
 }
 
 // SubmitBatchFinalitySigs mocks base method.
-func (m *MockClientController) SubmitBatchFinalitySigs(valPk []byte, blocks []*types.BlockInfo, sigs [][]byte) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", valPk, blocks, sigs)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -229,7 +231,7 @@ func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(valPk, block
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockClientController) SubmitFinalitySig(valPk []byte, blockHeight uint64, blockHash, sig []byte) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitFinalitySig", valPk, blockHeight, blockHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -244,7 +246,7 @@ func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(valPk, blockHeight
 }
 
 // SubmitJurySig mocks base method.
-func (m *MockClientController) SubmitJurySig(valPk, delPk []byte, stakingTxHash string, sig []byte) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitJurySig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitJurySig", valPk, delPk, stakingTxHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -259,7 +261,7 @@ func (mr *MockClientControllerMockRecorder) SubmitJurySig(valPk, delPk, stakingT
 }
 
 // SubmitJuryUnbondingSigs mocks base method.
-func (m *MockClientController) SubmitJuryUnbondingSigs(valPk, delPk []byte, stakingTxHash string, unbondingSig, slashUnbondingSig []byte) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitJuryUnbondingSigs(valPk, delPk *btcec.PublicKey, stakingTxHash string, unbondingSig, slashUnbondingSig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitJuryUnbondingSigs", valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -274,7 +276,7 @@ func (mr *MockClientControllerMockRecorder) SubmitJuryUnbondingSigs(valPk, delPk
 }
 
 // SubmitValidatorUnbondingSig mocks base method.
-func (m *MockClientController) SubmitValidatorUnbondingSig(valPk, delPk []byte, stakingTxHash string, sig []byte) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitValidatorUnbondingSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPk, delPk, stakingTxHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)

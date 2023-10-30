@@ -139,7 +139,7 @@ func (app *ValidatorApp) registrationLoop() {
 
 			res, err := app.cc.RegisterValidator(
 				req.bbnPubKey.Key,
-				req.btcPubKey.MustMarshal(),
+				req.btcPubKey.MustToBTCPK(),
 				popBytes,
 				req.commission.String(),
 				req.description.String(),

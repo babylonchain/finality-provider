@@ -197,7 +197,7 @@ func (v *ValidatorInstance) signUnbondingTransactions(
 		}
 
 		utd := unbondingTxSigData{
-			stakerPk:      delegation.BtcPk,
+			stakerPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delegation.BtcPk),
 			stakingTxHash: fundingTxHash,
 			signature:     sig,
 		}
@@ -216,11 +216,18 @@ func (v *ValidatorInstance) sendSignaturesForUnbondingTransactions(sigsToSend []
 	for _, sigData := range sigsToSend {
 		sd := sigData
 		eg.Go(func() error {
-			_, err := v.cc.SubmitValidatorUnbondingSig(
-				v.GetBtcPkBIP340().MustMarshal(),
-				sd.stakerPk.MustMarshal(),
+			schnorrSig, err := sd.signature.ToBTCSig()
+			if err != nil {
+				res = append(res, unbondingTxSigSendResult{
+					err:           err,
+					stakingTxHash: sd.stakingTxHash,
+				})
+			}
+			_, err = v.cc.SubmitValidatorUnbondingSig(
+				v.MustGetBtcPk(),
+				sd.stakerPk.MustToBTCPK(),
 				sd.stakingTxHash,
-				sd.signature.MustMarshal(),
+				schnorrSig,
 			)
 
 			mu.Lock()
@@ -260,7 +267,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 		select {
 		case <-sendUnbondingSigTicker.C:
 			delegationsNeedingSignatures, err := v.cc.QueryBTCValidatorUnbondingDelegations(
-				v.GetBtcPkBIP340().MustMarshal(),
+				v.MustGetBtcPk(),
 				// TODO: parameterize the max number of delegations to be queried
 				// it should not be to high to not take too long time to sign them
 				10,
@@ -751,7 +758,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 	for _, r := range pubRandList {
 		pubRandByteList = append(pubRandByteList, r.MustMarshal())
 	}
-	res, err := v.cc.CommitPubRandList(v.btcPk.MustMarshal(), startHeight, pubRandByteList, schnorrSig.Serialize())
+	res, err := v.cc.CommitPubRandList(v.MustGetBtcPk(), startHeight, pubRandByteList, schnorrSig)
 	if err != nil {
 		// TODO Add retry. check issue: https://github.com/babylonchain/btc-validator/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
@@ -791,7 +798,7 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitFinalitySig(v.GetBtcPkBIP340().MustMarshal(), b.Height, b.LastCommitHash, eotsSig.MustMarshal())
+	res, err := v.cc.SubmitFinalitySig(v.MustGetBtcPk(), b.Height, b.LastCommitHash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -809,17 +816,17 @@ func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockI
 		return nil, fmt.Errorf("should not submit batch finality signature with zero block")
 	}
 
-	sigs := make([][]byte, 0, len(blocks))
+	sigs := make([]*btcec.ModNScalar, 0, len(blocks))
 	for _, b := range blocks {
 		eotsSig, err := v.signEotsSig(b)
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, eotsSig.MustMarshal())
+		sigs = append(sigs, eotsSig.ToModNScalar())
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitBatchFinalitySigs(v.GetBtcPkBIP340().MustMarshal(), blocks, sigs)
+	res, err := v.cc.SubmitBatchFinalitySigs(v.MustGetBtcPk(), blocks, sigs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
 	}
@@ -863,7 +870,7 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitFinalitySig(v.GetBtcPkBIP340().MustMarshal(), b.Height, b.LastCommitHash, eotsSig.MustMarshal())
+	res, err := v.cc.SubmitFinalitySig(v.MustGetBtcPk(), b.Height, b.LastCommitHash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -974,7 +981,7 @@ func (v *ValidatorInstance) GetVotingPowerWithRetry(height uint64) (uint64, erro
 	)
 
 	if err := retry.Do(func() error {
-		power, err = v.cc.QueryValidatorVotingPower(v.GetBtcPkBIP340().MustMarshal(), height)
+		power, err = v.cc.QueryValidatorVotingPower(v.MustGetBtcPk(), height)
 		if err != nil {
 			return err
 		}
@@ -999,7 +1006,7 @@ func (v *ValidatorInstance) GetValidatorSlashedWithRetry() (bool, error) {
 	)
 
 	if err := retry.Do(func() error {
-		slashed, err = v.cc.QueryValidatorSlashed(v.GetBtcPkBIP340().MustMarshal())
+		slashed, err = v.cc.QueryValidatorSlashed(v.MustGetBtcPk())
 		if err != nil {
 			return err
 		}

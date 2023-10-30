@@ -252,13 +252,19 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
-	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk.MustMarshal(), btcDel.BtcPk.MustMarshal(), stakingTxHash, jurySig.MustMarshal())
+	jurySchnorrSig, err := jurySig.ToBTCSig()
+	if err != nil {
+		return nil, err
+	}
+	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, jurySchnorrSig)
 
+	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.ValBtcPk).MarshalHex()
+	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, err
 	}
@@ -266,8 +272,8 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 	if res == nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
 	}
@@ -345,19 +351,30 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
+	juryUnbondingSchnorrSig, err := juryUnbondingSig.ToBTCSig()
+	if err != nil {
+		return nil, err
+	}
+	jurySlashingUnbondingShcnorrSig, err := jurySlashingUnbondingSig.ToBTCSig()
+	if err != nil {
+		return nil, err
+	}
 	res, err := app.cc.SubmitJuryUnbondingSigs(
-		del.ValBtcPk.MustMarshal(),
-		del.BtcPk.MustMarshal(),
+		del.ValBtcPk,
+		del.BtcPk,
 		stakingTxHash,
-		juryUnbondingSig.MustMarshal(),
-		jurySlashingUnbondingSig.MustMarshal(),
+		juryUnbondingSchnorrSig,
+		jurySlashingUnbondingShcnorrSig,
 	)
+
+	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.ValBtcPk).MarshalHex()
+	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.BtcPk).MarshalHex()
 
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": del.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": del.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, err
 	}
@@ -365,8 +382,8 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	if res == nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": del.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": del.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
 	}
