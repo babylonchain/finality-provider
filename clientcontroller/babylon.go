@@ -977,9 +977,15 @@ func ConvertErrType(err error) error {
 }
 
 func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
-	jurySchnorrSig, err := del.JurySig.ToBTCSig()
-	if err != nil {
-		panic(err)
+	var (
+		jurySchnorrSig *schnorr.Signature
+		err            error
+	)
+	if del.JurySig != nil {
+		jurySchnorrSig, err = del.JurySig.ToBTCSig()
+		if err != nil {
+			panic(err)
+		}
 	}
 	return &types.Delegation{
 		BtcPk:           del.BtcPk.MustToBTCPK(),
