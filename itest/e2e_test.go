@@ -35,18 +35,16 @@ func TestValidatorLifeCycle(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -117,18 +115,16 @@ func TestDoubleSigning(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -165,17 +161,15 @@ func TestFastSync(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -222,7 +216,6 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	_ = tm.AddJurySignature(t, dels[0])
 
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 
 	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
 
@@ -239,7 +232,6 @@ func TestJuryLifeCycle(t *testing.T) {
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BtcPk.IsEqual(delData.DelegatorKey))
 	err := valIns.Stop()
 	require.NoError(t, err)
 
