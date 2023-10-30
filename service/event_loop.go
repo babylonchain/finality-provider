@@ -140,7 +140,7 @@ func (app *ValidatorApp) registrationLoop() {
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
-				req.commission.String(),
+				req.commission.BigInt(),
 				req.description.String(),
 			)
 

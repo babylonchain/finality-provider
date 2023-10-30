@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	big "math/big"
 	reflect "reflect"
 
 	types "github.com/babylonchain/btc-validator/types"
@@ -216,7 +217,7 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(valPk, blo
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission, description string) (*types.TxResponse, error) {
+func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description string) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -464,7 +465,7 @@ func (mr *MockValidatorControllerMockRecorder) QueryValidatorVotingPower(valPk, 
 }
 
 // RegisterValidator mocks base method.
-func (m *MockValidatorController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission, description string) (*types.TxResponse, error) {
+func (m *MockValidatorController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description string) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)

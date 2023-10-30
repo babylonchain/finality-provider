@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -31,7 +32,7 @@ type ValidatorController interface {
 		chainPk []byte,
 		valPk *btcec.PublicKey,
 		pop []byte,
-		commission string,
+		commission *big.Int,
 		description string,
 	) (*types.TxResponse, error)
 

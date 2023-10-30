@@ -3,6 +3,7 @@ package clientcontroller
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"os"
 	"path"
 	"strings"
@@ -288,7 +289,7 @@ func (bc *BabylonController) RegisterValidator(
 	chainPk []byte,
 	valPk *btcec.PublicKey,
 	pop []byte,
-	commission string,
+	commission *big.Int,
 	description string,
 ) (*types.TxResponse, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
@@ -296,10 +297,7 @@ func (bc *BabylonController) RegisterValidator(
 		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
 	}
 
-	sdkCommission, err := math.LegacyNewDecFromStr(commission)
-	if err != nil {
-		return nil, fmt.Errorf("invalid commission: %w", err)
-	}
+	sdkCommission := math.LegacyNewDecFromBigInt(commission)
 
 	var sdkDescription sttypes.Description
 	if err := yaml.Unmarshal([]byte(description), &sdkDescription); err != nil {

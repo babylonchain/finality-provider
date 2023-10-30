@@ -275,6 +275,6 @@ func TestJuryLifeCycle(t *testing.T) {
 			return false
 		}
 
-		return del.BtcUndelegation.HasJurySigs()
+		return del.BtcUndelegation.JurySlashingSig != nil && del.BtcUndelegation.JuryUnbondingSig != nil
 	}, 1*time.Minute, eventuallyPollTime)
 }
