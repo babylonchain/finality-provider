@@ -81,6 +81,21 @@ func (mr *MockClientControllerMockRecorder) QueryActivatedHeight() *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockClientController)(nil).QueryActivatedHeight))
 }
 
+// QueryBTCValidatorUnbondingDelegations mocks base method.
+func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valPk, max)
+	ret0, _ := ret[0].([]*types.Delegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBTCValidatorUnbondingDelegations indicates an expected call of QueryBTCValidatorUnbondingDelegations.
+func (mr *MockClientControllerMockRecorder) QueryBTCValidatorUnbondingDelegations(valPk, max interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryBTCValidatorUnbondingDelegations), valPk, max)
+}
+
 // QueryBestBlock mocks base method.
 func (m *MockClientController) QueryBestBlock() (*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
@@ -184,21 +199,6 @@ func (m *MockClientController) QueryValidatorSlashed(valPk *btcec.PublicKey) (bo
 func (mr *MockClientControllerMockRecorder) QueryValidatorSlashed(valPk interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorSlashed", reflect.TypeOf((*MockClientController)(nil).QueryValidatorSlashed), valPk)
-}
-
-// QueryValidatorUnbondingDelegations mocks base method.
-func (m *MockClientController) QueryValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryValidatorUnbondingDelegations", valPk, max)
-	ret0, _ := ret[0].([]*types.Delegation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryValidatorUnbondingDelegations indicates an expected call of QueryValidatorUnbondingDelegations.
-func (mr *MockClientControllerMockRecorder) QueryValidatorUnbondingDelegations(valPk, max interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorUnbondingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryValidatorUnbondingDelegations), valPk, max)
 }
 
 // QueryValidatorVotingPower mocks base method.
@@ -306,31 +306,31 @@ func (mr *MockClientControllerMockRecorder) SubmitValidatorUnbondingSig(valPk, d
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockClientController)(nil).SubmitValidatorUnbondingSig), valPk, delPk, stakingTxHash, sig)
 }
 
-// MockValidatorController is a mock of ValidatorController interface.
-type MockValidatorController struct {
+// MockValidatorAPIs is a mock of ValidatorAPIs interface.
+type MockValidatorAPIs struct {
 	ctrl     *gomock.Controller
-	recorder *MockValidatorControllerMockRecorder
+	recorder *MockValidatorAPIsMockRecorder
 }
 
-// MockValidatorControllerMockRecorder is the mock recorder for MockValidatorController.
-type MockValidatorControllerMockRecorder struct {
-	mock *MockValidatorController
+// MockValidatorAPIsMockRecorder is the mock recorder for MockValidatorAPIs.
+type MockValidatorAPIsMockRecorder struct {
+	mock *MockValidatorAPIs
 }
 
-// NewMockValidatorController creates a new mock instance.
-func NewMockValidatorController(ctrl *gomock.Controller) *MockValidatorController {
-	mock := &MockValidatorController{ctrl: ctrl}
-	mock.recorder = &MockValidatorControllerMockRecorder{mock}
+// NewMockValidatorAPIs creates a new mock instance.
+func NewMockValidatorAPIs(ctrl *gomock.Controller) *MockValidatorAPIs {
+	mock := &MockValidatorAPIs{ctrl: ctrl}
+	mock.recorder = &MockValidatorAPIsMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockValidatorController) EXPECT() *MockValidatorControllerMockRecorder {
+func (m *MockValidatorAPIs) EXPECT() *MockValidatorAPIsMockRecorder {
 	return m.recorder
 }
 
 // CommitPubRandList mocks base method.
-func (m *MockValidatorController) CommitPubRandList(valPk *btcec.PublicKey, startHeight uint64, pubRandList []*btcec.FieldVal, sig *schnorr.Signature) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) CommitPubRandList(valPk *btcec.PublicKey, startHeight uint64, pubRandList []*btcec.FieldVal, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CommitPubRandList", valPk, startHeight, pubRandList, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -339,13 +339,13 @@ func (m *MockValidatorController) CommitPubRandList(valPk *btcec.PublicKey, star
 }
 
 // CommitPubRandList indicates an expected call of CommitPubRandList.
-func (mr *MockValidatorControllerMockRecorder) CommitPubRandList(valPk, startHeight, pubRandList, sig interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) CommitPubRandList(valPk, startHeight, pubRandList, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockValidatorController)(nil).CommitPubRandList), valPk, startHeight, pubRandList, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CommitPubRandList", reflect.TypeOf((*MockValidatorAPIs)(nil).CommitPubRandList), valPk, startHeight, pubRandList, sig)
 }
 
 // QueryActivatedHeight mocks base method.
-func (m *MockValidatorController) QueryActivatedHeight() (uint64, error) {
+func (m *MockValidatorAPIs) QueryActivatedHeight() (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryActivatedHeight")
 	ret0, _ := ret[0].(uint64)
@@ -354,13 +354,28 @@ func (m *MockValidatorController) QueryActivatedHeight() (uint64, error) {
 }
 
 // QueryActivatedHeight indicates an expected call of QueryActivatedHeight.
-func (mr *MockValidatorControllerMockRecorder) QueryActivatedHeight() *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryActivatedHeight() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockValidatorController)(nil).QueryActivatedHeight))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryActivatedHeight))
+}
+
+// QueryBTCValidatorUnbondingDelegations mocks base method.
+func (m *MockValidatorAPIs) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valPk, max)
+	ret0, _ := ret[0].([]*types.Delegation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBTCValidatorUnbondingDelegations indicates an expected call of QueryBTCValidatorUnbondingDelegations.
+func (mr *MockValidatorAPIsMockRecorder) QueryBTCValidatorUnbondingDelegations(valPk, max interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryBTCValidatorUnbondingDelegations), valPk, max)
 }
 
 // QueryBestBlock mocks base method.
-func (m *MockValidatorController) QueryBestBlock() (*types.BlockInfo, error) {
+func (m *MockValidatorAPIs) QueryBestBlock() (*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryBestBlock")
 	ret0, _ := ret[0].(*types.BlockInfo)
@@ -369,13 +384,13 @@ func (m *MockValidatorController) QueryBestBlock() (*types.BlockInfo, error) {
 }
 
 // QueryBestBlock indicates an expected call of QueryBestBlock.
-func (mr *MockValidatorControllerMockRecorder) QueryBestBlock() *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryBestBlock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestBlock", reflect.TypeOf((*MockValidatorController)(nil).QueryBestBlock))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestBlock", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryBestBlock))
 }
 
 // QueryBlock mocks base method.
-func (m *MockValidatorController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+func (m *MockValidatorAPIs) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryBlock", height)
 	ret0, _ := ret[0].(*types.BlockInfo)
@@ -384,13 +399,13 @@ func (m *MockValidatorController) QueryBlock(height uint64) (*types.BlockInfo, e
 }
 
 // QueryBlock indicates an expected call of QueryBlock.
-func (mr *MockValidatorControllerMockRecorder) QueryBlock(height interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryBlock(height interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlock", reflect.TypeOf((*MockValidatorController)(nil).QueryBlock), height)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlock", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryBlock), height)
 }
 
 // QueryBlocks mocks base method.
-func (m *MockValidatorController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+func (m *MockValidatorAPIs) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryBlocks", startHeight, endHeight, limit)
 	ret0, _ := ret[0].([]*types.BlockInfo)
@@ -399,13 +414,13 @@ func (m *MockValidatorController) QueryBlocks(startHeight, endHeight, limit uint
 }
 
 // QueryBlocks indicates an expected call of QueryBlocks.
-func (mr *MockValidatorControllerMockRecorder) QueryBlocks(startHeight, endHeight, limit interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryBlocks(startHeight, endHeight, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockValidatorController)(nil).QueryBlocks), startHeight, endHeight, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryBlocks), startHeight, endHeight, limit)
 }
 
 // QueryLatestFinalizedBlocks mocks base method.
-func (m *MockValidatorController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
+func (m *MockValidatorAPIs) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryLatestFinalizedBlocks", count)
 	ret0, _ := ret[0].([]*types.BlockInfo)
@@ -414,13 +429,13 @@ func (m *MockValidatorController) QueryLatestFinalizedBlocks(count uint64) ([]*t
 }
 
 // QueryLatestFinalizedBlocks indicates an expected call of QueryLatestFinalizedBlocks.
-func (mr *MockValidatorControllerMockRecorder) QueryLatestFinalizedBlocks(count interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryLatestFinalizedBlocks(count interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlocks", reflect.TypeOf((*MockValidatorController)(nil).QueryLatestFinalizedBlocks), count)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlocks", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryLatestFinalizedBlocks), count)
 }
 
 // QueryValidatorSlashed mocks base method.
-func (m *MockValidatorController) QueryValidatorSlashed(valPk *btcec.PublicKey) (bool, error) {
+func (m *MockValidatorAPIs) QueryValidatorSlashed(valPk *btcec.PublicKey) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryValidatorSlashed", valPk)
 	ret0, _ := ret[0].(bool)
@@ -429,28 +444,13 @@ func (m *MockValidatorController) QueryValidatorSlashed(valPk *btcec.PublicKey) 
 }
 
 // QueryValidatorSlashed indicates an expected call of QueryValidatorSlashed.
-func (mr *MockValidatorControllerMockRecorder) QueryValidatorSlashed(valPk interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryValidatorSlashed(valPk interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorSlashed", reflect.TypeOf((*MockValidatorController)(nil).QueryValidatorSlashed), valPk)
-}
-
-// QueryValidatorUnbondingDelegations mocks base method.
-func (m *MockValidatorController) QueryValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryValidatorUnbondingDelegations", valPk, max)
-	ret0, _ := ret[0].([]*types.Delegation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryValidatorUnbondingDelegations indicates an expected call of QueryValidatorUnbondingDelegations.
-func (mr *MockValidatorControllerMockRecorder) QueryValidatorUnbondingDelegations(valPk, max interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorUnbondingDelegations", reflect.TypeOf((*MockValidatorController)(nil).QueryValidatorUnbondingDelegations), valPk, max)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorSlashed", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryValidatorSlashed), valPk)
 }
 
 // QueryValidatorVotingPower mocks base method.
-func (m *MockValidatorController) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+func (m *MockValidatorAPIs) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryValidatorVotingPower", valPk, blockHeight)
 	ret0, _ := ret[0].(uint64)
@@ -459,13 +459,13 @@ func (m *MockValidatorController) QueryValidatorVotingPower(valPk *btcec.PublicK
 }
 
 // QueryValidatorVotingPower indicates an expected call of QueryValidatorVotingPower.
-func (mr *MockValidatorControllerMockRecorder) QueryValidatorVotingPower(valPk, blockHeight interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) QueryValidatorVotingPower(valPk, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorVotingPower", reflect.TypeOf((*MockValidatorController)(nil).QueryValidatorVotingPower), valPk, blockHeight)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryValidatorVotingPower", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryValidatorVotingPower), valPk, blockHeight)
 }
 
 // RegisterValidator mocks base method.
-func (m *MockValidatorController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description string) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description string) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -474,13 +474,13 @@ func (m *MockValidatorController) RegisterValidator(chainPk []byte, valPk *btcec
 }
 
 // RegisterValidator indicates an expected call of RegisterValidator.
-func (mr *MockValidatorControllerMockRecorder) RegisterValidator(chainPk, valPk, pop, commission, description interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) RegisterValidator(chainPk, valPk, pop, commission, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockValidatorController)(nil).RegisterValidator), chainPk, valPk, pop, commission, description)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterValidator", reflect.TypeOf((*MockValidatorAPIs)(nil).RegisterValidator), chainPk, valPk, pop, commission, description)
 }
 
 // SubmitBatchFinalitySigs mocks base method.
-func (m *MockValidatorController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", valPk, blocks, sigs)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -489,13 +489,13 @@ func (m *MockValidatorController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey
 }
 
 // SubmitBatchFinalitySigs indicates an expected call of SubmitBatchFinalitySigs.
-func (mr *MockValidatorControllerMockRecorder) SubmitBatchFinalitySigs(valPk, blocks, sigs interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) SubmitBatchFinalitySigs(valPk, blocks, sigs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockValidatorController)(nil).SubmitBatchFinalitySigs), valPk, blocks, sigs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockValidatorAPIs)(nil).SubmitBatchFinalitySigs), valPk, blocks, sigs)
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockValidatorController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitFinalitySig", valPk, blockHeight, blockHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -504,13 +504,13 @@ func (m *MockValidatorController) SubmitFinalitySig(valPk *btcec.PublicKey, bloc
 }
 
 // SubmitFinalitySig indicates an expected call of SubmitFinalitySig.
-func (mr *MockValidatorControllerMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockValidatorController)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockValidatorAPIs)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
 }
 
 // SubmitValidatorUnbondingSig mocks base method.
-func (m *MockValidatorController) SubmitValidatorUnbondingSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) SubmitValidatorUnbondingSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPk, delPk, stakingTxHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -519,36 +519,36 @@ func (m *MockValidatorController) SubmitValidatorUnbondingSig(valPk, delPk *btce
 }
 
 // SubmitValidatorUnbondingSig indicates an expected call of SubmitValidatorUnbondingSig.
-func (mr *MockValidatorControllerMockRecorder) SubmitValidatorUnbondingSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
+func (mr *MockValidatorAPIsMockRecorder) SubmitValidatorUnbondingSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockValidatorController)(nil).SubmitValidatorUnbondingSig), valPk, delPk, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockValidatorAPIs)(nil).SubmitValidatorUnbondingSig), valPk, delPk, stakingTxHash, sig)
 }
 
-// MockJuryController is a mock of JuryController interface.
-type MockJuryController struct {
+// MockJuryAPIs is a mock of JuryAPIs interface.
+type MockJuryAPIs struct {
 	ctrl     *gomock.Controller
-	recorder *MockJuryControllerMockRecorder
+	recorder *MockJuryAPIsMockRecorder
 }
 
-// MockJuryControllerMockRecorder is the mock recorder for MockJuryController.
-type MockJuryControllerMockRecorder struct {
-	mock *MockJuryController
+// MockJuryAPIsMockRecorder is the mock recorder for MockJuryAPIs.
+type MockJuryAPIsMockRecorder struct {
+	mock *MockJuryAPIs
 }
 
-// NewMockJuryController creates a new mock instance.
-func NewMockJuryController(ctrl *gomock.Controller) *MockJuryController {
-	mock := &MockJuryController{ctrl: ctrl}
-	mock.recorder = &MockJuryControllerMockRecorder{mock}
+// NewMockJuryAPIs creates a new mock instance.
+func NewMockJuryAPIs(ctrl *gomock.Controller) *MockJuryAPIs {
+	mock := &MockJuryAPIs{ctrl: ctrl}
+	mock.recorder = &MockJuryAPIsMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockJuryController) EXPECT() *MockJuryControllerMockRecorder {
+func (m *MockJuryAPIs) EXPECT() *MockJuryAPIsMockRecorder {
 	return m.recorder
 }
 
 // QueryPendingDelegations mocks base method.
-func (m *MockJuryController) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
+func (m *MockJuryAPIs) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryPendingDelegations", limit)
 	ret0, _ := ret[0].([]*types.Delegation)
@@ -557,13 +557,13 @@ func (m *MockJuryController) QueryPendingDelegations(limit uint64) ([]*types.Del
 }
 
 // QueryPendingDelegations indicates an expected call of QueryPendingDelegations.
-func (mr *MockJuryControllerMockRecorder) QueryPendingDelegations(limit interface{}) *gomock.Call {
+func (mr *MockJuryAPIsMockRecorder) QueryPendingDelegations(limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingDelegations", reflect.TypeOf((*MockJuryController)(nil).QueryPendingDelegations), limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingDelegations", reflect.TypeOf((*MockJuryAPIs)(nil).QueryPendingDelegations), limit)
 }
 
 // QueryUnbondingDelegations mocks base method.
-func (m *MockJuryController) QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error) {
+func (m *MockJuryAPIs) QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryUnbondingDelegations", limit)
 	ret0, _ := ret[0].([]*types.Delegation)
@@ -572,13 +572,13 @@ func (m *MockJuryController) QueryUnbondingDelegations(limit uint64) ([]*types.D
 }
 
 // QueryUnbondingDelegations indicates an expected call of QueryUnbondingDelegations.
-func (mr *MockJuryControllerMockRecorder) QueryUnbondingDelegations(limit interface{}) *gomock.Call {
+func (mr *MockJuryAPIsMockRecorder) QueryUnbondingDelegations(limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryUnbondingDelegations", reflect.TypeOf((*MockJuryController)(nil).QueryUnbondingDelegations), limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryUnbondingDelegations", reflect.TypeOf((*MockJuryAPIs)(nil).QueryUnbondingDelegations), limit)
 }
 
 // SubmitJurySig mocks base method.
-func (m *MockJuryController) SubmitJurySig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
+func (m *MockJuryAPIs) SubmitJurySig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitJurySig", valPk, delPk, stakingTxHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -587,13 +587,13 @@ func (m *MockJuryController) SubmitJurySig(valPk, delPk *btcec.PublicKey, stakin
 }
 
 // SubmitJurySig indicates an expected call of SubmitJurySig.
-func (mr *MockJuryControllerMockRecorder) SubmitJurySig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
+func (mr *MockJuryAPIsMockRecorder) SubmitJurySig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockJuryController)(nil).SubmitJurySig), valPk, delPk, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJurySig", reflect.TypeOf((*MockJuryAPIs)(nil).SubmitJurySig), valPk, delPk, stakingTxHash, sig)
 }
 
 // SubmitJuryUnbondingSigs mocks base method.
-func (m *MockJuryController) SubmitJuryUnbondingSigs(valPk, delPk *btcec.PublicKey, stakingTxHash string, unbondingSig, slashUnbondingSig *schnorr.Signature) (*types.TxResponse, error) {
+func (m *MockJuryAPIs) SubmitJuryUnbondingSigs(valPk, delPk *btcec.PublicKey, stakingTxHash string, unbondingSig, slashUnbondingSig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitJuryUnbondingSigs", valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -602,7 +602,7 @@ func (m *MockJuryController) SubmitJuryUnbondingSigs(valPk, delPk *btcec.PublicK
 }
 
 // SubmitJuryUnbondingSigs indicates an expected call of SubmitJuryUnbondingSigs.
-func (mr *MockJuryControllerMockRecorder) SubmitJuryUnbondingSigs(valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig interface{}) *gomock.Call {
+func (mr *MockJuryAPIsMockRecorder) SubmitJuryUnbondingSigs(valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJuryUnbondingSigs", reflect.TypeOf((*MockJuryController)(nil).SubmitJuryUnbondingSigs), valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitJuryUnbondingSigs", reflect.TypeOf((*MockJuryAPIs)(nil).SubmitJuryUnbondingSigs), valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
 }

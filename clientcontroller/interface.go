@@ -17,15 +17,15 @@ const (
 )
 
 type ClientController interface {
-	ValidatorController
+	ValidatorAPIs
 
-	JuryController
+	JuryAPIs
 
 	Close() error
 }
 
-// ValidatorController contains interfaces needed when the program is running in the validator mode
-type ValidatorController interface {
+// ValidatorAPIs contains interfaces needed when the program is running in the validator mode
+type ValidatorAPIs interface {
 	// RegisterValidator registers a BTC validator to the consumer chain
 	// it returns tx hash and error
 	RegisterValidator(
@@ -78,14 +78,14 @@ type ValidatorController interface {
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
 
-	// QueryValidatorUnbondingDelegations queries the unbonding delegations. UnbondingDelegations:
+	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations. UnbondingDelegations:
 	// - already received unbodning transaction on babylon chain
 	// - not received validator signature yet
-	QueryValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error)
+	QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error)
 }
 
-// JuryController contains interfaces needed when the program is running in the jury mode
-type JuryController interface {
+// JuryAPIs contains interfaces needed when the program is running in the jury mode
+type JuryAPIs interface {
 	// SubmitJurySig submits the Jury signature to the consumer chain
 	// it returns tx hash and error
 	SubmitJurySig(valPk *btcec.PublicKey, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)

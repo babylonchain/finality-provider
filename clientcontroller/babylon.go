@@ -628,7 +628,7 @@ func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
 	}
 }
 
-func (bc *BabylonController) QueryValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
+func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
 	// TODO Check what is the order of returned delegations. Ideally we would return
 	// delegation here from the first one which received undelegation
 

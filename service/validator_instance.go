@@ -274,7 +274,7 @@ func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
 	for {
 		select {
 		case <-sendUnbondingSigTicker.C:
-			delegationsNeedingSignatures, err := v.cc.QueryValidatorUnbondingDelegations(
+			delegationsNeedingSignatures, err := v.cc.QueryBTCValidatorUnbondingDelegations(
 				v.MustGetBtcPk(),
 				// TODO: parameterize the max number of delegations to be queried
 				// it should not be to high to not take too long time to sign them
