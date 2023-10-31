@@ -19,7 +19,7 @@ type Delegation struct {
 	EndHeight uint64
 	// staking_tx_hex is the hex string of the staking tx
 	StakingTxHex string
-	// slashing_tx is the slashing tx
+	// slashing_tx_hex is the hex string of the slashing tx
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or jury yet.
 	SlashingTxHex string
@@ -35,11 +35,11 @@ type Delegation struct {
 
 // Undelegation signalizes that the delegation is being undelegated
 type Undelegation struct {
-	// unbonding_tx is the transaction which will transfer the funds from staking
+	// unbonding_tx_hex is the hex string of the transaction which will transfer the funds from staking
 	// output to unbonding output. Unbonding output will usually have lower timelock
 	// than staking output.
 	UnbondingTxHex string
-	// slashing_tx is the slashing tx for unbodning transactions
+	// slashing_tx is the hex string of the slashing tx for unbodning transactions
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or jury yet.
 	SlashingTxHex string

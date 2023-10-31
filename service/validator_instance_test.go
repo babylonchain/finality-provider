@@ -25,7 +25,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
@@ -56,7 +56,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
@@ -79,12 +79,12 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// submit finality sig
 		nextBlock := &types.BlockInfo{
-			Height:         startingBlock.Height + 1,
-			LastCommitHash: testutil.GenRandomByteArray(r, 32),
+			Height: startingBlock.Height + 1,
+			Hash:   testutil.GenRandomByteArray(r, 32),
 		}
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			SubmitFinalitySig(valIns.MustGetBtcPk(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
+			SubmitFinalitySig(valIns.MustGetBtcPk(), nextBlock.Height, nextBlock.Hash, gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		providerRes, err := valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)

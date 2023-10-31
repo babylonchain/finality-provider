@@ -137,8 +137,8 @@ func TestDoubleSigning(t *testing.T) {
 	// to trigger the extraction of validator's private key
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
-		Height:         finalizedBlocks[0].Height,
-		LastCommitHash: datagen.GenRandomLastCommitHash(r),
+		Height: finalizedBlocks[0].Height,
+		Hash:   datagen.GenRandomLastCommitHash(r),
 	}
 	_, extractedKey, err := valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)

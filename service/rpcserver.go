@@ -152,8 +152,8 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 	}
 
 	b := &types.BlockInfo{
-		Height:         req.Height,
-		LastCommitHash: req.LastCommitHash,
+		Height: req.Height,
+		Hash:   req.LastCommitHash,
 	}
 
 	txRes, privKey, err := v.TestSubmitFinalitySignatureAndExtractPrivKey(b)

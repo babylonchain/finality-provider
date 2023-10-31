@@ -41,8 +41,8 @@ func FuzzStatusUpdate(f *testing.F) {
 		// setup mocks
 		currentHeight := uint64(r.Int63n(100) + 1)
 		currentBlockRes := &types.BlockInfo{
-			Height:         currentHeight,
-			LastCommitHash: datagen.GenRandomByteArray(r, 32),
+			Height: currentHeight,
+			Hash:   datagen.GenRandomByteArray(r, 32),
 		}
 		mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
 		mockClientController.EXPECT().Close().Return(nil).AnyTimes()

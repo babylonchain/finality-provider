@@ -806,7 +806,7 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitFinalitySig(v.MustGetBtcPk(), b.Height, b.LastCommitHash, eotsSig.ToModNScalar())
+	res, err := v.cc.SubmitFinalitySig(v.MustGetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -851,7 +851,7 @@ func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEO
 	msg := &ftypes.MsgAddFinalitySig{
 		ValBtcPk:            v.btcPk,
 		BlockHeight:         b.Height,
-		BlockLastCommitHash: b.LastCommitHash,
+		BlockLastCommitHash: b.Hash,
 	}
 	msgToSign := msg.MsgToSign()
 	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height)
@@ -878,7 +878,7 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := v.cc.SubmitFinalitySig(v.MustGetBtcPk(), b.Height, b.LastCommitHash, eotsSig.ToModNScalar())
+	res, err := v.cc.SubmitFinalitySig(v.MustGetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}

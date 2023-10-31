@@ -439,7 +439,7 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blo
 			Signer:              bc.MustGetTxSigner(),
 			ValBtcPk:            bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 			BlockHeight:         b.Height,
-			BlockLastCommitHash: b.LastCommitHash,
+			BlockLastCommitHash: b.Hash,
 			FinalitySig:         bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]),
 		}
 		msgs = append(msgs, msg)
@@ -704,8 +704,8 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 
 	for _, b := range res.Blocks {
 		ib := &types.BlockInfo{
-			Height:         b.Height,
-			LastCommitHash: b.LastCommitHash,
+			Height: b.Height,
+			Hash:   b.LastCommitHash,
 		}
 		blocks = append(blocks, ib)
 	}
@@ -736,9 +736,9 @@ func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error)
 	}
 
 	return &types.BlockInfo{
-		Height:         height,
-		LastCommitHash: res.Block.LastCommitHash,
-		Finalized:      res.Block.Finalized,
+		Height:    height,
+		Hash:      res.Block.LastCommitHash,
+		Finalized: res.Block.Finalized,
 	}, nil
 }
 
@@ -773,8 +773,8 @@ func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {
 	// Returning response directly, if header with specified number did not exist
 	// at request will contain nil header
 	return &types.BlockInfo{
-		Height:         uint64(chainInfo.BlockMetas[0].Header.Height),
-		LastCommitHash: chainInfo.BlockMetas[0].Header.LastCommitHash,
+		Height: uint64(chainInfo.BlockMetas[0].Header.Height),
+		Hash:   chainInfo.BlockMetas[0].Header.LastCommitHash,
 	}, nil
 }
 
@@ -948,7 +948,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *bbntypes.BIP340Signature,
-) (*provider.RelayerTxResponse, error) {
+) (*types.TxResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
 		Signer:        bc.MustGetTxSigner(),
 		BabylonPk:     delBabylonPk,
@@ -965,7 +965,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
-	return res, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface

@@ -19,7 +19,7 @@ func FuzzFastSync(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
@@ -40,7 +40,7 @@ func FuzzFastSync(f *testing.F) {
 		// fast sync
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
-		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
