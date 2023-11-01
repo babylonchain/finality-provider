@@ -153,7 +153,7 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 					}
 					continue
 				}
-				slashedHeight, err := v.GetSlashedHeightWithRetry()
+				slashed, err := v.GetValidatorSlashedWithRetry()
 				if err != nil {
 					vm.logger.WithFields(logrus.Fields{
 						"err":        err,
@@ -161,13 +161,12 @@ func (vm *ValidatorManager) monitorStatusUpdate() {
 					}).Debug("failed to get the slashed height")
 					continue
 				}
-				// power == 0 and slashed_height > 0, set status to SLASHED and stop and remove the validator instance
-				if slashedHeight > 0 {
+				// power == 0 and slashed == true, set status to SLASHED and stop and remove the validator instance
+				if slashed {
 					vm.setValidatorSlashed(v)
 					vm.logger.WithFields(logrus.Fields{
-						"val_btc_pk":     v.GetBtcPkHex(),
-						"old_status":     oldStatus,
-						"slashed_height": slashedHeight,
+						"val_btc_pk": v.GetBtcPkHex(),
+						"old_status": oldStatus,
 					}).Debug("the validator status has been slashed")
 					continue
 				}
@@ -312,16 +311,15 @@ func (vm *ValidatorManager) addValidatorInstance(
 }
 
 func (vm *ValidatorManager) getLatestBlockWithRetry() (*types.BlockInfo, error) {
-	var latestBlock *types.BlockInfo
+	var (
+		latestBlock *types.BlockInfo
+		err         error
+	)
 
 	if err := retry.Do(func() error {
-		headerResult, err := vm.cc.QueryBestHeader()
+		latestBlock, err = vm.cc.QueryBestBlock()
 		if err != nil {
 			return err
-		}
-		latestBlock = &types.BlockInfo{
-			Height:         uint64(headerResult.Header.Height),
-			LastCommitHash: headerResult.Header.LastCommitHash,
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {

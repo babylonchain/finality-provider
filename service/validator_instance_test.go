@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -26,22 +25,20 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 
 		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
-			Return(uint64(0), nil).AnyTimes()
+			CommitPubRandList(valIns.MustGetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
@@ -59,12 +56,12 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBTCPK(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 		valIns, err := app.GetValidatorInstance(storeValidator.MustGetBIP340BTCPK())
 		require.NoError(t, err)
@@ -72,28 +69,26 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
-			Return(uint64(0), nil).AnyTimes()
+			CommitPubRandList(valIns.MustGetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBTCPK(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
 		nextBlock := &types.BlockInfo{
-			Height:         startingBlock.Height + 1,
-			LastCommitHash: testutil.GenRandomByteArray(r, 32),
+			Height: startingBlock.Height + 1,
+			Hash:   testutil.GenRandomByteArray(r, 32),
 		}
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			SubmitFinalitySig(valIns.GetBtcPkBIP340(), nextBlock.Height, nextBlock.LastCommitHash, gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err = valIns.SubmitFinalitySignature(nextBlock)
+			SubmitFinalitySig(valIns.MustGetBtcPk(), nextBlock.Height, nextBlock.Hash, gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		providerRes, err := valIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		require.Equal(t, expectedTxHash, providerRes.TxHash)
 
 		// check the last_voted_height
 		require.Equal(t, nextBlock.Height, valIns.GetLastVotedHeight())

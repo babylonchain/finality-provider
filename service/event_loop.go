@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"time"
 
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -22,7 +21,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 		select {
 		case <-jurySigTicker.C:
 			// 1. Get all pending delegations first, this are more important than the unbonding ones
-			dels, err := app.cc.QueryBTCDelegations(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
+			dels, err := app.cc.QueryPendingDelegations(limit)
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
 					"err": err,
@@ -43,7 +42,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 				}
 			}
 			// 2. Get all unbonding delegations
-			unbondingDels, err := app.cc.QueryBTCDelegations(btcstakingtypes.BTCDelegationStatus_UNBONDING, limit)
+			unbondingDels, err := app.cc.QueryUnbondingDelegations(limit)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{
@@ -131,7 +130,19 @@ func (app *ValidatorApp) registrationLoop() {
 			// we won't do any retries here to not block the loop for more important messages.
 			// Most probably it fails due so some user error so we just return the error to the user.
 			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
-			res, err := app.cc.RegisterValidator(req.bbnPubKey, req.btcPubKey, req.pop, req.commission, req.description)
+			popBytes, err := req.pop.Marshal()
+			if err != nil {
+				req.errResponse <- err
+				continue
+			}
+
+			res, err := app.cc.RegisterValidator(
+				req.bbnPubKey.Key,
+				req.btcPubKey.MustToBTCPK(),
+				popBytes,
+				req.commission.BigInt(),
+				req.description.String(),
+			)
 
 			if err != nil {
 				app.logger.WithFields(logrus.Fields{

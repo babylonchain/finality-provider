@@ -9,8 +9,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -20,6 +18,7 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
@@ -71,16 +70,18 @@ func FuzzRegisterValidator(f *testing.F) {
 			BtcSig:     btcSig.MustMarshal(),
 			BtcSigType: bstypes.BTCSigType_BIP340,
 		}
+		popBytes, err := pop.Marshal()
+		require.NoError(t, err)
 
 		txHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			RegisterValidator(
-				validator.GetBabylonPK(),
-				validator.MustGetBIP340BTCPK(),
-				pop,
-				testutil.ZeroCommissionRate(),
-				testutil.EmptyDescription(),
-			).Return(&provider.RelayerTxResponse{TxHash: txHash}, nil).AnyTimes()
+				validator.GetBabylonPK().Key,
+				validator.MustGetBIP340BTCPK().MustToBTCPK(),
+				popBytes,
+				testutil.ZeroCommissionRate().BigInt(),
+				testutil.EmptyDescription().String(),
+			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, err := app.RegisterValidator(validator.MustGetBIP340BTCPK().MarshalHex())
 		require.NoError(t, err)
@@ -155,27 +156,28 @@ func FuzzAddJurySig(f *testing.F) {
 		stakingValue := int64(2 * 10e8)
 		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, juryPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
 		require.NoError(t, err)
-		delBabylonSK, delBabylonPK, err := datagen.GenRandomSecp256k1KeyPair(r)
 		require.NoError(t, err)
-		pop, err := bstypes.NewPoP(delBabylonSK, delSK)
+		stakingTxHex, err := stakingTx.ToHexStr()
 		require.NoError(t, err)
-		require.NoError(t, err)
-		delegation := &bstypes.BTCDelegation{
-			ValBtcPk:   btcPkBIP340,
-			BtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delPK),
-			BabylonPk:  delBabylonPK.(*secp256k1.PubKey),
-			Pop:        pop,
-			StakingTx:  stakingTx,
-			SlashingTx: slashingTx,
+		delegation := &types.Delegation{
+			ValBtcPk:      btcPkBIP340.MustToBTCPK(),
+			BtcPk:         delPK,
+			StakingTxHex:  stakingTxHex,
+			SlashingTxHex: slashingTx.ToHexStr(),
 		}
 
 		stakingMsgTx, err := stakingTx.ToMsgTx()
 		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().QueryBTCDelegations(bstypes.BTCDelegationStatus_PENDING, gomock.Any()).
-			Return([]*bstypes.BTCDelegation{delegation}, nil).AnyTimes()
-		mockClientController.EXPECT().SubmitJurySig(delegation.ValBtcPk, delegation.BtcPk, stakingMsgTx.TxHash().String(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockClientController.EXPECT().QueryPendingDelegations(gomock.Any()).
+			Return([]*types.Delegation{delegation}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitJurySig(
+			delegation.ValBtcPk,
+			delegation.BtcPk,
+			stakingMsgTx.TxHash().String(),
+			gomock.Any(),
+		).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)

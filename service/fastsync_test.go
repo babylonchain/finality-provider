@@ -4,7 +4,6 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +19,7 @@ func FuzzFastSync(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		app, storeValidator, cleanUp := startValidatorAppWithRegisteredValidator(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
@@ -30,25 +29,23 @@ func FuzzFastSync(f *testing.F) {
 		// commit public randomness
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(valIns.GetBtcPkBIP340(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockClientController.EXPECT().QueryHeightWithLastPubRand(valIns.GetBtcPkBIP340()).
-			Return(uint64(0), nil).AnyTimes()
+			CommitPubRandList(valIns.MustGetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		res, err := valIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBIP340BTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryValidatorVotingPower(storeValidator.MustGetBTCPK(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// fast sync
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash = testutil.GenRandomHexStr(r, 32)
-		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, LastCommitHash: testutil.GenRandomByteArray(r, 32)}
+		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.GetBtcPkBIP340(), catchUpBlocks, gomock.Any()).
-			Return(&provider.RelayerTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitBatchFinalitySigs(valIns.MustGetBtcPk(), catchUpBlocks, gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := valIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)

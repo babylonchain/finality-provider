@@ -73,8 +73,8 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 	blocks := make([]*types.BlockInfo, 0)
 	for i := startHeight; i <= endHeight; i++ {
 		b := &types.BlockInfo{
-			Height:         i,
-			LastCommitHash: datagen.GenRandomLastCommitHash(r),
+			Height: i,
+			Hash:   datagen.GenRandomLastCommitHash(r),
 		}
 		blocks = append(blocks, b)
 	}

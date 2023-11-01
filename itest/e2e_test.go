@@ -5,75 +5,20 @@ package e2etest
 
 import (
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var (
 	stakingTime   = uint16(100)
 	stakingAmount = int64(20000)
 )
-
-func TestPoller(t *testing.T) {
-	handler := NewBabylonNodeHandler(t)
-
-	err := handler.Start()
-	require.NoError(t, err)
-	defer handler.Stop()
-
-	defaultConfig := valcfg.DefaultBBNConfig()
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
-	logger.Out = os.Stdout
-	defaultPollerConfig := valcfg.DefaultChainPollerConfig()
-
-	bc, err := clientcontroller.NewBabylonController(handler.GetNodeDataDir(), &defaultConfig, logger)
-	require.NoError(t, err)
-
-	poller := service.NewChainPoller(logger, &defaultPollerConfig, bc)
-	require.NoError(t, err)
-
-	// Set auto calculated start height to 1, as we have disabled automatic start height calculation
-	err = poller.Start(1)
-	require.NoError(t, err)
-	defer poller.Stop()
-
-	// Get 3 blocks which should be received in order
-	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(1), info.Height)
-
-	case <-time.After(10 * time.Second):
-		t.Fatalf("Failed to get block info")
-	}
-
-	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(2), info.Height)
-
-	case <-time.After(10 * time.Second):
-		t.Fatalf("Failed to get block info")
-	}
-
-	select {
-	case info := <-poller.GetBlockInfoChan():
-		require.Equal(t, uint64(3), info.Height)
-
-	case <-time.After(10 * time.Second):
-		t.Fatalf("Failed to get block info")
-	}
-}
 
 // TestValidatorLifeCycle tests the whole life cycle of a validator
 // creation -> registration -> randomness commitment ->
@@ -90,18 +35,16 @@ func TestValidatorLifeCycle(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -138,7 +81,7 @@ func TestMultipleValidators(t *testing.T) {
 	// submit Jury sigs for each delegation
 	for _, del := range dels {
 		tm.Wg.Add(1)
-		go func(btcDel *btcstakingtypes.BTCDelegation) {
+		go func(btcDel *types.Delegation) {
 			defer tm.Wg.Done()
 			_ = tm.AddJurySignature(t, btcDel)
 		}(del)
@@ -158,22 +101,6 @@ func TestMultipleValidators(t *testing.T) {
 	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
-func TestJurySigSubmission(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, true)
-	// changing the mode because we need to ensure the validator is also stopped when the test is finished
-	defer tm.Stop(t)
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
-
-	// send BTC delegation and make sure it's deep enough in btclightclient module
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
-
-	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
-	err := valIns.Stop()
-	require.NoError(t, err)
-}
-
 // TestDoubleSigning tests the attack scenario where the validator
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
@@ -188,18 +115,16 @@ func TestDoubleSigning(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -212,8 +137,8 @@ func TestDoubleSigning(t *testing.T) {
 	// to trigger the extraction of validator's private key
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
-		Height:         finalizedBlocks[0].Height,
-		LastCommitHash: datagen.GenRandomLastCommitHash(r),
+		Height: finalizedBlocks[0].Height,
+		Hash:   datagen.GenRandomLastCommitHash(r),
 	}
 	_, extractedKey, err := valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)
@@ -236,23 +161,21 @@ func TestFastSync(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// submit Jury sig
 	_ = tm.AddJurySignature(t, dels[0])
 
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
-	
+
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 
 	n := 3
@@ -266,11 +189,11 @@ func TestFastSync(t *testing.T) {
 	t.Logf("the latest finalized block is at %v", finalizedHeight)
 
 	// check if the fast sync works by checking if the gap is not more than 1
-	currentHeaderRes, err := tm.BabylonClient.QueryBestHeader()
-	currentHeight := currentHeaderRes.Header.Height
+	currentHeaderRes, err := tm.BabylonClient.QueryBestBlock()
+	currentHeight := currentHeaderRes.Height
 	t.Logf("the current block is at %v", currentHeight)
 	require.NoError(t, err)
-	require.True(t, currentHeight < int64(finalizedHeight)+int64(n))
+	require.True(t, currentHeight < finalizedHeight+uint64(n))
 }
 
 func TestValidatorUnbondingSigSubmission(t *testing.T) {
@@ -293,14 +216,13 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	_ = tm.AddJurySignature(t, dels[0])
 
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
 
 	_ = tm.WaitForValNUnbondingDels(t, valIns.GetBtcPkBIP340(), 1)
 }
 
-func TestJuryUnbondingSigSubmission(t *testing.T) {
+func TestJuryLifeCycle(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, true)
 	defer tm.Stop(t)
 	app := tm.Va
@@ -309,35 +231,9 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
-	var (
-		dels []*btcstakingtypes.BTCDelegation
-		err  error
-	)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCDelegations(
-			btcstakingtypes.BTCDelegationStatus_PENDING,
-			tm.ValConfig.JuryModeConfig.DelegationLimit,
-		)
-		if err != nil {
-			return false
-		}
-		return len(dels) == 1
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
-
-	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	err := valIns.Stop()
 	require.NoError(t, err)
-	params, err := tm.BabylonClient.GetStakingParams()
-	require.NoError(t, err)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
-		if err != nil {
-			return false
-		}
-		status := dels[0].GetStatus(currentBtcTip.Height, params.FinalizationTimeoutBlocks)
-		return len(dels) == 1 && status == btcstakingtypes.BTCDelegationStatus_ACTIVE
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-	require.True(t, dels[0].BabylonPk.Equals(delData.DelegatorBabylonKey))
 
 	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
 
@@ -379,6 +275,6 @@ func TestJuryUnbondingSigSubmission(t *testing.T) {
 			return false
 		}
 
-		return del.BtcUndelegation.HasJurySigs()
+		return del.BtcUndelegation.JurySlashingSig != nil && del.BtcUndelegation.JuryUnbondingSig != nil
 	}, 1*time.Minute, eventuallyPollTime)
 }

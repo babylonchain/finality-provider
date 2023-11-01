@@ -17,6 +17,7 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/client"
 	"github.com/babylonchain/btc-validator/proto"
+	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 
 	"github.com/babylonchain/btc-validator/val"
@@ -221,13 +222,19 @@ func (app *ValidatorApp) StartHandlingValidators() error {
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
 // Note: this should be only called when the program is running in Jury mode
-func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJurySigResponse, error) {
+func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySigResponse, error) {
 	if btcDel.JurySig != nil {
 		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
 	}
 
-	slashingTx := btcDel.SlashingTx
-	stakingTx := btcDel.StakingTx
+	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
+	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(btcDel.StakingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	if err != nil {
 		return nil, err
@@ -251,13 +258,19 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
-	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, jurySig)
+	jurySchnorrSig, err := jurySig.ToBTCSig()
+	if err != nil {
+		return nil, err
+	}
+	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, jurySchnorrSig)
 
+	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.ValBtcPk).MarshalHex()
+	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, err
 	}
@@ -265,8 +278,8 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 	if res == nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
 	}
@@ -278,23 +291,23 @@ func (app *ValidatorApp) AddJurySignature(btcDel *bstypes.BTCDelegation) (*AddJu
 
 // AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
 // Note: this should be only called when the program is running in Jury mode
-func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegation) (*AddJurySigResponse, error) {
-	if btcDel == nil {
+func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*AddJurySigResponse, error) {
+	if del == nil {
 		return nil, fmt.Errorf("btc delegation is nil")
 	}
 
-	if btcDel.BtcUndelegation == nil {
+	if del.BtcUndelegation == nil {
 		return nil, fmt.Errorf("delegation does not have an unbonding transaction")
 	}
 
-	if btcDel.BtcUndelegation.ValidatorUnbondingSig == nil {
+	if del.BtcUndelegation.ValidatorUnbondingSig == nil {
 		return nil, fmt.Errorf("delegation does not have a validator signature for unbonding transaction yet")
 	}
 
 	// In normal operation it is not possible to have one of this signatures and not have the other
 	// as only way to update this fields in delegation is by processing the MsgAddJuryUnbondingSigs msg
 	// which should update both fields at atomically in case of successfull transaction.
-	if btcDel.BtcUndelegation.JurySlashingSig != nil || btcDel.BtcUndelegation.JuryUnbondingSig != nil {
+	if del.BtcUndelegation.JurySlashingSig != nil || del.BtcUndelegation.JuryUnbondingSig != nil {
 		return nil, fmt.Errorf("delegation already has required jury signatures")
 	}
 
@@ -305,14 +318,21 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 	}
 
 	// 1. Sign unbonding transaction
-	stakingTx := btcDel.StakingTx
+	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
 	}
 
-	juryUnbondingSig, err := btcDel.BtcUndelegation.UnbondingTx.Sign(
+	unbondingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.BtcUndelegation.UnbondingTxHex)
+	if err != nil {
+		return nil, err
+	}
+	juryUnbondingSig, err := unbondingTx.Sign(
 		stakingMsgTx,
 		stakingTx.Script,
 		juryPrivKey,
@@ -324,15 +344,17 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 	}
 
 	// 2. Sign slash unbonding transaction
-	slashUnbondigTx := btcDel.BtcUndelegation.SlashingTx
-	unbondingTx := btcDel.BtcUndelegation.UnbondingTx
+	slashUnbondingTx, err := bstypes.NewBTCSlashingTxFromHex(del.BtcUndelegation.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	unbondingMsgTx, err := unbondingTx.ToMsgTx()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize unbonding tx: %w", err)
 	}
 
-	jurySlashingUnbondingSig, err := slashUnbondigTx.Sign(
+	jurySlashingUnbondingSig, err := slashUnbondingTx.Sign(
 		unbondingMsgTx,
 		unbondingTx.Script,
 		juryPrivKey,
@@ -344,19 +366,30 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
+	juryUnbondingSchnorrSig, err := juryUnbondingSig.ToBTCSig()
+	if err != nil {
+		return nil, err
+	}
+	jurySlashingUnbondingShcnorrSig, err := jurySlashingUnbondingSig.ToBTCSig()
+	if err != nil {
+		return nil, err
+	}
 	res, err := app.cc.SubmitJuryUnbondingSigs(
-		btcDel.ValBtcPk,
-		btcDel.BtcPk,
+		del.ValBtcPk,
+		del.BtcPk,
 		stakingTxHash,
-		juryUnbondingSig,
-		jurySlashingUnbondingSig,
+		juryUnbondingSchnorrSig,
+		jurySlashingUnbondingShcnorrSig,
 	)
+
+	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.ValBtcPk).MarshalHex()
+	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.BtcPk).MarshalHex()
 
 	if err != nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, err
 	}
@@ -364,8 +397,8 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(btcDel *bstypes.BTCDelegatio
 	if res == nil {
 		app.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": btcDel.ValBtcPk.MarshalHex(),
-			"delBtcPubKey": btcDel.BtcPk.MarshalHex(),
+			"valBtcPubKey": valPkHex,
+			"delBtcPubKey": delPkHex,
 		}).Error("failed to submit Jury signature")
 		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
 	}
