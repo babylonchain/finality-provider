@@ -171,6 +171,21 @@ func (mr *MockClientControllerMockRecorder) QueryPendingDelegations(limit interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryPendingDelegations), limit)
 }
 
+// QueryStakingParams mocks base method.
+func (m *MockClientController) QueryStakingParams() (*types.StakingParams, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryStakingParams")
+	ret0, _ := ret[0].(*types.StakingParams)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryStakingParams indicates an expected call of QueryStakingParams.
+func (mr *MockClientControllerMockRecorder) QueryStakingParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryStakingParams", reflect.TypeOf((*MockClientController)(nil).QueryStakingParams))
+}
+
 // QueryUnbondingDelegations mocks base method.
 func (m *MockClientController) QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error) {
 	m.ctrl.T.Helper()

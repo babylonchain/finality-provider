@@ -21,6 +21,8 @@ type ClientController interface {
 
 	JuryAPIs
 
+	QueryStakingParams() (*types.StakingParams, error)
+
 	Close() error
 }
 

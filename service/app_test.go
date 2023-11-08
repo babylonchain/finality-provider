@@ -178,6 +178,7 @@ func FuzzAddJurySig(f *testing.F) {
 			gomock.Any(),
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		cfg.JuryModeConfig.SlashingAddress = slashingAddr.String()
 		res, err := app.AddJurySignature(delegation)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)

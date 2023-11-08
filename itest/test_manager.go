@@ -117,7 +117,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		_, err := tm.BabylonClient.GetStakingParams()
+		_, err := tm.BabylonClient.QueryStakingParams()
 
 		return err == nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
@@ -239,7 +239,7 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 	var dels []*types.Delegation
 	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	params, err := tm.BabylonClient.GetStakingParams()
+	params, err := tm.BabylonClient.QueryStakingParams()
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
@@ -486,7 +486,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// examine staking params
-	params, err := tm.BabylonClient.GetStakingParams()
+	params, err := tm.BabylonClient.QueryStakingParams()
 	slashingAddr := params.SlashingAddress
 	require.NoError(t, err)
 	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
@@ -574,7 +574,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 	validatorPk *btcec.PublicKey,
 ) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	params, err := tm.BabylonClient.GetStakingParams()
+	params, err := tm.BabylonClient.QueryStakingParams()
 	require.NoError(t, err)
 	slashingAddr := params.SlashingAddress
 	stakingMsgTx, err := stakingTx.ToMsgTx()

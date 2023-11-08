@@ -43,25 +43,6 @@ import (
 
 var _ ClientController = &BabylonController{}
 
-type StakingParams struct {
-	// K-deep
-	ComfirmationTimeBlocks uint64
-	// W-deep
-	FinalizationTimeoutBlocks uint64
-
-	// Minimum amount of satoshis required for slashing transaction
-	MinSlashingTxFeeSat btcutil.Amount
-
-	// Bitcoin public key of the current jury
-	JuryPk *btcec.PublicKey
-
-	// Address to which slashing transactions are sent
-	SlashingAddress string
-
-	// Minimum commission required by the consumer chain
-	MinCommissionRate string
-}
-
 type BabylonController struct {
 	provider *cosmos.CosmosProvider
 	logger   *logrus.Logger
@@ -159,7 +140,7 @@ func (bc *BabylonController) MustGetTxSigner() string {
 	return address
 }
 
-func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
+func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
 	defer cancel()
 
@@ -182,7 +163,7 @@ func (bc *BabylonController) GetStakingParams() (*StakingParams, error) {
 		return nil, err
 	}
 
-	return &StakingParams{
+	return &types.StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
 		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),

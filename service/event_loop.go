@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -20,6 +21,24 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 	for {
 		select {
 		case <-jurySigTicker.C:
+			// 0. Update slashing address in case it is changed upon governance proposal
+			params, err := app.cc.QueryStakingParams()
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("failed to get slashing address")
+				continue
+			}
+			slashingAddress := params.SlashingAddress
+			_, err = btcutil.DecodeAddress(slashingAddress, &app.config.ActiveNetParams)
+			if err != nil {
+				app.logger.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("invalid slashing address")
+				continue
+			}
+			app.config.JuryModeConfig.SlashingAddress = slashingAddress
+
 			// 1. Get all pending delegations first, this are more important than the unbonding ones
 			dels, err := app.cc.QueryPendingDelegations(limit)
 			if err != nil {

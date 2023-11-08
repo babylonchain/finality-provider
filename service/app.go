@@ -231,6 +231,11 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 	if err != nil {
 		return nil, err
 	}
+	err = slashingTx.Validate(&app.config.ActiveNetParams, app.config.JuryModeConfig.SlashingAddress)
+	if err != nil {
+		return nil, fmt.Errorf("invalid delegation: %w", err)
+	}
+
 	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(btcDel.StakingTxHex)
 	if err != nil {
 		return nil, err
@@ -348,6 +353,11 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	if err != nil {
 		return nil, err
 	}
+	err = slashUnbondingTx.Validate(&app.config.ActiveNetParams, app.config.JuryModeConfig.SlashingAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	unbondingMsgTx, err := unbondingTx.ToMsgTx()
 
 	if err != nil {

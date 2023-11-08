@@ -14,6 +14,7 @@ type JuryConfig struct {
 	JuryKeyName     string        `long:"jurykeyname" description:"The key name of the Jury if the program is running in Jury mode"`
 	QueryInterval   time.Duration `long:"queryinterval" description:"The interval between each query for pending BTC delegations"`
 	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Jury processes each time"`
+	SlashingAddress string        `long:"slashingaddress" description:"The slashing address that the slashed fund is sent to"`
 }
 
 func DefaultJuryConfig() JuryConfig {
