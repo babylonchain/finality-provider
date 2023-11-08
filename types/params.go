@@ -14,8 +14,8 @@ type StakingParams struct {
 	// Minimum amount of satoshis required for slashing transaction
 	MinSlashingTxFeeSat btcutil.Amount
 
-	// Bitcoin public key of the current jury
-	JuryPk *btcec.PublicKey
+	// Bitcoin public key of the current covenant
+	CovenantPk *btcec.PublicKey
 
 	// Address to which slashing transactions are sent
 	SlashingAddress string

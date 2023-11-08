@@ -10,17 +10,17 @@ import (
 	"github.com/babylonchain/btc-validator/proto"
 )
 
-// jurySigSubmissionLoop is the reactor to submit Jury signature for pending BTC delegations
-func (app *ValidatorApp) jurySigSubmissionLoop() {
+// covenantSigSubmissionLoop is the reactor to submit Covenant signature for pending BTC delegations
+func (app *ValidatorApp) covenantSigSubmissionLoop() {
 	defer app.wg.Done()
 
-	interval := app.config.JuryModeConfig.QueryInterval
-	limit := app.config.JuryModeConfig.DelegationLimit
-	jurySigTicker := time.NewTicker(interval)
+	interval := app.config.CovenantModeConfig.QueryInterval
+	limit := app.config.CovenantModeConfig.DelegationLimit
+	covenantSigTicker := time.NewTicker(interval)
 
 	for {
 		select {
-		case <-jurySigTicker.C:
+		case <-covenantSigTicker.C:
 			// 0. Update slashing address in case it is changed upon governance proposal
 			params, err := app.cc.QueryStakingParams()
 			if err != nil {
@@ -37,7 +37,7 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 				}).Error("invalid slashing address")
 				continue
 			}
-			app.config.JuryModeConfig.SlashingAddress = slashingAddress
+			app.config.CovenantModeConfig.SlashingAddress = slashingAddress
 
 			// 1. Get all pending delegations first, this are more important than the unbonding ones
 			dels, err := app.cc.QueryPendingDelegations(limit)
@@ -52,12 +52,12 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 			}
 
 			for _, d := range dels {
-				_, err := app.AddJurySignature(d)
+				_, err := app.AddCovenantSignature(d)
 				if err != nil {
 					app.logger.WithFields(logrus.Fields{
 						"err":        err,
 						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Jury sig to the Bitcoin delegation")
+					}).Error("failed to submit Covenant sig to the Bitcoin delegation")
 				}
 			}
 			// 2. Get all unbonding delegations
@@ -75,17 +75,17 @@ func (app *ValidatorApp) jurySigSubmissionLoop() {
 			}
 
 			for _, d := range unbondingDels {
-				_, err := app.AddJuryUnbondingSignatures(d)
+				_, err := app.AddCovenantUnbondingSignatures(d)
 				if err != nil {
 					app.logger.WithFields(logrus.Fields{
 						"err":        err,
 						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Jury sig to the Bitcoin delegation")
+					}).Error("failed to submit Covenant sig to the Bitcoin delegation")
 				}
 			}
 
 		case <-app.quit:
-			app.logger.Debug("exiting jurySigSubmissionLoop")
+			app.logger.Debug("exiting covenantSigSubmissionLoop")
 			return
 		}
 	}

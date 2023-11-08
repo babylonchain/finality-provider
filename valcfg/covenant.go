@@ -5,21 +5,21 @@ import (
 )
 
 var (
-	defaultJuryKeyName     = "jury-key"
+	defaultCovenantKeyName = "covenant-key"
 	defaultQueryInterval   = 15 * time.Second
 	defaultDelegationLimit = uint64(100)
 )
 
-type JuryConfig struct {
-	JuryKeyName     string        `long:"jurykeyname" description:"The key name of the Jury if the program is running in Jury mode"`
+type CovenantConfig struct {
+	CovenantKeyName string        `long:"covenantkeyname" description:"The key name of the Covenant if the program is running in Covenant mode"`
 	QueryInterval   time.Duration `long:"queryinterval" description:"The interval between each query for pending BTC delegations"`
-	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Jury processes each time"`
+	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Covenant processes each time"`
 	SlashingAddress string        `long:"slashingaddress" description:"The slashing address that the slashed fund is sent to"`
 }
 
-func DefaultJuryConfig() JuryConfig {
-	return JuryConfig{
-		JuryKeyName:     defaultJuryKeyName,
+func DefaultCovenantConfig() CovenantConfig {
+	return CovenantConfig{
+		CovenantKeyName: defaultCovenantKeyName,
 		QueryInterval:   defaultQueryInterval,
 		DelegationLimit: defaultDelegationLimit,
 	}

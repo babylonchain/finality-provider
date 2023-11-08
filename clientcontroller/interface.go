@@ -19,7 +19,7 @@ const (
 type ClientController interface {
 	ValidatorAPIs
 
-	JuryAPIs
+	CovenantAPIs
 
 	QueryStakingParams() (*types.StakingParams, error)
 
@@ -86,15 +86,15 @@ type ValidatorAPIs interface {
 	QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error)
 }
 
-// JuryAPIs contains interfaces needed when the program is running in the jury mode
-type JuryAPIs interface {
-	// SubmitJurySig submits the Jury signature to the consumer chain
+// CovenantAPIs contains interfaces needed when the program is running in the covenant mode
+type CovenantAPIs interface {
+	// SubmitCovenantSig submits the Covenant signature to the consumer chain
 	// it returns tx hash and error
-	SubmitJurySig(valPk *btcec.PublicKey, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)
+	SubmitCovenantSig(valPk *btcec.PublicKey, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)
 
-	// SubmitJuryUnbondingSigs submits the Jury signatures to the consumer chain
+	// SubmitCovenantUnbondingSigs submits the Covenant signatures to the consumer chain
 	// it returns tx hash and error
-	SubmitJuryUnbondingSigs(
+	SubmitCovenantUnbondingSigs(
 		valPk *btcec.PublicKey,
 		delPk *btcec.PublicKey,
 		stakingTxHash string,

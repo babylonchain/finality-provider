@@ -66,7 +66,7 @@ type TestDelegationData struct {
 	StakingAmount int64
 }
 
-func StartManager(t *testing.T, isJury bool) *TestManager {
+func StartManager(t *testing.T, isCovenant bool) *TestManager {
 	bh := NewBabylonNodeHandler(t)
 
 	err := bh.Start()
@@ -80,7 +80,7 @@ func StartManager(t *testing.T, isJury bool) *TestManager {
 	testDir, err := tempDirWithName("vale2etest")
 	require.NoError(t, err)
 
-	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isJury)
+	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isCovenant)
 
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
@@ -125,8 +125,8 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
-	tm := StartManager(t, isJury)
+func StartManagerWithValidator(t *testing.T, n int, isCovenant bool) *TestManager {
+	tm := StartManager(t, isCovenant)
 	app := tm.Va
 
 	var (
@@ -222,7 +222,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 	)
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryPendingDelegations(
-			tm.ValConfig.JuryModeConfig.DelegationLimit,
+			tm.ValConfig.CovenantModeConfig.DelegationLimit,
 		)
 		if err != nil {
 			return false
@@ -289,15 +289,15 @@ func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, statu
 
 func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTCDelegationStatus {
 	if del.BtcUndelegation != nil {
-		if del.BtcUndelegation.JurySlashingSig != nil &&
-			del.BtcUndelegation.JuryUnbondingSig != nil &&
+		if del.BtcUndelegation.CovenantSlashingSig != nil &&
+			del.BtcUndelegation.CovenantUnbondingSig != nil &&
 			del.BtcUndelegation.ValidatorUnbondingSig != nil {
 			return bstypes.BTCDelegationStatus_UNBONDED
 		}
 		// If we received an undelegation but is still does not have all required signature,
 		// delegation receives UNBONING status.
 		// Voting power from this delegation is removed from the total voting power and now we
-		// are waiting for signatures from validator and jury for delegation to become expired.
+		// are waiting for signatures from validator and covenant for delegation to become expired.
 		// For now we do not have any unbonding time on the consumer chain, only time lock on BTC chain
 		// we may consider adding unbonding time on the consumer chain later to avoid situation where
 		// we can lose to much voting power in to short time.
@@ -305,7 +305,7 @@ func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTC
 	}
 
 	if del.StartHeight <= btcHeight && btcHeight+w <= del.EndHeight {
-		if del.JurySig != nil {
+		if del.CovenantSig != nil {
 			return bstypes.BTCDelegationStatus_ACTIVE
 		} else {
 			return bstypes.BTCDelegationStatus_PENDING
@@ -398,7 +398,7 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, del *types.Delegation) *types.TxResponse {
+func (tm *TestManager) AddCovenantSignature(t *testing.T, del *types.Delegation) *types.TxResponse {
 	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(del.SlashingTxHex)
 	require.NoError(t, err)
 	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
@@ -406,24 +406,24 @@ func (tm *TestManager) AddJurySignature(t *testing.T, del *types.Delegation) *ty
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
 
-	// get Jury private key from the keyring
-	juryPrivKey := tm.GetJuryPrivKey(t)
+	// get Covenant private key from the keyring
+	covenantPrivKey := tm.GetCovenantPrivKey(t)
 
-	jurySig, err := slashingTx.Sign(
+	covenantSig, err := slashingTx.Sign(
 		stakingMsgTx,
 		stakingTx.Script,
-		juryPrivKey,
+		covenantPrivKey,
 		&tm.ValConfig.ActiveNetParams,
 	)
 	require.NoError(t, err)
 
-	jurySchnorrSig, err := jurySig.ToBTCSig()
+	covenantSchnorrSig, err := covenantSig.ToBTCSig()
 	require.NoError(t, err)
-	res, err := tm.BabylonClient.SubmitJurySig(
+	res, err := tm.BabylonClient.SubmitCovenantSig(
 		del.ValBtcPk,
 		del.BtcPk,
 		stakingMsgTx.TxHash().String(),
-		jurySchnorrSig,
+		covenantSchnorrSig,
 	)
 	require.NoError(t, err)
 
@@ -465,15 +465,15 @@ func (tm *TestManager) AddValidatorUnbondingSignature(
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
+func (tm *TestManager) GetCovenantPrivKey(t *testing.T) *btcec.PrivateKey {
 	kr := tm.Va.GetKeyring()
-	juryKeyName := tm.BabylonHandler.GetJuryKeyName()
-	k, err := kr.Key(juryKeyName)
+	covenantKeyName := tm.BabylonHandler.GetCovenantKeyName()
+	k, err := kr.Key(covenantKeyName)
 	require.NoError(t, err)
 	localKey := k.GetLocal().PrivKey.GetCachedValue()
 	require.IsType(t, &secp256k1.PrivKey{}, localKey)
-	juryPrivKey, _ := btcec.PrivKeyFromBytes(localKey.(*secp256k1.PrivKey).Key)
-	return juryPrivKey
+	covenantPrivKey, _ := btcec.PrivKeyFromBytes(localKey.(*secp256k1.PrivKey).Key)
+	return covenantPrivKey
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
@@ -491,15 +491,15 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
 	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-	juryPk := tm.GetJuryPrivKey(t).PubKey()
+	covenantPk := tm.GetCovenantPrivKey(t).PubKey()
 	require.NoError(t, err)
-	require.Equal(t, params.JuryPk.SerializeCompressed()[1:], juryPk.SerializeCompressed()[1:])
+	require.Equal(t, params.CovenantPk.SerializeCompressed()[1:], covenantPk.SerializeCompressed()[1:])
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(
-		r, btcNetworkParams, delBtcPrivKey, valBtcPk, juryPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
+		r, btcNetworkParams, delBtcPrivKey, valBtcPk, covenantPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
 	require.NoError(t, err)
 
 	// get msgTx
@@ -595,7 +595,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 		btcNetworkParams,
 		stakerPrivKey,
 		validatorPk,
-		params.JuryPk,
+		params.CovenantPk,
 		wire.NewOutPoint(&stakingTxChainHash, uint32(stakingOutputIdx)),
 		uint16(params.FinalizationTimeoutBlocks)+1,
 		stakingValue-fee,
@@ -620,7 +620,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 	require.NoError(t, err)
 }
 
-func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Config {
+func defaultValidatorConfig(keyringDir, testDir string, isCovenant bool) *valcfg.Config {
 	cfg := valcfg.DefaultConfig()
 
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
@@ -632,8 +632,8 @@ func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Con
 	// Big adjustment to make sure we have enough gas in our transactions
 	cfg.BabylonConfig.GasAdjustment = 20
 	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
-	cfg.JuryMode = isJury
-	cfg.JuryModeConfig.QueryInterval = 7 * time.Second
+	cfg.CovenantMode = isCovenant
+	cfg.CovenantModeConfig.QueryInterval = 7 * time.Second
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg

@@ -55,7 +55,7 @@ func main() {
 
 	app.Commands = append(app.Commands, daemonCommands...)
 	app.Commands = append(app.Commands, adminCommands...)
-	app.Commands = append(app.Commands, juryCommands...)
+	app.Commands = append(app.Commands, covenantCommands...)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)

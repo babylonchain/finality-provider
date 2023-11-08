@@ -103,14 +103,14 @@ func NewValidatorApp(
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
-	if config.JuryMode {
-		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.JuryModeConfig.JuryKeyName)
+	if config.CovenantMode {
+		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.CovenantModeConfig.CovenantKeyName)
 		if err != nil {
 			return nil, err
 		}
 		if _, err := kc.GetChainPrivKey(); err != nil {
-			return nil, fmt.Errorf("the program is running in Jury mode but the Jury key %s is not found: %w",
-				config.JuryModeConfig.JuryKeyName, err)
+			return nil, fmt.Errorf("the program is running in Covenant mode but the Covenant key %s is not found: %w",
+				config.CovenantModeConfig.CovenantKeyName, err)
 		}
 	}
 
@@ -220,18 +220,18 @@ func (app *ValidatorApp) StartHandlingValidators() error {
 	return app.validatorManager.Start()
 }
 
-// AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
-// Note: this should be only called when the program is running in Jury mode
-func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySigResponse, error) {
-	if btcDel.JurySig != nil {
-		return nil, fmt.Errorf("the Jury sig already existed in the Bitcoin delection")
+// AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
+// Note: this should be only called when the program is running in Covenant mode
+func (app *ValidatorApp) AddCovenantSignature(btcDel *types.Delegation) (*AddCovenantSigResponse, error) {
+	if btcDel.CovenantSig != nil {
+		return nil, fmt.Errorf("the Covenant sig already existed in the Bitcoin delection")
 	}
 
 	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.SlashingTxHex)
 	if err != nil {
 		return nil, err
 	}
-	err = slashingTx.Validate(&app.config.ActiveNetParams, app.config.JuryModeConfig.SlashingAddress)
+	err = slashingTx.Validate(&app.config.ActiveNetParams, app.config.CovenantModeConfig.SlashingAddress)
 	if err != nil {
 		return nil, fmt.Errorf("invalid delegation: %w", err)
 	}
@@ -245,16 +245,16 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 		return nil, err
 	}
 
-	// get Jury private key from the keyring
-	juryPrivKey, err := app.getJuryPrivKey()
+	// get Covenant private key from the keyring
+	covenantPrivKey, err := app.getCovenantPrivKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Jury private key: %w", err)
+		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
 	}
 
-	jurySig, err := slashingTx.Sign(
+	covenantSig, err := slashingTx.Sign(
 		stakingMsgTx,
 		stakingTx.Script,
-		juryPrivKey,
+		covenantPrivKey,
 		&app.config.ActiveNetParams,
 	)
 	if err != nil {
@@ -263,11 +263,11 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
-	jurySchnorrSig, err := jurySig.ToBTCSig()
+	covenantSchnorrSig, err := covenantSig.ToBTCSig()
 	if err != nil {
 		return nil, err
 	}
-	res, err := app.cc.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, jurySchnorrSig)
+	res, err := app.cc.SubmitCovenantSig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, covenantSchnorrSig)
 
 	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.ValBtcPk).MarshalHex()
 	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()
@@ -276,7 +276,7 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 			"err":          err,
 			"valBtcPubKey": valPkHex,
 			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Jury signature")
+		}).Error("failed to submit Covenant signature")
 		return nil, err
 	}
 
@@ -285,18 +285,18 @@ func (app *ValidatorApp) AddJurySignature(btcDel *types.Delegation) (*AddJurySig
 			"err":          err,
 			"valBtcPubKey": valPkHex,
 			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Jury signature")
-		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
+		}).Error("failed to submit Covenant signature")
+		return nil, fmt.Errorf("failed to submit Covenant signature due to known error")
 	}
 
-	return &AddJurySigResponse{
+	return &AddCovenantSigResponse{
 		TxHash: res.TxHash,
 	}, nil
 }
 
-// AddJurySignature adds a Jury signature on the given Bitcoin delegation and submits it to Babylon
-// Note: this should be only called when the program is running in Jury mode
-func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*AddJurySigResponse, error) {
+// AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
+// Note: this should be only called when the program is running in Covenant mode
+func (app *ValidatorApp) AddCovenantUnbondingSignatures(del *types.Delegation) (*AddCovenantSigResponse, error) {
 	if del == nil {
 		return nil, fmt.Errorf("btc delegation is nil")
 	}
@@ -310,16 +310,16 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	}
 
 	// In normal operation it is not possible to have one of this signatures and not have the other
-	// as only way to update this fields in delegation is by processing the MsgAddJuryUnbondingSigs msg
+	// as only way to update this fields in delegation is by processing the MsgAddCovenantUnbondingSigs msg
 	// which should update both fields at atomically in case of successfull transaction.
-	if del.BtcUndelegation.JurySlashingSig != nil || del.BtcUndelegation.JuryUnbondingSig != nil {
-		return nil, fmt.Errorf("delegation already has required jury signatures")
+	if del.BtcUndelegation.CovenantSlashingSig != nil || del.BtcUndelegation.CovenantUnbondingSig != nil {
+		return nil, fmt.Errorf("delegation already has required covenant signatures")
 	}
 
-	// get Jury private key from the keyring
-	juryPrivKey, err := app.getJuryPrivKey()
+	// get Covenant private key from the keyring
+	covenantPrivKey, err := app.getCovenantPrivKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Jury private key: %w", err)
+		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
 	}
 
 	// 1. Sign unbonding transaction
@@ -337,10 +337,10 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	if err != nil {
 		return nil, err
 	}
-	juryUnbondingSig, err := unbondingTx.Sign(
+	covenantUnbondingSig, err := unbondingTx.Sign(
 		stakingMsgTx,
 		stakingTx.Script,
-		juryPrivKey,
+		covenantPrivKey,
 		&app.config.ActiveNetParams,
 	)
 
@@ -353,7 +353,7 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 	if err != nil {
 		return nil, err
 	}
-	err = slashUnbondingTx.Validate(&app.config.ActiveNetParams, app.config.JuryModeConfig.SlashingAddress)
+	err = slashUnbondingTx.Validate(&app.config.ActiveNetParams, app.config.CovenantModeConfig.SlashingAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -364,10 +364,10 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 		return nil, fmt.Errorf("failed to deserialize unbonding tx: %w", err)
 	}
 
-	jurySlashingUnbondingSig, err := slashUnbondingTx.Sign(
+	covenantSlashingUnbondingSig, err := slashUnbondingTx.Sign(
 		unbondingMsgTx,
 		unbondingTx.Script,
-		juryPrivKey,
+		covenantPrivKey,
 		&app.config.ActiveNetParams,
 	)
 	if err != nil {
@@ -376,20 +376,20 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 
 	stakingTxHash := stakingMsgTx.TxHash().String()
 
-	juryUnbondingSchnorrSig, err := juryUnbondingSig.ToBTCSig()
+	covenantUnbondingSchnorrSig, err := covenantUnbondingSig.ToBTCSig()
 	if err != nil {
 		return nil, err
 	}
-	jurySlashingUnbondingShcnorrSig, err := jurySlashingUnbondingSig.ToBTCSig()
+	covenantSlashingUnbondingShcnorrSig, err := covenantSlashingUnbondingSig.ToBTCSig()
 	if err != nil {
 		return nil, err
 	}
-	res, err := app.cc.SubmitJuryUnbondingSigs(
+	res, err := app.cc.SubmitCovenantUnbondingSigs(
 		del.ValBtcPk,
 		del.BtcPk,
 		stakingTxHash,
-		juryUnbondingSchnorrSig,
-		jurySlashingUnbondingShcnorrSig,
+		covenantUnbondingSchnorrSig,
+		covenantSlashingUnbondingShcnorrSig,
 	)
 
 	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.ValBtcPk).MarshalHex()
@@ -400,7 +400,7 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 			"err":          err,
 			"valBtcPubKey": valPkHex,
 			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Jury signature")
+		}).Error("failed to submit Covenant signature")
 		return nil, err
 	}
 
@@ -409,17 +409,17 @@ func (app *ValidatorApp) AddJuryUnbondingSignatures(del *types.Delegation) (*Add
 			"err":          err,
 			"valBtcPubKey": valPkHex,
 			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Jury signature")
-		return nil, fmt.Errorf("failed to submit Jury signature due to known error")
+		}).Error("failed to submit Covenant signature")
+		return nil, fmt.Errorf("failed to submit Covenant signature due to known error")
 	}
 
-	return &AddJurySigResponse{
+	return &AddCovenantSigResponse{
 		TxHash: res.TxHash,
 	}, nil
 }
 
-func (app *ValidatorApp) getJuryPrivKey() (*btcec.PrivateKey, error) {
-	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.JuryModeConfig.JuryKeyName)
+func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
+	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.CovenantModeConfig.CovenantKeyName)
 	if err != nil {
 		return nil, err
 	}
@@ -454,9 +454,9 @@ func (app *ValidatorApp) Start() error {
 		app.sentWg.Add(1)
 		go app.registrationLoop()
 
-		if app.IsJury() {
+		if app.IsCovenant() {
 			app.wg.Add(1)
-			go app.jurySigSubmissionLoop()
+			go app.covenantSigSubmissionLoop()
 		} else {
 			if err := app.StartHandlingValidators(); err != nil {
 				startErr = err
@@ -478,7 +478,7 @@ func (app *ValidatorApp) Stop() error {
 		close(app.quit)
 		app.wg.Wait()
 
-		if !app.IsJury() {
+		if !app.IsCovenant() {
 			app.logger.Debug("Stopping validators")
 			if err := app.validatorManager.Stop(); err != nil {
 				stopErr = err
@@ -538,8 +538,8 @@ func (app *ValidatorApp) CreateValidator(keyName, chainID, passPhrase string, de
 	}
 }
 
-func (app *ValidatorApp) IsJury() bool {
-	return app.config.JuryMode
+func (app *ValidatorApp) IsCovenant() bool {
+	return app.config.CovenantMode
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
