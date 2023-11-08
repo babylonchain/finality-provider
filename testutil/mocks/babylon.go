@@ -261,21 +261,6 @@ func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(valPk, block
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockClientController)(nil).SubmitBatchFinalitySigs), valPk, blocks, sigs)
 }
 
-// SubmitFinalitySig mocks base method.
-func (m *MockClientController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitFinalitySig", valPk, blockHeight, blockHash, sig)
-	ret0, _ := ret[0].(*types.TxResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SubmitFinalitySig indicates an expected call of SubmitFinalitySig.
-func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockClientController)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
-}
-
 // SubmitCovenantSig mocks base method.
 func (m *MockClientController) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
@@ -304,6 +289,21 @@ func (m *MockClientController) SubmitCovenantUnbondingSigs(valPk, delPk *btcec.P
 func (mr *MockClientControllerMockRecorder) SubmitCovenantUnbondingSigs(valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantUnbondingSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantUnbondingSigs), valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
+}
+
+// SubmitFinalitySig mocks base method.
+func (m *MockClientController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubmitFinalitySig", valPk, blockHeight, blockHash, sig)
+	ret0, _ := ret[0].(*types.TxResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SubmitFinalitySig indicates an expected call of SubmitFinalitySig.
+func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockClientController)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
 }
 
 // SubmitValidatorUnbondingSig mocks base method.
