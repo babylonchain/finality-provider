@@ -155,7 +155,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 		"--chain-id=chain-test",
 		"--additional-sender-account",
 		fmt.Sprintf("--slashing-address=%s", slashingAddr),
-		fmt.Sprintf("--jury-pk=%s", covenantPkBip340.MarshalHex()),
+		fmt.Sprintf("--covenant-pk=%s", covenantPkBip340.MarshalHex()),
 	)
 
 	var stderr bytes.Buffer

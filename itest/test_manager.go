@@ -526,11 +526,11 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 		Height: currentBtcTip.Height + 1,
 		Work:   &accumulatedWork,
 	}
-	headers := make([]*bbntypes.BTCHeaderBytes, 0)
-	headers = append(headers, &blockWithStakingTx.HeaderBytes)
+	headers := make([]bbntypes.BTCHeaderBytes, 0)
+	headers = append(headers, blockWithStakingTx.HeaderBytes)
 	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
 		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
-		headers = append(headers, headerInfo.Header)
+		headers = append(headers, *headerInfo.Header)
 		parentBlockHeaderInfo = headerInfo
 	}
 	_, err = tm.BabylonClient.InsertBtcBlockHeaders(headers)
