@@ -46,7 +46,7 @@ func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalE
 
 	ctx := client.Context{}.
 		WithCodec(codec.MakeCodec()).
-		WithKeyringDir(keyringDir)
+		WithKeyringDir(keyringDir).WithInput(os.Stdin)
 
 	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")

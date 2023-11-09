@@ -48,6 +48,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
 		logger := logrus.New()
+		eotsCfg.KeyringBackend = "file"
 		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 		require.NoError(t, err)
 		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logger)

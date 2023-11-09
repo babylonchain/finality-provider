@@ -88,7 +88,7 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *
 	keyName := GenRandomHexStr(r, 4)
 	chainID := GenRandomHexStr(r, 4)
 
-	res, err := app.CreateValidator(keyName, chainID, "", EmptyDescription(), ZeroCommissionRate())
+	res, err := app.CreateValidator(keyName, chainID, "testpass", EmptyDescription(), ZeroCommissionRate())
 	require.NoError(t, err)
 
 	storedVal, err := app.GetValidatorStore().GetStoreValidator(res.ValPk.MustMarshal())
