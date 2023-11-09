@@ -21,12 +21,12 @@ type Delegation struct {
 	StakingTxHex string
 	// slashing_tx_hex is the hex string of the slashing tx
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
-	// validator or jury yet.
+	// validator or covenant yet.
 	SlashingTxHex string
-	// jury_sig is the signature on the slashing tx
-	// by the jury (i.e., SK corresponding to jury_pk in params)
+	// covenant_sig is the signature on the slashing tx
+	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It will be a part of the witness for the staking tx output.
-	JurySig *schnorr.Signature
+	CovenantSig *schnorr.Signature
 	// if this object is present it menans that staker requested undelegation, and whole
 	// delegation is being undelegated.
 	// directly in delegation object
@@ -41,19 +41,19 @@ type Undelegation struct {
 	UnbondingTxHex string
 	// slashing_tx is the hex string of the slashing tx for unbodning transactions
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
-	// validator or jury yet.
+	// validator or covenant yet.
 	SlashingTxHex string
-	// jury_slashing_sig is the signature on the slashing tx
-	// by the jury (i.e., SK corresponding to jury_pk in params)
+	// covenant_slashing_sig is the signature on the slashing tx
+	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
-	JurySlashingSig *schnorr.Signature
-	// jury_unbonding_sig is the signature on the unbonding tx
-	// by the jury (i.e., SK corresponding to jury_pk in params)
+	CovenantSlashingSig *schnorr.Signature
+	// covenant_unbonding_sig is the signature on the unbonding tx
+	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain and after
 	// validator sig will be provided by validator
-	JuryUnbondingSig *schnorr.Signature
+	CovenantUnbondingSig *schnorr.Signature
 	// validator_unbonding_sig is the signature on the unbonding tx
-	// by the validator (i.e., SK corresponding to jury_pk in params)
+	// by the validator (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
 	ValidatorUnbondingSig *schnorr.Signature
 }

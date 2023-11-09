@@ -83,7 +83,7 @@ type Config struct {
 
 	ActiveNetParams chaincfg.Params
 
-	JuryMode bool `long:"jurymode" description:"If the program is running in Jury mode"`
+	CovenantMode bool `long:"covenantmode" description:"If the program is running in Covenant mode"`
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
@@ -95,7 +95,7 @@ type Config struct {
 
 	ValidatorModeConfig *ValidatorConfig `group:"validator" namespace:"validator"`
 
-	JuryModeConfig *JuryConfig `group:"jury" namespace:"jury"`
+	CovenantModeConfig *CovenantConfig `group:"covenant" namespace:"covenant"`
 
 	GRpcServerConfig *GRpcServerConfig
 
@@ -105,7 +105,7 @@ type Config struct {
 func DefaultConfig() Config {
 	bbnCfg := DefaultBBNConfig()
 	dbCfg := DefaultDatabaseConfig()
-	juryCfg := DefaultJuryConfig()
+	covenantCfg := DefaultCovenantConfig()
 	pollerCfg := DefaultChainPollerConfig()
 	valCfg := DefaultValidatorConfig()
 	eotsMngrCfg := DefaultEOTSManagerConfig()
@@ -119,7 +119,7 @@ func DefaultConfig() Config {
 		DatabaseConfig:                 &dbCfg,
 		BabylonConfig:                  &bbnCfg,
 		ValidatorModeConfig:            &valCfg,
-		JuryModeConfig:                 &juryCfg,
+		CovenantModeConfig:             &covenantCfg,
 		PollerConfig:                   &pollerCfg,
 		EOTSManagerConfig:              &eotsMngrCfg,
 		NumPubRand:                     defaultNumPubRand,

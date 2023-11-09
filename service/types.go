@@ -52,7 +52,7 @@ type RegisterValidatorResponse struct {
 	TxHash    string
 }
 
-type AddJurySigResponse struct {
+type AddCovenantSigResponse struct {
 	TxHash string
 }
 
