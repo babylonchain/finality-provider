@@ -22,7 +22,7 @@ var (
 
 // TestValidatorLifeCycle tests the whole life cycle of a validator
 // creation -> registration -> randomness commitment ->
-// activation with BTC delegation and Jury sig ->
+// activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, false)
@@ -40,8 +40,8 @@ func TestValidatorLifeCycle(t *testing.T) {
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
 
-	// submit Jury sig
-	_ = tm.AddJurySignature(t, dels[0])
+	// submit Covenant sig
+	_ = tm.AddCovenantSignature(t, dels[0])
 
 	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
@@ -78,12 +78,12 @@ func TestMultipleValidators(t *testing.T) {
 	// check the 3 BTC delegations are pending
 	dels := tm.WaitForNPendingDels(t, 3)
 
-	// submit Jury sigs for each delegation
+	// submit Covenant sigs for each delegation
 	for _, del := range dels {
 		tm.Wg.Add(1)
 		go func(btcDel *types.Delegation) {
 			defer tm.Wg.Done()
-			_ = tm.AddJurySignature(t, btcDel)
+			_ = tm.AddCovenantSignature(t, btcDel)
 		}(del)
 	}
 	tm.Wg.Wait()
@@ -120,8 +120,8 @@ func TestDoubleSigning(t *testing.T) {
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
 
-	// submit Jury sig
-	_ = tm.AddJurySignature(t, dels[0])
+	// submit Covenant sig
+	_ = tm.AddCovenantSignature(t, dels[0])
 
 	// check the BTC delegation is active
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
@@ -166,8 +166,8 @@ func TestFastSync(t *testing.T) {
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
 
-	// submit Jury sig
-	_ = tm.AddJurySignature(t, dels[0])
+	// submit Covenant sig
+	_ = tm.AddCovenantSignature(t, dels[0])
 
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 
@@ -212,8 +212,8 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
 
-	// submit Jury sig
-	_ = tm.AddJurySignature(t, dels[0])
+	// submit Covenant sig
+	_ = tm.AddCovenantSignature(t, dels[0])
 
 	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 
@@ -222,7 +222,7 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	_ = tm.WaitForValNUnbondingDels(t, valIns.GetBtcPkBIP340(), 1)
 }
 
-func TestJuryLifeCycle(t *testing.T) {
+func TestCovenantLifeCycle(t *testing.T) {
 	tm := StartManagerWithValidator(t, 1, true)
 	defer tm.Stop(t)
 	app := tm.Va
@@ -258,7 +258,7 @@ func TestJuryLifeCycle(t *testing.T) {
 		validatorPrivKey,
 	)
 
-	// after providing validator unbodning signature, we should wait for jury to provide both valid signatures
+	// after providing validator unbodning signature, we should wait for covenant to provide both valid signatures
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
 		if err != nil {
@@ -275,6 +275,6 @@ func TestJuryLifeCycle(t *testing.T) {
 			return false
 		}
 
-		return del.BtcUndelegation.JurySlashingSig != nil && del.BtcUndelegation.JuryUnbondingSig != nil
+		return del.BtcUndelegation.CovenantSlashingSig != nil && del.BtcUndelegation.CovenantUnbondingSig != nil
 	}, 1*time.Minute, eventuallyPollTime)
 }

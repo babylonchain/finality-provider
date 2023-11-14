@@ -97,7 +97,7 @@ func FuzzRegisterValidator(f *testing.F) {
 	})
 }
 
-func FuzzAddJurySig(f *testing.F) {
+func FuzzAddCovenantSig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
@@ -126,15 +126,15 @@ func FuzzAddJurySig(f *testing.F) {
 		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
 		require.NoError(t, err)
 
-		// create a Jury key pair in the keyring
-		juryKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.JuryModeConfig.JuryKeyName)
+		// create a Covenant key pair in the keyring
+		covenantKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.CovenantModeConfig.CovenantKeyName)
 		require.NoError(t, err)
-		sdkJurPk, err := juryKc.CreateChainKey()
+		sdkJurPk, err := covenantKc.CreateChainKey()
 		require.NoError(t, err)
-		juryPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
+		covenantPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
 		require.NoError(t, err)
-		require.NotNil(t, juryPk)
-		cfg.JuryMode = true
+		require.NotNil(t, covenantPk)
+		cfg.CovenantMode = true
 
 		err = app.Start()
 		require.NoError(t, err)
@@ -155,7 +155,7 @@ func FuzzAddJurySig(f *testing.F) {
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, juryPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
+		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, covenantPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
 		require.NoError(t, err)
 		require.NoError(t, err)
 		stakingTxHex, err := stakingTx.ToHexStr()
@@ -172,14 +172,15 @@ func FuzzAddJurySig(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().QueryPendingDelegations(gomock.Any()).
 			Return([]*types.Delegation{delegation}, nil).AnyTimes()
-		mockClientController.EXPECT().SubmitJurySig(
+		mockClientController.EXPECT().SubmitCovenantSig(
 			delegation.ValBtcPk,
 			delegation.BtcPk,
 			stakingMsgTx.TxHash().String(),
 			gomock.Any(),
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err := app.AddJurySignature(delegation)
+		cfg.CovenantModeConfig.SlashingAddress = slashingAddr.String()
+		res, err := app.AddCovenantSignature(delegation)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
 	})

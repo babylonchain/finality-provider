@@ -12,36 +12,36 @@ import (
 	"github.com/babylonchain/btc-validator/val"
 )
 
-type juryKey struct {
+type covenantKey struct {
 	Name      string `json:"name"`
 	PublicKey string `json:"public-key"`
 }
 
-var juryCommands = []cli.Command{
+var covenantCommands = []cli.Command{
 	{
-		Name:      "jury",
-		ShortName: "j",
-		Usage:     "Control Babylon Jury.",
-		Category:  "Jury",
+		Name:      "covenant",
+		ShortName: "c",
+		Usage:     "Control Babylon Covenant.",
+		Category:  "Covenant",
 		Subcommands: []cli.Command{
-			createJury,
+			createCovenant,
 		},
 	},
 }
 
-var createJury = cli.Command{
-	Name:      "create-jury",
-	ShortName: "cj",
-	Usage:     "Create a Jury account in the keyring.",
+var createCovenant = cli.Command{
+	Name:      "create-covenant",
+	ShortName: "cc",
+	Usage:     "Create a Covenant account in the keyring.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  chainIdFlag,
-			Usage: "The chainID of the Babylonchain",
+			Usage: "The chainID of the consumer chain",
 			Value: defaultChainID,
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
-			Usage:    "The unique name of the Jury key",
+			Usage:    "The unique name of the Covenant key",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -54,10 +54,10 @@ var createJury = cli.Command{
 			Usage: "The directory where the keyring is stored",
 		},
 	},
-	Action: createJuryKey,
+	Action: createCovenantKey,
 }
 
-func createJuryKey(ctx *cli.Context) error {
+func createCovenantKey(ctx *cli.Context) error {
 	sdkCtx, err := service.CreateClientCtx(
 		ctx.String(keyringDirFlag),
 		ctx.String(chainIdFlag),
@@ -75,17 +75,17 @@ func createJuryKey(ctx *cli.Context) error {
 		return err
 	}
 
-	sdkJuryPk, err := krController.CreateChainKey()
+	sdkCovenantPk, err := krController.CreateChainKey()
 	if err != nil {
-		return fmt.Errorf("failed to create Jury key: %w", err)
+		return fmt.Errorf("failed to create Covenant key: %w", err)
 	}
-	juryPk, err := secp256k1.ParsePubKey(sdkJuryPk.Key)
+	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
 	if err != nil {
 		return err
 	}
 
-	bip340Key := types.NewBIP340PubKeyFromBTCPK(juryPk)
-	printRespJSON(&juryKey{
+	bip340Key := types.NewBIP340PubKeyFromBTCPK(covenantPk)
+	printRespJSON(&covenantKey{
 		Name:      ctx.String(keyNameFlag),
 		PublicKey: bip340Key.MarshalHex(),
 	})
