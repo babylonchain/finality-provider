@@ -735,11 +735,6 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 	}
 
 	// generate a list of Schnorr randomness pairs
-	// NOTE: currently, calling this will create and save a list of randomness
-	// in case of failure, randomness that has been created will be overwritten
-	// for safety reason as the same randomness must not be used twice
-	// TODO: should consider an implementation that deterministically create
-	//  randomness without saving it
 	pubRandList, err := v.createPubRandList(startHeight)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)
@@ -779,6 +774,8 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 	return res, nil
 }
 
+// createPubRandList requests a list of public randomness from EOTS manager
+// it ensures that every randomness in the list has not been committed before
 func (v *ValidatorInstance) createPubRandList(startHeight uint64) ([]bbntypes.SchnorrPubRand, error) {
 	pubRandList, err := v.em.CreateRandomnessPairList(
 		v.btcPk.MustMarshal(),
@@ -789,6 +786,8 @@ func (v *ValidatorInstance) createPubRandList(startHeight uint64) ([]bbntypes.Sc
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO check if there is any randomness committed before
 
 	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
 	for _, pr := range pubRandList {
@@ -813,6 +812,8 @@ func (v *ValidatorInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.
 
 	// update DB
 	v.MustUpdateStateAfterFinalitySigSubmission(b.Height)
+
+	// TODO update slashing protector
 
 	return res, nil
 }
