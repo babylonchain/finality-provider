@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/99designs/keyring"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/jessevdk/go-flags"
 	"github.com/sirupsen/logrus"
@@ -23,7 +22,7 @@ const (
 	defaultLogFilename    = "eotsd.log"
 	defaultConfigFileName = "eotsd.conf"
 	DefaultRPCPort        = 15813
-	defaultKeyringBackend = string(keyring.FileBackend)
+	defaultKeyringBackend = "test"
 )
 
 var (
