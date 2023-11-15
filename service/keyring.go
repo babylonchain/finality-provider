@@ -12,7 +12,7 @@ import (
 	"github.com/babylonchain/btc-validator/codec"
 )
 
-func CreateKeyring(keyringDir string, chainId string, backend string) (keyring.Keyring, error) {
+func CreateKeyring(keyringDir string, chainId string, backend string, input *strings.Reader) (keyring.Keyring, error) {
 	ctx, err := CreateClientCtx(keyringDir, chainId)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func CreateKeyring(keyringDir string, chainId string, backend string) (keyring.K
 		ctx.ChainID,
 		backend,
 		ctx.KeyringDir,
-		ctx.Input,
+		input,
 		ctx.Codec,
 		ctx.KeyringOptions...)
 	if err != nil {
@@ -51,6 +51,5 @@ func CreateClientCtx(keyringDir string, chainId string) (client.Context, error) 
 	return client.Context{}.
 		WithChainID(chainId).
 		WithCodec(codec.MakeCodec()).
-		WithInput(strings.NewReader("")).
 		WithKeyringDir(keyringDir), nil
 }

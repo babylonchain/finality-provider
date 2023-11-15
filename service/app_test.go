@@ -24,6 +24,11 @@ import (
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
+var (
+	passphrase = "testpass"
+	hdPath     = ""
+)
+
 func FuzzRegisterValidator(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
@@ -49,7 +54,6 @@ func FuzzRegisterValidator(f *testing.F) {
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
 		logger := logrus.New()
-		eotsCfg.KeyringBackend = string(keyring.FileBackend)
 		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 		require.NoError(t, err)
 		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logger)
@@ -63,7 +67,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		}()
 
 		// create a validator object and save it to db
-		validator := testutil.GenStoredValidator(r, t, app)
+		validator := testutil.GenStoredValidator(r, t, app, passphrase, hdPath)
 		btcSig := new(bbntypes.BIP340Signature)
 		err = btcSig.Unmarshal(validator.Pop.BtcSig)
 		require.NoError(t, err)
@@ -130,7 +134,11 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// create a Covenant key pair in the keyring
 		cfg.BabylonConfig.KeyringBackend = string(keyring.FileBackend)
-		covenantKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.CovenantModeConfig.CovenantKeyName)
+		covenantKc, err := val.NewChainKeyringControllerWithKeyring(
+			app.GetKeyring(),
+			cfg.CovenantModeConfig.CovenantKeyName,
+			app.GetInput(),
+		)
 		require.NoError(t, err)
 		sdkJurPk, err := covenantKc.CreateChainKey("testpass", "")
 		require.NoError(t, err)
@@ -147,7 +155,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		}()
 
 		// create a validator object and save it to db
-		validator := testutil.GenStoredValidator(r, t, app)
+		validator := testutil.GenStoredValidator(r, t, app, passphrase, hdPath)
 		btcPkBIP340 := validator.MustGetBIP340BTCPK()
 		btcPk := validator.MustGetBTCPK()
 

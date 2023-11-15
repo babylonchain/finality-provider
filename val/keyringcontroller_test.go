@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/sirupsen/logrus"
@@ -30,7 +31,7 @@ func FuzzCreatePoP(f *testing.F) {
 		sdkCtx := testutil.GenSdkContext(r, t)
 
 		chainID := testutil.GenRandomHexStr(r, 4)
-		kc, err := val.NewChainKeyringController(sdkCtx, keyName, "test")
+		kc, err := val.NewChainKeyringController(sdkCtx, keyName, string(keyring.FileBackend))
 		require.NoError(t, err)
 
 		cfg := testutil.GenEOTSConfig(r, t)
@@ -53,7 +54,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
-		pop, err := kc.CreatePop(valRecord.PrivKey)
+		pop, err := kc.CreatePop(valRecord.PrivKey, passphrase)
 		require.NoError(t, err)
 		validator := val.NewStoreValidator(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
 

@@ -45,7 +45,7 @@ message CreateValidatorRequest {
     string key_name = 1;
     // passphrase is used to encrypt the keys
     string passphrase = 2;
-    // hd_path is the hd path for private key generation
+    // hd_path is the hd path for private key derivation
     string hd_path = 3;
     // chain_id is the identifier of the consumer chain that the validator connected to
     string chain_id = 4;

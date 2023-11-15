@@ -37,7 +37,7 @@ message CreateKeyRequest {
   string name = 1;
   // passphrase is used to encrypt the EOTS key
   string passphrase = 2;
-  // hd_path is the hd path for private key generation
+  // hd_path is the hd path for private key derivation
   string hd_path = 3;
 }
 

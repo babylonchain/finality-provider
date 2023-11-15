@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"cosmossdk.io/math"
+	"github.com/99designs/keyring"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/babylon/x/checkpointing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -44,7 +45,7 @@ const (
 	keyringDirFlag        = "keyring-dir"
 	keyringBackendFlag    = "keyring-backend"
 	defaultChainID        = "chain-test"
-	defaultKeyringBackend = "test"
+	defaultKeyringBackend = string(keyring.FileBackend)
 	defaultPassphrase     = ""
 	defaultHdPath         = ""
 

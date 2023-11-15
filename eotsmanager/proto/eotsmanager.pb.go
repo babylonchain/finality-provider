@@ -105,7 +105,7 @@ type CreateKeyRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// passphrase is used to encrypt the EOTS key
 	Passphrase string `protobuf:"bytes,2,opt,name=passphrase,proto3" json:"passphrase,omitempty"`
-	// hd_path is the hd path for private key generation
+	// hd_path is the hd path for private key derivation
 	HdPath string `protobuf:"bytes,3,opt,name=hd_path,json=hdPath,proto3" json:"hd_path,omitempty"`
 }
 

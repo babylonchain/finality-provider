@@ -3,6 +3,7 @@ package valcfg
 import (
 	"time"
 
+	"github.com/99designs/keyring"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
@@ -24,14 +25,14 @@ type BBNConfig struct {
 }
 
 func DefaultBBNConfig() BBNConfig {
-	//fill up the config from dc config
+	// fill up the config from dc config
 	return BBNConfig{
 		Key:            "node0",
 		ChainID:        "chain-test",
 		RPCAddr:        "http://localhost:26657",
 		GRPCAddr:       "https://localhost:9090",
 		AccountPrefix:  "bbn",
-		KeyringBackend: "test",
+		KeyringBackend: string(keyring.FileBackend),
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",
 		KeyDirectory:   defaultDataDir,

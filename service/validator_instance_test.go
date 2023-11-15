@@ -115,7 +115,7 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	require.NoError(t, err)
 
 	// create registered validator
-	validator := testutil.GenStoredValidator(r, t, app)
+	validator := testutil.GenStoredValidator(r, t, app, passphrase, hdPath)
 	err = app.GetValidatorStore().SetValidatorStatus(validator, proto.ValidatorStatus_REGISTERED)
 	require.NoError(t, err)
 	err = app.StartHandlingValidator(validator.MustGetBIP340BTCPK())
