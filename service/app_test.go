@@ -140,7 +140,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			app.GetInput(),
 		)
 		require.NoError(t, err)
-		sdkJurPk, err := covenantKc.CreateChainKey("testpass", "")
+		sdkJurPk, err := covenantKc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
 		covenantPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
 		require.NoError(t, err)
