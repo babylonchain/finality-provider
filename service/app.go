@@ -435,7 +435,7 @@ func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
-	record, err := app.eotsManager.KeyRecord(valPk)
+	record, err := app.eotsManager.KeyRecord(valPk, app.config.Passphrase)
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +569,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
 
-	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal())
+	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), app.config.Passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator record: %w", err)
 	}

@@ -121,7 +121,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
 	require.NoError(t, err)
-	valRecord, err := em.KeyRecord(btcPk.MustMarshal())
+	valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 	require.NoError(t, err)
 	pop, err := kc.CreatePop(valRecord.PrivKey)
 	require.NoError(t, err)

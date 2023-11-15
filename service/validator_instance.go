@@ -757,7 +757,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 	}
 
 	// sign the message hash using the validator's BTC private key
-	schnorrSig, err := v.em.SignSchnorrSig(v.btcPk.MustMarshal(), hash)
+	schnorrSig, err := v.em.SignSchnorrSig(v.btcPk.MustMarshal(), hash, v.cfg.Passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -785,6 +785,7 @@ func (v *ValidatorInstance) createPubRandList(startHeight uint64) ([]bbntypes.Sc
 		v.GetChainID(),
 		startHeight,
 		uint32(v.cfg.NumPubRand),
+		v.cfg.Passphrase,
 	)
 	if err != nil {
 		return nil, err
@@ -854,7 +855,7 @@ func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEO
 		BlockLastCommitHash: b.Hash,
 	}
 	msgToSign := msg.MsgToSign()
-	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height)
+	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height, v.cfg.Passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}

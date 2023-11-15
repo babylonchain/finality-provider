@@ -111,7 +111,7 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 	result, err := r.app.CreateValidator(
 		req.KeyName,
 		req.ChainId,
-		req.PassPhrase,
+		req.Passphrase,
 		req.HdPath,
 		req.Description,
 		&commissionRate,

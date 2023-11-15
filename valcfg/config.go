@@ -78,6 +78,7 @@ type Config struct {
 	FastSyncLimit                  uint64        `long:"fastsynclimit" description:"The maximum number of blocks to catch up for each fast sync"`
 	FastSyncGap                    uint64        `long:"fastsyncgap" description:"The block gap that will trigger the fast sync"`
 	EOTSManagerAddress             string        `long:"eotsmanageraddress" description:"The address of the remote EOTS manager; Empty if the EOTS manager is running locally"`
+	Passphrase                     string        `long:"passphrase" description:"The passphrase used to unlock keyrings for both the consumer chain and the EOTS manager"`
 
 	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 

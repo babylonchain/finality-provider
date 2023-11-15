@@ -215,7 +215,7 @@ func (v *ValidatorInstance) MustUpdateStateAfterFinalitySigSubmission(height uin
 
 func (v *ValidatorInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
 	// TODO ignore pass phrase for now
-	record, err := v.em.KeyRecord(v.btcPk.MustMarshal())
+	record, err := v.em.KeyRecord(v.btcPk.MustMarshal(), v.cfg.Passphrase)
 	if err != nil {
 		return nil, err
 	}

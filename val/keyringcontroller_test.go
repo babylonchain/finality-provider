@@ -15,6 +15,11 @@ import (
 	"github.com/babylonchain/btc-validator/val"
 )
 
+var (
+	passphrase = "testpass"
+	hdPath     = ""
+)
+
 // FuzzCreatePoP tests the creation of PoP
 func FuzzCreatePoP(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
@@ -40,15 +45,13 @@ func FuzzCreatePoP(f *testing.F) {
 		}()
 		require.NoError(t, err)
 
-		passphrase := "testpass"
-		hdPath := ""
 		btcPkBytes, err := em.CreateKey(keyName, passphrase, hdPath)
 		require.NoError(t, err)
 		btcPk, err := types.NewBIP340PubKey(btcPkBytes)
 		require.NoError(t, err)
 		bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
-		valRecord, err := em.KeyRecord(btcPk.MustMarshal())
+		valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
 		pop, err := kc.CreatePop(valRecord.PrivKey)
 		require.NoError(t, err)

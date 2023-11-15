@@ -38,7 +38,7 @@ const (
 	valBTCPkFlag          = "btc-pk"
 	blockHeightFlag       = "height"
 	lastCommitHashFlag    = "last-commit-hash"
-	passPhraseFlag        = "pass-phrase"
+	passPhraseFlag        = "passphrase"
 	hdPathFlag            = "hd-path"
 	chainIdFlag           = "chain-id"
 	keyringDirFlag        = "keyring-dir"
@@ -123,7 +123,7 @@ var createValDaemonCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  hdPathFlag,
-			Usage: "The hd path used to generate the private key",
+			Usage: "The hd path used to derive the private key",
 			Value: defaultHdPath,
 		},
 		cli.StringFlag{

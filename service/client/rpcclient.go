@@ -54,7 +54,7 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valP
 
 func (c *ValidatorServiceGRpcClient) CreateValidator(
 	ctx context.Context,
-	keyName, chainID, passPhrase, hdPath string,
+	keyName, chainID, passphrase, hdPath string,
 	description *stakingtypes.Description,
 	commission *sdktypes.Dec,
 ) (*proto.CreateValidatorResponse, error) {
@@ -62,7 +62,7 @@ func (c *ValidatorServiceGRpcClient) CreateValidator(
 	req := &proto.CreateValidatorRequest{
 		KeyName:     keyName,
 		ChainId:     chainID,
-		PassPhrase:  passPhrase,
+		Passphrase:  passphrase,
 		HdPath:      hdPath,
 		Description: description,
 		Commission:  commission.String(),

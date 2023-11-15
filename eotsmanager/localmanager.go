@@ -75,7 +75,7 @@ func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalE
 	}, nil
 }
 
-func (lm *LocalEOTSManager) CreateKey(name, passPhrase, hdPath string) ([]byte, error) {
+func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, error) {
 	if lm.keyExists(name) {
 		return nil, eotstypes.ErrValidatorAlreadyExisted
 	}
@@ -98,8 +98,8 @@ func (lm *LocalEOTSManager) CreateKey(name, passPhrase, hdPath string) ([]byte, 
 	}
 
 	// we need to repeat the passphrase to mock the reentry
-	lm.input.Reset(passPhrase + "\n" + passPhrase)
-	record, err := lm.kr.NewAccount(name, mnemonic, passPhrase, hdPath, algo)
+	lm.input.Reset(passphrase + "\n" + passphrase)
+	record, err := lm.kr.NewAccount(name, mnemonic, passphrase, hdPath, algo)
 	if err != nil {
 		return nil, err
 	}
@@ -134,12 +134,12 @@ func (lm *LocalEOTSManager) CreateKey(name, passPhrase, hdPath string) ([]byte, 
 //
 //	a simple anti-slasher mechanism could be that the manager remembers the tuple (valPk, chainID, height) or
 //	the hash of each generated randomness and return error if the same randomness is requested tweice
-func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error) {
+func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 
 	for i := uint32(0); i < num; i++ {
 		height := startHeight + uint64(i)
-		_, pubRand, err := lm.getRandomnessPair(valPk, chainID, height)
+		_, pubRand, err := lm.getRandomnessPair(valPk, chainID, height, passphrase)
 		if err != nil {
 			return nil, err
 		}
@@ -150,13 +150,13 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byt
 	return prList, nil
 }
 
-func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, height uint64) (*btcec.ModNScalar, error) {
-	privRand, _, err := lm.getRandomnessPair(valPk, chainID, height)
+func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
+	privRand, _, err := lm.getRandomnessPair(valPk, chainID, height, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private randomness: %w", err)
 	}
 
-	privKey, err := lm.getEOTSPrivKey(valPk)
+	privKey, err := lm.getEOTSPrivKey(valPk, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
@@ -164,8 +164,8 @@ func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, h
 	return eots.Sign(privKey, privRand, msg)
 }
 
-func (lm *LocalEOTSManager) SignSchnorrSig(valPk []byte, msg []byte) (*schnorr.Signature, error) {
-	privKey, err := lm.getEOTSPrivKey(valPk)
+func (lm *LocalEOTSManager) SignSchnorrSig(valPk []byte, msg []byte, passphrase string) (*schnorr.Signature, error) {
+	privKey, err := lm.getEOTSPrivKey(valPk, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
@@ -178,8 +178,9 @@ func (lm *LocalEOTSManager) Close() error {
 }
 
 // getRandomnessPair returns a randomness pair generated based on the given validator key, chainID and height
-func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64) (*eots.PrivateRand, *eots.PublicRand, error) {
-	record, err := lm.KeyRecord(valPk)
+func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64, passphrase string) (*eots.PrivateRand, *eots.PublicRand, error) {
+	lm.input.Reset(passphrase)
+	record, err := lm.KeyRecord(valPk, passphrase)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,12 +189,12 @@ func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, heig
 }
 
 // TODO: we ignore passPhrase in local implementation for now
-func (lm *LocalEOTSManager) KeyRecord(valPk []byte) (*eotstypes.KeyRecord, error) {
+func (lm *LocalEOTSManager) KeyRecord(valPk []byte, passphrase string) (*eotstypes.KeyRecord, error) {
 	name, err := lm.es.getValidatorKeyName(valPk)
 	if err != nil {
 		return nil, err
 	}
-	privKey, err := lm.getEOTSPrivKey(valPk)
+	privKey, err := lm.getEOTSPrivKey(valPk, passphrase)
 	if err != nil {
 		return nil, err
 	}
@@ -204,12 +205,13 @@ func (lm *LocalEOTSManager) KeyRecord(valPk []byte) (*eotstypes.KeyRecord, error
 	}, nil
 }
 
-func (lm *LocalEOTSManager) getEOTSPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
+func (lm *LocalEOTSManager) getEOTSPrivKey(valPk []byte, passphrase string) (*btcec.PrivateKey, error) {
 	keyName, err := lm.es.getValidatorKeyName(valPk)
 	if err != nil {
 		return nil, err
 	}
 
+	lm.input.Reset(passphrase)
 	k, err := lm.kr.Key(keyName)
 	if err != nil {
 		return nil, err

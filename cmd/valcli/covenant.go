@@ -51,7 +51,7 @@ var createCovenant = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  hdPathFlag,
-			Usage: "The hd path used to generate the private key",
+			Usage: "The hd path used to derive the private key",
 			Value: defaultHdPath,
 		},
 		cli.StringFlag{
