@@ -39,11 +39,14 @@ const (
 	blockHeightFlag       = "height"
 	lastCommitHashFlag    = "last-commit-hash"
 	passPhraseFlag        = "pass-phrase"
+	hdPathFlag            = "hd-path"
 	chainIdFlag           = "chain-id"
 	keyringDirFlag        = "keyring-dir"
 	keyringBackendFlag    = "keyring-backend"
 	defaultChainID        = "chain-test"
 	defaultKeyringBackend = "test"
+	defaultPassphrase     = ""
+	defaultHdPath         = ""
 
 	// flags for description
 	monikerFlag          = "moniker"
@@ -116,6 +119,12 @@ var createValDaemonCmd = cli.Command{
 		cli.StringFlag{
 			Name:  passPhraseFlag,
 			Usage: "The pass phrase used to encrypt the keys",
+			Value: defaultPassphrase,
+		},
+		cli.StringFlag{
+			Name:  hdPathFlag,
+			Usage: "The hd path used to generate the private key",
+			Value: defaultHdPath,
 		},
 		cli.StringFlag{
 			Name:  commissionRateFlag,
@@ -153,7 +162,6 @@ var createValDaemonCmd = cli.Command{
 
 func createValDaemon(ctx *cli.Context) error {
 	daemonAddress := ctx.String(valdDaemonAddressFlag)
-	keyName := ctx.String(keyNameFlag)
 
 	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
 	if err != nil {
@@ -171,7 +179,15 @@ func createValDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	info, err := client.CreateValidator(context.Background(), keyName, ctx.String(chainIdFlag), ctx.String(passPhraseFlag), &description, &commissionRate)
+	info, err := client.CreateValidator(
+		context.Background(),
+		ctx.String(keyNameFlag),
+		ctx.String(chainIdFlag),
+		ctx.String(passPhraseFlag),
+		ctx.String(hdPathFlag),
+		&description,
+		&commissionRate,
+	)
 
 	if err != nil {
 		return err

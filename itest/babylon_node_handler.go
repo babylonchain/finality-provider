@@ -137,7 +137,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 		"test",
 	)
 	require.NoError(t, err)
-	sdkCovenantPk, err := krController.CreateChainKey()
+	sdkCovenantPk, err := krController.CreateChainKey("testpass", "")
 	require.NoError(t, err)
 	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
 	require.NoError(t, err)

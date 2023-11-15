@@ -43,7 +43,7 @@ func (r *rpcServer) Ping(ctx context.Context, req *proto.PingRequest) (*proto.Pi
 func (r *rpcServer) CreateKey(ctx context.Context, req *proto.CreateKeyRequest) (
 	*proto.CreateKeyResponse, error) {
 
-	pk, err := r.em.CreateKey(req.Name, req.PassPhrase)
+	pk, err := r.em.CreateKey(req.Name, req.PassPhrase, req.HdPath)
 
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (r *rpcServer) CreateRandomnessPairList(ctx context.Context, req *proto.Cre
 func (r *rpcServer) KeyRecord(ctx context.Context, req *proto.KeyRecordRequest) (
 	*proto.KeyRecordResponse, error) {
 
-	record, err := r.em.KeyRecord(req.Uid, req.PassPhrase)
+	record, err := r.em.KeyRecord(req.Uid)
 	if err != nil {
 		return nil, err
 	}

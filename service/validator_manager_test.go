@@ -109,17 +109,19 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 
 	// create registered validator
+	passphrase := "testpass"
+	hdPath := ""
 	keyName := datagen.GenRandomHexStr(r, 10)
 	chainID := datagen.GenRandomHexStr(r, 10)
 	kc, err := val.NewChainKeyringControllerWithKeyring(kr, keyName)
 	require.NoError(t, err)
-	btcPkBytes, err := em.CreateKey(keyName, "")
+	btcPkBytes, err := em.CreateKey(keyName, passphrase, hdPath)
 	require.NoError(t, err)
 	btcPk, err := bbntypes.NewBIP340PubKey(btcPkBytes)
 	require.NoError(t, err)
-	bbnPk, err := kc.CreateChainKey()
+	bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
 	require.NoError(t, err)
-	valRecord, err := em.KeyRecord(btcPk.MustMarshal(), "")
+	valRecord, err := em.KeyRecord(btcPk.MustMarshal())
 	require.NoError(t, err)
 	pop, err := kc.CreatePop(valRecord.PrivKey)
 	require.NoError(t, err)

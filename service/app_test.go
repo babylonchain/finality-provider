@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -48,7 +49,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
 		logger := logrus.New()
-		eotsCfg.KeyringBackend = "file"
+		eotsCfg.KeyringBackend = string(keyring.FileBackend)
 		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 		require.NoError(t, err)
 		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logger)
@@ -121,15 +122,17 @@ func FuzzAddCovenantSig(f *testing.F) {
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
 		logger := logrus.New()
+		eotsCfg.KeyringBackend = string(keyring.FileBackend)
 		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 		require.NoError(t, err)
 		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
 		require.NoError(t, err)
 
 		// create a Covenant key pair in the keyring
+		cfg.BabylonConfig.KeyringBackend = string(keyring.FileBackend)
 		covenantKc, err := val.NewChainKeyringControllerWithKeyring(app.GetKeyring(), cfg.CovenantModeConfig.CovenantKeyName)
 		require.NoError(t, err)
-		sdkJurPk, err := covenantKc.CreateChainKey()
+		sdkJurPk, err := covenantKc.CreateChainKey("testpass", "")
 		require.NoError(t, err)
 		covenantPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
 		require.NoError(t, err)

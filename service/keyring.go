@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -50,5 +51,6 @@ func CreateClientCtx(keyringDir string, chainId string) (client.Context, error) 
 	return client.Context{}.
 		WithChainID(chainId).
 		WithCodec(codec.MakeCodec()).
+		WithInput(strings.NewReader("")).
 		WithKeyringDir(keyringDir), nil
 }

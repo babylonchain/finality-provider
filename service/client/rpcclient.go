@@ -52,8 +52,22 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valP
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName, chainID, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*proto.CreateValidatorResponse, error) {
-	req := &proto.CreateValidatorRequest{KeyName: keyName, ChainId: chainID, PassPhrase: passPhrase, Description: description, Commission: commission.String()}
+func (c *ValidatorServiceGRpcClient) CreateValidator(
+	ctx context.Context,
+	keyName, chainID, passPhrase, hdPath string,
+	description *stakingtypes.Description,
+	commission *sdktypes.Dec,
+) (*proto.CreateValidatorResponse, error) {
+
+	req := &proto.CreateValidatorRequest{
+		KeyName:     keyName,
+		ChainId:     chainID,
+		PassPhrase:  passPhrase,
+		HdPath:      hdPath,
+		Description: description,
+		Commission:  commission.String(),
+	}
+
 	res, err := c.client.CreateValidator(ctx, req)
 	if err != nil {
 		return nil, err

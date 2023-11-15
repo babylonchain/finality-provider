@@ -38,15 +38,17 @@ func FuzzCreatePoP(f *testing.F) {
 			err = os.RemoveAll(cfg.DatabaseConfig.Path)
 			require.NoError(t, err)
 		}()
-
 		require.NoError(t, err)
-		btcPkBytes, err := em.CreateKey(keyName, "")
+
+		passphrase := "testpass"
+		hdPath := ""
+		btcPkBytes, err := em.CreateKey(keyName, passphrase, hdPath)
 		require.NoError(t, err)
 		btcPk, err := types.NewBIP340PubKey(btcPkBytes)
 		require.NoError(t, err)
-		bbnPk, err := kc.CreateChainKey()
+		bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
-		valRecord, err := em.KeyRecord(btcPk.MustMarshal(), "")
+		valRecord, err := em.KeyRecord(btcPk.MustMarshal())
 		require.NoError(t, err)
 		pop, err := kc.CreatePop(valRecord.PrivKey)
 		require.NoError(t, err)

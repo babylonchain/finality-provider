@@ -11,18 +11,18 @@ type EOTSManager interface {
 	// CreateKey generates a key pair at the given name and persists it in storage.
 	// The key pair is formatted by BIP-340 (Schnorr Signatures)
 	// It fails if there is an existing key Info with the same name or public key.
-	CreateKey(name, passPhrase string) ([]byte, error)
+	CreateKey(name, passPhrase, hdPath string) ([]byte, error)
 
 	// CreateRandomnessPairList generates a list of Schnorr randomness pairs from
-	// startHeight to startHeight+(num-1)*step where step means the gap between each block height
-	// that the validator wants to finalize and num means the number of public randomness
+	// startHeight to startHeight+(num-1) where num means the number of public randomness
 	// It fails if the validator does not exist or a randomness pair has been created before
-	// NOTE: it will overwrite the randomness regardless of whether there's one existed
+	// NOTE: the randomness is deterministically generated based on the EOTS key, chainID and
+	// block height
 	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32) ([]*btcec.FieldVal, error)
 
 	// KeyRecord returns the validator record
-	// It fails if the validator does not exist or passPhrase is incorrect
-	KeyRecord(uid []byte, passPhrase string) (*types.KeyRecord, error)
+	// It fails if the validator does not exist
+	KeyRecord(uid []byte) (*types.KeyRecord, error)
 
 	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
 	// secret randomness of the give chain at the given height

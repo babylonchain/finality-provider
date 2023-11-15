@@ -107,7 +107,15 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 	if err != nil {
 		return nil, err
 	}
-	result, err := r.app.CreateValidator(req.KeyName, req.ChainId, req.PassPhrase, req.Description, &commissionRate)
+
+	result, err := r.app.CreateValidator(
+		req.KeyName,
+		req.ChainId,
+		req.PassPhrase,
+		req.HdPath,
+		req.Description,
+		&commissionRate,
+	)
 
 	if err != nil {
 		return nil, err

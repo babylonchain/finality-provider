@@ -435,7 +435,7 @@ func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
 }
 
 func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
-	record, err := app.eotsManager.KeyRecord(valPk, "")
+	record, err := app.eotsManager.KeyRecord(valPk)
 	if err != nil {
 		return nil, err
 	}
@@ -513,11 +513,17 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName, chainID, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(
+	keyName, chainID, passPhrase, hdPath string,
+	description *stakingtypes.Description,
+	commission *sdktypes.Dec,
+) (*CreateValidatorResult, error) {
+
 	req := &createValidatorRequest{
 		keyName:         keyName,
 		chainID:         chainID,
 		passPhrase:      passPhrase,
+		hdPath:          hdPath,
 		description:     description,
 		commission:      commission,
 		errResponse:     make(chan error, 1),
@@ -543,7 +549,7 @@ func (app *ValidatorApp) IsCovenant() bool {
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
-	valPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase)
+	valPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, err
 	}
@@ -558,12 +564,12 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	bbnPk, err := kr.CreateChainKey()
+	bbnPk, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
 
-	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), req.passPhrase)
+	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator record: %w", err)
 	}

@@ -44,8 +44,8 @@ func (c *EOTSManagerGRpcClient) Ping() error {
 	return nil
 }
 
-func (c *EOTSManagerGRpcClient) CreateKey(name, passPhrase string) ([]byte, error) {
-	req := &proto.CreateKeyRequest{Name: name, PassPhrase: passPhrase}
+func (c *EOTSManagerGRpcClient) CreateKey(name, passPhrase, hdPath string) ([]byte, error) {
+	req := &proto.CreateKeyRequest{Name: name, PassPhrase: passPhrase, HdPath: hdPath}
 	res, err := c.client.CreateKey(context.Background(), req)
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func (c *EOTSManagerGRpcClient) CreateRandomnessPairList(uid, chainID []byte, st
 	return pubRandFieldValList, nil
 }
 
-func (c *EOTSManagerGRpcClient) KeyRecord(uid []byte, passPhrase string) (*types.KeyRecord, error) {
-	req := &proto.KeyRecordRequest{Uid: uid, PassPhrase: passPhrase}
+func (c *EOTSManagerGRpcClient) KeyRecord(uid []byte) (*types.KeyRecord, error) {
+	req := &proto.KeyRecordRequest{Uid: uid}
 
 	res, err := c.client.KeyRecord(context.Background(), req)
 	if err != nil {

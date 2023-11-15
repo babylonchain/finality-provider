@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
@@ -32,6 +32,8 @@ type LocalEOTSManager struct {
 	kr     keyring.Keyring
 	es     *EOTSStore
 	logger *logrus.Logger
+	// input is to send passphrase to kr
+	input *strings.Reader
 }
 
 func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalEOTSManager, error) {
@@ -44,22 +46,18 @@ func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalE
 		keyringDir = path.Join(homeDir, ".eots-manager")
 	}
 
-	ctx := client.Context{}.
-		WithCodec(codec.MakeCodec()).
-		WithKeyringDir(keyringDir).WithInput(os.Stdin)
-
 	if eotsCfg.KeyringBackend == "" {
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
 
+	inputReader := strings.NewReader("")
 	kr, err := keyring.New(
-		ctx.ChainID,
-		// TODO currently only support test backend
+		"eots-manager",
 		eotsCfg.KeyringBackend,
-		ctx.KeyringDir,
-		ctx.Input,
-		ctx.Codec,
-		ctx.KeyringOptions...)
+		keyringDir,
+		inputReader,
+		codec.MakeCodec(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
@@ -73,10 +71,11 @@ func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalE
 		kr:     kr,
 		es:     es,
 		logger: logger,
+		input:  inputReader,
 	}, nil
 }
 
-func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
+func (lm *LocalEOTSManager) CreateKey(name, passPhrase, hdPath string) ([]byte, error) {
 	if lm.keyExists(name) {
 		return nil, eotstypes.ErrValidatorAlreadyExisted
 	}
@@ -98,8 +97,9 @@ func (lm *LocalEOTSManager) CreateKey(name, passPhrase string) ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO for now we leave and hdPath empty
-	record, err := lm.kr.NewAccount(name, mnemonic, passPhrase, "", algo)
+	// we need to repeat the passphrase to mock the reentry
+	lm.input.Reset(passPhrase + "\n" + passPhrase)
+	record, err := lm.kr.NewAccount(name, mnemonic, passPhrase, hdPath, algo)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (lm *LocalEOTSManager) Close() error {
 
 // getRandomnessPair returns a randomness pair generated based on the given validator key, chainID and height
 func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64) (*eots.PrivateRand, *eots.PublicRand, error) {
-	record, err := lm.KeyRecord(valPk, "")
+	record, err := lm.KeyRecord(valPk)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,7 +188,7 @@ func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, heig
 }
 
 // TODO: we ignore passPhrase in local implementation for now
-func (lm *LocalEOTSManager) KeyRecord(valPk []byte, passPhrase string) (*eotstypes.KeyRecord, error) {
+func (lm *LocalEOTSManager) KeyRecord(valPk []byte) (*eotstypes.KeyRecord, error) {
 	name, err := lm.es.getValidatorKeyName(valPk)
 	if err != nil {
 		return nil, err

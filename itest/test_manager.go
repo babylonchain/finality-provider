@@ -133,12 +133,14 @@ func StartManagerWithValidator(t *testing.T, n int, isCovenant bool) *TestManage
 		valNamePrefix = "test-val-"
 		monikerPrefix = "moniker-"
 		chainID       = "chain-test"
+		passphrase    = "testpass"
+		hdPath        = ""
 	)
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdktypes.ZeroDec()
-		res, err := app.CreateValidator(valName, chainID, "", newDescription(moniker), &commission)
+		res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
 		require.NoError(t, err)
 		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
 		require.NoError(t, err)
@@ -477,7 +479,7 @@ func (tm *TestManager) GetCovenantPrivKey(t *testing.T) *btcec.PrivateKey {
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(valPk, "")
+	record, err := tm.EOTSClient.KeyRecord(valPk)
 	require.NoError(t, err)
 	return record.PrivKey
 }

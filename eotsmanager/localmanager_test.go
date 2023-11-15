@@ -32,10 +32,12 @@ func FuzzCreateKey(f *testing.F) {
 		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateKey(valName, "")
+		passphrase := "testpass"
+		hdPath := ""
+		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
 		require.NoError(t, err)
 
-		valRecord, err := lm.KeyRecord(valPk, "")
+		valRecord, err := lm.KeyRecord(valPk)
 		require.NoError(t, err)
 		require.Equal(t, valName, valRecord.Name)
 
@@ -43,7 +45,7 @@ func FuzzCreateKey(f *testing.F) {
 		require.NoError(t, err)
 		require.NotNil(t, sig)
 
-		_, err = lm.CreateKey(valName, "")
+		_, err = lm.CreateKey(valName, passphrase, hdPath)
 		require.ErrorIs(t, err, types.ErrValidatorAlreadyExisted)
 	})
 }
@@ -65,7 +67,9 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateKey(valName, "")
+		passphrase := "testpass"
+		hdPath := ""
+		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
 		require.NoError(t, err)
 
 		chainID := datagen.GenRandomByteArray(r, 10)
