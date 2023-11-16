@@ -22,7 +22,7 @@ const (
 	defaultLogFilename    = "eotsd.log"
 	defaultConfigFileName = "eotsd.conf"
 	DefaultRPCPort        = 15813
-	defaultKeyringBackend = "test"
+	defaultKeyringBackend = "file"
 )
 
 var (

@@ -38,7 +38,7 @@ const (
 	valBTCPkFlag          = "btc-pk"
 	blockHeightFlag       = "height"
 	lastCommitHashFlag    = "last-commit-hash"
-	passPhraseFlag        = "passphrase"
+	passphraseFlag        = "passphrase"
 	hdPathFlag            = "hd-path"
 	chainIdFlag           = "chain-id"
 	keyringDirFlag        = "keyring-dir"
@@ -117,7 +117,7 @@ var createValDaemonCmd = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
-			Name:  passPhraseFlag,
+			Name:  passphraseFlag,
 			Usage: "The pass phrase used to encrypt the keys",
 			Value: defaultPassphrase,
 		},
@@ -183,7 +183,7 @@ func createValDaemon(ctx *cli.Context) error {
 		context.Background(),
 		ctx.String(keyNameFlag),
 		ctx.String(chainIdFlag),
-		ctx.String(passPhraseFlag),
+		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
 		&description,
 		&commissionRate,
@@ -300,6 +300,11 @@ var registerValDaemonCmd = cli.Command{
 			Usage:    "The hex string of the validator BTC public key",
 			Required: true,
 		},
+		cli.StringFlag{
+			Name:  passphraseFlag,
+			Usage: "The pass phrase used to encrypt the keys",
+			Value: defaultPassphrase,
+		},
 	},
 	Action: registerVal,
 }
@@ -318,7 +323,7 @@ func registerVal(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.RegisterValidator(context.Background(), valPk)
+	res, err := rpcClient.RegisterValidator(context.Background(), valPk, ctx.String(passphraseFlag))
 	if err != nil {
 		return err
 	}

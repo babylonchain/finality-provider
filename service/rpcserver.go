@@ -137,7 +137,7 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	}
 
 	// the validator instance should be started right after registration
-	if err := r.app.StartHandlingValidator(txRes.btcPubKey); err != nil {
+	if err := r.app.StartHandlingValidator(txRes.btcPubKey, req.Passphrase); err != nil {
 		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(txRes.bbnPubKey.Key), err)
 	}
 

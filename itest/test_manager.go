@@ -143,7 +143,7 @@ func StartManagerWithValidator(t *testing.T, n int, isCovenant bool) *TestManage
 		require.NoError(t, err)
 		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingValidator(res.ValPk)
+		err = app.StartHandlingValidator(res.ValPk, passphrase)
 		require.NoError(t, err)
 		valIns, err := app.GetValidatorInstance(res.ValPk)
 		require.NoError(t, err)

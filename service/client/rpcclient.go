@@ -42,8 +42,13 @@ func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*proto.GetInf
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valPk *bbntypes.BIP340PubKey) (*proto.RegisterValidatorResponse, error) {
-	req := &proto.RegisterValidatorRequest{BtcPk: valPk.MarshalHex()}
+func (c *ValidatorServiceGRpcClient) RegisterValidator(
+	ctx context.Context,
+	valPk *bbntypes.BIP340PubKey,
+	passphrase string,
+) (*proto.RegisterValidatorResponse, error) {
+
+	req := &proto.RegisterValidatorRequest{BtcPk: valPk.MarshalHex(), Passphrase: passphrase}
 	res, err := c.client.RegisterValidator(ctx, req)
 	if err != nil {
 		return nil, err

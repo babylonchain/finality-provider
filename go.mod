@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	cosmossdk.io/math v1.0.1
-	github.com/99designs/keyring v1.2.1
 	github.com/avast/retry-go/v4 v4.3.3
 	github.com/babylonchain/babylon v0.7.1
 	github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231
@@ -48,6 +47,7 @@ require (
 	cosmossdk.io/tools/rosetta v0.2.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
+	github.com/99designs/keyring v1.2.1 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
 	github.com/CosmWasm/wasmd v0.40.0 // indirect
 	github.com/CosmWasm/wasmvm v1.2.3 // indirect

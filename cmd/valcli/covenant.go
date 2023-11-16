@@ -45,7 +45,7 @@ var createCovenant = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
-			Name:  passPhraseFlag,
+			Name:  passphraseFlag,
 			Usage: "The pass phrase used to encrypt the keys",
 			Value: defaultPassphrase,
 		},
@@ -85,7 +85,7 @@ func createCovenantKey(ctx *cli.Context) error {
 		return err
 	}
 
-	sdkCovenantPk, err := krController.CreateChainKey(ctx.String(passPhraseFlag), ctx.String(hdPathFlag))
+	sdkCovenantPk, err := krController.CreateChainKey(ctx.String(passphraseFlag), ctx.String(hdPathFlag))
 	if err != nil {
 		return fmt.Errorf("failed to create Covenant key: %w", err)
 	}

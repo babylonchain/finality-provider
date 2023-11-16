@@ -114,7 +114,7 @@ func NewValidatorApp(
 		if err != nil {
 			return nil, err
 		}
-		if _, err := kc.GetChainPrivKey(config.Passphrase); err != nil {
+		if _, err := kc.GetChainPrivKey(""); err != nil {
 			return nil, fmt.Errorf("the program is running in Covenant mode but the Covenant key %s is not found: %w",
 				config.CovenantModeConfig.CovenantKeyName, err)
 		}
@@ -223,8 +223,8 @@ func (app *ValidatorApp) RegisterValidator(valPkStr string) (*RegisterValidatorR
 
 // StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
-func (app *ValidatorApp) StartHandlingValidator(valPk *bbntypes.BIP340PubKey) error {
-	return app.validatorManager.addValidatorInstance(valPk)
+func (app *ValidatorApp) StartHandlingValidator(valPk *bbntypes.BIP340PubKey, passphrase string) error {
+	return app.validatorManager.addValidatorInstance(valPk, passphrase)
 }
 
 func (app *ValidatorApp) StartHandlingValidators() error {
@@ -435,7 +435,8 @@ func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
 		return nil, err
 	}
 
-	sdkPrivKey, err := kc.GetChainPrivKey(app.config.Passphrase)
+	// TODO use empty passphrase for covenant for now, covenant should be run in a separate application
+	sdkPrivKey, err := kc.GetChainPrivKey("")
 	if err != nil {
 		return nil, err
 	}
@@ -445,8 +446,9 @@ func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
 	return privKey, nil
 }
 
+// NOTE: this is not safe in production, so only used for testing purpose
 func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
-	record, err := app.eotsManager.KeyRecord(valPk, app.config.Passphrase)
+	record, err := app.eotsManager.KeyRecord(valPk, "")
 	if err != nil {
 		return nil, err
 	}
@@ -580,12 +582,12 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
 
-	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), app.config.Passphrase)
+	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator record: %w", err)
 	}
 
-	pop, err := kr.CreatePop(valRecord.PrivKey, app.config.Passphrase)
+	pop, err := kr.CreatePop(valRecord.PrivKey, req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -117,7 +116,7 @@ func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
 	require.NoError(t, err)
 	eotsCfg := &config.Config{
 		KeyDirectory:   dir,
-		KeyringBackend: string(keyring.FileBackend),
+		KeyringBackend: "test",
 		DatabaseConfig: dbCfg,
 	}
 	return eotsCfg

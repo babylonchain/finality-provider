@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/sirupsen/logrus"
@@ -31,7 +30,7 @@ func FuzzCreatePoP(f *testing.F) {
 		sdkCtx := testutil.GenSdkContext(r, t)
 
 		chainID := testutil.GenRandomHexStr(r, 4)
-		kc, err := val.NewChainKeyringController(sdkCtx, keyName, string(keyring.FileBackend))
+		kc, err := val.NewChainKeyringController(sdkCtx, keyName, "test")
 		require.NoError(t, err)
 
 		cfg := testutil.GenEOTSConfig(r, t)
