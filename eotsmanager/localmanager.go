@@ -97,7 +97,9 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 		return nil, err
 	}
 
-	// we need to repeat the passphrase to mock the reentry
+	// we need to repeat the passphrase to mock the re-entry
+	// as when creating an account, passphrase will be asked twice
+	// by the keyring
 	lm.input.Reset(passphrase + "\n" + passphrase)
 	record, err := lm.kr.NewAccount(name, mnemonic, passphrase, hdPath, algo)
 	if err != nil {
