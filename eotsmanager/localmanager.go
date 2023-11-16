@@ -179,7 +179,6 @@ func (lm *LocalEOTSManager) Close() error {
 
 // getRandomnessPair returns a randomness pair generated based on the given validator key, chainID and height
 func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64, passphrase string) (*eots.PrivateRand, *eots.PublicRand, error) {
-	lm.input.Reset(passphrase)
 	record, err := lm.KeyRecord(valPk, passphrase)
 	if err != nil {
 		return nil, nil, err
