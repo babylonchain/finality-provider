@@ -209,7 +209,7 @@ func (vm *ValidatorManager) Start() error {
 	go vm.monitorStatusUpdate()
 
 	for _, v := range storedValidators {
-		if err := vm.addValidatorInstance(v.MustGetBIP340BTCPK()); err != nil {
+		if err := vm.addValidatorInstance(v.MustGetBIP340BTCPK(), ""); err != nil {
 			return err
 		}
 	}
@@ -287,6 +287,7 @@ func (vm *ValidatorManager) removeValidatorInstance(valPk *bbntypes.BIP340PubKey
 // addValidatorInstance creates a validator instance, starts it and adds it into the validator manager
 func (vm *ValidatorManager) addValidatorInstance(
 	pk *bbntypes.BIP340PubKey,
+	passphrase string,
 ) error {
 	vm.mu.Lock()
 	defer vm.mu.Unlock()
@@ -296,7 +297,7 @@ func (vm *ValidatorManager) addValidatorInstance(
 		return fmt.Errorf("validator instance already exists")
 	}
 
-	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.cc, vm.em, vm.criticalErrChan, vm.logger)
+	valIns, err := NewValidatorInstance(pk, vm.config, vm.vs, vm.cc, vm.em, passphrase, vm.criticalErrChan, vm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator %s instance: %w", pkHex, err)
 	}

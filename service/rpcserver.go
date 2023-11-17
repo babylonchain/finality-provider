@@ -107,7 +107,15 @@ func (r *rpcServer) CreateValidator(ctx context.Context, req *proto.CreateValida
 	if err != nil {
 		return nil, err
 	}
-	result, err := r.app.CreateValidator(req.KeyName, req.ChainId, req.PassPhrase, req.Description, &commissionRate)
+
+	result, err := r.app.CreateValidator(
+		req.KeyName,
+		req.ChainId,
+		req.Passphrase,
+		req.HdPath,
+		req.Description,
+		&commissionRate,
+	)
 
 	if err != nil {
 		return nil, err
@@ -129,7 +137,7 @@ func (r *rpcServer) RegisterValidator(ctx context.Context, req *proto.RegisterVa
 	}
 
 	// the validator instance should be started right after registration
-	if err := r.app.StartHandlingValidator(txRes.btcPubKey); err != nil {
+	if err := r.app.StartHandlingValidator(txRes.btcPubKey, req.Passphrase); err != nil {
 		return nil, fmt.Errorf("failed to start the registered validator %s: %w", hex.EncodeToString(txRes.bbnPubKey.Key), err)
 	}
 

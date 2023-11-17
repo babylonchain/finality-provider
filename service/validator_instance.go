@@ -38,6 +38,9 @@ type ValidatorInstance struct {
 	cc     clientcontroller.ClientController
 	poller *ChainPoller
 
+	// passphrase is used to unlock private keys
+	passphrase string
+
 	laggingTargetChan chan *types.BlockInfo
 	criticalErrChan   chan<- *CriticalError
 
@@ -57,6 +60,7 @@ func NewValidatorInstance(
 	s *val.ValidatorStore,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
+	passphrase string,
 	errChan chan<- *CriticalError,
 	logger *logrus.Logger,
 ) (*ValidatorInstance, error) {
@@ -83,6 +87,7 @@ func NewValidatorInstance(
 		inSync:          atomic.NewBool(false),
 		isLagging:       atomic.NewBool(false),
 		criticalErrChan: errChan,
+		passphrase:      passphrase,
 		em:              em,
 		cc:              cc,
 	}, nil
@@ -757,7 +762,7 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 	}
 
 	// sign the message hash using the validator's BTC private key
-	schnorrSig, err := v.em.SignSchnorrSig(v.btcPk.MustMarshal(), hash)
+	schnorrSig, err := v.em.SignSchnorrSig(v.btcPk.MustMarshal(), hash, v.passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -785,6 +790,7 @@ func (v *ValidatorInstance) createPubRandList(startHeight uint64) ([]bbntypes.Sc
 		v.GetChainID(),
 		startHeight,
 		uint32(v.cfg.NumPubRand),
+		v.passphrase,
 	)
 	if err != nil {
 		return nil, err
@@ -854,7 +860,7 @@ func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEO
 		BlockLastCommitHash: b.Hash,
 	}
 	msgToSign := msg.MsgToSign()
-	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height)
+	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height, v.passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}

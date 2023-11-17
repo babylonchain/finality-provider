@@ -3,6 +3,7 @@ package service_test
 import (
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -92,9 +93,13 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	cfg.BabylonConfig.KeyDirectory = t.TempDir()
 	logger := logrus.New()
 
-	kr, err := service.CreateKeyring(cfg.BabylonConfig.KeyDirectory,
+	input := strings.NewReader("")
+	kr, err := service.CreateKeyring(
+		cfg.BabylonConfig.KeyDirectory,
 		cfg.BabylonConfig.ChainID,
-		cfg.BabylonConfig.KeyringBackend)
+		cfg.BabylonConfig.KeyringBackend,
+		input,
+	)
 	require.NoError(t, err)
 
 	valStore, err := val.NewValidatorStore(cfg.DatabaseConfig)
@@ -111,17 +116,17 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	// create registered validator
 	keyName := datagen.GenRandomHexStr(r, 10)
 	chainID := datagen.GenRandomHexStr(r, 10)
-	kc, err := val.NewChainKeyringControllerWithKeyring(kr, keyName)
+	kc, err := val.NewChainKeyringControllerWithKeyring(kr, keyName, input)
 	require.NoError(t, err)
-	btcPkBytes, err := em.CreateKey(keyName, "")
+	btcPkBytes, err := em.CreateKey(keyName, passphrase, hdPath)
 	require.NoError(t, err)
 	btcPk, err := bbntypes.NewBIP340PubKey(btcPkBytes)
 	require.NoError(t, err)
-	bbnPk, err := kc.CreateChainKey()
+	bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
 	require.NoError(t, err)
-	valRecord, err := em.KeyRecord(btcPk.MustMarshal(), "")
+	valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 	require.NoError(t, err)
-	pop, err := kc.CreatePop(valRecord.PrivKey)
+	pop, err := kc.CreatePop(valRecord.PrivKey, passphrase)
 	require.NoError(t, err)
 
 	storedValidator := val.NewStoreValidator(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())

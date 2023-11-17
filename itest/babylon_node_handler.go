@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 
@@ -124,7 +125,6 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
 
 	// the Covenant key needs to be created before babylond is started
-	chainID := "chain-test"
 	sdkCtx, err := service.CreateClientCtx(
 		nodeDataDir,
 		chainID,
@@ -134,10 +134,10 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		covenantKeyName,
-		"test",
+		keyring.BackendTest,
 	)
 	require.NoError(t, err)
-	sdkCovenantPk, err := krController.CreateChainKey()
+	sdkCovenantPk, err := krController.CreateChainKey(passphrase, hdPath)
 	require.NoError(t, err)
 	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
 	require.NoError(t, err)

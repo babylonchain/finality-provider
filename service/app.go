@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"cosmossdk.io/math"
@@ -41,6 +42,7 @@ type ValidatorApp struct {
 	vs     *val.ValidatorStore
 	config *valcfg.Config
 	logger *logrus.Logger
+	input  *strings.Reader
 
 	validatorManager *ValidatorManager
 	eotsManager      eotsmanager.EOTSManager
@@ -91,9 +93,13 @@ func NewValidatorApp(
 	em eotsmanager.EOTSManager,
 	logger *logrus.Logger,
 ) (*ValidatorApp, error) {
-	kr, err := CreateKeyring(config.BabylonConfig.KeyDirectory,
+	input := strings.NewReader("")
+	kr, err := CreateKeyring(
+		config.BabylonConfig.KeyDirectory,
 		config.BabylonConfig.ChainID,
-		config.BabylonConfig.KeyringBackend)
+		config.BabylonConfig.KeyringBackend,
+		input,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
@@ -104,11 +110,11 @@ func NewValidatorApp(
 	}
 
 	if config.CovenantMode {
-		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.CovenantModeConfig.CovenantKeyName)
+		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.CovenantModeConfig.CovenantKeyName, input)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := kc.GetChainPrivKey(); err != nil {
+		if _, err := kc.GetChainPrivKey(""); err != nil {
 			return nil, fmt.Errorf("the program is running in Covenant mode but the Covenant key %s is not found: %w",
 				config.CovenantModeConfig.CovenantKeyName, err)
 		}
@@ -125,6 +131,7 @@ func NewValidatorApp(
 		kr:                           kr,
 		config:                       config,
 		logger:                       logger,
+		input:                        input,
 		validatorManager:             vm,
 		eotsManager:                  em,
 		quit:                         make(chan struct{}),
@@ -146,6 +153,10 @@ func (app *ValidatorApp) GetValidatorStore() *val.ValidatorStore {
 
 func (app *ValidatorApp) GetKeyring() keyring.Keyring {
 	return app.kr
+}
+
+func (app *ValidatorApp) GetInput() *strings.Reader {
+	return app.input
 }
 
 func (app *ValidatorApp) ListValidatorInstances() []*ValidatorInstance {
@@ -212,8 +223,8 @@ func (app *ValidatorApp) RegisterValidator(valPkStr string) (*RegisterValidatorR
 
 // StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
-func (app *ValidatorApp) StartHandlingValidator(valPk *bbntypes.BIP340PubKey) error {
-	return app.validatorManager.addValidatorInstance(valPk)
+func (app *ValidatorApp) StartHandlingValidator(valPk *bbntypes.BIP340PubKey, passphrase string) error {
+	return app.validatorManager.addValidatorInstance(valPk, passphrase)
 }
 
 func (app *ValidatorApp) StartHandlingValidators() error {
@@ -419,12 +430,13 @@ func (app *ValidatorApp) AddCovenantUnbondingSignatures(del *types.Delegation) (
 }
 
 func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
-	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.CovenantModeConfig.CovenantKeyName)
+	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.CovenantModeConfig.CovenantKeyName, app.input)
 	if err != nil {
 		return nil, err
 	}
 
-	sdkPrivKey, err := kc.GetChainPrivKey()
+	// TODO use empty passphrase for covenant for now, covenant should be run in a separate application
+	sdkPrivKey, err := kc.GetChainPrivKey("")
 	if err != nil {
 		return nil, err
 	}
@@ -434,6 +446,7 @@ func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
 	return privKey, nil
 }
 
+// NOTE: this is not safe in production, so only used for testing purpose
 func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
 	record, err := app.eotsManager.KeyRecord(valPk, "")
 	if err != nil {
@@ -513,11 +526,17 @@ func (app *ValidatorApp) Stop() error {
 	return stopErr
 }
 
-func (app *ValidatorApp) CreateValidator(keyName, chainID, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*CreateValidatorResult, error) {
+func (app *ValidatorApp) CreateValidator(
+	keyName, chainID, passPhrase, hdPath string,
+	description *stakingtypes.Description,
+	commission *sdktypes.Dec,
+) (*CreateValidatorResult, error) {
+
 	req := &createValidatorRequest{
 		keyName:         keyName,
 		chainID:         chainID,
 		passPhrase:      passPhrase,
+		hdPath:          hdPath,
 		description:     description,
 		commission:      commission,
 		errResponse:     make(chan error, 1),
@@ -543,7 +562,7 @@ func (app *ValidatorApp) IsCovenant() bool {
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {
-	valPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase)
+	valPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, err
 	}
@@ -553,12 +572,12 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName)
+	kr, err := val.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
 	if err != nil {
 		return nil, err
 	}
 
-	bbnPk, err := kr.CreateChainKey()
+	bbnPk, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
@@ -568,7 +587,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to get validator record: %w", err)
 	}
 
-	pop, err := kr.CreatePop(valRecord.PrivKey)
+	pop, err := kr.CreatePop(valRecord.PrivKey, req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}

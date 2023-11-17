@@ -21,6 +21,7 @@ type createValidatorResponse struct {
 type createValidatorRequest struct {
 	keyName         string
 	passPhrase      string
+	hdPath          string
 	chainID         string
 	description     *stakingtypes.Description
 	commission      *sdktypes.Dec
@@ -214,7 +215,7 @@ func (v *ValidatorInstance) MustUpdateStateAfterFinalitySigSubmission(height uin
 
 func (v *ValidatorInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
 	// TODO ignore pass phrase for now
-	record, err := v.em.KeyRecord(v.btcPk.MustMarshal(), "")
+	record, err := v.em.KeyRecord(v.btcPk.MustMarshal(), v.passphrase)
 	if err != nil {
 		return nil, err
 	}

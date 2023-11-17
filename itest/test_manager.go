@@ -36,6 +36,12 @@ import (
 var (
 	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
+
+	valNamePrefix = "test-val-"
+	monikerPrefix = "moniker-"
+	chainID       = "chain-test"
+	passphrase    = "testpass"
+	hdPath        = ""
 )
 
 var btcNetworkParams = &chaincfg.SimNetParams
@@ -129,20 +135,15 @@ func StartManagerWithValidator(t *testing.T, n int, isCovenant bool) *TestManage
 	tm := StartManager(t, isCovenant)
 	app := tm.Va
 
-	var (
-		valNamePrefix = "test-val-"
-		monikerPrefix = "moniker-"
-		chainID       = "chain-test"
-	)
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdktypes.ZeroDec()
-		res, err := app.CreateValidator(valName, chainID, "", newDescription(moniker), &commission)
+		res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
 		require.NoError(t, err)
 		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingValidator(res.ValPk)
+		err = app.StartHandlingValidator(res.ValPk, passphrase)
 		require.NoError(t, err)
 		valIns, err := app.GetValidatorInstance(res.ValPk)
 		require.NoError(t, err)
@@ -477,7 +478,7 @@ func (tm *TestManager) GetCovenantPrivKey(t *testing.T) *btcec.PrivateKey {
 }
 
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(valPk, "")
+	record, err := tm.EOTSClient.KeyRecord(valPk, passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
 }

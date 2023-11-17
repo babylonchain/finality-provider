@@ -45,6 +45,16 @@ var createCovenant = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
+			Name:  passphraseFlag,
+			Usage: "The pass phrase used to encrypt the keys",
+			Value: defaultPassphrase,
+		},
+		cli.StringFlag{
+			Name:  hdPathFlag,
+			Usage: "The hd path used to derive the private key",
+			Value: defaultHdPath,
+		},
+		cli.StringFlag{
 			Name:  keyringBackendFlag,
 			Usage: "Select keyring's backend (os|file|test)",
 			Value: defaultKeyringBackend,
@@ -75,10 +85,11 @@ func createCovenantKey(ctx *cli.Context) error {
 		return err
 	}
 
-	sdkCovenantPk, err := krController.CreateChainKey()
+	sdkCovenantPk, err := krController.CreateChainKey(ctx.String(passphraseFlag), ctx.String(hdPathFlag))
 	if err != nil {
 		return fmt.Errorf("failed to create Covenant key: %w", err)
 	}
+
 	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
 	if err != nil {
 		return err

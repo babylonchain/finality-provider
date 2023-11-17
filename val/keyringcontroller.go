@@ -2,6 +2,7 @@ package val
 
 import (
 	"fmt"
+	"strings"
 
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -19,6 +20,8 @@ const (
 type ChainKeyringController struct {
 	kr      keyring.Keyring
 	valName string
+	// input is to send passphrase to kr
+	input *strings.Reader
 }
 
 func NewChainKeyringController(ctx client.Context, name, keyringBackend string) (*ChainKeyringController, error) {
@@ -30,11 +33,12 @@ func NewChainKeyringController(ctx client.Context, name, keyringBackend string) 
 		return nil, fmt.Errorf("the keyring backend should not be empty")
 	}
 
+	inputReader := strings.NewReader("")
 	kr, err := keyring.New(
 		ctx.ChainID,
 		keyringBackend,
 		ctx.KeyringDir,
-		ctx.Input,
+		inputReader,
 		ctx.Codec,
 		ctx.KeyringOptions...)
 	if err != nil {
@@ -44,10 +48,11 @@ func NewChainKeyringController(ctx client.Context, name, keyringBackend string) 
 	return &ChainKeyringController{
 		valName: name,
 		kr:      kr,
+		input:   inputReader,
 	}, nil
 }
 
-func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*ChainKeyringController, error) {
+func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string, input *strings.Reader) (*ChainKeyringController, error) {
 	if name == "" {
 		return nil, fmt.Errorf("the key name should not be empty")
 	}
@@ -55,6 +60,7 @@ func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string) (*Cha
 	return &ChainKeyringController{
 		kr:      kr,
 		valName: name,
+		input:   input,
 	}, nil
 }
 
@@ -62,7 +68,7 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey() (*secp256k1.PubKey, error) {
+func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*secp256k1.PubKey, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
@@ -83,8 +89,9 @@ func (kc *ChainKeyringController) CreateChainKey() (*secp256k1.PubKey, error) {
 	// TODO use a better way to remind the user to keep it
 	fmt.Printf("Generated mnemonic for the validator %s is:\n%s\n", kc.valName, mnemonic)
 
-	// TODO for now we leave bip39Passphrase and hdPath empty
-	record, err := kc.kr.NewAccount(kc.valName, mnemonic, "", "", algo)
+	// we need to repeat the passphrase to mock the reentry
+	kc.input.Reset(passphrase + "\n" + passphrase)
+	record, err := kc.kr.NewAccount(kc.valName, mnemonic, passphrase, hdPath, algo)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +112,8 @@ func (kc *ChainKeyringController) CreateChainKey() (*secp256k1.PubKey, error) {
 // CreatePop creates proof-of-possession of Babylon and BTC public keys
 // the input is the bytes of BTC public key used to sign
 // this requires both keys created beforehand
-func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey) (*bstypes.ProofOfPossession, error) {
-	bbnPrivKey, err := kc.GetChainPrivKey()
+func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey, passphrase string) (*bstypes.ProofOfPossession, error) {
+	bbnPrivKey, err := kc.GetChainPrivKey(passphrase)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +121,8 @@ func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey) (*bsty
 	return bstypes.NewPoP(bbnPrivKey, btcPrivKey)
 }
 
-func (kc *ChainKeyringController) GetChainPrivKey() (*secp256k1.PrivKey, error) {
+func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*secp256k1.PrivKey, error) {
+	kc.input.Reset(passphrase)
 	k, err := kc.kr.Key(kc.valName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)

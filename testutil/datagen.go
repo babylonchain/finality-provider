@@ -12,6 +12,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
@@ -83,12 +84,12 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 }
 
 // GenStoredValidator generates a random validator from the keyring and store it in DB
-func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp) *proto.StoreValidator {
+func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp, passphrase, hdPath string) *proto.StoreValidator {
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
 	chainID := GenRandomHexStr(r, 4)
 
-	res, err := app.CreateValidator(keyName, chainID, "", EmptyDescription(), ZeroCommissionRate())
+	res, err := app.CreateValidator(keyName, chainID, passphrase, hdPath, EmptyDescription(), ZeroCommissionRate())
 	require.NoError(t, err)
 
 	storedVal, err := app.GetValidatorStore().GetStoreValidator(res.ValPk.MustMarshal())
@@ -116,7 +117,7 @@ func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
 	require.NoError(t, err)
 	eotsCfg := &config.Config{
 		KeyDirectory:   dir,
-		KeyringBackend: "test",
+		KeyringBackend: keyring.BackendTest,
 		DatabaseConfig: dbCfg,
 	}
 	return eotsCfg

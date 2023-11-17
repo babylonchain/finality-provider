@@ -42,8 +42,13 @@ func (c *ValidatorServiceGRpcClient) GetInfo(ctx context.Context) (*proto.GetInf
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valPk *bbntypes.BIP340PubKey) (*proto.RegisterValidatorResponse, error) {
-	req := &proto.RegisterValidatorRequest{BtcPk: valPk.MarshalHex()}
+func (c *ValidatorServiceGRpcClient) RegisterValidator(
+	ctx context.Context,
+	valPk *bbntypes.BIP340PubKey,
+	passphrase string,
+) (*proto.RegisterValidatorResponse, error) {
+
+	req := &proto.RegisterValidatorRequest{BtcPk: valPk.MarshalHex(), Passphrase: passphrase}
 	res, err := c.client.RegisterValidator(ctx, req)
 	if err != nil {
 		return nil, err
@@ -52,8 +57,22 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(ctx context.Context, valP
 	return res, nil
 }
 
-func (c *ValidatorServiceGRpcClient) CreateValidator(ctx context.Context, keyName, chainID, passPhrase string, description *stakingtypes.Description, commission *sdktypes.Dec) (*proto.CreateValidatorResponse, error) {
-	req := &proto.CreateValidatorRequest{KeyName: keyName, ChainId: chainID, PassPhrase: passPhrase, Description: description, Commission: commission.String()}
+func (c *ValidatorServiceGRpcClient) CreateValidator(
+	ctx context.Context,
+	keyName, chainID, passphrase, hdPath string,
+	description *stakingtypes.Description,
+	commission *sdktypes.Dec,
+) (*proto.CreateValidatorResponse, error) {
+
+	req := &proto.CreateValidatorRequest{
+		KeyName:     keyName,
+		ChainId:     chainID,
+		Passphrase:  passphrase,
+		HdPath:      hdPath,
+		Description: description,
+		Commission:  commission.String(),
+	}
+
 	res, err := c.client.CreateValidator(ctx, req)
 	if err != nil {
 		return nil, err
