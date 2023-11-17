@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 
@@ -133,7 +134,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	krController, err := val.NewChainKeyringController(
 		sdkCtx,
 		covenantKeyName,
-		"test",
+		keyring.BackendTest,
 	)
 	require.NoError(t, err)
 	sdkCovenantPk, err := krController.CreateChainKey(passphrase, hdPath)

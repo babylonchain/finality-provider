@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/jessevdk/go-flags"
 	"github.com/sirupsen/logrus"
 )
@@ -22,7 +23,7 @@ const (
 	defaultLogFilename    = "eotsd.log"
 	defaultConfigFileName = "eotsd.conf"
 	DefaultRPCPort        = 15813
-	defaultKeyringBackend = "file"
+	defaultKeyringBackend = keyring.BackendFile
 )
 
 var (

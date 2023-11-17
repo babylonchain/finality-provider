@@ -3,6 +3,7 @@ package valcfg
 import (
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
@@ -31,7 +32,7 @@ func DefaultBBNConfig() BBNConfig {
 		RPCAddr:        "http://localhost:26657",
 		GRPCAddr:       "https://localhost:9090",
 		AccountPrefix:  "bbn",
-		KeyringBackend: "test",
+		KeyringBackend: keyring.BackendTest,
 		GasAdjustment:  1.2,
 		GasPrices:      "0.01ubbn",
 		KeyDirectory:   defaultDataDir,

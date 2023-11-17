@@ -8,6 +8,7 @@ import (
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/urfave/cli"
 
@@ -44,7 +45,7 @@ const (
 	keyringDirFlag        = "keyring-dir"
 	keyringBackendFlag    = "keyring-backend"
 	defaultChainID        = "chain-test"
-	defaultKeyringBackend = "test"
+	defaultKeyringBackend = keyring.BackendTest
 	defaultPassphrase     = ""
 	defaultHdPath         = ""
 
