@@ -18,7 +18,6 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/client"
 	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
 
 	"github.com/babylonchain/btc-validator/val"
@@ -107,17 +106,6 @@ func NewValidatorApp(
 	valStore, err := val.NewValidatorStore(config.DatabaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
-	}
-
-	if config.CovenantMode {
-		kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.CovenantModeConfig.CovenantKeyName, input)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := kc.GetChainPrivKey(""); err != nil {
-			return nil, fmt.Errorf("the program is running in Covenant mode but the Covenant key %s is not found: %w",
-				config.CovenantModeConfig.CovenantKeyName, err)
-		}
 	}
 
 	vm, err := NewValidatorManager(valStore, config, cc, em, logger)
@@ -231,221 +219,6 @@ func (app *ValidatorApp) StartHandlingValidators() error {
 	return app.validatorManager.Start()
 }
 
-// AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
-// Note: this should be only called when the program is running in Covenant mode
-func (app *ValidatorApp) AddCovenantSignature(btcDel *types.Delegation) (*AddCovenantSigResponse, error) {
-	if btcDel.CovenantSig != nil {
-		return nil, fmt.Errorf("the Covenant sig already existed in the Bitcoin delection")
-	}
-
-	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.SlashingTxHex)
-	if err != nil {
-		return nil, err
-	}
-	err = slashingTx.Validate(&app.config.ActiveNetParams, app.config.CovenantModeConfig.SlashingAddress)
-	if err != nil {
-		return nil, fmt.Errorf("invalid delegation: %w", err)
-	}
-
-	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(btcDel.StakingTxHex)
-	if err != nil {
-		return nil, err
-	}
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	if err != nil {
-		return nil, err
-	}
-
-	// get Covenant private key from the keyring
-	covenantPrivKey, err := app.getCovenantPrivKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
-	}
-
-	covenantSig, err := slashingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
-		covenantPrivKey,
-		&app.config.ActiveNetParams,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	stakingTxHash := stakingMsgTx.TxHash().String()
-
-	covenantSchnorrSig, err := covenantSig.ToBTCSig()
-	if err != nil {
-		return nil, err
-	}
-	res, err := app.cc.SubmitCovenantSig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, covenantSchnorrSig)
-
-	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.ValBtcPk).MarshalHex()
-	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"err":          err,
-			"valBtcPubKey": valPkHex,
-			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Covenant signature")
-		return nil, err
-	}
-
-	if res == nil {
-		app.logger.WithFields(logrus.Fields{
-			"err":          err,
-			"valBtcPubKey": valPkHex,
-			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Covenant signature")
-		return nil, fmt.Errorf("failed to submit Covenant signature due to known error")
-	}
-
-	return &AddCovenantSigResponse{
-		TxHash: res.TxHash,
-	}, nil
-}
-
-// AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
-// Note: this should be only called when the program is running in Covenant mode
-func (app *ValidatorApp) AddCovenantUnbondingSignatures(del *types.Delegation) (*AddCovenantSigResponse, error) {
-	if del == nil {
-		return nil, fmt.Errorf("btc delegation is nil")
-	}
-
-	if del.BtcUndelegation == nil {
-		return nil, fmt.Errorf("delegation does not have an unbonding transaction")
-	}
-
-	if del.BtcUndelegation.ValidatorUnbondingSig == nil {
-		return nil, fmt.Errorf("delegation does not have a validator signature for unbonding transaction yet")
-	}
-
-	// In normal operation it is not possible to have one of this signatures and not have the other
-	// as only way to update this fields in delegation is by processing the MsgAddCovenantUnbondingSigs msg
-	// which should update both fields at atomically in case of successfull transaction.
-	if del.BtcUndelegation.CovenantSlashingSig != nil || del.BtcUndelegation.CovenantUnbondingSig != nil {
-		return nil, fmt.Errorf("delegation already has required covenant signatures")
-	}
-
-	// get Covenant private key from the keyring
-	covenantPrivKey, err := app.getCovenantPrivKey()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
-	}
-
-	// 1. Sign unbonding transaction
-	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
-	if err != nil {
-		return nil, err
-	}
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
-	}
-
-	unbondingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.BtcUndelegation.UnbondingTxHex)
-	if err != nil {
-		return nil, err
-	}
-	covenantUnbondingSig, err := unbondingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
-		covenantPrivKey,
-		&app.config.ActiveNetParams,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
-	}
-
-	// 2. Sign slash unbonding transaction
-	slashUnbondingTx, err := bstypes.NewBTCSlashingTxFromHex(del.BtcUndelegation.SlashingTxHex)
-	if err != nil {
-		return nil, err
-	}
-	err = slashUnbondingTx.Validate(&app.config.ActiveNetParams, app.config.CovenantModeConfig.SlashingAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	unbondingMsgTx, err := unbondingTx.ToMsgTx()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize unbonding tx: %w", err)
-	}
-
-	covenantSlashingUnbondingSig, err := slashUnbondingTx.Sign(
-		unbondingMsgTx,
-		unbondingTx.Script,
-		covenantPrivKey,
-		&app.config.ActiveNetParams,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign slash unbonding tx: %w", err)
-	}
-
-	stakingTxHash := stakingMsgTx.TxHash().String()
-
-	covenantUnbondingSchnorrSig, err := covenantUnbondingSig.ToBTCSig()
-	if err != nil {
-		return nil, err
-	}
-	covenantSlashingUnbondingShcnorrSig, err := covenantSlashingUnbondingSig.ToBTCSig()
-	if err != nil {
-		return nil, err
-	}
-	res, err := app.cc.SubmitCovenantUnbondingSigs(
-		del.ValBtcPk,
-		del.BtcPk,
-		stakingTxHash,
-		covenantUnbondingSchnorrSig,
-		covenantSlashingUnbondingShcnorrSig,
-	)
-
-	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.ValBtcPk).MarshalHex()
-	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.BtcPk).MarshalHex()
-
-	if err != nil {
-		app.logger.WithFields(logrus.Fields{
-			"err":          err,
-			"valBtcPubKey": valPkHex,
-			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Covenant signature")
-		return nil, err
-	}
-
-	if res == nil {
-		app.logger.WithFields(logrus.Fields{
-			"err":          err,
-			"valBtcPubKey": valPkHex,
-			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Covenant signature")
-		return nil, fmt.Errorf("failed to submit Covenant signature due to known error")
-	}
-
-	return &AddCovenantSigResponse{
-		TxHash: res.TxHash,
-	}, nil
-}
-
-func (app *ValidatorApp) getCovenantPrivKey() (*btcec.PrivateKey, error) {
-	kc, err := val.NewChainKeyringControllerWithKeyring(app.kr, app.config.CovenantModeConfig.CovenantKeyName, app.input)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO use empty passphrase for covenant for now, covenant should be run in a separate application
-	sdkPrivKey, err := kc.GetChainPrivKey("")
-	if err != nil {
-		return nil, err
-	}
-
-	privKey, _ := btcec.PrivKeyFromBytes(sdkPrivKey.Key)
-
-	return privKey, nil
-}
-
 // NOTE: this is not safe in production, so only used for testing purpose
 func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) {
 	record, err := app.eotsManager.KeyRecord(valPk, "")
@@ -467,14 +240,9 @@ func (app *ValidatorApp) Start() error {
 		app.sentWg.Add(1)
 		go app.registrationLoop()
 
-		if app.IsCovenant() {
-			app.wg.Add(1)
-			go app.covenantSigSubmissionLoop()
-		} else {
-			if err := app.StartHandlingValidators(); err != nil {
-				startErr = err
-				return
-			}
+		if err := app.StartHandlingValidators(); err != nil {
+			startErr = err
+			return
 		}
 	})
 
@@ -491,12 +259,10 @@ func (app *ValidatorApp) Stop() error {
 		close(app.quit)
 		app.wg.Wait()
 
-		if !app.IsCovenant() {
-			app.logger.Debug("Stopping validators")
-			if err := app.validatorManager.Stop(); err != nil {
-				stopErr = err
-				return
-			}
+		app.logger.Debug("Stopping validators")
+		if err := app.validatorManager.Stop(); err != nil {
+			stopErr = err
+			return
 		}
 
 		app.logger.Debug("Sent to Babylon loop stopped")
@@ -555,10 +321,6 @@ func (app *ValidatorApp) CreateValidator(
 	case <-app.quit:
 		return nil, fmt.Errorf("validator app is shutting down")
 	}
-}
-
-func (app *ValidatorApp) IsCovenant() bool {
-	return app.config.CovenantMode
 }
 
 func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorRequest) (*createValidatorResponse, error) {

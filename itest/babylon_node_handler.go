@@ -11,30 +11,25 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
-
-	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/val"
 )
 
 type babylonNode struct {
-	cmd             *exec.Cmd
-	pidFile         string
-	dataDir         string
-	covenantKeyName string
-	chainID         string
-	slashingAddr    string
+	cmd          *exec.Cmd
+	pidFile      string
+	dataDir      string
+	chainID      string
+	slashingAddr string
+	covenantPk   *types.BIP340PubKey
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd, covenantKeyName, chainID string, slashingAddr string) *babylonNode {
+func newBabylonNode(dataDir string, cmd *exec.Cmd, chainID string, slashingAddr string, covenantPk *types.BIP340PubKey) *babylonNode {
 	return &babylonNode{
-		dataDir:         dataDir,
-		cmd:             cmd,
-		covenantKeyName: covenantKeyName,
-		chainID:         chainID,
-		slashingAddr:    slashingAddr,
+		dataDir:      dataDir,
+		cmd:          cmd,
+		chainID:      chainID,
+		slashingAddr: slashingAddr,
+		covenantPk:   covenantPk,
 	}
 }
 
@@ -112,7 +107,7 @@ type BabylonNodeHandler struct {
 	babylonNode *babylonNode
 }
 
-func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
+func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *BabylonNodeHandler {
 	testDir, err := baseDir("zBabylonTest")
 	require.NoError(t, err)
 	defer func() {
@@ -123,25 +118,6 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	}()
 
 	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
-
-	// the Covenant key needs to be created before babylond is started
-	sdkCtx, err := service.CreateClientCtx(
-		nodeDataDir,
-		chainID,
-	)
-	require.NoError(t, err)
-	covenantKeyName := "covenant-key"
-	krController, err := val.NewChainKeyringController(
-		sdkCtx,
-		covenantKeyName,
-		keyring.BackendTest,
-	)
-	require.NoError(t, err)
-	sdkCovenantPk, err := krController.CreateChainKey(passphrase, hdPath)
-	require.NoError(t, err)
-	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
-	require.NoError(t, err)
-	covenantPkBip340 := types.NewBIP340PubKeyFromBTCPK(covenantPk)
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 
@@ -155,7 +131,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 		"--chain-id=chain-test",
 		"--additional-sender-account",
 		fmt.Sprintf("--slashing-address=%s", slashingAddr),
-		fmt.Sprintf("--covenant-pk=%s", covenantPkBip340.MarshalHex()),
+		fmt.Sprintf("--covenant-pk=%s", covenantPk.MarshalHex()),
 	)
 
 	var stderr bytes.Buffer
@@ -180,7 +156,7 @@ func NewBabylonNodeHandler(t *testing.T) *BabylonNodeHandler {
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd, covenantKeyName, chainID, slashingAddr),
+		babylonNode: newBabylonNode(testDir, startCmd, chainID, slashingAddr, covenantPk),
 	}
 }
 
@@ -206,10 +182,10 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 	return dir
 }
 
-func (w *BabylonNodeHandler) GetCovenantKeyName() string {
-	return w.babylonNode.covenantKeyName
-}
-
 func (w *BabylonNodeHandler) GetSlashingAddress() string {
 	return w.babylonNode.slashingAddr
+}
+
+func (w *BabylonNodeHandler) GetCovenantPk() *types.BIP340PubKey {
+	return w.babylonNode.covenantPk
 }

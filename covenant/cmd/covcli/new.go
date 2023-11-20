@@ -1,32 +1,36 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/urfave/cli"
 
+	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/val"
+)
+
+const (
+	keyNameFlag           = "key-name"
+	passphraseFlag        = "passphrase"
+	hdPathFlag            = "hd-path"
+	chainIdFlag           = "chain-id"
+	keyringDirFlag        = "keyring-dir"
+	keyringBackendFlag    = "keyring-backend"
+	defaultChainID        = "chain-test"
+	defaultKeyringBackend = keyring.BackendTest
+	defaultPassphrase     = ""
+	defaultHdPath         = ""
 )
 
 type covenantKey struct {
 	Name      string `json:"name"`
 	PublicKey string `json:"public-key"`
-}
-
-var covenantCommands = []cli.Command{
-	{
-		Name:      "covenant",
-		ShortName: "c",
-		Usage:     "Control Babylon Covenant.",
-		Category:  "Covenant",
-		Subcommands: []cli.Command{
-			createCovenant,
-		},
-	},
 }
 
 var createCovenant = cli.Command{
@@ -56,12 +60,13 @@ var createCovenant = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  keyringBackendFlag,
-			Usage: "Select keyring's backend (os|file|test)",
+			Usage: "Select keyring's backend",
 			Value: defaultKeyringBackend,
 		},
 		cli.StringFlag{
 			Name:  keyringDirFlag,
 			Usage: "The directory where the keyring is stored",
+			Value: covcfg.DefaultCovenantDir,
 		},
 	},
 	Action: createCovenantKey,
@@ -96,10 +101,22 @@ func createCovenantKey(ctx *cli.Context) error {
 	}
 
 	bip340Key := types.NewBIP340PubKeyFromBTCPK(covenantPk)
-	printRespJSON(&covenantKey{
-		Name:      ctx.String(keyNameFlag),
-		PublicKey: bip340Key.MarshalHex(),
-	})
+	printRespJSON(
+		&covenantKey{
+			Name:      ctx.String(keyNameFlag),
+			PublicKey: bip340Key.MarshalHex(),
+		},
+	)
 
 	return err
+}
+
+func printRespJSON(resp interface{}) {
+	jsonBytes, err := json.MarshalIndent(resp, "", "    ")
+	if err != nil {
+		fmt.Println("unable to decode response: ", err)
+		return
+	}
+
+	fmt.Printf("%s\n", jsonBytes)
 }

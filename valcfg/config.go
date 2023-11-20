@@ -83,8 +83,6 @@ type Config struct {
 
 	ActiveNetParams chaincfg.Params
 
-	CovenantMode bool `long:"covenantmode" description:"If the program is running in Covenant mode"`
-
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
 	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaseconfig"`
@@ -95,8 +93,6 @@ type Config struct {
 
 	ValidatorModeConfig *ValidatorConfig `group:"validator" namespace:"validator"`
 
-	CovenantModeConfig *CovenantConfig `group:"covenant" namespace:"covenant"`
-
 	GRpcServerConfig *GRpcServerConfig
 
 	RpcListeners []net.Addr
@@ -105,7 +101,6 @@ type Config struct {
 func DefaultConfig() Config {
 	bbnCfg := DefaultBBNConfig()
 	dbCfg := DefaultDatabaseConfig()
-	covenantCfg := DefaultCovenantConfig()
 	pollerCfg := DefaultChainPollerConfig()
 	valCfg := DefaultValidatorConfig()
 	eotsMngrCfg := DefaultEOTSManagerConfig()
@@ -119,7 +114,6 @@ func DefaultConfig() Config {
 		DatabaseConfig:                 &dbCfg,
 		BabylonConfig:                  &bbnCfg,
 		ValidatorModeConfig:            &valCfg,
-		CovenantModeConfig:             &covenantCfg,
 		PollerConfig:                   &pollerCfg,
 		EOTSManagerConfig:              &eotsMngrCfg,
 		NumPubRand:                     defaultNumPubRand,

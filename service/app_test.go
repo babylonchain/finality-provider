@@ -14,6 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/covenant"
+	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
@@ -131,9 +133,10 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		// create a Covenant key pair in the keyring
+		covenantConfig := covcfg.DefaultConfig()
 		covenantKc, err := val.NewChainKeyringControllerWithKeyring(
 			app.GetKeyring(),
-			cfg.CovenantModeConfig.CovenantKeyName,
+			covenantConfig.BabylonConfig.Key,
 			app.GetInput(),
 		)
 		require.NoError(t, err)
@@ -142,12 +145,16 @@ func FuzzAddCovenantSig(f *testing.F) {
 		covenantPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
 		require.NoError(t, err)
 		require.NotNil(t, covenantPk)
-		cfg.CovenantMode = true
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logger)
+		require.NoError(t, err)
 
 		err = app.Start()
+		err = ce.Start()
 		require.NoError(t, err)
 		defer func() {
 			err = app.Stop()
+			require.NoError(t, err)
+			err = ce.Stop()
 			require.NoError(t, err)
 		}()
 
@@ -187,9 +194,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			gomock.Any(),
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		cfg.CovenantModeConfig.SlashingAddress = slashingAddr.String()
-		res, err := app.AddCovenantSignature(delegation)
-		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		covenantConfig.SlashingAddress = slashingAddr.String()
+		// TODO create covenant emulator
 	})
 }

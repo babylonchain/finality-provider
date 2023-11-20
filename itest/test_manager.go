@@ -19,17 +19,22 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	dcrecsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
+	"github.com/babylonchain/btc-validator/covenant"
+	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 	"github.com/babylonchain/btc-validator/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -50,8 +55,10 @@ type TestManager struct {
 	Wg                sync.WaitGroup
 	BabylonHandler    *BabylonNodeHandler
 	EOTSServerHandler *EOTSServerHandler
+	CovenantEmulator  *covenant.CovenantEmulator
 	ValConfig         *valcfg.Config
 	EOTSConfig        *eotsconfig.Config
+	CovenanConfig     *covcfg.Config
 	Va                *service.ValidatorApp
 	EOTSClient        *client.EOTSManagerGRpcClient
 	BabylonClient     *clientcontroller.BabylonController
@@ -72,37 +79,45 @@ type TestDelegationData struct {
 	StakingAmount int64
 }
 
-func StartManager(t *testing.T, isCovenant bool) *TestManager {
-	bh := NewBabylonNodeHandler(t)
-
-	err := bh.Start()
+func StartManager(t *testing.T) *TestManager {
+	testDir, err := tempDirWithName("vale2etest")
 	require.NoError(t, err)
 
 	logger := logrus.New()
 	logger.SetLevel(logrus.DebugLevel)
 	logger.Out = os.Stdout
 
-	// setup validator config
-	testDir, err := tempDirWithName("vale2etest")
+	// 1. prepare covenant key, which will be used as input of Babylon node
+	covenantConfig := defaultCovenantConfig(testDir)
+	err = covenantConfig.Validate()
 	require.NoError(t, err)
+	covenantPk := createCovenantKey(t, testDir)
 
-	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isCovenant)
-
+	// 2. prepare Babylon node
+	bh := NewBabylonNodeHandler(t, covenantPk)
+	err = bh.Start()
+	require.NoError(t, err)
+	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir)
 	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
 	require.NoError(t, err)
 
+	// 3. prepare EOTS manager
 	eotsCfg := defaultEOTSConfig(t)
-
 	eh := NewEOTSServerHandler(t, eotsCfg)
 	eh.Start()
-
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
+	// 4. prepare validator
 	valApp, err := service.NewValidatorApp(cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
-
 	err = valApp.Start()
+	require.NoError(t, err)
+
+	// 5. prepare covenant emulator
+	ce, err := covenant.NewCovenantEmulator(covenantConfig, bc, passphrase, logger)
+	require.NoError(t, err)
+	err = ce.Start()
 	require.NoError(t, err)
 
 	tm := &TestManager{
@@ -111,6 +126,8 @@ func StartManager(t *testing.T, isCovenant bool) *TestManager {
 		ValConfig:         cfg,
 		EOTSConfig:        eotsCfg,
 		Va:                valApp,
+		CovenantEmulator:  ce,
+		CovenanConfig:     covenantConfig,
 		EOTSClient:        eotsCli,
 		BabylonClient:     bc,
 	}
@@ -118,6 +135,27 @@ func StartManager(t *testing.T, isCovenant bool) *TestManager {
 	tm.WaitForServicesStart(t)
 
 	return tm
+}
+
+func createCovenantKey(t *testing.T, keyringDir string) *bbntypes.BIP340PubKey {
+	// the Covenant key needs to be created before babylond is started
+	sdkCtx, err := service.CreateClientCtx(
+		keyringDir,
+		chainID,
+	)
+	require.NoError(t, err)
+	covenantKeyName := "covenant-key"
+	krController, err := val.NewChainKeyringController(
+		sdkCtx,
+		covenantKeyName,
+		keyring.BackendTest,
+	)
+	require.NoError(t, err)
+	sdkCovenantPk, err := krController.CreateChainKey(passphrase, hdPath)
+	require.NoError(t, err)
+	covenantPk, err := dcrecsecp256k1.ParsePubKey(sdkCovenantPk.Key)
+	require.NoError(t, err)
+	return bbntypes.NewBIP340PubKeyFromBTCPK(covenantPk)
 }
 
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
@@ -131,8 +169,8 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithValidator(t *testing.T, n int, isCovenant bool) *TestManager {
-	tm := StartManager(t, isCovenant)
+func StartManagerWithValidator(t *testing.T, n int) *TestManager {
+	tm := StartManager(t)
 	app := tm.Va
 
 	for i := 0; i < n; i++ {
@@ -194,6 +232,8 @@ func (tm *TestManager) Stop(t *testing.T) {
 	tm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(tm.EOTSServerHandler.baseDir)
 	require.NoError(t, err)
+	err = tm.CovenantEmulator.Stop()
+	require.NoError(t, err)
 }
 
 func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
@@ -223,7 +263,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 	)
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryPendingDelegations(
-			tm.ValConfig.CovenantModeConfig.DelegationLimit,
+			tm.CovenanConfig.DelegationLimit,
 		)
 		if err != nil {
 			return false
@@ -399,38 +439,6 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddCovenantSignature(t *testing.T, del *types.Delegation) *types.TxResponse {
-	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(del.SlashingTxHex)
-	require.NoError(t, err)
-	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
-	require.NoError(t, err)
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	require.NoError(t, err)
-
-	// get Covenant private key from the keyring
-	covenantPrivKey := tm.GetCovenantPrivKey(t)
-
-	covenantSig, err := slashingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
-		covenantPrivKey,
-		&tm.ValConfig.ActiveNetParams,
-	)
-	require.NoError(t, err)
-
-	covenantSchnorrSig, err := covenantSig.ToBTCSig()
-	require.NoError(t, err)
-	res, err := tm.BabylonClient.SubmitCovenantSig(
-		del.ValBtcPk,
-		del.BtcPk,
-		stakingMsgTx.TxHash().String(),
-		covenantSchnorrSig,
-	)
-	require.NoError(t, err)
-
-	return res
-}
-
 // delegation must containt undelgation object
 func (tm *TestManager) AddValidatorUnbondingSignature(
 	t *testing.T,
@@ -466,17 +474,6 @@ func (tm *TestManager) AddValidatorUnbondingSignature(
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) GetCovenantPrivKey(t *testing.T) *btcec.PrivateKey {
-	kr := tm.Va.GetKeyring()
-	covenantKeyName := tm.BabylonHandler.GetCovenantKeyName()
-	k, err := kr.Key(covenantKeyName)
-	require.NoError(t, err)
-	localKey := k.GetLocal().PrivKey.GetCachedValue()
-	require.IsType(t, &secp256k1.PrivKey{}, localKey)
-	covenantPrivKey, _ := btcec.PrivKeyFromBytes(localKey.(*secp256k1.PrivKey).Key)
-	return covenantPrivKey
-}
-
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
 	record, err := tm.EOTSClient.KeyRecord(valPk, passphrase)
 	require.NoError(t, err)
@@ -492,7 +489,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
 	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-	covenantPk := tm.GetCovenantPrivKey(t).PubKey()
+	covenantPk := tm.BabylonHandler.GetCovenantPk().MustToBTCPK()
 	require.NoError(t, err)
 	require.Equal(t, params.CovenantPk.SerializeCompressed()[1:], covenantPk.SerializeCompressed()[1:])
 
@@ -500,7 +497,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(
-		r, btcNetworkParams, delBtcPrivKey, valBtcPk, covenantPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
+		r, btcNetworkParams, delBtcPrivKey, valBtcPk, covenantPk, stakingTime, stakingAmount, slashingAddr)
 	require.NoError(t, err)
 
 	// get msgTx
@@ -621,7 +618,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 	require.NoError(t, err)
 }
 
-func defaultValidatorConfig(keyringDir, testDir string, isCovenant bool) *valcfg.Config {
+func defaultValidatorConfig(keyringDir, testDir string) *valcfg.Config {
 	cfg := valcfg.DefaultConfig()
 
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
@@ -633,9 +630,15 @@ func defaultValidatorConfig(keyringDir, testDir string, isCovenant bool) *valcfg
 	// Big adjustment to make sure we have enough gas in our transactions
 	cfg.BabylonConfig.GasAdjustment = 20
 	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
-	cfg.CovenantMode = isCovenant
-	cfg.CovenantModeConfig.QueryInterval = 7 * time.Second
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
+
+	return &cfg
+}
+
+func defaultCovenantConfig(testDir string) *covcfg.Config {
+	cfg := covcfg.DefaultConfig()
+	cfg.CovenantDir = testDir
+	cfg.BabylonConfig.KeyDirectory = testDir
 
 	return &cfg
 }
@@ -646,7 +649,7 @@ func defaultEOTSConfig(t *testing.T) *eotsconfig.Config {
 	eotsDir, err := baseDir("zEOTSTest")
 	require.NoError(t, err)
 
-	configFile := filepath.Join(eotsDir, "eotsd-test.conf")
+	configFile := filepath.Join(eotsDir, "covd-test.conf")
 	dataDir := filepath.Join(eotsDir, "data")
 	logDir := filepath.Join(eotsDir, "log")
 
