@@ -133,10 +133,10 @@ func FuzzAddCovenantSig(f *testing.F) {
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
 		covenantPk, err := covenant.CreateCovenantKey(
-			cfg.BabylonConfig.KeyDirectory,
-			cfg.BabylonConfig.ChainID,
-			cfg.BabylonConfig.Key,
-			cfg.BabylonConfig.KeyringBackend,
+			covenantConfig.BabylonConfig.KeyDirectory,
+			covenantConfig.BabylonConfig.ChainID,
+			covenantConfig.BabylonConfig.Key,
+			covenantConfig.BabylonConfig.KeyringBackend,
 			passphrase,
 			hdPath,
 		)
