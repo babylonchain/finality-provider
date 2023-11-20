@@ -23,7 +23,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	dcrecsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -34,22 +33,21 @@ import (
 	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var (
 	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
+	btcNetworkParams      = &chaincfg.SimNetParams
 
-	valNamePrefix = "test-val-"
-	monikerPrefix = "moniker-"
-	chainID       = "chain-test"
-	passphrase    = "testpass"
-	hdPath        = ""
+	valNamePrefix   = "test-val-"
+	monikerPrefix   = "moniker-"
+	covenantKeyName = "covenant-key"
+	chainID         = "chain-test"
+	passphrase      = "testpass"
+	hdPath          = ""
 )
-
-var btcNetworkParams = &chaincfg.SimNetParams
 
 type TestManager struct {
 	Wg                sync.WaitGroup
@@ -91,10 +89,11 @@ func StartManager(t *testing.T) *TestManager {
 	covenantConfig := defaultCovenantConfig(testDir)
 	err = covenantConfig.Validate()
 	require.NoError(t, err)
-	covenantPk := createCovenantKey(t, testDir)
+	covenantPk, err := covenant.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
+	require.NoError(t, err)
 
 	// 2. prepare Babylon node
-	bh := NewBabylonNodeHandler(t, covenantPk)
+	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covenantPk))
 	err = bh.Start()
 	require.NoError(t, err)
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir)
@@ -135,27 +134,6 @@ func StartManager(t *testing.T) *TestManager {
 	tm.WaitForServicesStart(t)
 
 	return tm
-}
-
-func createCovenantKey(t *testing.T, keyringDir string) *bbntypes.BIP340PubKey {
-	// the Covenant key needs to be created before babylond is started
-	sdkCtx, err := service.CreateClientCtx(
-		keyringDir,
-		chainID,
-	)
-	require.NoError(t, err)
-	covenantKeyName := "covenant-key"
-	krController, err := val.NewChainKeyringController(
-		sdkCtx,
-		covenantKeyName,
-		keyring.BackendTest,
-	)
-	require.NoError(t, err)
-	sdkCovenantPk, err := krController.CreateChainKey(passphrase, hdPath)
-	require.NoError(t, err)
-	covenantPk, err := dcrecsecp256k1.ParsePubKey(sdkCovenantPk.Key)
-	require.NoError(t, err)
-	return bbntypes.NewBIP340PubKeyFromBTCPK(covenantPk)
 }
 
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -353,6 +354,36 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 		}
 	}
 
+}
+
+func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*btcec.PublicKey, error) {
+	sdkCtx, err := service.CreateClientCtx(
+		keyringDir, chainID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	krController, err := val.NewChainKeyringController(
+		sdkCtx,
+		keyName,
+		backend,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	sdkCovenantPk, err := krController.CreateChainKey(passphrase, hdPath)
+	if err != nil {
+		return nil, err
+	}
+
+	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	return covenantPk, nil
 }
 
 func (ce *CovenantEmulator) Start() error {

@@ -6,13 +6,10 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-
 	"github.com/urfave/cli"
 
+	"github.com/babylonchain/btc-validator/covenant"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/val"
 )
 
 const (
@@ -73,31 +70,24 @@ var createCovenant = cli.Command{
 }
 
 func createCovenantKey(ctx *cli.Context) error {
-	sdkCtx, err := service.CreateClientCtx(
-		ctx.String(keyringDirFlag),
-		ctx.String(chainIdFlag),
+	keyringDir := ctx.String(keyringDirFlag)
+	chainID := ctx.String(chainIdFlag)
+	keyName := ctx.String(keyNameFlag)
+	backend := ctx.String(keyringBackendFlag)
+	passphrase := ctx.String(passphraseFlag)
+	hdPath := ctx.String(hdPathFlag)
+
+	covenantPk, err := covenant.CreateCovenantKey(
+		keyringDir,
+		chainID,
+		keyName,
+		backend,
+		passphrase,
+		hdPath,
 	)
-	if err != nil {
-		return err
-	}
 
-	krController, err := val.NewChainKeyringController(
-		sdkCtx,
-		ctx.String(keyNameFlag),
-		ctx.String(keyringBackendFlag),
-	)
 	if err != nil {
-		return err
-	}
-
-	sdkCovenantPk, err := krController.CreateChainKey(ctx.String(passphraseFlag), ctx.String(hdPathFlag))
-	if err != nil {
-		return fmt.Errorf("failed to create Covenant key: %w", err)
-	}
-
-	covenantPk, err := secp256k1.ParsePubKey(sdkCovenantPk.Key)
-	if err != nil {
-		return err
+		return fmt.Errorf("failed to create covenant key: %w", err)
 	}
 
 	bip340Key := types.NewBIP340PubKeyFromBTCPK(covenantPk)

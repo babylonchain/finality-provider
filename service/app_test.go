@@ -9,7 +9,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
-	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,6 @@ import (
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -134,17 +132,15 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
-		covenantKc, err := val.NewChainKeyringControllerWithKeyring(
-			app.GetKeyring(),
-			covenantConfig.BabylonConfig.Key,
-			app.GetInput(),
+		covenantPk, err := covenant.CreateCovenantKey(
+			cfg.BabylonConfig.KeyDirectory,
+			cfg.BabylonConfig.ChainID,
+			cfg.BabylonConfig.Key,
+			cfg.BabylonConfig.KeyringBackend,
+			passphrase,
+			hdPath,
 		)
 		require.NoError(t, err)
-		sdkJurPk, err := covenantKc.CreateChainKey(passphrase, hdPath)
-		require.NoError(t, err)
-		covenantPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
-		require.NoError(t, err)
-		require.NotNil(t, covenantPk)
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logger)
 		require.NoError(t, err)
 
