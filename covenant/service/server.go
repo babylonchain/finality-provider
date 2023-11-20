@@ -41,7 +41,7 @@ func (s *CovenantServer) RunUntilShutdown() error {
 	}
 
 	defer func() {
-		s.ce.Stop()
+		_ = s.ce.Stop()
 		s.logger.Info("Shutdown covenant emulator server complete")
 	}()
 

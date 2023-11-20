@@ -149,6 +149,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		err = app.Start()
+		require.NoError(t, err)
 		err = ce.Start()
 		require.NoError(t, err)
 		defer func() {

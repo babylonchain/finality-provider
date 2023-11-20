@@ -94,6 +94,7 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp, p
 
 	storedVal, err := app.GetValidatorStore().GetStoreValidator(res.ValPk.MustMarshal())
 	require.NoError(t, err)
+
 	return storedVal
 }
 
