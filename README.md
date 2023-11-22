@@ -54,10 +54,9 @@ Ensure you have created the `Vald` directory in the config directory. The defaul
 
 The **Validator Daemon** is responsible for
 1.  **Finality Signatures:**
-    -   For each registered validator and for each block, the Validator Daemon sends the finality signature to the consumer chain (Babylon).
-    -   This implies that the Validator Daemon actively participates in the consensus process and contributes to finalizing blocks on the BabylonChain.
-2.  **Committing Randomness:**
-    -   Validator Daemon ensures the inclusion of public randomness in the blocks it processes and commits to the consumer chain.
+    -   Sends the finality signature to the consumer chain (Babylon) for each registered validator and for each block.
+2.  **Randomness Commitment:**
+    -   Ensures the inclusion of public randomness in each block it processes.
 
 ## 5. Running Daemons
 
