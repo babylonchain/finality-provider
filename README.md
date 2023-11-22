@@ -1,4 +1,4 @@
-# BTC Validator
+# BTC-Validator
 
 BTC-Validator is a stand-alone program that creates and manages all BTC validators' keys and act on behalf of them. Follow the steps below to download, build, and set up the validator and EOTS daemons.
 
