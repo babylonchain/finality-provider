@@ -19,15 +19,6 @@ make build
 
 ###  Setting up EOTS daemon
 
-```bash
-./build/eotsd admin dump-config
-```
-Ensure you have created the `Eotsd` directory in the config directory. The default config directories are:
-
-    MacOS ~/Library/Application Support/Eotsd 
-    Linux ~/.Eotsd
-    Windows C:\Users\<username>\AppData\Local\Etosd
-
 The **EOTS Daemon** is responsible for
 
 1.  **Key Management:**
@@ -41,8 +32,26 @@ The **EOTS Daemon** is responsible for
     -   Signs EOTS using the private key of the validator and corresponding secret randomness for a given chain at a specified height.
     -   Signs Schnorr signatures using the private key of the validator.
 
+#### Dump the default config
+```bash
+./build/eotsd admin dump-config
+```
+
+Ensure you have created the `Eotsd` directory in the config directory. The default config directories are:
+
+    MacOS ~/Library/Application Support/Eotsd 
+    Linux ~/.Eotsd
+    Windows C:\Users\<username>\AppData\Local\Eotsd
+
 ### Setting up Validator daemon
 
+The **Validator Daemon** is responsible for
+1.  **Finality Signatures:**
+    -   Sends the finality signature to the consumer chain (Babylon) for each registered validator and for each block.
+2.  **Randomness Commitment:**
+    -   Ensures the inclusion of public randomness in each block it processes.
+
+#### Dump the default config
 ```bash
 ./build/vald admin dump-config
 ```
@@ -51,12 +60,6 @@ Ensure you have created the `Vald` directory in the config directory. The defaul
     MacOS ~/Library/Application Support/Vald 
     Linux ~/.Vald
     Windows C:\Users\<username>\AppData\Local\Vald
-
-The **Validator Daemon** is responsible for
-1.  **Finality Signatures:**
-    -   Sends the finality signature to the consumer chain (Babylon) for each registered validator and for each block.
-2.  **Randomness Commitment:**
-    -   Ensures the inclusion of public randomness in each block it processes.
 
 ## 5. Running Daemons
 
