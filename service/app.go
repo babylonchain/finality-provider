@@ -225,7 +225,7 @@ func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) 
 	return record.PrivKey, nil
 }
 
-// Start stars only the validator daemon without any validator instances
+// Start starts only the validator daemon without any validator instances
 func (app *ValidatorApp) Start() error {
 	var startErr error
 	app.startOnce.Do(func() {
