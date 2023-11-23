@@ -76,6 +76,8 @@ Run in different terminals
         "btc_pk": "ab6f16c7f532570bade5d05b00ead6d397936029b99cd68f1c66e5b007621134"
     }
 
-
 ### Register the validator to Babylon
     ./build/valcli daemon register-validator --btc-pk ab6f16c7f532570bade5d05b00ead6d397936029b99cd68f1c66e5b007621134
+
+### Confirm the validator is registered to Babylon
+    ./build/valcli daemon validator-info --btc-pk ab6f16c7f532570bade5d05b00ead6d397936029b99cd68f1c66e5b007621134
