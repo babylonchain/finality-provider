@@ -9,17 +9,17 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/chaincfg"
-	secp256k12 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/btc-validator/covenant"
+	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 	"github.com/babylonchain/btc-validator/valcfg"
 )
 
@@ -131,23 +131,27 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		// create a Covenant key pair in the keyring
-		covenantKc, err := val.NewChainKeyringControllerWithKeyring(
-			app.GetKeyring(),
-			cfg.CovenantModeConfig.CovenantKeyName,
-			app.GetInput(),
+		covenantConfig := covcfg.DefaultConfig()
+		covenantPk, err := covenant.CreateCovenantKey(
+			covenantConfig.BabylonConfig.KeyDirectory,
+			covenantConfig.BabylonConfig.ChainID,
+			covenantConfig.BabylonConfig.Key,
+			covenantConfig.BabylonConfig.KeyringBackend,
+			passphrase,
+			hdPath,
 		)
 		require.NoError(t, err)
-		sdkJurPk, err := covenantKc.CreateChainKey(passphrase, hdPath)
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logger)
 		require.NoError(t, err)
-		covenantPk, err := secp256k12.ParsePubKey(sdkJurPk.Key)
-		require.NoError(t, err)
-		require.NotNil(t, covenantPk)
-		cfg.CovenantMode = true
 
 		err = app.Start()
 		require.NoError(t, err)
+		err = ce.Start()
+		require.NoError(t, err)
 		defer func() {
 			err = app.Stop()
+			require.NoError(t, err)
+			err = ce.Stop()
 			require.NoError(t, err)
 		}()
 
@@ -187,9 +191,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			gomock.Any(),
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		cfg.CovenantModeConfig.SlashingAddress = slashingAddr.String()
-		res, err := app.AddCovenantSignature(delegation)
-		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
+		covenantConfig.SlashingAddress = slashingAddr.String()
+		// TODO create covenant emulator
 	})
 }

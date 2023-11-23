@@ -2,95 +2,11 @@ package service
 
 import (
 	"encoding/hex"
-	"time"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/proto"
 )
-
-// covenantSigSubmissionLoop is the reactor to submit Covenant signature for pending BTC delegations
-func (app *ValidatorApp) covenantSigSubmissionLoop() {
-	defer app.wg.Done()
-
-	interval := app.config.CovenantModeConfig.QueryInterval
-	limit := app.config.CovenantModeConfig.DelegationLimit
-	covenantSigTicker := time.NewTicker(interval)
-
-	for {
-		select {
-		case <-covenantSigTicker.C:
-			// 0. Update slashing address in case it is changed upon governance proposal
-			params, err := app.cc.QueryStakingParams()
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get slashing address")
-				continue
-			}
-			slashingAddress := params.SlashingAddress
-			_, err = btcutil.DecodeAddress(slashingAddress, &app.config.ActiveNetParams)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("invalid slashing address")
-				continue
-			}
-			app.config.CovenantModeConfig.SlashingAddress = slashingAddress
-
-			// 1. Get all pending delegations first, this are more important than the unbonding ones
-			dels, err := app.cc.QueryPendingDelegations(limit)
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get pending delegations")
-				continue
-			}
-			if len(dels) == 0 {
-				app.logger.WithFields(logrus.Fields{}).Debug("no pending delegations are found")
-			}
-
-			for _, d := range dels {
-				_, err := app.AddCovenantSignature(d)
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"err":        err,
-						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Covenant sig to the Bitcoin delegation")
-				}
-			}
-			// 2. Get all unbonding delegations
-			unbondingDels, err := app.cc.QueryUnbondingDelegations(limit)
-
-			if err != nil {
-				app.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get pending delegations")
-				continue
-			}
-
-			if len(unbondingDels) == 0 {
-				app.logger.WithFields(logrus.Fields{}).Debug("no unbonding delegations are found")
-			}
-
-			for _, d := range unbondingDels {
-				_, err := app.AddCovenantUnbondingSignatures(d)
-				if err != nil {
-					app.logger.WithFields(logrus.Fields{
-						"err":        err,
-						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Covenant sig to the Bitcoin delegation")
-				}
-			}
-
-		case <-app.quit:
-			app.logger.Debug("exiting covenantSigSubmissionLoop")
-			return
-		}
-	}
-
-}
 
 // main event loop for the validator app
 func (app *ValidatorApp) eventLoop() {

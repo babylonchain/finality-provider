@@ -25,7 +25,7 @@ var (
 // activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, false)
+	tm := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
 
 	app := tm.Va
@@ -38,13 +38,10 @@ func TestValidatorLifeCycle(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
-
-	// submit Covenant sig
-	_ = tm.AddCovenantSignature(t, dels[0])
+	_ = tm.WaitForNPendingDels(t, 1)
 
 	// check the BTC delegation is active
-	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -55,7 +52,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 // TestMultipleValidators tests starting with multiple validators
 func TestMultipleValidators(t *testing.T) {
 	n := 3
-	tm := StartManagerWithValidator(t, n, false)
+	tm := StartManagerWithValidator(t, n)
 	defer tm.Stop(t)
 
 	app := tm.Va
@@ -83,7 +80,6 @@ func TestMultipleValidators(t *testing.T) {
 		tm.Wg.Add(1)
 		go func(btcDel *types.Delegation) {
 			defer tm.Wg.Done()
-			_ = tm.AddCovenantSignature(t, btcDel)
 		}(del)
 	}
 	tm.Wg.Wait()
@@ -105,7 +101,7 @@ func TestMultipleValidators(t *testing.T) {
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
 func TestDoubleSigning(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, false)
+	tm := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
 
 	app := tm.Va
@@ -118,13 +114,10 @@ func TestDoubleSigning(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
-
-	// submit Covenant sig
-	_ = tm.AddCovenantSignature(t, dels[0])
+	_ = tm.WaitForNPendingDels(t, 1)
 
 	// check the BTC delegation is active
-	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -151,7 +144,7 @@ func TestDoubleSigning(t *testing.T) {
 
 // TestFastSync tests the fast sync process where the validator is terminated and restarted with fast sync
 func TestFastSync(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, false)
+	tm := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
 
 	app := tm.Va
@@ -164,12 +157,9 @@ func TestFastSync(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
+	_ = tm.WaitForNPendingDels(t, 1)
 
-	// submit Covenant sig
-	_ = tm.AddCovenantSignature(t, dels[0])
-
-	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
@@ -197,7 +187,7 @@ func TestFastSync(t *testing.T) {
 }
 
 func TestValidatorUnbondingSigSubmission(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, false)
+	tm := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
 
 	app := tm.Va
@@ -210,12 +200,9 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
+	_ = tm.WaitForNPendingDels(t, 1)
 
-	// submit Covenant sig
-	_ = tm.AddCovenantSignature(t, dels[0])
-
-	dels = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 
 	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
 
@@ -223,7 +210,7 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 }
 
 func TestCovenantLifeCycle(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1, true)
+	tm := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
 	app := tm.Va
 	valIns := app.ListValidatorInstances()[0]
