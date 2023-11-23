@@ -36,7 +36,7 @@ func FuzzStatusUpdate(f *testing.F) {
 
 		ctl := gomock.NewController(t)
 		mockClientController := mocks.NewMockClientController(ctl)
-		vm, cleanUp := newValidatorManagerWithRegisteredValidator(t, r, mockClientController)
+		vm, valPk, cleanUp := newValidatorManagerWithRegisteredValidator(t, r, mockClientController)
 		defer cleanUp()
 
 		// setup mocks
@@ -59,7 +59,7 @@ func FuzzStatusUpdate(f *testing.F) {
 			mockClientController.EXPECT().QueryValidatorSlashed(gomock.Any()).Return(true, nil).AnyTimes()
 		}
 
-		err := vm.Start()
+		err := vm.StartValidator(valPk, passphrase)
 		require.NoError(t, err)
 		valIns := vm.ListValidatorInstances()[0]
 		// stop the validator as we are testing static functionalities
@@ -85,7 +85,7 @@ func waitForStatus(t *testing.T, valIns *service.ValidatorInstance, s proto.Vali
 		}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorManager, func()) {
+func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorManager, *bbntypes.BIP340PubKey, func()) {
 	// create validator app with config
 	cfg := valcfg.DefaultConfig()
 	cfg.StatusUpdateInterval = 10 * time.Millisecond
@@ -145,5 +145,5 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 		require.NoError(t, err)
 	}
 
-	return vm, cleanUp
+	return vm, btcPk, cleanUp
 }
