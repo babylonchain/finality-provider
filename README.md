@@ -36,12 +36,17 @@ The **EOTS Daemon** is responsible for
 ```bash
 ./build/eotsd admin dump-config
 ```
-
 Ensure you have created the `Eotsd` directory in the config directory. The default config directories are:
 
     MacOS ~/Library/Application Support/Eotsd 
     Linux ~/.Eotsd
     Windows C:\Users\<username>\AppData\Local\Eotsd
+or
+
+You can also specify custom path to store the config
+```bash
+./build/vald admin dump-config --config-file-dir /path-to-config/
+```
 
 ### Setting up Validator daemon
 
@@ -60,6 +65,12 @@ Ensure you have created the `Vald` directory in the config directory. The defaul
     MacOS ~/Library/Application Support/Vald 
     Linux ~/.Vald
     Windows C:\Users\<username>\AppData\Local\Vald
+or
+
+You can also specify custom path to store the config
+```bash
+./build/vald admin dump-config --config-file-dir /path-to-config/
+```
 
 ## 5. Running Daemons
 
