@@ -69,7 +69,7 @@ Run in different terminals
 
 ### Create a validator in internal db
 
-    ./build/valcli daemon create-validator --key-name uniqueIdentifier --chain-id chain-test
+    ./build/valcli daemon create-validator --key-name unique-id --chain-id chain-test
     
     # Response 
     {
