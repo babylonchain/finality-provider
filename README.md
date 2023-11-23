@@ -16,6 +16,7 @@ make build
 ```
 
 ## 3. Configuring Validator and EOTS Daemon
+To operate the BTC-Validator program, you need to run two essential daemons: **EOTS Daemon (`eotsd`)** and **Validator Daemon (`vald`)**.
 
 ###  Setting up EOTS daemon
 
@@ -100,10 +101,16 @@ that. Few examples are listed here.
 
 ## 5. Running Daemons
 
-Run in different terminals
+### Running EOTS Daemon (`eotsd`)
+
+
+    ./build/eotsd
+
+**Note**: It is recommended to run the `eotsd` daemon on a separate machine or network segment to enhance security. This helps isolate the key management functionality and reduces the potential attack surface. You can edit the `vald.conf`  to reference the address of the remote machine where `eotsd` is running.
+
+### Running Validator Daemon (`vald`)
 
     ./build/vald
-    ./build/eotsd
 
 ## 6. Creating a Validator and Registering to Babylon
 
