@@ -106,7 +106,9 @@ that. Few examples are listed here.
 
     ./build/eotsd
 
-**Note**: It is recommended to run the `eotsd` daemon on a separate machine or network segment to enhance security. This helps isolate the key management functionality and reduces the potential attack surface. You can edit the `vald.conf`  to reference the address of the remote machine where `eotsd` is running.
+**Note**: It is recommended to run the `eotsd` daemon on a separate machine or network segment to enhance security. 
+This helps isolate the key management functionality and reduces the potential attack surface. You can edit the 
+`EOTSManagerAddress` in  `vald.conf`  to reference the address of the remote machine where `eotsd` is running.
 
 ### Running Validator Daemon (`vald`)
 
