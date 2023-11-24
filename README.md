@@ -137,7 +137,6 @@ This helps isolate the key management functionality and reduces the potential at
 }
 ```
 
-
 ### Register the validator to Babylon
 
 ```bash
