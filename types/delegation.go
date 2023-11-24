@@ -10,7 +10,7 @@ type Delegation struct {
 	BtcPk *btcec.PublicKey
 	// val_btc_pk is the Bitcoin secp256k1 PK of the BTC validator that
 	// this BTC delegation delegates to
-	ValBtcPk *btcec.PublicKey
+	ValBtcPks []*btcec.PublicKey
 	// start_height is the start BTC height of the BTC delegation
 	// it is the start BTC height of the timelock
 	StartHeight uint64
@@ -51,9 +51,10 @@ type Undelegation struct {
 	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain and after
 	// validator sig will be provided by validator
-	CovenantUnbondingSig *schnorr.Signature
-	// validator_unbonding_sig is the signature on the unbonding tx
-	// by the validator (i.e., SK corresponding to covenant_pk in params)
-	// It must be provided after processing undelagate message by the consumer chain
-	ValidatorUnbondingSig *schnorr.Signature
+	CovenantUnbondingSigs []*SignatureInfo
+}
+
+type SignatureInfo struct {
+	Pk  *btcec.PublicKey
+	Sig *schnorr.Signature
 }

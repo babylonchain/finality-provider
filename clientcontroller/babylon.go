@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -94,7 +95,7 @@ func NewBabylonController(
 	// so that it recognises their message formats
 	// TODO: fix this either by fixing rpc-client side
 	var moduleBasics []module.AppModuleBasic
-	for _, mbasic := range bbnapp.ModuleBasics {
+	for _, mbasic := range bbnapp.NewTmpBabylonApp().BasicModuleManager {
 		moduleBasics = append(moduleBasics, mbasic)
 	}
 
@@ -158,16 +159,21 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query staking params: %v", err)
 	}
-	covenantPk, err := stakingParamRes.Params.CovenantPk.ToBTCPK()
-	if err != nil {
-		return nil, err
+
+	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
+	for _, pk := range stakingParamRes.Params.CovenantPks {
+		covPk, err := pk.ToBTCPK()
+		if err != nil {
+			return nil, fmt.Errorf("invalida covenant public key")
+		}
+		covenantPks = append(covenantPks, covPk)
 	}
 
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
 		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
-		CovenantPk:                covenantPk,
+		CovenantPks:               covenantPks,
 		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
 		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate.String(),
 	}, nil
@@ -337,8 +343,7 @@ func (bc *BabylonController) CommitPubRandList(
 // SubmitCovenantSig submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitCovenantSig(
-	valPk *btcec.PublicKey,
-	delPk *btcec.PublicKey,
+	covPk *btcec.PublicKey,
 	stakingTxHash string,
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
@@ -346,8 +351,7 @@ func (bc *BabylonController) SubmitCovenantSig(
 
 	msg := &btcstakingtypes.MsgAddCovenantSig{
 		Signer:        bc.MustGetTxSigner(),
-		ValPk:         bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
-		DelPk:         bbntypes.NewBIP340PubKeyFromBTCPK(delPk),
+		Pk:            bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash: stakingTxHash,
 		Sig:           &bip340Sig,
 	}
@@ -363,8 +367,7 @@ func (bc *BabylonController) SubmitCovenantSig(
 // SubmitCovenantUnbondingSigs submits the Covenant signatures via a MsgAddCovenantUnbondingSigs to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
 func (bc *BabylonController) SubmitCovenantUnbondingSigs(
-	valPk *btcec.PublicKey,
-	delPk *btcec.PublicKey,
+	covPk *btcec.PublicKey,
 	stakingTxHash string,
 	unbondingSig *schnorr.Signature,
 	slashUnbondingSig *schnorr.Signature,
@@ -375,8 +378,7 @@ func (bc *BabylonController) SubmitCovenantUnbondingSigs(
 
 	msg := &btcstakingtypes.MsgAddCovenantUnbondingSigs{
 		Signer:                 bc.MustGetTxSigner(),
-		ValPk:                  bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
-		DelPk:                  bbntypes.NewBIP340PubKeyFromBTCPK(delPk),
+		Pk:                     bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash:          stakingTxHash,
 		UnbondingTxSig:         &bip340UnbondingSig,
 		SlashingUnbondingTxSig: &bip340SlashUnbondingSig,
@@ -393,11 +395,11 @@ func (bc *BabylonController) SubmitCovenantUnbondingSigs(
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 func (bc *BabylonController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
-		Signer:              bc.MustGetTxSigner(),
-		ValBtcPk:            bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
-		BlockHeight:         blockHeight,
-		BlockLastCommitHash: blockHash,
-		FinalitySig:         bbntypes.NewSchnorrEOTSSigFromModNScalar(sig),
+		Signer:       bc.MustGetTxSigner(),
+		ValBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
+		BlockHeight:  blockHeight,
+		BlockAppHash: blockHash,
+		FinalitySig:  bbntypes.NewSchnorrEOTSSigFromModNScalar(sig),
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -417,11 +419,11 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blo
 	msgs := make([]sdk.Msg, 0, len(blocks))
 	for i, b := range blocks {
 		msg := &finalitytypes.MsgAddFinalitySig{
-			Signer:              bc.MustGetTxSigner(),
-			ValBtcPk:            bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
-			BlockHeight:         b.Height,
-			BlockLastCommitHash: b.Hash,
-			FinalitySig:         bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]),
+			Signer:       bc.MustGetTxSigner(),
+			ValBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
+			BlockHeight:  b.Height,
+			BlockAppHash: b.Hash,
+			FinalitySig:  bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]),
 		}
 		msgs = append(msgs, msg)
 	}
@@ -430,40 +432,6 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blo
 	if err != nil {
 		return nil, err
 	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
-}
-
-func (bc *BabylonController) SubmitValidatorUnbondingSig(
-	valPk *btcec.PublicKey,
-	delPk *btcec.PublicKey,
-	stakingTxHash string,
-	sig *schnorr.Signature,
-) (*types.TxResponse, error) {
-	valBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(valPk)
-
-	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
-
-	msg := &btcstakingtypes.MsgAddValidatorUnbondingSig{
-		Signer:         bc.MustGetTxSigner(),
-		ValPk:          valBtcPk,
-		DelPk:          bbntypes.NewBIP340PubKeyFromBTCPK(delPk),
-		StakingTxHash:  stakingTxHash,
-		UnbondingTxSig: &bip340Sig,
-	}
-
-	res, err := bc.reliablySendMsg(msg)
-
-	if err != nil {
-		return nil, err
-	}
-
-	bc.logger.WithFields(logrus.Fields{
-		"validator": valBtcPk.MarshalHex(),
-		"code":      res.Code,
-		"height":    res.Height,
-		"tx_hash":   res.TxHash,
-	}).Debug("Succesfuly submitted validator signature for unbonding tx")
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
@@ -609,19 +577,6 @@ func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
 	}
 }
 
-func (bc *BabylonController) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
-	// TODO Check what is the order of returned delegations. Ideally we would return
-	// delegation here from the first one which received undelegation
-
-	return bc.getNValidatorDelegationsMatchingCriteria(
-		bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
-		max,
-		func(del *types.Delegation) bool {
-			return del.BtcUndelegation != nil && del.BtcUndelegation.ValidatorUnbondingSig == nil
-		},
-	)
-}
-
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
 func (bc *BabylonController) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	ctx, cancel := getContextWithCancel(bc.timeout)
@@ -686,7 +641,7 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 	for _, b := range res.Blocks {
 		ib := &types.BlockInfo{
 			Height: b.Height,
-			Hash:   b.LastCommitHash,
+			Hash:   b.AppHash,
 		}
 		blocks = append(blocks, ib)
 	}
@@ -718,7 +673,7 @@ func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error)
 
 	return &types.BlockInfo{
 		Height:    height,
-		Hash:      res.Block.LastCommitHash,
+		Hash:      res.Block.AppHash,
 		Finalized: res.Block.Finalized,
 	}, nil
 }
@@ -836,10 +791,7 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		panic(fmt.Errorf("slashing tx should not be empty in delegation"))
 	}
 
-	stakingTxHex, err = del.StakingTx.ToHexStr()
-	if err != nil {
-		panic(err)
-	}
+	stakingTxHex = hex.EncodeToString(del.StakingTx)
 
 	slashingTxHex = del.SlashingTx.ToHexStr()
 
@@ -854,9 +806,14 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		undelegation = ConvertUndelegationType(del.BtcUndelegation)
 	}
 
+	valBtcPks := make([]*btcec.PublicKey, 0, len(del.ValBtcPkList))
+	for _, val := range del.ValBtcPkList {
+		valBtcPks = append(valBtcPks, val.MustToBTCPK())
+	}
+
 	return &types.Delegation{
 		BtcPk:           del.BtcPk.MustToBTCPK(),
-		ValBtcPk:        del.ValBtcPk.MustToBTCPK(),
+		ValBtcPks:       valBtcPks,
 		StartHeight:     del.StartHeight,
 		EndHeight:       del.EndHeight,
 		StakingTxHex:    stakingTxHex,
@@ -868,12 +825,11 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 
 func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Undelegation {
 	var (
-		unbondingTxHex              string
-		slashingTxHex               string
-		covenantSlashingSchnorrSig  *schnorr.Signature
-		covenantUnbondingSchnorrSig *schnorr.Signature
-		valUnbondingSchnorrSig      *schnorr.Signature
-		err                         error
+		unbondingTxHex             string
+		slashingTxHex              string
+		covenantSlashingSchnorrSig *schnorr.Signature
+		covenantUnbondingSigs      []*types.SignatureInfo
+		err                        error
 	)
 
 	if undel.UnbondingTx == nil {
@@ -884,10 +840,7 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		panic(fmt.Errorf("slashing tx should not be empty in undelegation"))
 	}
 
-	unbondingTxHex, err = undel.UnbondingTx.ToHexStr()
-	if err != nil {
-		panic(err)
-	}
+	unbondingTxHex = hex.EncodeToString(undel.UnbondingTx)
 
 	slashingTxHex = undel.SlashingTx.ToHexStr()
 
@@ -898,46 +851,51 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		}
 	}
 
-	if undel.CovenantUnbondingSig != nil {
-		covenantUnbondingSchnorrSig, err = undel.CovenantUnbondingSig.ToBTCSig()
-		if err != nil {
-			panic(err)
+	if undel.CovenantUnbondingSigList != nil {
+		sigs := make([]*types.SignatureInfo, 0, len(undel.CovenantUnbondingSigList))
+		for _, unbondingSig := range undel.CovenantUnbondingSigList {
+			sig, err := unbondingSig.Sig.ToBTCSig()
+			if err != nil {
+				panic(err)
+			}
+			sigInfo := &types.SignatureInfo{
+				Pk:  unbondingSig.Pk.MustToBTCPK(),
+				Sig: sig,
+			}
+			sigs = append(sigs, sigInfo)
 		}
-	}
-
-	if undel.ValidatorUnbondingSig != nil {
-		valUnbondingSchnorrSig, err = undel.ValidatorUnbondingSig.ToBTCSig()
-		if err != nil {
-			panic(err)
-		}
+		covenantUnbondingSigs = sigs
 	}
 
 	return &types.Undelegation{
 		UnbondingTxHex:        unbondingTxHex,
 		SlashingTxHex:         slashingTxHex,
 		CovenantSlashingSig:   covenantSlashingSchnorrSig,
-		CovenantUnbondingSig:  covenantUnbondingSchnorrSig,
-		ValidatorUnbondingSig: valUnbondingSchnorrSig,
+		CovenantUnbondingSigs: covenantUnbondingSigs,
 	}
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
+	delBtcPk *bbntypes.BIP340PubKey,
 	pop *btcstakingtypes.ProofOfPossession,
-	stakingTx *btcstakingtypes.BabylonBTCTaprootTx,
+	stakingTime uint32,
+	stakingValue int64,
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *bbntypes.BIP340Signature,
 ) (*types.TxResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:        bc.MustGetTxSigner(),
-		BabylonPk:     delBabylonPk,
-		Pop:           pop,
-		StakingTx:     stakingTx,
-		StakingTxInfo: stakingTxInfo,
-		SlashingTx:    slashingTx,
-		DelegatorSig:  delSig,
+		Signer:       bc.MustGetTxSigner(),
+		BabylonPk:    delBabylonPk,
+		BtcPk:        delBtcPk,
+		Pop:          pop,
+		StakingTime:  stakingTime,
+		StakingValue: stakingValue,
+		StakingTx:    stakingTxInfo,
+		SlashingTx:   slashingTx,
+		DelegatorSig: delSig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -951,13 +909,17 @@ func (bc *BabylonController) CreateBTCDelegation(
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) CreateBTCUndelegation(
-	unbondingTx *btcstakingtypes.BabylonBTCTaprootTx,
+	unbondingTx []byte,
+	unbondingTime uint32,
+	unbondingValue int64,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *bbntypes.BIP340Signature,
 ) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgBTCUndelegate{
 		Signer:               bc.MustGetTxSigner(),
 		UnbondingTx:          unbondingTx,
+		UnbondingTime:        unbondingTime,
+		UnbondingValue:       unbondingValue,
 		SlashingTx:           slashingTx,
 		DelegatorSlashingSig: delSig,
 	}

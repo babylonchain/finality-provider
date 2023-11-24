@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -67,7 +69,6 @@ type TestDelegationData struct {
 	DelegatorKey            *btcec.PublicKey
 	DelegatorBabylonPrivKey *secp256k1.PrivKey
 	DelegatorBabylonKey     *secp256k1.PubKey
-	StakingTx               *bstypes.BabylonBTCTaprootTx
 	SlashingTx              *bstypes.BTCSlashingTx
 	StakingTxInfo           *btcctypes.TransactionInfo
 	DelegatorSig            *bbntypes.BIP340Signature
@@ -154,7 +155,7 @@ func StartManagerWithValidator(t *testing.T, n int) *TestManager {
 	for i := 0; i < n; i++ {
 		valName := valNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
-		commission := sdktypes.ZeroDec()
+		commission := sdktypes.DecCoin{Denom: "bbn", Amount: sdkmath.LegacyZeroDec()}
 		res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
 		require.NoError(t, err)
 		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
@@ -182,7 +183,7 @@ func StartManagerWithValidator(t *testing.T, n int) *TestManager {
 				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
 					return false
 				}
-				if !v.Commission.Equal(sdktypes.ZeroDec()) {
+				if !v.Commission.Equal(commission.Amount) {
 					return false
 				}
 			}
@@ -287,7 +288,7 @@ func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BI
 			return false
 		}
 
-		return len(dels) == 1 && dels[0].BtcUndelegation != nil && dels[0].BtcUndelegation.ValidatorUnbondingSig != nil
+		return len(dels) == 1 && dels[0].BtcUndelegation != nil
 
 	}, 1*time.Minute, eventuallyPollTime)
 
@@ -309,8 +310,7 @@ func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, statu
 func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTCDelegationStatus {
 	if del.BtcUndelegation != nil {
 		if del.BtcUndelegation.CovenantSlashingSig != nil &&
-			del.BtcUndelegation.CovenantUnbondingSig != nil &&
-			del.BtcUndelegation.ValidatorUnbondingSig != nil {
+			del.BtcUndelegation.CovenantUnbondingSigs != nil {
 			return bstypes.BTCDelegationStatus_UNBONDED
 		}
 		// If we received an undelegation but is still does not have all required signature,
@@ -417,41 +417,6 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 	require.NoError(t, err)
 }
 
-// delegation must containt undelgation object
-func (tm *TestManager) AddValidatorUnbondingSignature(
-	t *testing.T,
-	del *types.Delegation,
-	validatorSk *btcec.PrivateKey,
-) {
-	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
-	require.NoError(t, err)
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	require.NoError(t, err)
-
-	unbondingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.BtcUndelegation.UnbondingTxHex)
-	require.NoError(t, err)
-
-	valSig, err := unbondingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
-		validatorSk,
-		btcNetworkParams,
-	)
-	require.NoError(t, err)
-
-	stakingTxHash := stakingMsgTx.TxHash().String()
-
-	valSchnorrSig, err := valSig.ToBTCSig()
-	require.NoError(t, err)
-	_, err = tm.BabylonClient.SubmitValidatorUnbondingSig(
-		del.ValBtcPk,
-		del.BtcPk,
-		stakingTxHash,
-		valSchnorrSig,
-	)
-	require.NoError(t, err)
-}
-
 func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
 	record, err := tm.EOTSClient.KeyRecord(valPk, passphrase)
 	require.NoError(t, err)
@@ -474,8 +439,26 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(
-		r, btcNetworkParams, delBtcPrivKey, valBtcPk, covenantPk, stakingTime, stakingAmount, slashingAddr)
+
+	// validator BTC key pairs, staking tx and slashing tx
+	valBtcPrivKey, valBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
+	require.NoError(t, err)
+
+	// generate staking tx and slashing tx
+	stakingTimeBlocks := uint16(math.MaxUint16)
+	testStakingInfo := datagen.GenBTCStakingSlashingTx(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKey,
+		[]*btcec.PublicKey{valBtcPubKey},
+		covenantBTCPKs,
+		1,
+		stakingTimeBlocks,
+		stakingValue,
+		params.SlashingAddress, changeAddress.EncodeAddress(),
+		params.SlashingRate,
+	)
 	require.NoError(t, err)
 
 	// get msgTx

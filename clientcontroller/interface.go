@@ -48,14 +48,6 @@ type ValidatorAPIs interface {
 	// SubmitBatchFinalitySigs submits a batch of finality signatures to the consumer chain
 	SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error)
 
-	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction to the consumer chain
-	SubmitValidatorUnbondingSig(
-		valPk *btcec.PublicKey,
-		delPk *btcec.PublicKey,
-		stakingTxHash string,
-		sig *schnorr.Signature,
-	) (*types.TxResponse, error)
-
 	// Note: the following queries are only for PoC
 
 	// QueryValidatorVotingPower queries the voting power of the validator at a given height
@@ -79,24 +71,18 @@ type ValidatorAPIs interface {
 	// QueryActivatedHeight returns the activated height of the consumer chain
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
-
-	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations. UnbondingDelegations:
-	// - already received unbodning transaction on babylon chain
-	// - not received validator signature yet
-	QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error)
 }
 
 // CovenantAPIs contains interfaces needed when the program is running in the covenant mode
 type CovenantAPIs interface {
 	// SubmitCovenantSig submits the Covenant signature to the consumer chain
 	// it returns tx hash and error
-	SubmitCovenantSig(valPk *btcec.PublicKey, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)
+	SubmitCovenantSig(covPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)
 
 	// SubmitCovenantUnbondingSigs submits the Covenant signatures to the consumer chain
 	// it returns tx hash and error
 	SubmitCovenantUnbondingSigs(
-		valPk *btcec.PublicKey,
-		delPk *btcec.PublicKey,
+		covPk *btcec.PublicKey,
 		stakingTxHash string,
 		unbondingSig *schnorr.Signature,
 		slashUnbondingSig *schnorr.Signature,
