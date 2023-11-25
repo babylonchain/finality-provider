@@ -25,14 +25,14 @@ Dump the default configuration for the Validator Daemon (`vald`):
 ```bash
 valcli admin dump-config
 ```
-This will make a ```vald.conf``` file in the default config directory. The default config directories are:
+This will create a ```vald.conf``` file in the default config directory. The default config directories are:
 
 ```bash
 MacOS ~/Library/Application Support/Vald 
 Linux ~/.Vald
 Windows C:\Users\<username>\AppData\Local\Vald
 ```
-You can also specify custom path to store the config
+You can also specify a custom path to store the config
 
 ```bash
 valcli admin dump-config --config-file-dir /path/to/your/config/
