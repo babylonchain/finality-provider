@@ -1,0 +1,39 @@
+# Configuration
+
+## Using `valcli` and `eotscli` for Daemon Configuration
+
+The `valcli` and `eotscli` tools serve as control planes for the Validator Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively. These tools allow you to configure various settings and parameters. Let's explore how to configure the daemons.
+
+## Dumping Default Configuration
+
+The `dump-config` command dumps the default configuration for the daemon.
+
+```bash
+btc-validator % valcli admin dump-config --help
+NAME:
+   valcli admin dump-config - Dump default configuration file.
+
+USAGE:
+   valcli admin dump-config [command options] [arguments...]
+
+OPTIONS:
+   --config-file-dir value  Path to where the default config file will be dumped (default: "~/Library/Application Support/Vald/vald.conf")
+```
+
+Dump the default configuration for the Validator Daemon (`vald`):
+
+```bash
+valcli admin dump-config
+```
+This will make a ```vald.conf``` file in the default config directory. The default config directories are:
+
+```bash
+MacOS ~/Library/Application Support/Vald 
+Linux ~/.Vald
+Windows C:\Users\<username>\AppData\Local\Vald
+```
+You can also specify custom path to store the config
+
+```bash
+valcli admin dump-config --config-file-dir /path/to/your/config/
+```
