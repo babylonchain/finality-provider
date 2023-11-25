@@ -25,8 +25,8 @@ git checkout <release-tag>
 
 ```bash
 cd btc-validator # cd into the project directory
-make build # build the binaries in the build directory
-make install # install the binaries to your $GOPATH/bin directory
+make build       # build the binaries in the build directory
+make install     # installs the compiled binaries to your $GOPATH/bin directory allowing access from anywhere on your system
 ```
 
 The build directory has the following structure
