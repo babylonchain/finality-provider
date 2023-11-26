@@ -141,3 +141,7 @@ covenant:
 Help Options:
   -h, --help                                           Show this help message
 ```
+
+**Note**: It is recommended to run the `eotsd` daemon on a separate machine or network segment to enhance security.
+This helps isolate the key management functionality and reduces the potential attack surface. You can edit the
+`EOTSManagerAddress` in  `vald.conf`  to reference the address of the machine where `eotsd` is running.
