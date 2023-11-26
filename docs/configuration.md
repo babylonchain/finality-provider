@@ -47,3 +47,15 @@ ls /path/to/your/config/dir/Vald
 ```
 
 Lets explore some of the important parameters in the `vald.conf` file.
+```bash
+# Address of the EOTS Daemon:
+EOTSManagerAddress = 127.0.0.1:15813
+
+# Babylon specific parameters
+
+# Name of the key in the keyring to use for signing transactions:
+Key = node0
+
+# Address of the RPC server:
+RPCAddr = http://localhost:26657
+```
