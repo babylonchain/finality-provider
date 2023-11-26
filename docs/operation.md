@@ -2,8 +2,8 @@
 
 Before you proceed, ensure that you have installed the necessary binaries and configured the daemons. If you haven't done so yet, please follow these steps:
 
-1. [Installation](installation.md)
-2. [Configuration](configuration.md)
+- [Installation](installation.md)
+- [Configuration](configuration.md)
 
 ## 1. Starting the EOTS Daemon
 You can start the EOTS daemon using the following command:
