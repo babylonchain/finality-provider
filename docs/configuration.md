@@ -20,7 +20,7 @@ OPTIONS:
    --config-file-dir value  Path to where the default config file will be dumped (default: "~/Library/Application Support/Vald/vald.conf")
 ```
 
-### 1. Validator (`vald.conf`) config:
+### 1. Validator daemon (`vald`) config:
 
 ```bash
 valcli admin dump-config
