@@ -20,7 +20,7 @@ OPTIONS:
    --config-file-dir value  Path to where the default config file will be dumped (default: "~/Library/Application Support/Vald/vald.conf")
 ```
 
-Dump the default configuration for the Validator Daemon (`vald`):
+### 1. Dump the default configuration for the Validator Daemon (`vald`):
 
 ```bash
 valcli admin dump-config
@@ -58,4 +58,28 @@ Key = node0
 
 # Address of the RPC server:
 RPCAddr = http://localhost:26657
+```
+
+### 2. Dump the default configuration for the EOTS Daemon (`eotsd`):
+
+```bash
+eotscli admin dump-config
+```
+This will create a ```eotsd.conf``` file in the default config directory. The default config directories are:
+
+```bash
+MacOS ~/Library/Application Support/Eotsd 
+Linux ~/.Eotsd
+Windows C:\Users\<username>\AppData\Local\Eotsd
+```
+You can also specify a custom path to store the config
+
+```bash
+eotscli admin dump-config --config-file-dir /path/to/your/config/dir/
+```
+
+After dump the config directory has following structure
+```bash
+ls /path/to/your/config/dir/Eotsd
+   ├── eotsd.conf # Eotsd-specific configuration file.
 ```
