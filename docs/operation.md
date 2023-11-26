@@ -145,3 +145,60 @@ Help Options:
 **Note**: It is recommended to run the `eotsd` daemon on a separate machine or network segment to enhance security.
 This helps isolate the key management functionality and reduces the potential attack surface. You can edit the
 `EOTSManagerAddress` in  `vald.conf`  to reference the address of the machine where `eotsd` is running.
+
+## 3. Interacting with daemons
+
+### Creating a validator
+
+Create a BTC Validator named `my_validator` in the internal db.
+This Validator holds a BTC public key (where the staked tokens will be sent to) and a Babylon account
+(where the Babylon reward tokens will be sent to).
+
+```bash
+$ valcli daemon create-validator --key-name my-validator --chain-id chain-test
+
+{
+    "btc_pk": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786"
+}
+```
+
+
+### Registering a validator to Babylon
+
+Register the Validator with Babylon. Now, the Validator is ready to receive
+delegations. The output contains the hash of the validator registration
+Babylon transaction.
+
+```bash
+$ valcli daemon register-validator --btc-pk 903fab42070622c551b188c983ce05a31febcab300244daf7d752aba
+
+{
+    "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
+}
+```
+
+### Querying the validators managed by the daemon
+
+List all the BTC Validators managed by the BTC Validator daemon. The `status`
+field can receive the following values:
+- `1`: The Validator is active and has received no delegations yet
+- `2`: The Validator is active and has staked BTC tokens
+- `3`: The Validator is inactive (i.e. had staked BTC tokens in the past but
+not anymore OR has been slashed)
+The `last_committed_height` field is the Babylon height up to which the
+Validator has committed sufficient EOTS randomness
+
+```bash
+$ valcli daemon list-validators
+{
+    "validators": [
+        ...
+        {
+            "babylon_pk_hex": "0251259b5c88d6ac79d86615220a8111ebb238047df0689357274f004fba3e5a89",
+            "btc_pk_hex": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786",
+            "last_committed_height": 265,
+            "status": 1
+        }
+    ]
+}
+```
