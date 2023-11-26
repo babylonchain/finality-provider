@@ -65,18 +65,6 @@ RPCAddr = http://localhost:26657
 ```bash
 eotscli admin dump-config
 ```
-This will create a ```eotsd.conf``` file in the default config directory. The default config directories are:
-
-```bash
-MacOS ~/Library/Application Support/Eotsd 
-Linux ~/.Eotsd
-Windows C:\Users\<username>\AppData\Local\Eotsd
-```
-You can also specify a custom path to store the config
-
-```bash
-eotscli admin dump-config --config-file-dir /path/to/your/config/dir/
-```
 
 After dump the config directory has following structure
 ```bash
