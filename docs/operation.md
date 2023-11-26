@@ -150,7 +150,7 @@ This helps isolate the key management functionality and reduces the potential at
 
 ### Creating a validator
 
-Create a BTC Validator named `my_validator` in the internal db.
+Create a BTC Validator named `my_validator` in the internal storage ([bolt db](https://github.com/etcd-io/bbolt))
 This Validator holds a BTC public key (where the staked tokens will be sent to) and a Babylon account
 (where the Babylon reward tokens will be sent to).
 
