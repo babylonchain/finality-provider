@@ -65,6 +65,10 @@ Key = node0
 # Address of the RPC server:
 RPCAddr = http://localhost:26657
 ```
+**Note:** The `Key` parameter is the name of the key in the keyring to use for signing transactions.
+
+You can create a key and request funds from the faucet by following the instructions in the [Babylon 
+documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds)
 
 ### 2. EOTS daemon (`eotsd`) config :
 
