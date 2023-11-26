@@ -22,11 +22,10 @@ The program consists of two essential components: the **EOTS manager Daemon** an
 The EOTS (Extractable One Time Signature) Daemon is responsible for managing EOTS keys, producing EOTS randomness 
 and EOTS signatures
 
-1. **Key Management:**
+1. **EOTS Key Management:**
     - Generates [Schnorr](https://en.wikipedia.org/wiki/Schnorr_signature) key pairs for the validator using the 
       [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) standard.
     - Persists generated key pairs in internal storage([bolt db](https://github.com/etcd-io/bbolt)).
-    - Retrieves information about the validator's key record.
 
 2. **Randomness Generation:**
     - Generates lists of [Schnorr](https://en.wikipedia.org/wiki/Schnorr_signature) randomness pairs based on the EOTS key, chainID, and block height.
