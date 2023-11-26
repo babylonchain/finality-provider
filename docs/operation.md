@@ -15,6 +15,9 @@ This will start the rpc server at the default address i.e. `localhost:15813`. Yo
 
 ```bash
 $ eotsd --rpclistener 'localhost:8081'
+
+time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening on 127.0.0.1:8081"
+time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"
 ```
 
 All the available cli options can be viewed using the `--help` flag. These options can also be set in the configuration file.
@@ -58,6 +61,13 @@ the `--rpclisten` flag.
 
 ```bash
 $ vald --rpclisten '8082'
+
+time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager at 127.0.0.1:8081"
+time="2023-11-26T16:37:00-05:00" level=info msg="Starting ValidatorApp"
+time="2023-11-26T16:37:00-05:00" level=info msg="Version: 0.2.2-alpha commit=, build=production, logging=default, debuglevel=info"
+time="2023-11-26T16:37:00-05:00" level=info msg="Starting RPC Server"
+time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening on 127.0.0.1:8082"
+time="2023-11-26T16:37:00-05:00" level=info msg="BTC Validator Daemon is fully active!"
 ```
 
 All the available cli options can be viewed using the `--help` flag. These options can also be set in the configuration file.
