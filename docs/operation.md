@@ -5,7 +5,7 @@ Before you proceed, ensure that you have installed the necessary binaries and co
 1. [Installation](installation.md)
 2. [Configuration](configuration.md)
 
-## Starting the EOTS Daemon
+## 1. Starting the EOTS Daemon
 You can start the EOTS daemon using the following command:
 
 ```bash
@@ -46,7 +46,7 @@ Help Options:
   -h, --help                                         Show this help message
 ```
 
-## Starting the Validator Daemon
+## 2. Starting the Validator Daemon
 
 You can start the validator daemon using the following command:
 
