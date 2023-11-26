@@ -83,3 +83,12 @@ After dump the config directory has following structure
 ls /path/to/your/config/dir/Eotsd
    ├── eotsd.conf # Eotsd-specific configuration file.
 ```
+
+Lets explore some of the important parameters in the `eotsd.conf` file.
+```bash
+# Path to EOTSD configuration file
+ConfigFile = /Users/John/Library/Application Support/Eotsd/eotsd.conf
+
+# Default address to listen for RPC connections:
+RpcListener = localhost:15813
+```
