@@ -20,7 +20,7 @@ OPTIONS:
    --config-file-dir value  Path to where the default config file will be dumped (default: "~/Library/Application Support/Vald/vald.conf")
 ```
 
-### 1. Dump the default configuration for the Validator Daemon (`vald`):
+### 1. Validator (`vald.conf`) config:
 
 ```bash
 valcli admin dump-config
@@ -60,7 +60,7 @@ Key = node0
 RPCAddr = http://localhost:26657
 ```
 
-### 2. Dump the default configuration for the EOTS Daemon (`eotsd`):
+### 2. EOTS daemon (`eotsd`) config :
 
 ```bash
 eotscli admin dump-config
