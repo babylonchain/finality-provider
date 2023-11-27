@@ -84,4 +84,4 @@ $ ls build
 Follow the  [configuration guide](docs/configuration.md).
 
 ## 4. Running the BTC Validator Program
-Follow the [operations guide](docs/operations.md).
+Follow the [operations guide](docs/operation.md).
