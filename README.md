@@ -28,7 +28,7 @@ Staking Litepaper](https://docs.babylonchain.io/assets/files/btc_staking_litepap
 1. **EOTS Key Management:**
     - Generates [Schnorr](https://en.wikipedia.org/wiki/Schnorr_signature) key pairs for the validator using the 
       [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) standard.
-    - Persists generated key pairs in internal storage([bolt db](https://github.com/etcd-io/bbolt)).
+    - Persists generated key pairs in the internal [bolt db](https://github.com/etcd-io/bbolt) storage.
 
 2. **Randomness Generation:**
     - Generates lists of [Schnorr randomness pairs](https://www.researchgate.net/publication/222835548_Schnorr_Randomness) based on the EOTS key, chainID, and block height.
