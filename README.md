@@ -6,9 +6,9 @@ Before you start using BTC-Validator, make sure to follow these steps to downloa
 
 2. **Configuration:** Follow the  [configuration guide](docs/configuration.md).
 
-3. **Running the Program:** Follow the [operations guide](docs/operations.md).
+3. **Running the BTC Validator Program:** Follow the [operations guide](docs/operations.md).
 
-## Overview
+## 1. Overview
 
 BTC-Validator is a standalone program crafted for the creation and management of BTC validators. 
 The program includes a CLI functionality for the creation, management, and storage of validator keys, as well as the creation and registration of validators on the consumer chain.
@@ -47,3 +47,43 @@ The Validator Daemon is responsible for finality signatures and randomness commi
 
 2. **EOTS Randomness Commitment:**
     - Ensures the generation of EOTS randomness commitment on the Babylon ledger for each block the BTC validator intends to vote for.
+
+## 2. Installation
+
+### Prerequisites
+
+This project requires Go version 1.20 or later.
+
+Install Go by following the instructions on the [official Go installation guide](https://golang.org/doc/install).
+
+### Downloading the code
+
+To get started, clone the repository to your local machine from Github:
+
+```bash
+$ git clone git@github.com:babylonchain/btc-validator.git
+```
+
+You can choose a specific version from the [official releases page](https://github.com/babylonchain/btc-validator/releases)
+
+```bash
+$ cd btc-validator # cd into the project directory
+$ git checkout <release-tag>
+```
+
+### Building and installing the binary
+
+```bash
+$ cd btc-validator # cd into the project directory
+$ make build       # build the binaries in the build directory
+$ make install     # installs the compiled binaries to your $GOPATH/bin directory allowing access from anywhere on your system
+```
+
+The build directory has the following structure
+```bash
+$ ls build
+    ├── eotcli
+    ├── eotsd
+    ├── valcli
+    └── vald
+```
