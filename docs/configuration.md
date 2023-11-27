@@ -42,7 +42,7 @@ You can also specify a custom path to store the config
 $ valcli admin dump-config --config-file-dir /path/to/your/config/dir/
 ```
 
-After dump the config directory has following structure
+After dump the config directory has the following structure
 
 ```bash
 $ ls /path/to/your/config/dir/Vald
