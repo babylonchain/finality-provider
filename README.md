@@ -45,5 +45,5 @@ The Validator Daemon is responsible for finality signatures and randomness commi
 1. **Finality Signatures:**
     - Sends the finality signature to the consumer chain (Babylon) for each registered validator and for each block.
 
-2. **Randomness Commitment:**
+2. **EOTS Randomness Commitment:**
     - Ensures the generation of EOTS randomness commitment on the Babylon ledger for each block the BTC validator intends to vote for.
