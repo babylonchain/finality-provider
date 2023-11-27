@@ -1,13 +1,5 @@
 # BTC-Validator
 
-Before you start using BTC-Validator, make sure to follow these steps to download, build, and set up the program:
-
-1. **Installation guide:** Follow the [installation guide](docs/installation.md).
-
-2. **Configuration:** Follow the  [configuration guide](docs/configuration.md).
-
-3. **Running the BTC Validator Program:** Follow the [operations guide](docs/operations.md).
-
 ## 1. Overview
 
 BTC-Validator is a standalone program crafted for the creation and management of BTC validators. 
@@ -50,13 +42,13 @@ The Validator Daemon is responsible for finality signatures and randomness commi
 
 ## 2. Installation
 
-### Prerequisites
+#### Prerequisites
 
 This project requires Go version 1.20 or later.
 
 Install Go by following the instructions on the [official Go installation guide](https://golang.org/doc/install).
 
-### Downloading the code
+#### Downloading the code
 
 To get started, clone the repository to your local machine from Github:
 
@@ -71,7 +63,7 @@ $ cd btc-validator # cd into the project directory
 $ git checkout <release-tag>
 ```
 
-### Building and installing the binary
+#### Building and installing the binary
 
 ```bash
 $ cd btc-validator # cd into the project directory
@@ -87,3 +79,9 @@ $ ls build
     ├── valcli
     └── vald
 ```
+
+## 3. Configuration
+Follow the  [configuration guide](docs/configuration.md).
+
+## 4. Running the BTC Validator Program
+Follow the [operations guide](docs/operations.md).
