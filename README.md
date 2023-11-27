@@ -18,7 +18,7 @@ with the blockchain by sending finality signatures and committing public randomn
 
 The program consists of two essential components: the **EOTS manager Daemon** and the **Validator Daemon**.
 
-### 1. EOTS Manager Daemon
+#### 1. EOTS Manager Daemon
 The EOTS Daemon is responsible for managing EOTS keys, producing EOTS randomness 
 and EOTS signatures
 
@@ -38,7 +38,7 @@ Staking Litepaper](https://docs.babylonchain.io/assets/files/btc_staking_litepap
     - Signs EOTS using the private key of the validator and corresponding secret randomness for a given chain at a specified height.
     - Signs Schnorr signatures using the private key of the validator.
 
-### 2. Validator Daemon
+#### 2. Validator Daemon
 
 The Validator Daemon is responsible for finality signatures and randomness commitment.
 
