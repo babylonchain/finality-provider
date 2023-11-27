@@ -1,12 +1,12 @@
 # Configuration
 
-## Using `valcli` and `eotscli` for Daemon Configuration
+### Using `valcli` and `eotscli` for Daemon Configuration
 
 The `valcli` and `eotscli` tools serve as control planes for the Validator Daemon (`vald`) and EOTS Daemon (`eotsd`)
 respectively. These tools allow you to configure various settings and parameters. Let's explore how to configure the
 daemons.
 
-## Dumping Default Configuration
+### Dumping Default Configuration
 
 The `dump-config` command dumps the default configuration for the daemon.
 

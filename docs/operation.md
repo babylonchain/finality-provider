@@ -2,7 +2,7 @@
 
 Before you proceed, ensure that you have installed the necessary binaries and configured the daemons. If you haven't done so yet, please follow these steps:
 
-- [Installation](installation.md)
+- [Installation](../README.md#2-installation)
 - [Configuration](configuration.md)
 
 ## 1. Starting the EOTS Daemon
