@@ -1,19 +1,22 @@
 # Operations
 
-Before you proceed, ensure that you have installed the necessary binaries and configured the daemons. If you haven't done so yet, please follow these steps:
+Before you proceed, ensure that you have installed the necessary binaries and
+configured the daemons. If you haven't done so yet, please follow these steps:
 
 - [Installation](../README.md#2-installation)
 - [Configuration](configuration.md)
 
 ## 1. Starting the EOTS Daemon
+
 You can start the EOTS daemon using the following command:
 
 ```bash
 $ eotsd
 ```
-This will start the rpc server at the address specified in the configuration
-on the `RpcListener` field.
-It can also be overridden with custom address using the `--rpclistener` flag.
+
+This will start the rpc server at the address specified in the configuration on
+the `RpcListener` field. It can also be overridden with custom address using
+the `--rpclistener` flag.
 
 ```bash
 $ eotsd --rpclistener 'localhost:8081'
@@ -22,8 +25,8 @@ time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening on 127.0.0
 time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"
 ```
 
-All the available cli options can be viewed using the `--help` flag.
-These options can also be set in the configuration file.
+All the available cli options can be viewed using the `--help` flag. These options
+can also be set in the configuration file.
 
 ```bash
 $ eotsd --help
@@ -59,11 +62,13 @@ You can start the validator daemon using the following command:
 ```bash
 $ vald
 ```
-This will start the RPC server at the address specified in the configuration
-on the `RawRPCListeners` field.
-A custom address can also be specified using the `--rpclisten` flag.
+
+This will start the RPC server at the address specified in the configuration on
+the `RawRPCListeners` field. A custom address can also be specified using
+the `--rpclisten` flag.
 
 TODO: specify an address to listen to.
+
 ```bash
 $ vald --rpclisten '8082'
 
@@ -75,8 +80,8 @@ time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening on 127.0.0
 time="2023-11-26T16:37:00-05:00" level=info msg="BTC Validator Daemon is fully active!"
 ```
 
-All the available cli options can be viewed using the `--help` flag.
-These options can also be set in the configuration file.
+All the available cli options can be viewed using the `--help` flag. These options
+can also be set in the configuration file.
 
 ```bash
 $ vald --help
@@ -158,19 +163,21 @@ Help Options:
   -h, --help                                           Show this help message
 ```
 
-**Note**: It is recommended to run the `eotsd` daemon on a separate machine or network segment to enhance security.
-This helps isolate the key management functionality and reduces the potential attack surface. You can edit the
-`EOTSManagerAddress` in  `vald.conf`  to reference the address of the machine where `eotsd` is running.
+**Note**: It is recommended to run the `eotsd` daemon on a separate machine or
+network segment to enhance security. This helps isolate the key management
+functionality and reduces the potential attack surface. You can edit the
+`EOTSManagerAddress` in  `vald.conf`  to reference the address of the machine
+where `eotsd` is running.
 
 ## 3. Interacting with daemons
 
 ### Creating a validator
 
-A BTC Validator named `my_validator` can be created
-in the internal storage ([bolt db](https://github.com/etcd-io/bbolt))
-through the `valcli daemon create-validator` command.
-This validator holds a BTC public key which uniquely identifies it
-and a Babylon account in which staking rewards will be sent to.
+A BTC Validator named `my_validator` can be created in the internal
+storage ([bolt db](https://github.com/etcd-io/bbolt))
+through the `valcli daemon create-validator` command. This validator holds a BTC
+public key which uniquely identifies it and a Babylon account in which staking
+rewards will be sent to.
 
 ```bash
 $ valcli daemon create-validator --key-name my-validator --chain-id chain-test
@@ -179,12 +186,11 @@ $ valcli daemon create-validator --key-name my-validator --chain-id chain-test
 }
 ```
 
-
 ### Registering a validator to Babylon
 
 The BTC validator can be registered with Babylon through the `register-validator`
-command. The output contains the hash of the validator registration
-Babylon transaction.
+command. The output contains the hash of the validator registration Babylon
+transaction.
 
 ```bash
 $ valcli daemon register-validator --btc-pk 903fab42070622c551b188c983ce05a31febcab300244daf7d752aba
@@ -196,14 +202,15 @@ $ valcli daemon register-validator --btc-pk 903fab42070622c551b188c983ce05a31feb
 ### Querying the validators managed by the daemon
 
 The BTC validators that are managed by the daemon can be listed through the
-`valcli daemon list-validators` command.
-The `status` field can receive the following values:
+`valcli daemon list-validators` command. The `status` field can receive the following
+values:
+
 - `1`: The Validator is active and has received no delegations yet
 - `2`: The Validator is active and has staked BTC tokens
-- `3`: The Validator is inactive (i.e. had staked BTC tokens in the past but
-not anymore OR has been slashed)
-The `last_committed_height` field is the Babylon height up to which the
-Validator has committed sufficient EOTS randomness
+- `3`: The Validator is inactive (i.e. had staked BTC tokens in the past but not
+  anymore OR has been slashed)
+  The `last_committed_height` field is the Babylon height up to which the Validator
+  has committed sufficient EOTS randomness
 
 ```bash
 $ valcli daemon list-validators

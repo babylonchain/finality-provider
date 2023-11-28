@@ -2,32 +2,30 @@
 
 ### Using `valcli` and `eotscli` for Daemon Configuration
 
-The `valcli` and `eotscli` tools serve as control planes for the
-Validator Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively.
-These tools allow to configure various settings and parameters.
-Below, we explore how to configure the daemons.
+The `valcli` and `eotscli` tools serve as control planes for the Validator
+Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively. These tools allow to
+configure various settings and parameters. Below, we explore how to configure the
+daemons.
 
 ### 1. EOTS daemon (`eotsd`) configuration:
 
-The `eotscli admin dump-config` command initializes a home directory
-for the EOTS manager under the default home directory or the directory
-specified by the `--config-file-dir` flag.
+The `eotscli admin dump-config` command initializes a home directory for the EOTS
+manager under the default home directory or the directory specified by
+the `--config-file-dir` flag.
 
 ```bash
 $ eotscli admin dump-config --config-file-dir /path/to/eotsd-home/
 ```
 
-After initialization, the home directory will contain
-the following directories
+After initialization, the home directory will contain the following directories
 
 ```bash
 $ ls /path/to/eotsd-home/
   ├── eotsd.conf # Eotsd-specific configuration file.
 ```
 
-If the `--config-file-dir` flag is not specified,
-then the default home directory will be used.
-For different operating systems, those are:
+If the `--config-file-dir` flag is not specified, then the default home directory
+will be used. For different operating systems, those are:
 
 - **MacOS** `~/Library/Application Support/Eotsd`
 - **Linux** `~/.Eotsd`
@@ -45,16 +43,15 @@ RpcListener = localhost:15813
 
 ### 2. Validator daemon (`vald`) configuration
 
-The `valcli admin dump-config` command initializes a home directory
-for the BTC validator under the default home directory or the directory
-specified by the `--config-file-dir` flag.
+The `valcli admin dump-config` command initializes a home directory for the BTC
+validator under the default home directory or the directory specified by
+the `--config-file-dir` flag.
 
 ```bash
 $ valcli admin dump-config --config-file-dir /path/to/vald-home/
 ```
 
-After initialization, the home directory will contain
-the following directories
+After initialization, the home directory will contain the following directories
 
 ```bash
 $ ls /path/to/vald-home/
@@ -63,9 +60,8 @@ $ ls /path/to/vald-home/
     └── vald.conf # Vald-specific configuration file.
 ```
 
-If the `--config-file-dir` flag is not specified,
-then the default home directory will be used.
-For different operating systems, those are:
+If the `--config-file-dir` flag is not specified, then the default home directory
+will be used. For different operating systems, those are:
 
 - **MacOS** `~/Library/Application Support/Vald`
 - **Linux** `~/.Vald`
@@ -103,15 +99,14 @@ KeyDirectory = /Users/<user>/Library/Application Support/Vald/data
 RPCAddr = https://rpc.devnet.babylonchain.io:443
 ```
 
-To see the complete list of configuration options,
-access the comments in the `vald.conf` file.
+To see the complete list of configuration options, access the comments in
+the `vald.conf` file.
 
 **Note:**
 
-The `Key` parameter in the config is the name of the key in the keyring
-to use for signing transactions. We need a keyring with loaded funds
-as we need to pay for transactions. The transactions include randomness
-commits and vote submissions.
+The `Key` parameter in the config is the name of the key in the keyring to use for
+signing transactions. We need a keyring with loaded funds as we need to pay for
+transactions. The transactions include randomness commits and vote submissions.
 
 Create a keyring and key using `babylond` tool.
 
@@ -123,8 +118,8 @@ It is recommended to use
 the [test](https://docs.cosmos.network/v0.46/run-node/keyring.html#the-test-backend)
 keyring backend as it does not encrypt the keys on disk.
 
-Download and install the Babylon source code to access the `babylond` tool.
-For more information see
+Download and install the Babylon source code to access the `babylond` tool. For more
+information see
 the [Babylon installation docs](https://docs.babylonchain.io/docs/user-guides/installation#step-2-build-and-install-babylon-)
 
 ```bash
