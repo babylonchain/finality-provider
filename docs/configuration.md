@@ -3,9 +3,9 @@
 ### Using `valcli` and `eotscli` for Daemon Configuration
 
 The `valcli` and `eotscli` tools serve as control planes for the Validator
-Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively. These tools allow to
-configure various settings and parameters. Below, we explore how to configure the
-daemons.
+Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively. These tools facilitate the
+configuration of various settings and parameters. Below, an exploration of
+configuring the daemons is provided.
 
 ### 1. EOTS daemon (`eotsd`) configuration:
 
@@ -55,6 +55,7 @@ Path = bbolt-eots.db
 # Name of the database
 Name = default
 ```
+
 To see the complete list of configuration options, check the `eotsd.conf` file.
 
 ### 2. Validator daemon (`vald`) configuration
@@ -111,6 +112,7 @@ KeyDirectory = /Users/<user>/Library/Application Support/Vald/data
 ```
 
 To change the babylon rpc address, you can set
+
 ```bash
 RPCAddr = https://rpc.devnet.babylonchain.io:443
 ```
