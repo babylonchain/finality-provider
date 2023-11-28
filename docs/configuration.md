@@ -5,7 +5,7 @@
 The `valcli` and `eotscli` tools serve as control planes for the
 Validator Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively.
 These tools allow to configure various settings and parameters.
-Below we explore how to configure the daemons.
+Below, we explore how to configure the daemons.
 
 ### 1. EOTS daemon (`eotsd`) configuration:
 
@@ -19,6 +19,7 @@ $ eotscli admin dump-config --config-file-dir /path/to/eotsd-home/
 
 After initialization, the home directory will contain
 the following directories
+
 ```bash
 $ ls /path/to/eotsd-home/
   ├── eotsd.conf # Eotsd-specific configuration file.
@@ -26,12 +27,14 @@ $ ls /path/to/eotsd-home/
 
 If the `--config-file-dir` flag is not specified,
 then the default home directory will be used.
-For different operating systems those are:
+For different operating systems, those are:
+
 - **MacOS** `~/Library/Application Support/Eotsd`
 - **Linux** `~/.Eotsd`
 - **Windows** `C:\Users\<username>\AppData\Local\Eotsd`
 
-Below are some of important parameters in the `eotsd.conf` file.
+Below are some of the important parameters in the `eotsd.conf` file.
+
 ```bash
 # Path to EOTSD configuration file
 ConfigFile = /Users/John/Library/Application Support/Eotsd/eotsd.conf
@@ -52,6 +55,7 @@ $ valcli admin dump-config --config-file-dir /path/to/vald-home/
 
 After initialization, the home directory will contain
 the following directories
+
 ```bash
 $ ls /path/to/vald-home/
     ├── data      # Contains Vald-specific data.
@@ -61,38 +65,77 @@ $ ls /path/to/vald-home/
 
 If the `--config-file-dir` flag is not specified,
 then the default home directory will be used.
-For different operating systems those are:
+For different operating systems, those are:
+
 - **MacOS** `~/Library/Application Support/Vald`
 - **Linux** `~/.Vald`
 - **Windows** `C:\Users\<username>\AppData\Local\Vald`
 
 Below are some important parameters of the `vald.conf` file.
-TODO:
-**Note:** The `Key` parameter is the name of the key in the keyring to use for signing transactions.
-You can create a key and request funds from the faucet by following the instructions in the [Babylon
-documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds)
-- Explanation why a keyring is needed
-  - We need a keyring with loaded funds as we need to pay for transactions
-  - transactions include randomness commits and vote submissions
-  - See BLS docs for an explanation on this
-  - https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/become-validator#1-create-a-keyring-and-get-funds
-- Explanation why we expect the keyring to be unencrypted
-  - The keyring needs to be unlocked all the time as it is used to create transactions
-- Creation of a keyring specifying keyring backend and for the key inside it
-  (use `--keyring-backend test` and `--key-name "validator-key"`)
-- Specification of key name, keyring-backend, and other stuff on the configuration
+
 ```bash
 # Address of the EOTS Daemon
 EOTSManagerAddress = 127.0.0.1:15813
 
 # Babylon specific parameters
 
-# Name of the key in the keyring to use for signing transactions:
+# Chain id of the chain (Babylon)
+ChainID = chain-test
+
+# Address of the chain's RPC server (Babylon)
+RPCAddr = http://localhost:26657
+
+# Address of the chain's GRPC server (Babylon)
+GRPCAddr = https://localhost:9090
+
+# Name of the key in the keyring to use for signing transactions
 Key = node0
 
-# Address of the RPC server:
-RPCAddr = http://localhost:26657
+# Type of keyring to use
+KeyringBackend = test
+
+# Directory to store validator keys in
+KeyDirectory = /Users/<user>/Library/Application Support/Vald/data
+```
+
+```bash
+# to change the babylon rpc address you can set
+RPCAddr = https://rpc.devnet.babylonchain.io:443
 ```
 
 To see the complete list of configuration options,
 access the comments in the `vald.conf` file.
+
+**Note:**
+
+The `Key` parameter in the config is the name of the key in the keyring
+to use for signing transactions. We need a keyring with loaded funds
+as we need to pay for transactions. The transactions include randomness
+commits and vote submissions.
+
+Create a keyring and key using `babylond` tool.
+
+```bash
+$ babylond keys add <key-name> --keyring-backend test
+```
+
+It is recommended to use
+the [test](https://docs.cosmos.network/v0.46/run-node/keyring.html#the-test-backend)
+keyring backend as it does not encrypt the keys on disk.
+
+Download and install the Babylon source code to access the `babylond` tool.
+For more information see
+the [Babylon installation docs](https://docs.babylonchain.io/docs/user-guides/installation#step-2-build-and-install-babylon-)
+
+```bash
+# clone babylon source code
+$ git clone git@github.com:babylonchain/babylon.git 
+
+# select a specific version from the official releases page
+$ cd babylon
+$ git checkout <release-tag>
+
+# build and install the binaries 
+# to your $GOPATH/bin directory
+$ make install
+```
