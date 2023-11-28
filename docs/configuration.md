@@ -35,11 +35,27 @@ Below are some of the important parameters in the `eotsd.conf` file.
 
 ```bash
 # Path to EOTSD configuration file
-ConfigFile = /Users/John/Library/Application Support/Eotsd/eotsd.conf
+ConfigFile = /Users/<user>/Library/Application Support/Eotsd/eotsd.conf
 
-# Default address to listen for RPC connections:
+# Default address to listen for RPC connections
 RpcListener = localhost:15813
+
+# Directory to store EOTS manager keys
+KeyDirectory = /Users/<user>/Library/Application Support/Eotsd/data
+
+# Type of keyring to use
+KeyringBackend = file
+
+# Possible database to choose as backend
+Backend = bbolt
+
+# Path to the database
+Path = bbolt-eots.db
+
+# Name of the database
+Name = default
 ```
+To see the complete list of configuration options, check the `eotsd.conf` file.
 
 ### 2. Validator daemon (`vald`) configuration
 
@@ -94,13 +110,12 @@ KeyringBackend = test
 KeyDirectory = /Users/<user>/Library/Application Support/Vald/data
 ```
 
+To change the babylon rpc address, you can set
 ```bash
-# to change the babylon rpc address you can set
 RPCAddr = https://rpc.devnet.babylonchain.io:443
 ```
 
-To see the complete list of configuration options, access the comments in
-the `vald.conf` file.
+To see the complete list of configuration options, check the `vald.conf` file.
 
 **Note:**
 
