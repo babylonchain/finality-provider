@@ -67,10 +67,8 @@ This will start the RPC server at the address specified in the configuration on
 the `RawRPCListeners` field. A custom address can also be specified using
 the `--rpclisten` flag.
 
-TODO: specify an address to listen to.
-
 ```bash
-$ vald --rpclisten '8082'
+$ vald --rpclisten 'localhost:8082'
 
 time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager at 127.0.0.1:8081"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting ValidatorApp"
