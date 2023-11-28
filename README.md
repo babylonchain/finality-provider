@@ -67,11 +67,24 @@ $ git checkout <release-tag>
 
 ```bash
 $ cd btc-validator # cd into the project directory
-$ make build       # build the binaries in the build directory
-$ make install     # installs the compiled binaries to your $GOPATH/bin directory allowing access from anywhere on your system
+# installs the compiled binaries to your
+# $GOPATH/bin directory allowing access
+# from anywhere on your system
+$ make install 
 ```
 
-The build directory has the following structure
+The above will produce the following binaries:
+- `eotsd`: The daemon program for the EOTS manager.
+- `eotcli`: The CLI tool for interacting with the EOTS daemon.
+- `vald`: The daemon program for the btc-validator.
+- `valcli`: The CLI tool for interacting with the btc-validator daemon.
+
+To build locally,
+```bash
+$ cd btc-validator # cd into the project directory
+$ make build
+```
+The above will lead to a build directory having the following structure:
 ```bash
 $ ls build
     ├── eotcli

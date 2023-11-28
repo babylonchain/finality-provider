@@ -11,7 +11,9 @@ You can start the EOTS daemon using the following command:
 ```bash
 $ eotsd
 ```
-This will start the rpc server at the default address i.e. `localhost:15813`. You can also specify a custom address using the `--rpclistener` flag.
+This will start the rpc server at the address specified in the configuration
+on the `RpcListener` field.
+It can also be overridden with custom address using the `--rpclistener` flag.
 
 ```bash
 $ eotsd --rpclistener 'localhost:8081'
@@ -20,7 +22,8 @@ time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening on 127.0.0
 time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"
 ```
 
-All the available cli options can be viewed using the `--help` flag. These options can also be set in the configuration file.
+All the available cli options can be viewed using the `--help` flag.
+These options can also be set in the configuration file.
 
 ```bash
 $ eotsd --help
@@ -56,9 +59,11 @@ You can start the validator daemon using the following command:
 ```bash
 $ vald
 ```
-This will start the rpc server at the default port i.e. `15812`. You can also specify a custom port using 
-the `--rpclisten` flag.
+This will start the RPC server at the address specified in the configuration
+on the `RawRPCListeners` field.
+A custom address can also be specified using the `--rpclisten` flag.
 
+TODO: specify an address to listen to.
 ```bash
 $ vald --rpclisten '8082'
 
@@ -70,7 +75,8 @@ time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening on 127.0.0
 time="2023-11-26T16:37:00-05:00" level=info msg="BTC Validator Daemon is fully active!"
 ```
 
-All the available cli options can be viewed using the `--help` flag. These options can also be set in the configuration file.
+All the available cli options can be viewed using the `--help` flag.
+These options can also be set in the configuration file.
 
 ```bash
 $ vald --help
@@ -160,13 +166,14 @@ This helps isolate the key management functionality and reduces the potential at
 
 ### Creating a validator
 
-Create a BTC Validator named `my_validator` in the internal storage ([bolt db](https://github.com/etcd-io/bbolt))
-This Validator holds a BTC public key (where the staked tokens will be sent to) and a Babylon account
-(where the Babylon reward tokens will be sent to).
+A BTC Validator named `my_validator` can be created
+in the internal storage ([bolt db](https://github.com/etcd-io/bbolt))
+through the `valcli daemon create-validator` command.
+This validator holds a BTC public key which uniquely identifies it
+and a Babylon account in which staking rewards will be sent to.
 
 ```bash
 $ valcli daemon create-validator --key-name my-validator --chain-id chain-test
-
 {
     "btc_pk": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786"
 }
@@ -175,13 +182,12 @@ $ valcli daemon create-validator --key-name my-validator --chain-id chain-test
 
 ### Registering a validator to Babylon
 
-Register the Validator with Babylon. Now, the Validator is ready to receive
-delegations. The output contains the hash of the validator registration
+The BTC validator can be registered with Babylon through the `register-validator`
+command. The output contains the hash of the validator registration
 Babylon transaction.
 
 ```bash
 $ valcli daemon register-validator --btc-pk 903fab42070622c551b188c983ce05a31febcab300244daf7d752aba
-
 {
     "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
 }
@@ -189,8 +195,9 @@ $ valcli daemon register-validator --btc-pk 903fab42070622c551b188c983ce05a31feb
 
 ### Querying the validators managed by the daemon
 
-List all the BTC Validators managed by the BTC Validator daemon. The `status`
-field can receive the following values:
+The BTC validators that are managed by the daemon can be listed through the
+`valcli daemon list-validators` command.
+The `status` field can receive the following values:
 - `1`: The Validator is active and has received no delegations yet
 - `2`: The Validator is active and has staked BTC tokens
 - `3`: The Validator is inactive (i.e. had staked BTC tokens in the past but
