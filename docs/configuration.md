@@ -4,8 +4,8 @@
 
 The `valcli` and `eotscli` tools serve as control planes for the Validator
 Daemon (`vald`) and EOTS Daemon (`eotsd`) respectively. These tools facilitate the
-configuration of various settings and parameters. Below, an exploration of
-configuring the daemons is provided.
+configuration of various settings and parameters. Below, instructions are provided
+for configuring the daemons.
 
 ### 1. EOTS daemon (`eotsd`) configuration:
 
