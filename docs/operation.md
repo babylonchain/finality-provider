@@ -178,7 +178,8 @@ public key which uniquely identifies it and a Babylon account in which staking
 rewards will be sent to.
 
 ```bash
-$ valcli daemon create-validator --key-name my-validator --chain-id chain-test
+$ valcli daemon create-validator --key-name my-validator --chain-id chain-test 
+--passphrase mypassphrase
 {
     "btc_pk": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786"
 }
