@@ -17,7 +17,7 @@ specified by the `--config-file-dir` flag.
 $ eotscli admin dump-config --config-file-dir /path/to/eotsd-home/
 ```
 
-After initialization, the home directory will contain the following files
+After initialization, the home directory will have the following structure
 
 ```bash
 $ ls /path/to/eotsd-home/
@@ -68,7 +68,7 @@ location specified by the `--config-file-dir` flag.
 $ valcli admin dump-config --config-file-dir /path/to/vald-home/
 ```
 
-After initialization, the home directory will contain the following files
+After initialization, the home directory will have the following structure
 
 ```bash
 $ ls /path/to/vald/
