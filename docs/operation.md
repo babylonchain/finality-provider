@@ -173,9 +173,9 @@ where `eotsd` is running.
 
 A BTC Validator named `my_validator` can be created in the internal
 storage ([bolt db](https://github.com/etcd-io/bbolt))
-through the `valcli daemon create-validator` command. This validator holds a BTC
-public key which uniquely identifies it and a Babylon account in which staking
-rewards will be sent to.
+through the `valcli daemon create-validator` command. This validator is associated
+with a BTC public key, serving as its unique identifier, and a Babylon account to
+which staking rewards will be directed.
 
 ```bash
 $ valcli daemon create-validator --key-name my-validator --chain-id chain-test 
