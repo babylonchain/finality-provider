@@ -75,7 +75,7 @@ Below are some important parameters of the `vald.conf` file.
 
 The `Key` parameter in the config below is the name of the key in the keyring to use
 for signing transactions. Use the key name you created in
-the [Keyring Setup](#keyring-setup)
+the [Keyring Setup](#2-Keyring-Setup)
 
 ```bash
 # Address of the EOTS Daemon
