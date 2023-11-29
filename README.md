@@ -44,8 +44,8 @@ the [Babylon BTC Staking Litepaper](https://docs.babylonchain.io/assets/files/bt
 
 #### 2. Validator Daemon
 
-The Validator Daemon is responsible for committing public randomness and
-submitting finality signatures.
+The Validator Daemon is responsible for committing public randomness and submitting
+finality signatures.
 
 1. **Finality Signatures:**
     - Sends the finality signature to the consumer chain (Babylon) for each
