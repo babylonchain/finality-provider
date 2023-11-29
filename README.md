@@ -116,10 +116,18 @@ $ ls build
     └── vald
 ```
 
-## 3. Configuration
+## 3. EOTS Daemon Configuration
 
-Follow the  [configuration guide](docs/configuration.md).
+Follow the [eots configuration guide](docs/configuration.md).
 
-## 4. Running the BTC Validator Program
+## 4. Starting the EOTS Daemon
 
-Follow the [operations guide](docs/operation.md).
+Follow the  [eots startup guide](docs/eotsd/startup-guide.md).
+
+## 5. Validator Daemon Configuration
+
+Follow the [vald configuration guide](docs/vald/config.md).
+
+## 6. Starting the Validator Daemon
+
+Follow the [vald startup guide](docs/vald/startup-guide.md).
