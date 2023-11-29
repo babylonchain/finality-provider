@@ -35,7 +35,7 @@ It is recommended to use
 the [test](https://docs.cosmos.network/v0.46/run-node/keyring.html#the-test-backend)
 keyring backend as it does not encrypt the keys on disk.
 
-#### 3. Get funds from the Babylon
+#### 3. Get funds from Babylon testnet faucet
 
 Follow this guide
 [Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds#2-request-funds-from-the-babylon-testnet-faucet)
