@@ -37,7 +37,9 @@ RpcListener = localhost:15813
 # Directory to store EOTS manager keys
 KeyDirectory = /Users/<user>/Library/Application Support/Eotsd/data
 
-# Type of keyring to use
+# Type of keyring to use,
+# supported backends - (os|file|kwallet|pass|test|memory)
+# ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
 KeyringBackend = file
 
 # Possible database to choose as backend

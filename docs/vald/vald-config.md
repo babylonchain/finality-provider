@@ -97,7 +97,9 @@ GRPCAddr = https://localhost:9090
 # Name of the key in the keyring to use for signing transactions
 Key = node0
 
-# Type of keyring to use
+# Type of keyring to use,
+# supported backends - (os|file|kwallet|pass|test|memory)
+# ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
 KeyringBackend = test
 
 # Directory to store validator keys in
