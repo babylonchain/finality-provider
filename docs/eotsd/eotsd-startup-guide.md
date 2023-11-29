@@ -4,7 +4,7 @@ Before proceeding, make sure you have installed the required binaries and config
 the EOTS daemon. If not, follow these steps:
 
 1. [Installing binaries](../../README.md#2-installation)
-2. [EOTS Daemon Configuration](config.md)
+2. [EOTS Daemon Configuration](eotsd-config.md)
 
 You can start the EOTS daemon using the following command:
 

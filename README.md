@@ -118,16 +118,16 @@ $ ls build
 
 ## 3. EOTS Daemon Configuration
 
-Follow the [eots configuration guide](docs/configuration.md).
+Follow the [eots configuration guide](docs/eotsd/eotsd-config.md).
 
 ## 4. Starting the EOTS Daemon
 
-Follow the  [eots startup guide](docs/eotsd/startup-guide.md).
+Follow the  [eots startup guide](docs/eotsd/eotsd-startup-guide.md).
 
 ## 5. Validator Daemon Configuration
 
-Follow the [vald configuration guide](docs/vald/config.md).
+Follow the [vald configuration guide](docs/vald/vald-config.md).
 
 ## 6. Starting the Validator Daemon
 
-Follow the [vald startup guide](docs/vald/startup-guide.md).
+Follow the [vald startup guide](docs/vald/vald-startup-guide.md).

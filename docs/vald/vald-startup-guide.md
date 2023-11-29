@@ -4,7 +4,7 @@ Before proceeding, make sure you have installed the required binaries and config
 the Validator daemon. If not, follow these steps:
 
 1. [Installing binaries](../../README.md#2-installation)
-2. [Validator Daemon Configuration](config.md)
+2. [Validator Daemon Configuration](vald-config.md)
 
 You can start the validator daemon using the following command:
 
