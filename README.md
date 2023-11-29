@@ -32,9 +32,8 @@ the [Babylon BTC Staking Litepaper](https://docs.babylonchain.io/assets/files/bt
       internal [bolt db](https://github.com/etcd-io/bbolt) storage.
 
 2. **Randomness Generation:**
-    - Generates lists
-      of [Schnorr randomness pairs](https://www.researchgate.net/publication/222835548_Schnorr_Randomness)
-      based on the EOTS key, chainID, and block height.
+    - Generates lists of EOTS randomness pairs based on the EOTS key, chainID, and
+      block height.
     - The randomness is deterministically generated and tied to specific parameters.
 
 3. **Signature Generation:**
