@@ -29,6 +29,12 @@ steps to set up a keyring using the `babylond` tool:
 
 ```bash
 $ babylond keys add <key-name> --keyring-backend test
+
+# response
+- address: bbn17qeu5e37rjvwgcajnz3cfn97pj48t4xr32fvkr
+  name: my-key
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Aq6iWE8W6bfeuN7NwyRGktTT41doFicHn4oD1L5a3mU1"}'
+  type: local
 ```
 
 It is recommended to use
@@ -37,10 +43,8 @@ keyring backend as it does not encrypt the keys on disk.
 
 #### 3. Get funds from Babylon testnet faucet
 
-Follow this guide
+Request funds to the above-created Babylon address by following this guide
 [Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds#2-request-funds-from-the-babylon-testnet-faucet)
-to request funds from the Babylon testnet faucet to the key created in the previous
-step.
 
 ### Configuration
 
