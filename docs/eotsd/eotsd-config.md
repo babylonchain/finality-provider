@@ -1,4 +1,4 @@
-# EOTS daemon (`eotsd`) configuration:
+## EOTS daemon (`eotsd`) configuration:
 
 The `eotscli` tool serve as control planes for the EOTS Daemon (`eotsd`). Below,
 instructions are provided for configuring the `eotsd` daemon.

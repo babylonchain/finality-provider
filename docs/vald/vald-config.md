@@ -1,8 +1,6 @@
-## Validator daemon (`vald`) configuration
+## Prerequisites
 
-### Prerequisites
-
-#### 1. Babylond Setup
+### 1. Babylond Setup
 
 Download and install the Babylon source code to access the `babylond` tool. For more
 information see
@@ -21,7 +19,7 @@ $ git checkout <release-tag>
 $ make install
 ```
 
-#### 2. Keyring Setup
+### 2. Keyring Setup
 
 The `vald` daemon requires a keyring with loaded funds to pay for the transactions.
 These transactions include randomness commits and vote submissions. Follow these
@@ -41,12 +39,12 @@ It is recommended to use
 the [test](https://docs.cosmos.network/v0.46/run-node/keyring.html#the-test-backend)
 keyring backend as it does not encrypt the keys on disk.
 
-#### 3. Get funds from Babylon testnet faucet
+### 3. Get funds from Babylon testnet faucet
 
 Request funds to the above-created Babylon address by following this guide
 [Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds#2-request-funds-from-the-babylon-testnet-faucet)
 
-### Configuration
+## Validator daemon (`vald`) configuration
 
 The `valcli` tools serve as control plane for the Validator Daemon (`vald`). Below,
 instructions are provided for configuring the daemons.

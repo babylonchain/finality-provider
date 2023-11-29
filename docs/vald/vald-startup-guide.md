@@ -1,10 +1,17 @@
-# Starting the Validator Daemon
+## Prerequisites
 
-Before proceeding, make sure you have installed the required binaries and configured
-the Validator daemon. If not, follow these steps:
+Before proceeding, ensure the following prerequisites are met:
 
-1. [Installing binaries](../../README.md#2-installation)
-2. [Validator Daemon Configuration](vald-config.md)
+1. **Installing Binaries:**
+   Follow the instructions in
+   the [installation section](../../README.md#2-installation) to install the required
+   binaries.
+
+2. **Validator Daemon Configuration:**
+   Follow the instructions in the [Validator Daemon Configuration](vald-config.md)
+   guide to configure the validator daemon.
+
+## Starting the Validator Daemon
 
 You can start the validator daemon using the following command:
 

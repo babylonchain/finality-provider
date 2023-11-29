@@ -1,10 +1,17 @@
-# Starting the EOTS Daemon
+## Prerequisites
 
-Before proceeding, make sure you have installed the required binaries and configured
-the EOTS daemon. If not, follow these steps:
+Before proceeding, ensure the following prerequisites are met:
 
-1. [Installing binaries](../../README.md#2-installation)
-2. [EOTS Daemon Configuration](eotsd-config.md)
+1. **Installing Binaries:**
+   Follow the instructions in
+   the [installation section](../../README.md#2-installation) to install the required
+   binaries.
+
+2. **EOTS Daemon Configuration:**
+   Follow the instructions in the [EOTS Daemon Configuration](eotsd-config.md) guide
+   to configure the EOTS daemon.
+
+## Starting the EOTS Daemon
 
 You can start the EOTS daemon using the following command:
 
