@@ -1,5 +1,19 @@
 # BTC-Validator
 
+**Table of content:**
+
+1. [Overview](#1-overview)
+    1. [EOTS Manager Daemon](#1-eots-manager-daemon)
+    2. [Validator Daemon](#2-validator-daemon)
+2. [Installation](#2-installation)
+    1. [Prerequisites](#prerequisites)
+    2. [Downloading the code](#downloading-the-code)
+    3. [Building and installing the binary](#building-and-installing-the-binary)
+3. [EOTS Daemon Configuration](#3-eots-daemon-configuration)
+4. [Starting the EOTS Daemon](#4-starting-the-eots-daemon)
+5. [Validator Daemon Configuration](#5-validator-daemon-configuration)
+6. [Starting the Validator Daemon](#6-starting-the-validator-daemon)
+
 ## 1. Overview
 
 BTC-Validator is a standalone program crafted for the creation and management of BTC
