@@ -14,7 +14,7 @@ You can start the EOTS daemon using the following command:
 $ eotsd
 ```
 
-This will start the rpc server at the address specified in the configuration on
+This will start the rpc server at the address specified in the configuration under
 the `RpcListener` field. It can also be overridden with custom address using
 the `--rpclistener` flag.
 
@@ -63,7 +63,7 @@ You can start the validator daemon using the following command:
 $ vald
 ```
 
-This will start the RPC server at the address specified in the configuration on
+This will start the RPC server at the address specified in the configuration under
 the `RawRPCListeners` field. A custom address can also be specified using
 the `--rpclisten` flag.
 
