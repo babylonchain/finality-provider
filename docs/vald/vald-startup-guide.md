@@ -1,8 +1,6 @@
 ## Prerequisites
 
-Before proceeding, ensure the following prerequisites are met:
-
-1. **Installing Binaries:**
+1. **Install Binaries:**
    Follow the instructions in
    the [installation section](../../README.md#2-installation) to install the required
    binaries.
