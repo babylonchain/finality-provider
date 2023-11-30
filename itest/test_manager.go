@@ -11,7 +11,6 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon/btcstaking"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -428,13 +427,13 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 
-	changeAddress, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
+	changeAddress, err := datagen.GenRandomBTCAddress(r, btcNetworkParams)
 	require.NoError(t, err)
 
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
-		&chaincfg.SimNetParams,
+		btcNetworkParams,
 		delBtcPrivKey,
 		validatorPks,
 		params.CovenantPks,
@@ -519,53 +518,57 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 
 func (tm *TestManager) InsertBTCUnbonding(
 	t *testing.T,
-	stakingTx *bstypes.BabylonBTCTaprootTx,
-	stakerPrivKey *btcec.PrivateKey,
-	validatorPk *btcec.PublicKey,
+	stakingTx *bstypes.BTCSlashingTx,
+	unbondingValue uint64,
+	delSK *btcec.PrivateKey,
+	validatorPks []*btcec.PublicKey,
+	changeAddress string,
+	slashingRate sdkmath.LegacyDec,
 ) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	params, err := tm.BabylonClient.QueryStakingParams()
-	require.NoError(t, err)
-	slashingAddr := params.SlashingAddress
 	stakingMsgTx, err := stakingTx.ToMsgTx()
 	require.NoError(t, err)
-	stakingTxChainHash := stakingTx.MustGetTxHash()
+	stkTxHash := stakingMsgTx.TxHash()
+
+	params, err := tm.BabylonClient.QueryStakingParams()
 	require.NoError(t, err)
 
-	stakingOutputIdx, err := btcstaking.GetIdxOutputCommitingToScript(
-		stakingMsgTx, stakingTx.Script, btcNetworkParams,
-	)
-	require.NoError(t, err)
+	unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
 
-	stakingValue := stakingMsgTx.TxOut[stakingOutputIdx].Value
-	fee := int64(1000)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	unbondingTx, slashUnbondingTx, err := datagen.GenBTCUnbondingSlashingTx(
+	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
 		r,
+		t,
 		btcNetworkParams,
-		stakerPrivKey,
-		validatorPk,
-		params.CovenantPk,
-		wire.NewOutPoint(&stakingTxChainHash, uint32(stakingOutputIdx)),
-		uint16(params.FinalizationTimeoutBlocks)+1,
-		stakingValue-fee,
-		slashingAddr,
+		delSK,
+		validatorPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		wire.NewOutPoint(&stkTxHash, 0),
+		unbondingTime,
+		int64(unbondingValue),
+		params.SlashingAddress, changeAddress,
+		slashingRate,
 	)
+
+	unbondingTxMsg := testUnbondingInfo.UnbondingTx
+
+	unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
 
-	unbondingTxMsg, err := unbondingTx.ToMsgTx()
-	require.NoError(t, err)
-
-	slashingTxSig, err := slashUnbondingTx.Sign(
+	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
 		unbondingTxMsg,
-		unbondingTx.Script,
-		stakerPrivKey,
-		btcNetworkParams,
+		0,
+		unbondingSlashingPathInfo.GetPkScriptPath(),
+		delSK,
 	)
+	require.NoError(t, err)
+
+	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
 	require.NoError(t, err)
 
 	_, err = tm.BabylonClient.CreateBTCUndelegation(
-		unbondingTx, slashUnbondingTx, slashingTxSig,
+		serializedUnbondingTx, uint32(unbondingTime), int64(unbondingValue), testUnbondingInfo.SlashingTx, unbondingSig,
 	)
 	require.NoError(t, err)
 }

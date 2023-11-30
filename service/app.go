@@ -330,7 +330,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	bbnPk, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+	_, bbnPk, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}

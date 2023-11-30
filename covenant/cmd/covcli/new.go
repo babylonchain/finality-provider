@@ -77,7 +77,7 @@ func createCovenantKey(ctx *cli.Context) error {
 	passphrase := ctx.String(passphraseFlag)
 	hdPath := ctx.String(hdPathFlag)
 
-	covenantPk, err := covenant.CreateCovenantKey(
+	_, covenantPk, err := covenant.CreateCovenantKey(
 		keyringDir,
 		chainID,
 		keyName,

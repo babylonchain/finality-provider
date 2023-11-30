@@ -50,7 +50,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		btcPk, err := types.NewBIP340PubKey(btcPkBytes)
 		require.NoError(t, err)
-		bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
+		_, bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
 		valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
