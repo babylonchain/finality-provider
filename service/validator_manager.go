@@ -192,14 +192,12 @@ func (vm *ValidatorManager) setValidatorSlashed(vi *ValidatorInstance) {
 	}
 }
 
-func (vm *ValidatorManager) Start() error {
+func (vm *ValidatorManager) StartValidator(valPk *bbntypes.BIP340PubKey, passphrase string) error {
+	// currently we expect that only a single validator started at a time
+	// we can remove the constraint when we want to run multiple validators
+	// in the same daemon
 	if vm.isStarted.Swap(true) {
-		return fmt.Errorf("the validator manager is already started")
-	}
-
-	storedValidators, err := vm.vs.ListRegisteredValidators()
-	if err != nil {
-		return err
+		return fmt.Errorf("a validator instance is already started")
 	}
 
 	vm.wg.Add(1)
@@ -208,10 +206,8 @@ func (vm *ValidatorManager) Start() error {
 	vm.wg.Add(1)
 	go vm.monitorStatusUpdate()
 
-	for _, v := range storedValidators {
-		if err := vm.addValidatorInstance(v.MustGetBIP340BTCPK(), ""); err != nil {
-			return err
-		}
+	if err := vm.addValidatorInstance(valPk, passphrase); err != nil {
+		return err
 	}
 
 	return nil

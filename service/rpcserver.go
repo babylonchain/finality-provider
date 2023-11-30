@@ -9,13 +9,10 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/lightningnetwork/lnd/signal"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
 	"github.com/babylonchain/btc-validator/proto"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 	"github.com/babylonchain/btc-validator/version"
 )
 
@@ -27,13 +24,7 @@ type rpcServer struct {
 
 	proto.UnimplementedBtcValidatorsServer
 
-	interceptor signal.Interceptor
-
 	app *ValidatorApp
-
-	logger *logrus.Logger
-
-	cfg *valcfg.Config
 
 	quit chan struct{}
 	wg   sync.WaitGroup
@@ -41,19 +32,13 @@ type rpcServer struct {
 
 // newRPCServer creates a new RPC sever from the set of input dependencies.
 func newRPCServer(
-	interceptor signal.Interceptor,
-	l *logrus.Logger,
-	cfg *valcfg.Config,
 	v *ValidatorApp,
-) (*rpcServer, error) {
+) *rpcServer {
 
 	return &rpcServer{
-		interceptor: interceptor,
-		logger:      l,
-		quit:        make(chan struct{}),
-		cfg:         cfg,
-		app:         v,
-	}, nil
+		quit: make(chan struct{}),
+		app:  v,
+	}
 }
 
 // Start signals that the RPC server starts accepting requests.
@@ -61,8 +46,6 @@ func (r *rpcServer) Start() error {
 	if atomic.AddInt32(&r.started, 1) != 1 {
 		return nil
 	}
-
-	r.logger.Infof("Starting RPC Server")
 
 	return nil
 }
@@ -73,8 +56,6 @@ func (r *rpcServer) Stop() error {
 	if atomic.AddInt32(&r.shutdown, 1) != 1 {
 		return nil
 	}
-
-	r.logger.Infof("Stopping RPC Server")
 
 	close(r.quit)
 

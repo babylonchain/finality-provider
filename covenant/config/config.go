@@ -183,7 +183,7 @@ func DefaultConfig() Config {
 	bbnCfg := valcfg.DefaultBBNConfig()
 	bbnCfg.Key = defaultCovenantKeyName
 	bbnCfg.KeyDirectory = DefaultCovenantDir
-	return Config{
+	cfg := Config{
 		LogLevel:        defaultLogLevel,
 		CovenantDir:     DefaultCovenantDir,
 		DumpCfg:         false,
@@ -194,4 +194,8 @@ func DefaultConfig() Config {
 		ActiveNetParams: chaincfg.Params{},
 		BabylonConfig:   &bbnCfg,
 	}
+
+	_ = cfg.Validate()
+
+	return cfg
 }

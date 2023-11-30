@@ -164,7 +164,7 @@ func createValDaemon(ctx *cli.Context) error {
 		return err
 	}
 
-	description, err := getDesciptionFromContext(ctx)
+	description, err := getDescriptionFromContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func createValDaemon(ctx *cli.Context) error {
 	return nil
 }
 
-func getDesciptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
+func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
 	// get information for description
 	monikerStr := ctx.String(monikerFlag)
 	identityStr := ctx.String(identityFlag)

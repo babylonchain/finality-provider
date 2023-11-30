@@ -11,7 +11,6 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 )
 
@@ -25,11 +24,8 @@ var (
 // activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1)
+	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
-
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -49,63 +45,12 @@ func TestValidatorLifeCycle(t *testing.T) {
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 }
 
-// TestMultipleValidators tests starting with multiple validators
-func TestMultipleValidators(t *testing.T) {
-	n := 3
-	tm := StartManagerWithValidator(t, n)
-	defer tm.Stop(t)
-
-	app := tm.Va
-	valInstances := app.ListValidatorInstances()
-
-	// submit BTC delegations for each validator
-	for _, valIns := range valInstances {
-		tm.Wg.Add(1)
-		go func(v *service.ValidatorInstance) {
-			defer tm.Wg.Done()
-			// check the public randomness is committed
-			tm.WaitForValPubRandCommitted(t, v)
-
-			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, v.MustGetBtcPk(), stakingTime, stakingAmount)
-		}(valIns)
-	}
-	tm.Wg.Wait()
-
-	// check the 3 BTC delegations are pending
-	dels := tm.WaitForNPendingDels(t, 3)
-
-	// submit Covenant sigs for each delegation
-	for _, del := range dels {
-		tm.Wg.Add(1)
-		go func(btcDel *types.Delegation) {
-			defer tm.Wg.Done()
-		}(del)
-	}
-	tm.Wg.Wait()
-
-	for _, valIns := range valInstances {
-		tm.Wg.Add(1)
-		go func(v *service.ValidatorInstance) {
-			defer tm.Wg.Done()
-			_ = tm.WaitForValNActiveDels(t, v.GetBtcPkBIP340(), 1)
-		}(valIns)
-	}
-	tm.Wg.Wait()
-
-	// check there's a block finalized
-	_ = tm.WaitForNFinalizedBlocks(t, 1)
-}
-
 // TestDoubleSigning tests the attack scenario where the validator
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
 func TestDoubleSigning(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1)
+	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
-
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -144,11 +89,8 @@ func TestDoubleSigning(t *testing.T) {
 
 // TestFastSync tests the fast sync process where the validator is terminated and restarted with fast sync
 func TestFastSync(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1)
+	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
-
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -187,11 +129,8 @@ func TestFastSync(t *testing.T) {
 }
 
 func TestValidatorUnbondingSigSubmission(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1)
+	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
-
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -210,10 +149,8 @@ func TestValidatorUnbondingSigSubmission(t *testing.T) {
 }
 
 func TestCovenantLifeCycle(t *testing.T) {
-	tm := StartManagerWithValidator(t, 1)
+	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
-	app := tm.Va
-	valIns := app.ListValidatorInstances()[0]
 
 	// send BTC delegation and make sure it's deep enough in btclightclient module
 	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)

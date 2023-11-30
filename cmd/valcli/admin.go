@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
@@ -51,6 +53,12 @@ func dumpCfg(c *cli.Context) error {
 			fmt.Sprintf("config already exists under provided path: %s", configPath),
 			1,
 		)
+	}
+
+	// ensure the directory exists
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		return err
 	}
 
 	defaultConfig := valcfg.DefaultConfig()

@@ -211,11 +211,7 @@ func (app *ValidatorApp) RegisterValidator(valPkStr string) (*RegisterValidatorR
 // StartHandlingValidator starts a validator instance with the given Babylon public key
 // Note: this should be called right after the validator is registered
 func (app *ValidatorApp) StartHandlingValidator(valPk *bbntypes.BIP340PubKey, passphrase string) error {
-	return app.validatorManager.addValidatorInstance(valPk, passphrase)
-}
-
-func (app *ValidatorApp) StartHandlingValidators() error {
-	return app.validatorManager.Start()
+	return app.validatorManager.StartValidator(valPk, passphrase)
 }
 
 // NOTE: this is not safe in production, so only used for testing purpose
@@ -228,6 +224,7 @@ func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) 
 	return record.PrivKey, nil
 }
 
+// Start starts only the validator daemon without any validator instances
 func (app *ValidatorApp) Start() error {
 	var startErr error
 	app.startOnce.Do(func() {
@@ -238,11 +235,6 @@ func (app *ValidatorApp) Start() error {
 
 		app.sentWg.Add(1)
 		go app.registrationLoop()
-
-		if err := app.StartHandlingValidators(); err != nil {
-			startErr = err
-			return
-		}
 	})
 
 	return startErr

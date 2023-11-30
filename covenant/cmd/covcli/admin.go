@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
@@ -42,6 +44,12 @@ func dumpCfg(c *cli.Context) error {
 
 	if covcfg.FileExists(configPath) {
 		return fmt.Errorf("config already exists under provided path: %s", configPath)
+	}
+
+	// ensure the directory exists
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, 0700); err != nil {
+		return err
 	}
 
 	defaultConfig := covcfg.DefaultConfig()

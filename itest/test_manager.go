@@ -23,7 +23,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -90,7 +89,7 @@ func StartManager(t *testing.T) *TestManager {
 	covenantConfig := defaultCovenantConfig(testDir)
 	err = covenantConfig.Validate()
 	require.NoError(t, err)
-	covenantPk, err := covenant.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
+	_, covenantPk, err := covenant.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
 	require.NoError(t, err)
 
 	// 2. prepare Babylon node
@@ -148,55 +147,53 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithValidator(t *testing.T, n int) *TestManager {
+func StartManagerWithValidator(t *testing.T) (*TestManager, *service.ValidatorInstance) {
 	tm := StartManager(t)
 	app := tm.Va
 
-	for i := 0; i < n; i++ {
-		valName := valNamePrefix + strconv.Itoa(i)
-		moniker := monikerPrefix + strconv.Itoa(i)
-		commission := sdktypes.DecCoin{Denom: "bbn", Amount: sdkmath.LegacyZeroDec()}
-		res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
-		require.NoError(t, err)
-		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
-		require.NoError(t, err)
-		err = app.StartHandlingValidator(res.ValPk, passphrase)
-		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(res.ValPk)
-		require.NoError(t, err)
-		require.True(t, valIns.IsRunning())
-		require.NoError(t, err)
+	valName := valNamePrefix + strconv.Itoa(0)
+	moniker := monikerPrefix + strconv.Itoa(0)
+	commission := sdkmath.LegacyZeroDec()
+	res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
+	require.NoError(t, err)
+	_, err = app.RegisterValidator(res.ValPk.MarshalHex())
+	require.NoError(t, err)
+	err = app.StartHandlingValidator(res.ValPk, passphrase)
+	require.NoError(t, err)
+	valIns, err := app.GetValidatorInstance(res.ValPk)
+	require.NoError(t, err)
+	require.True(t, valIns.IsRunning())
+	require.NoError(t, err)
 
-		// check validators on Babylon side
-		require.Eventually(t, func() bool {
-			vals, err := tm.BabylonClient.QueryValidators()
-			if err != nil {
-				t.Logf("failed to query validtors from Babylon %s", err.Error())
+	// check validators on Babylon side
+	require.Eventually(t, func() bool {
+		vals, err := tm.BabylonClient.QueryValidators()
+		if err != nil {
+			t.Logf("failed to query validtors from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(vals) != 1 {
+			return false
+		}
+
+		for _, v := range vals {
+			if !strings.Contains(v.Description.Moniker, monikerPrefix) {
 				return false
 			}
-
-			if len(vals) != i+1 {
+			if !v.Commission.Equal(sdkmath.LegacyZeroDec()) {
 				return false
 			}
+		}
 
-			for _, v := range vals {
-				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
-					return false
-				}
-				if !v.Commission.Equal(commission.Amount) {
-					return false
-				}
-			}
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-			return true
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
-	}
+	require.Equal(t, 1, len(app.ListValidatorInstances()))
 
-	require.Equal(t, n, len(app.ListValidatorInstances()))
+	t.Logf("the test manager is running with a validator")
 
-	t.Logf("the test manager is running with %v validators", n)
-
-	return tm
+	return tm, valIns
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
@@ -309,7 +306,7 @@ func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, statu
 
 func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTCDelegationStatus {
 	if del.BtcUndelegation != nil {
-		if del.BtcUndelegation.CovenantSlashingSig != nil &&
+		if del.BtcUndelegation.CovenantSlashingSigs != nil &&
 			del.BtcUndelegation.CovenantUnbondingSigs != nil {
 			return bstypes.BTCDelegationStatus_UNBONDED
 		}
@@ -324,7 +321,7 @@ func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTC
 	}
 
 	if del.StartHeight <= btcHeight && btcHeight+w <= del.EndHeight {
-		if del.CovenantSig != nil {
+		if del.CovenantSigs != nil {
 			return bstypes.BTCDelegationStatus_ACTIVE
 		} else {
 			return bstypes.BTCDelegationStatus_PENDING
