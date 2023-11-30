@@ -1,48 +1,11 @@
 ## Prerequisites
 
-### 1. Babylond Setup
-
-Download and install the Babylon source code to access the `babylond` tool. For more
-information see
-the [Babylon installation docs](https://docs.babylonchain.io/docs/user-guides/installation#step-2-build-and-install-babylon-)
-
-```bash
-# clone babylon source code
-$ git clone git@github.com:babylonchain/babylon.git 
-
-# select a specific version from the official releases page
-$ cd babylon
-$ git checkout <release-tag>
-
-# build and install the binaries 
-# to your $GOPATH/bin directory
-$ make install
-```
-
-### 2. Keyring Setup
+### Create a Babylon keyring with funds
 
 The `vald` daemon requires a keyring with loaded funds to pay for the transactions.
-These transactions include randomness commits and vote submissions. Follow these
-steps to set up a keyring using the `babylond` tool:
-
-```bash
-$ babylond keys add <key-name> --keyring-backend test
-
-# response
-- address: bbn17qeu5e37rjvwgcajnz3cfn97pj48t4xr32fvkr
-  name: my-key
-  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Aq6iWE8W6bfeuN7NwyRGktTT41doFicHn4oD1L5a3mU1"}'
-  type: local
-```
-
-It is recommended to use
-the [test](https://docs.cosmos.network/v0.46/run-node/keyring.html#the-test-backend)
-keyring backend as it does not encrypt the keys on disk.
-
-### 3. Get funds from Babylon testnet faucet
-
-Request funds to the above-created Babylon address by following this guide
-[Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds#2-request-funds-from-the-babylon-testnet-faucet)
+These transactions include randomness commits and vote submissions. Follow this
+guide [Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds#2-request-funds-from-the-babylon-testnet-faucet)
+to create a keyring and request funds.
 
 ## Validator daemon (`vald`) configuration
 
@@ -76,8 +39,8 @@ Below are some important parameters of the `vald.conf` file.
 **Note:**
 
 The `Key` parameter in the config below is the name of the key in the keyring to use
-for signing transactions. Use the key name you created in
-the [Keyring Setup](#2-Keyring-Setup)
+for signing transactions. Use the key name you created
+in [Create a Babylon keyring with funds](#create-a-babylon-keyring-with-funds)
 
 ```bash
 # Address of the EOTS Daemon
