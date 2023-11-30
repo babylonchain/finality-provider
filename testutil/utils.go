@@ -5,15 +5,14 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/btc-validator/testutil/mocks"
 	"github.com/babylonchain/btc-validator/types"
 )
 
-func EmptyDescription() *stakingtypes.Description {
-	return &stakingtypes.Description{}
+func EmptyDescription() []byte {
+	return []byte("empty description")
 }
 
 func ZeroCommissionRate() *sdkmath.LegacyDec {

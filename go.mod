@@ -29,7 +29,6 @@ require (
 	go.uber.org/zap v1.26.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
-	sigs.k8s.io/yaml v1.4.0
 )
 
 require (
@@ -234,6 +233,7 @@ require (
 	nhooyr.io/websocket v1.8.6 // indirect
 	pgregory.net/rapid v1.1.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 replace (

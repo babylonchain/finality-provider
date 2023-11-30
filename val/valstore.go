@@ -8,7 +8,6 @@ import (
 	"github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	gproto "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/btc-validator/proto"
@@ -20,7 +19,7 @@ const (
 	validatorPrefix = "validator"
 )
 
-func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName, chainID string, pop *bstypes.ProofOfPossession, des *stakingtypes.Description, com *sdkmath.LegacyDec) *proto.StoreValidator {
+func NewStoreValidator(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName, chainID string, pop *bstypes.ProofOfPossession, des []byte, com *sdkmath.LegacyDec) *proto.StoreValidator {
 	return &proto.StoreValidator{
 		KeyName:   keyName,
 		BabylonPk: babylonPk.Bytes(),

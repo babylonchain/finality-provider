@@ -181,7 +181,7 @@ func createValDaemon(ctx *cli.Context) error {
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
-		&description,
+		description,
 		&commissionRate,
 	)
 
@@ -194,7 +194,7 @@ func createValDaemon(ctx *cli.Context) error {
 	return nil
 }
 
-func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
+func getDescriptionFromContext(ctx *cli.Context) ([]byte, error) {
 	// get information for description
 	monikerStr := ctx.String(monikerFlag)
 	identityStr := ctx.String(identityFlag)
@@ -203,7 +203,13 @@ func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, erro
 	detailsStr := ctx.String(detailsFlag)
 
 	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContractStr, detailsStr)
-	return description.EnsureLength()
+
+	des, err := description.EnsureLength()
+	if err != nil {
+		return nil, err
+	}
+
+	return des.Marshal()
 }
 
 var lsValDaemonCmd = cli.Command{

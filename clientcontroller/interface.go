@@ -35,7 +35,7 @@ type ValidatorAPIs interface {
 		valPk *btcec.PublicKey,
 		pop []byte,
 		commission *big.Int,
-		description string,
+		description []byte,
 	) (*types.TxResponse, error)
 
 	// CommitPubRandList commits a list of EOTS public randomness the consumer chain

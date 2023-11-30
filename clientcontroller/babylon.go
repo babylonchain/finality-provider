@@ -35,7 +35,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"sigs.k8s.io/yaml"
 
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -279,7 +278,7 @@ func (bc *BabylonController) RegisterValidator(
 	valPk *btcec.PublicKey,
 	pop []byte,
 	commission *big.Int,
-	description string,
+	description []byte,
 ) (*types.TxResponse, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
@@ -289,8 +288,8 @@ func (bc *BabylonController) RegisterValidator(
 	sdkCommission := math.LegacyNewDecFromBigInt(commission)
 
 	var sdkDescription sttypes.Description
-	if err := yaml.Unmarshal([]byte(description), &sdkDescription); err != nil {
-		return nil, fmt.Errorf("invalid descirption: %w", err)
+	if err := sdkDescription.Unmarshal(description); err != nil {
+		return nil, fmt.Errorf("invalid description: %w", err)
 	}
 
 	msg := &btcstakingtypes.MsgCreateBTCValidator{

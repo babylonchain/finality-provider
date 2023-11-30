@@ -10,7 +10,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -285,7 +284,7 @@ func (app *ValidatorApp) Stop() error {
 
 func (app *ValidatorApp) CreateValidator(
 	keyName, chainID, passPhrase, hdPath string,
-	description *stakingtypes.Description,
+	description []byte,
 	commission *sdkmath.LegacyDec,
 ) (*CreateValidatorResult, error) {
 
