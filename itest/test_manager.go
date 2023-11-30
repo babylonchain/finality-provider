@@ -1,7 +1,6 @@
 package e2etest
 
 import (
-	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -420,47 +419,31 @@ func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateK
 	return record.PrivKey
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// examine staking params
 	params, err := tm.BabylonClient.QueryStakingParams()
-	slashingAddr := params.SlashingAddress
-	require.NoError(t, err)
-	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
-	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-	covenantPk := tm.BabylonHandler.GetCovenantPk().MustToBTCPK()
-	require.NoError(t, err)
-	require.Equal(t, params.CovenantPk.SerializeCompressed()[1:], covenantPk.SerializeCompressed()[1:])
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 
-	// validator BTC key pairs, staking tx and slashing tx
-	valBtcPrivKey, valBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
+	changeAddress, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
 	require.NoError(t, err)
 
-	// generate staking tx and slashing tx
-	stakingTimeBlocks := uint16(math.MaxUint16)
-	testStakingInfo := datagen.GenBTCStakingSlashingTx(
+	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
-		btcNetworkParams,
+		&chaincfg.SimNetParams,
 		delBtcPrivKey,
-		[]*btcec.PublicKey{valBtcPubKey},
-		covenantBTCPKs,
-		1,
-		stakingTimeBlocks,
-		stakingValue,
-		params.SlashingAddress, changeAddress.EncodeAddress(),
-		params.SlashingRate,
+		validatorPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		stakingTime,
+		stakingAmount,
+		params.SlashingAddress, changeAddress.String(),
+		sdkmath.LegacyNewDecFromBigInt(params.SlashingRate),
 	)
-	require.NoError(t, err)
-
-	// get msgTx
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	require.NoError(t, err)
 
 	// delegator Babylon key pairs
 	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
@@ -473,7 +456,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	// create and insert BTC headers which include the staking tx to get staking tx info
 	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), stakingMsgTx)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
 	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
@@ -492,20 +475,32 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	_, err = tm.BabylonClient.InsertBtcBlockHeaders(headers)
 	require.NoError(t, err)
 	btcHeader := blockWithStakingTx.HeaderBytes
-	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, stakingTx.Tx, blockWithStakingTx.SpvProof.MerkleNodes)
+	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
+	require.NoError(t, err)
+	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
+
+	slashignSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
 
 	// delegator sig
-	delegatorSig, err := slashingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
+	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
+		testStakingInfo.StakingTx,
+		0,
+		slashignSpendInfo.GetPkScriptPath(),
 		delBtcPrivKey,
-		btcNetworkParams,
 	)
 	require.NoError(t, err)
 
 	// submit the BTC delegation to Babylon
 	_, err = tm.BabylonClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey), pop, stakingTx, txInfo, slashingTx, delegatorSig)
+		delBabylonPubKey.(*secp256k1.PubKey),
+		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
+		pop,
+		uint32(stakingTime),
+		stakingAmount,
+		txInfo,
+		testStakingInfo.SlashingTx,
+		delegatorSig)
 	require.NoError(t, err)
 
 	return &TestDelegationData{
@@ -513,8 +508,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 		DelegatorKey:            delBtcPubKey,
 		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
 		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		StakingTx:               stakingTx,
-		SlashingTx:              slashingTx,
+		SlashingTx:              testStakingInfo.SlashingTx,
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
 		SlashingAddr:            tm.BabylonHandler.GetSlashingAddress(),
