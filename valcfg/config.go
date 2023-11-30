@@ -14,7 +14,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
-	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/sirupsen/logrus"
 
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
@@ -54,6 +53,7 @@ var (
 	defaultLogDir             = filepath.Join(DefaultValdDir, defaultLogDirname)
 	defaultActiveNetParams    = chaincfg.SimNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
+	defaultRpcListener        = "localhost:" + strconv.Itoa(DefaultRPCPort)
 )
 
 // Config is the main config for the vald cli command
@@ -93,9 +93,7 @@ type Config struct {
 
 	ValidatorModeConfig *ValidatorConfig `group:"validator" namespace:"validator"`
 
-	GRpcServerConfig *GRpcServerConfig
-
-	RpcListeners []net.Addr
+	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., localhost:1234"`
 }
 
 func DefaultConfig() Config {
@@ -104,7 +102,7 @@ func DefaultConfig() Config {
 	pollerCfg := DefaultChainPollerConfig()
 	valCfg := DefaultValidatorConfig()
 	eotsMngrCfg := DefaultEOTSManagerConfig()
-	return Config{
+	cfg := Config{
 		ValdDir:                        DefaultValdDir,
 		ChainName:                      defaultChainName,
 		ConfigFile:                     DefaultConfigFile,
@@ -130,19 +128,12 @@ func DefaultConfig() Config {
 		BitcoinNetwork:                 defaultBitcoinNetwork,
 		ActiveNetParams:                defaultActiveNetParams,
 		EOTSManagerAddress:             defaultEOTSManagerAddress,
+		RpcListener:                    defaultRpcListener,
 	}
-}
 
-// usageError is an error type that signals a problem with the supplied flags.
-type usageError struct {
-	err error
-}
+	_ = cfg.Validate()
 
-// Error returns the error string.
-//
-// NOTE: This is part of the error interface.
-func (u *usageError) Error() string {
-	return u.err.Error()
+	return cfg
 }
 
 func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) {
@@ -172,7 +163,7 @@ func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) 
 //  2. Pre-parse the command line to check for an alternative config file
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
-func LoadConfig() (*Config, *logrus.Logger, error) {
+func LoadConfig(filePath string) (*Config, *logrus.Logger, error) {
 	// Pre-parse the command line options to pick up an alternative config
 	// file.
 	preCfg := DefaultConfig()
@@ -180,39 +171,16 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 		return nil, nil, err
 	}
 
-	// Show the version and exit if the version flag was specified.
-	appName := filepath.Base(os.Args[0])
-	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-	usageMessage := fmt.Sprintf("Use %s -h to show usage", appName)
-
-	// If the config file path has not been modified by the user, then
-	// we'll use the default config file path. However, if the user has
-	// modified their default dir, then we should assume they intend to use
-	// the config file within it.
-	configFileDir := CleanAndExpandPath(preCfg.ValdDir)
-	configFilePath := CleanAndExpandPath(preCfg.ConfigFile)
-	switch {
-	case configFileDir != DefaultValdDir &&
-		configFilePath == DefaultConfigFile:
-
-		configFilePath = filepath.Join(
-			configFileDir, defaultConfigFileName,
-		)
-
-	// User did specify an explicit --configfile, so we check that it does
-	// exist under that path to avoid surprises.
-	case configFilePath != DefaultConfigFile:
-		if !FileExists(configFilePath) {
-			return nil, nil, fmt.Errorf("specified config file does "+
-				"not exist in %s", configFilePath)
-		}
+	if !FileExists(filePath) {
+		return nil, nil, fmt.Errorf("specified config file does "+
+			"not exist in %s", filePath)
 	}
 
 	// Next, load any additional configuration options from the file.
 	var configFileError error
 	cfg := preCfg
 	fileParser := flags.NewParser(&cfg, flags.Default)
-	err := flags.NewIniParser(fileParser).ParseFile(configFilePath)
+	err := flags.NewIniParser(fileParser).ParseFile(filePath)
 	if err != nil {
 		// If it's a parsing related error, then we'll return
 		// immediately, otherwise we can proceed as possibly the config
@@ -224,33 +192,18 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 		configFileError = err
 	}
 
-	// Finally, parse the remaining command line options again to ensure
-	// they take precedence.
-	flagParser := flags.NewParser(&cfg, flags.Default)
-	if _, err := flagParser.Parse(); err != nil {
-		return nil, nil, err
-	}
-
 	cfgLogger := logrus.New()
 	cfgLogger.Out = os.Stdout
 	// Make sure everything we just loaded makes sense.
-	cleanCfg, err := ValidateConfig(cfg)
-	if err != nil {
-		// Log help message in case of usage error.
-		if _, ok := err.(*usageError); ok {
-			cfgLogger.Warnf("Incorrect usage: %v", usageMessage)
-		}
-
-		cfgLogger.Warnf("Error validating config: %v", err)
+	if err := cfg.Validate(); err != nil {
 		return nil, nil, err
 	}
 
 	// ignore error here as we already validated the value
-	logRuslLevel, _ := logrus.ParseLevel(cleanCfg.DebugLevel)
+	logRuslLevel, _ := logrus.ParseLevel(cfg.DebugLevel)
 
-	// TODO: Add log rotation
 	// At this point we know config is valid, create logger which also log to file
-	logFilePath := filepath.Join(cleanCfg.LogDir, defaultLogFilename)
+	logFilePath := filepath.Join(cfg.LogDir, defaultLogFilename)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, nil, err
@@ -265,10 +218,10 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	// options.  Note this should go directly before the return.
 	if configFileError != nil {
 		cfgLogger.Warnf("%v", configFileError)
-		if cleanCfg.DumpCfg {
-			cfgLogger.Infof("Writing configuration file to %s", configFilePath)
+		if cfg.DumpCfg {
+			cfgLogger.Infof("Writing configuration file to %s", filePath)
 			fileParser := flags.NewParser(&cfg, flags.Default)
-			err := flags.NewIniParser(fileParser).WriteFile(configFilePath, flags.IniIncludeComments|flags.IniIncludeDefaults)
+			err := flags.NewIniParser(fileParser).WriteFile(filePath, flags.IniIncludeComments|flags.IniIncludeDefaults)
 			if err != nil {
 				cfgLogger.Warnf("Error writing configuration file: %v", err)
 				return nil, nil, err
@@ -276,13 +229,13 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 		}
 	}
 
-	return cleanCfg, cfgLogger, nil
+	return &cfg, cfgLogger, nil
 }
 
-// ValidateConfig check the given configuration to be sane. This makes sure no
+// Validate checks the given configuration to be sane. This makes sure no
 // illegal values or combination of values are set. All file system paths are
 // normalized. The cleaned up config is returned on success.
-func ValidateConfig(cfg Config) (*Config, error) {
+func (cfg *Config) Validate() error {
 	// If the provided stakerd directory is not the default, we'll modify the
 	// path to all the files and directories that will live within it.
 	valdDir := CleanAndExpandPath(cfg.ValdDir)
@@ -291,10 +244,6 @@ func ValidateConfig(cfg Config) (*Config, error) {
 		cfg.LogDir = filepath.Join(valdDir, defaultLogDirname)
 	}
 
-	funcName := "ValidateConfig"
-	mkErr := func(format string, args ...interface{}) error {
-		return fmt.Errorf(funcName+": "+format, args...)
-	}
 	makeDirectory := func(dir string) error {
 		err := os.MkdirAll(dir, 0700)
 		if err != nil {
@@ -309,8 +258,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 				}
 			}
 
-			str := "Failed to create vald directory '%s': %v"
-			return mkErr(str, dir, err)
+			return fmt.Errorf("failed to create dir %s: %w", dir, err)
 		}
 
 		return nil
@@ -336,8 +284,7 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	case "signet":
 		cfg.ActiveNetParams = chaincfg.SigNetParams
 	default:
-		return nil, mkErr(fmt.Sprintf("invalid network: %v",
-			cfg.BitcoinNetwork))
+		return fmt.Errorf("invalid network: %v", cfg.BitcoinNetwork)
 	}
 
 	// Create the vald directory and all other subdirectories if they
@@ -348,38 +295,22 @@ func ValidateConfig(cfg Config) (*Config, error) {
 	}
 	for _, dir := range dirs {
 		if err := makeDirectory(dir); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	// At least one RPCListener is required. So listen on localhost per
-	// default.
-	if len(cfg.GRpcServerConfig.RawRPCListeners) == 0 {
-		addr := fmt.Sprintf("localhost:%d", DefaultRPCPort)
-		cfg.GRpcServerConfig.RawRPCListeners = append(
-			cfg.GRpcServerConfig.RawRPCListeners, addr,
-		)
-	}
-
 	_, err := logrus.ParseLevel(cfg.DebugLevel)
-
 	if err != nil {
-		return nil, mkErr("error parsing debuglevel: %v", err)
+		return err
 	}
 
-	// Add default port to all RPC listener addresses if needed and remove
-	// duplicate addresses.
-	cfg.RpcListeners, err = lncfg.NormalizeAddresses(
-		cfg.GRpcServerConfig.RawRPCListeners, strconv.Itoa(DefaultRPCPort),
-		net.ResolveTCPAddr,
-	)
-
+	_, err = net.ResolveTCPAddr("tcp", cfg.RpcListener)
 	if err != nil {
-		return nil, mkErr("error normalizing RPC listen addrs: %v", err)
+		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
 	}
 
 	// All good, return the sanitized result.
-	return &cfg, nil
+	return nil
 }
 
 // FileExists reports whether the named file or directory exists.
@@ -417,8 +348,4 @@ func CleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but the variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
-}
-
-type GRpcServerConfig struct {
-	RawRPCListeners []string `long:"rpclisten" description:"Add an interface/port/socket to listen for RPC connections"`
 }

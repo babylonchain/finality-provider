@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -59,8 +58,7 @@ func startCovenantFn(ctx *cli.Context) error {
 	// Hook interceptor for os signals.
 	shutdownInterceptor, err := signal.Intercept()
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
 
 	srv := covsrv.NewCovenantServer(cfgLogger, ce, shutdownInterceptor)
@@ -68,9 +66,5 @@ func startCovenantFn(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create covenant server: %w", err)
 	}
 
-	if err := srv.RunUntilShutdown(); err != nil {
-		return err
-	}
-
-	return ce.Start()
+	return srv.RunUntilShutdown()
 }

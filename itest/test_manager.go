@@ -147,55 +147,53 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithValidator(t *testing.T, n int) *TestManager {
+func StartManagerWithValidator(t *testing.T) (*TestManager, *service.ValidatorInstance) {
 	tm := StartManager(t)
 	app := tm.Va
 
-	for i := 0; i < n; i++ {
-		valName := valNamePrefix + strconv.Itoa(i)
-		moniker := monikerPrefix + strconv.Itoa(i)
-		commission := sdktypes.ZeroDec()
-		res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
-		require.NoError(t, err)
-		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
-		require.NoError(t, err)
-		err = app.StartHandlingValidator(res.ValPk, passphrase)
-		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(res.ValPk)
-		require.NoError(t, err)
-		require.True(t, valIns.IsRunning())
-		require.NoError(t, err)
+	valName := valNamePrefix + strconv.Itoa(0)
+	moniker := monikerPrefix + strconv.Itoa(0)
+	commission := sdktypes.ZeroDec()
+	res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, newDescription(moniker), &commission)
+	require.NoError(t, err)
+	_, err = app.RegisterValidator(res.ValPk.MarshalHex())
+	require.NoError(t, err)
+	err = app.StartHandlingValidator(res.ValPk, passphrase)
+	require.NoError(t, err)
+	valIns, err := app.GetValidatorInstance(res.ValPk)
+	require.NoError(t, err)
+	require.True(t, valIns.IsRunning())
+	require.NoError(t, err)
 
-		// check validators on Babylon side
-		require.Eventually(t, func() bool {
-			vals, err := tm.BabylonClient.QueryValidators()
-			if err != nil {
-				t.Logf("failed to query validtors from Babylon %s", err.Error())
+	// check validators on Babylon side
+	require.Eventually(t, func() bool {
+		vals, err := tm.BabylonClient.QueryValidators()
+		if err != nil {
+			t.Logf("failed to query validtors from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(vals) != 1 {
+			return false
+		}
+
+		for _, v := range vals {
+			if !strings.Contains(v.Description.Moniker, monikerPrefix) {
 				return false
 			}
-
-			if len(vals) != i+1 {
+			if !v.Commission.Equal(sdktypes.ZeroDec()) {
 				return false
 			}
+		}
 
-			for _, v := range vals {
-				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
-					return false
-				}
-				if !v.Commission.Equal(sdktypes.ZeroDec()) {
-					return false
-				}
-			}
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-			return true
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
-	}
+	require.Equal(t, 1, len(app.ListValidatorInstances()))
 
-	require.Equal(t, n, len(app.ListValidatorInstances()))
+	t.Logf("the test manager is running with a validator")
 
-	t.Logf("the test manager is running with %v validators", n)
-
-	return tm
+	return tm, valIns
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
