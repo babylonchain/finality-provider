@@ -1,6 +1,6 @@
 ## EOTS daemon (`eotsd`) configuration:
 
-The `eotscli` tool serve as control planes for the EOTS Daemon (`eotsd`). Below,
+The `eotscli` tool serves as a control plane for the EOTS Daemon (`eotsd`). Below,
 instructions are provided for configuring the `eotsd` daemon.
 
 The `eotscli admin dump-config` command initializes a home directory for the EOTS

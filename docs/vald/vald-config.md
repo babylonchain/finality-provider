@@ -46,8 +46,8 @@ Request funds to the above-created Babylon address by following this guide
 
 ## Validator daemon (`vald`) configuration
 
-The `valcli` tools serve as control plane for the Validator Daemon (`vald`). Below,
-instructions are provided for configuring the daemons.
+The `valcli` tools serves as a control plane for the Validator Daemon (`vald`).
+Below, instructions are provided for configuring the daemons.
 
 The `valcli admin dump-config` command initializes a home directory for the BTC
 validator daemon. This directory is created in the default home location or in a
