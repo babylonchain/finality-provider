@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
@@ -9,6 +6,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/types"
@@ -31,7 +29,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
@@ -56,7 +54,7 @@ func TestDoubleSigning(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
@@ -76,7 +74,7 @@ func TestDoubleSigning(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
 		Height: finalizedBlocks[0].Height,
-		Hash:   datagen.GenRandomLastCommitHash(r),
+		Hash:   datagen.GenRandomAppHash(r),
 	}
 	_, extractedKey, err := valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)
@@ -96,7 +94,7 @@ func TestFastSync(t *testing.T) {
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
