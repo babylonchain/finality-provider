@@ -1,6 +1,6 @@
 ## Prerequisites
 
-### Create a Babylon keyring with funds
+#### Create a Babylon keyring with funds
 
 The `vald` daemon requires a keyring with loaded funds to pay for the transactions.
 These transactions include randomness commits and vote submissions. Follow this
