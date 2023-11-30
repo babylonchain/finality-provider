@@ -1,10 +1,12 @@
 package service_test
 
 import (
+	"encoding/hex"
 	"math/rand"
 	"os"
 	"testing"
 
+	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -48,7 +50,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		cfg.ValidatorModeConfig.AutoChainScanningMode = false
 		cfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
@@ -106,33 +108,15 @@ func FuzzAddCovenantSig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		// create validator app with db and mocked Babylon client
-		cfg := valcfg.DefaultConfig()
-		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-		cfg.BabylonConfig.KeyDirectory = t.TempDir()
-		defer func() {
-			err := os.RemoveAll(cfg.DatabaseConfig.Path)
-			require.NoError(t, err)
-			err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
-			require.NoError(t, err)
-			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
-			require.NoError(t, err)
-		}()
+		params := testutil.GenRandomParams(r, t)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+2)
-		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight)
-		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
-		require.NoError(t, err)
-		logger := logrus.New()
-		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
-		require.NoError(t, err)
-		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logrus.New())
-		require.NoError(t, err)
+		mockClientController := testutil.PrepareMockedClientController(t, r, finalizedHeight, currentHeight, params)
 
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
-		covenantPk, err := covenant.CreateCovenantKey(
+		covenantSk, covenantPk, err := covenant.CreateCovenantKey(
 			covenantConfig.BabylonConfig.KeyDirectory,
 			covenantConfig.BabylonConfig.ChainID,
 			covenantConfig.BabylonConfig.Key,
@@ -141,57 +125,83 @@ func FuzzAddCovenantSig(f *testing.F) {
 			hdPath,
 		)
 		require.NoError(t, err)
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logger)
-		require.NoError(t, err)
 
-		err = app.Start()
+		// create and start covenant emulator
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logrus.New())
 		require.NoError(t, err)
 		err = ce.Start()
 		require.NoError(t, err)
 		defer func() {
-			err = app.Stop()
-			require.NoError(t, err)
 			err = ce.Stop()
+			require.NoError(t, err)
+			err := os.RemoveAll(covenantConfig.CovenantDir)
 			require.NoError(t, err)
 		}()
 
-		// create a validator object and save it to db
-		validator := testutil.GenStoredValidator(r, t, app, passphrase, hdPath)
-		btcPkBIP340 := validator.MustGetBIP340BTCPK()
-		btcPk := validator.MustGetBTCPK()
-
 		// generate BTC delegation
 		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
+		require.NoError(t, err)
+		changeAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
 		require.NoError(t, err)
 		delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(r, &chaincfg.SimNetParams, delSK, btcPk, covenantPk, stakingTimeBlocks, stakingValue, slashingAddr.String())
+		covThreshold := datagen.RandomInt(r, 5) + 1
+		covNum := covThreshold * 2
+		covenantPks := testutil.GenBtcPublicKeys(r, t, int(covNum))
+		valNum := datagen.RandomInt(r, 5) + 1
+		valPks := testutil.GenBtcPublicKeys(r, t, int(valNum))
+		slashingRate := testutil.GenRandomDec(r)
+		testInfo := datagen.GenBTCStakingSlashingInfo(
+			r,
+			t,
+			&chaincfg.SimNetParams,
+			delSK,
+			valPks,
+			covenantPks,
+			uint32(covThreshold),
+			stakingTimeBlocks,
+			stakingValue,
+			slashingAddr.String(),
+			changeAddr.String(),
+			slashingRate,
+		)
+		stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
 		require.NoError(t, err)
-		require.NoError(t, err)
-		stakingTxHex, err := stakingTx.ToHexStr()
-		require.NoError(t, err)
-		delegation := &types.Delegation{
-			ValBtcPk:      btcPkBIP340.MustToBTCPK(),
-			BtcPk:         delPK,
-			StakingTxHex:  stakingTxHex,
-			SlashingTxHex: slashingTx.ToHexStr(),
+		btcDel := &types.Delegation{
+			BtcPk:            delPK,
+			ValBtcPks:        valPks,
+			StartHeight:      1000, // not relevant here
+			EndHeight:        uint64(1000 + stakingTimeBlocks),
+			TotalSat:         uint64(stakingValue),
+			StakingTxHex:     hex.EncodeToString(stakingTxBytes),
+			StakingOutputIdx: 0,
+			SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
 		}
 
-		stakingMsgTx, err := stakingTx.ToMsgTx()
+		// generate covenant sigs
+		slashingSpendInfo, err := testInfo.StakingInfo.SlashingPathSpendInfo()
 		require.NoError(t, err)
+		covSigs := make([][]byte, 0, len(valPks))
+		for _, valPk := range valPks {
+			encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+			require.NoError(t, err)
+			covenantSig, err := testInfo.SlashingTx.EncSign(testInfo.StakingTx, 0, slashingSpendInfo.GetPkScriptPath(), covenantSk, encKey)
+			require.NoError(t, err)
+			covSigs = append(covSigs, covenantSig.MustMarshal())
+		}
+
+		//
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().QueryPendingDelegations(gomock.Any()).
-			Return([]*types.Delegation{delegation}, nil).AnyTimes()
-		mockClientController.EXPECT().SubmitCovenantSig(
-			delegation.ValBtcPk,
-			delegation.BtcPk,
-			stakingMsgTx.TxHash().String(),
-			gomock.Any(),
+			Return([]*types.Delegation{btcDel}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitCovenantSigs(
+			covenantPk,
+			testInfo.StakingTx.TxHash().String(),
+			covSigs,
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		covenantConfig.SlashingAddress = slashingAddr.String()
-		// TODO create covenant emulator
 	})
 }

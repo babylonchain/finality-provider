@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	sdkmath "cosmossdk.io/math"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/golang/mock/gomock"
 
@@ -16,12 +16,12 @@ func EmptyDescription() *stakingtypes.Description {
 	return &stakingtypes.Description{}
 }
 
-func ZeroCommissionRate() *sdktypes.Dec {
-	zeroCom := sdktypes.ZeroDec()
+func ZeroCommissionRate() *sdkmath.LegacyDec {
+	zeroCom := sdkmath.LegacyZeroDec()
 	return &zeroCom
 }
 
-func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockClientController {
+func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64, params *types.StakingParams) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
 	mockClientController := mocks.NewMockClientController(ctl)
 
@@ -41,6 +41,7 @@ func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, curr
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 	mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
 	mockClientController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
+	mockClientController.EXPECT().QueryStakingParams().Return(params, nil).AnyTimes()
 
 	return mockClientController
 }

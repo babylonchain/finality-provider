@@ -374,7 +374,7 @@ func addFinalitySig(ctx *cli.Context) error {
 		return err
 	}
 
-	lch, err := types.NewLastCommitHashFromHex(ctx.String(lastCommitHashFlag))
+	lch, err := types.NewAppHashFromHex(ctx.String(lastCommitHashFlag))
 	if err != nil {
 		return err
 	}

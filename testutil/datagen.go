@@ -7,9 +7,11 @@ import (
 	"testing"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -70,12 +72,55 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 	}
 }
 
+func GenRandomDec(r *rand.Rand) sdkmath.LegacyDec {
+	// generate a random slashing rate with random precision,
+	// this will include both valid and invalid ranges, so we can test both cases
+	randomPrecision := r.Int63n(4) // [0,3]
+	return sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 1001)), randomPrecision)
+}
+
+func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
+	covThreshold := datagen.RandomInt(r, 5) + 1
+	covNum := covThreshold * 2
+	covenantPks := make([]*btcec.PublicKey, 0, covNum)
+	for i := 0; i < int(covNum); i++ {
+		_, covPk, err := datagen.GenRandomBTCKeyPair(r)
+		require.NoError(t, err)
+		covenantPks = append(covenantPks, covPk)
+	}
+
+	slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
+	require.NoError(t, err)
+	return &types.StakingParams{
+		ComfirmationTimeBlocks:    10,
+		FinalizationTimeoutBlocks: 100,
+		MinSlashingTxFeeSat:       0,
+		CovenantPks:               covenantPks,
+		SlashingAddress:           slashingAddr.String(),
+		CovenantQuorum:            uint32(covThreshold),
+		MinCommissionRate:         nil,
+		SlashingRate:              GenRandomDec(r).BigInt(),
+		MaxActiveBtcValidators:    100,
+	}
+}
+
+func GenBtcPublicKeys(r *rand.Rand, t *testing.T, num int) []*btcec.PublicKey {
+	pks := make([]*btcec.PublicKey, 0, num)
+	for i := 0; i < num; i++ {
+		_, covPk, err := datagen.GenRandomBTCKeyPair(r)
+		require.NoError(t, err)
+		pks = append(pks, covPk)
+	}
+
+	return pks
+}
+
 func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 	blocks := make([]*types.BlockInfo, 0)
 	for i := startHeight; i <= endHeight; i++ {
 		b := &types.BlockInfo{
 			Height: i,
-			Hash:   datagen.GenRandomLastCommitHash(r),
+			Hash:   datagen.GenRandomAppHash(r),
 		}
 		blocks = append(blocks, b)
 	}
