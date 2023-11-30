@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	sdkmath "cosmossdk.io/math"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -74,7 +75,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		covenantPks := testutil.GenBtcPublicKeys(r, t, int(covNum))
 		valNum := datagen.RandomInt(r, 5) + 1
 		valPks := testutil.GenBtcPublicKeys(r, t, int(valNum))
-		slashingRate := testutil.GenRandomDec(r)
+		slashingRate := sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
 		testInfo := datagen.GenBTCStakingSlashingInfo(
 			r,
 			t,
