@@ -67,10 +67,12 @@ type TestDelegationData struct {
 	DelegatorBabylonPrivKey *secp256k1.PrivKey
 	DelegatorBabylonKey     *secp256k1.PubKey
 	SlashingTx              *bstypes.BTCSlashingTx
+	StakingTx               *wire.MsgTx
 	StakingTxInfo           *btcctypes.TransactionInfo
 	DelegatorSig            *bbntypes.BIP340Signature
 
 	SlashingAddr  string
+	ChangeAddr    string
 	StakingTime   uint16
 	StakingAmount int64
 }
@@ -507,10 +509,12 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		DelegatorKey:            delBtcPubKey,
 		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
 		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
+		StakingTx:               testStakingInfo.StakingTx,
 		SlashingTx:              testStakingInfo.SlashingTx,
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
-		SlashingAddr:            tm.BabylonHandler.GetSlashingAddress(),
+		SlashingAddr:            params.SlashingAddress,
+		ChangeAddr:              changeAddress.String(),
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
 	}
@@ -518,15 +522,13 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 
 func (tm *TestManager) InsertBTCUnbonding(
 	t *testing.T,
-	stakingTx *bstypes.BTCSlashingTx,
+	stakingMsgTx *wire.MsgTx,
 	unbondingValue uint64,
 	delSK *btcec.PrivateKey,
 	validatorPks []*btcec.PublicKey,
 	changeAddress string,
 	slashingRate sdkmath.LegacyDec,
 ) {
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	require.NoError(t, err)
 	stkTxHash := stakingMsgTx.TxHash()
 
 	params, err := tm.BabylonClient.QueryStakingParams()

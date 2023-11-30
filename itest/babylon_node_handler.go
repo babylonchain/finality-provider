@@ -182,10 +182,6 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 	return dir
 }
 
-func (w *BabylonNodeHandler) GetSlashingAddress() string {
-	return w.babylonNode.slashingAddr
-}
-
 func (w *BabylonNodeHandler) GetCovenantPk() *types.BIP340PubKey {
 	return w.babylonNode.covenantPk
 }
