@@ -62,7 +62,7 @@ finality signatures.
 
 #### Prerequisites
 
-This project requires Go version 1.20 or later.
+This project requires Go version 1.21 or later.
 
 Install Go by following the instructions on
 the [official Go installation guide](https://golang.org/doc/install).
