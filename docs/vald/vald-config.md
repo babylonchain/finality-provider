@@ -4,7 +4,7 @@
 
 The `vald` daemon requires a keyring with loaded funds to pay for the transactions.
 These transactions include randomness commits and vote submissions. Follow this
-guide [Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds#2-request-funds-from-the-babylon-testnet-faucet)
+guide [Getting Testnet Tokens](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds)
 to create a keyring and request funds.
 
 ## Validator daemon (`vald`) configuration
