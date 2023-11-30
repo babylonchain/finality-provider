@@ -2,8 +2,6 @@ module github.com/babylonchain/btc-validator/tools
 
 go 1.21
 
-toolchain go1.21.4
-
 require github.com/babylonchain/babylon v0.7.1
 
 require (

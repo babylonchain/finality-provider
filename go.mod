@@ -2,8 +2,6 @@ module github.com/babylonchain/btc-validator
 
 go 1.21
 
-toolchain go1.21.4
-
 require (
 	cosmossdk.io/math v1.2.0
 	github.com/avast/retry-go/v4 v4.5.1
