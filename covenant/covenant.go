@@ -113,10 +113,6 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 		return nil, fmt.Errorf("invalid slashing tx in the delegation: %w", err)
 	}
 
-	if err := ce.validateDelegation(btcDel); err != nil {
-		return nil, fmt.Errorf("invalid delegation: %w", err)
-	}
-
 	// get Covenant private key from the keyring
 	covenantPrivKey, err := ce.getPrivKey()
 	if err != nil {
@@ -171,26 +167,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 	return &service.AddCovenantSigResponse{TxHash: res.TxHash}, nil
 }
 
-func (ce *CovenantEmulator) validateDelegation(del *types.Delegation) error {
-	stakingTx, _, err := bbntypes.NewBTCTxFromHex(del.StakingTxHex)
-	if err != nil {
-		return err
-	}
-	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(del.SlashingTxHex)
-	if err != nil {
-		return err
-	}
-	return slashingTx.Validate(
-		&ce.config.ActiveNetParams,
-		ce.params.SlashingAddress,
-		sdkmath.LegacyNewDecFromBigInt(ce.params.SlashingRate),
-		ce.params.MinSlashingTxFeeSat,
-		stakingTx.TxOut[del.StakingOutputIdx].Value,
-	)
-}
-
 // AddCovenantUnbondingSignatures adds Covenant signature on the given Bitcoin delegation and submits it to Babylon
-// TODO the logic will be largely replaced when new staking utilities are introduced
 func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation) (*service.AddCovenantSigResponse, error) {
 	if del == nil {
 		return nil, fmt.Errorf("btc delegation is nil")
@@ -200,11 +177,8 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		return nil, fmt.Errorf("delegation does not have an unbonding transaction")
 	}
 
-	// In normal operation it is not possible to have one of this signatures and not have the other
-	// as only way to update this fields in delegation is by processing the MsgAddCovenantUnbondingSigs msg
-	// which should update both fields at atomically in case of successfull transaction.
-	if del.BtcUndelegation.CovenantSlashingSig != nil || del.BtcUndelegation.CovenantUnbondingSig != nil {
-		return nil, fmt.Errorf("delegation already has required covenant signatures")
+	if del.BtcUndelegation.HasAllSignatures(ce.params.CovenantQuorum) {
+		return nil, fmt.Errorf("undelegation of the delegation already has required signature from covenant")
 	}
 
 	// get Covenant private key from the keyring
@@ -214,27 +188,45 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 	}
 
 	// 1. Sign unbonding transaction
-	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.StakingTxHex)
+	stakingTx, _, err := bbntypes.NewBTCTxFromHex(del.StakingTxHex)
 	if err != nil {
 		return nil, err
 	}
-	stakingMsgTx, err := stakingTx.ToMsgTx()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
 	}
 
-	unbondingTx, err := bstypes.NewBabylonTaprootTxFromHex(del.BtcUndelegation.UnbondingTxHex)
+	unbondingTx, _, err := bbntypes.NewBTCTxFromHex(del.BtcUndelegation.UnbondingTxHex)
 	if err != nil {
 		return nil, err
 	}
-	covenantUnbondingSig, err := unbondingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
-		covenantPrivKey,
+
+	stakingInfo, err := btcstaking.BuildStakingInfo(
+		del.BtcPk,
+		del.ValBtcPks,
+		ce.params.CovenantPks,
+		ce.params.CovenantQuorum,
+		del.GetStakingTime(),
+		btcutil.Amount(del.TotalSat),
 		&ce.config.ActiveNetParams,
 	)
+	if err != nil {
+		return nil, err
+	}
 
+	stakingTxUnbondigPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	covenantUnbondingSignature, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
+		unbondingTx,
+		stakingTx,
+		del.StakingOutputIdx,
+		stakingTxUnbondigPathInfo.GetPkScriptPath(),
+		covenantPrivKey,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
 	}
@@ -244,64 +236,65 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 	if err != nil {
 		return nil, err
 	}
-	err = slashUnbondingTx.Validate(&ce.config.ActiveNetParams, ce.config.SlashingAddress)
-	if err != nil {
-		return nil, err
+	if err := slashUnbondingTx.Validate(
+		&ce.config.ActiveNetParams,
+		ce.params.SlashingAddress,
+		sdkmath.LegacyNewDecFromBigInt(ce.params.SlashingRate),
+		ce.params.MinSlashingTxFeeSat,
+		unbondingTx.TxOut[0].Value,
+	); err != nil {
+		return nil, fmt.Errorf("invalid slashing tx in the undelegation: %w", err)
 	}
 
-	unbondingMsgTx, err := unbondingTx.ToMsgTx()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize unbonding tx: %w", err)
-	}
-
-	covenantSlashingUnbondingSig, err := slashUnbondingTx.Sign(
-		unbondingMsgTx,
-		unbondingTx.Script,
-		covenantPrivKey,
+	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
+		del.BtcPk,
+		del.ValBtcPks,
+		ce.params.CovenantPks,
+		ce.params.CovenantQuorum,
+		uint16(del.BtcUndelegation.UnbondingTime),
+		btcutil.Amount(unbondingTx.TxOut[0].Value),
 		&ce.config.ActiveNetParams,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign slash unbonding tx: %w", err)
+		return nil, err
 	}
 
-	stakingTxHash := stakingMsgTx.TxHash().String()
-
-	covenantUnbondingSchnorrSig, err := covenantUnbondingSig.ToBTCSig()
+	unbondingTxSlashingPath, err := unbondingInfo.SlashingPathSpendInfo()
 	if err != nil {
 		return nil, err
 	}
-	covenantSlashingUnbondingShcnorrSig, err := covenantSlashingUnbondingSig.ToBTCSig()
-	if err != nil {
-		return nil, err
+
+	covSlashingSigs := make([][]byte, 0, len(del.ValBtcPks))
+	for _, valPk := range del.ValBtcPks {
+		encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+		if err != nil {
+			return nil, err
+		}
+		covenantSig, err := slashUnbondingTx.EncSign(
+			unbondingTx,
+			0,
+			unbondingTxSlashingPath.GetPkScriptPath(),
+			covenantPrivKey,
+			encKey,
+		)
+		covSlashingSigs = append(covSlashingSigs, covenantSig.MustMarshal())
 	}
+
 	res, err := ce.cc.SubmitCovenantUnbondingSigs(
-		del.ValBtcPk,
-		del.BtcPk,
-		stakingTxHash,
-		covenantUnbondingSchnorrSig,
-		covenantSlashingUnbondingShcnorrSig,
+		ce.pk,
+		stakingTx.TxHash().String(),
+		covenantUnbondingSignature,
+		covSlashingSigs,
 	)
 
-	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.ValBtcPk).MarshalHex()
 	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.BtcPk).MarshalHex()
 
 	if err != nil {
 		ce.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"valBtcPubKey": valPkHex,
-			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Covenant signature")
+			"delegator_pk": delPkHex,
+		}).Error("failed to submit covenant signatures")
 		return nil, err
-	}
-
-	if res == nil {
-		ce.logger.WithFields(logrus.Fields{
-			"err":          err,
-			"valBtcPubKey": valPkHex,
-			"delBtcPubKey": delPkHex,
-		}).Error("failed to submit Covenant signature")
-		return nil, fmt.Errorf("failed to submit Covenant signature due to known error")
 	}
 
 	return &service.AddCovenantSigResponse{

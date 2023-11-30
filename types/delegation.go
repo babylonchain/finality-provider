@@ -56,23 +56,36 @@ func (d *Delegation) GetStakingTime() uint16 {
 
 // Undelegation signalizes that the delegation is being undelegated
 type Undelegation struct {
-	// unbonding_tx_hex is the hex string of the transaction which will transfer the funds from staking
+	// How long the funds will be locked in the unbonding output
+	UnbondingTime uint32
+	// The hex string of the transaction which will transfer the funds from staking
 	// output to unbonding output. Unbonding output will usually have lower timelock
 	// than staking output.
 	UnbondingTxHex string
-	// slashing_tx is the hex string of the slashing tx for unbodning transactions
+	// The hex string of the slashing tx for unbodning transactions
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or covenant yet.
 	SlashingTxHex string
-	// covenant_slashing_sig is the signature on the slashing tx
-	// by the covenant (i.e., SK corresponding to covenant_pk in params)
+	// The signatures on the slashing tx by the covenant
+	// (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
 	CovenantSlashingSigs []*CovenantSignatureInfo
-	// covenant_unbonding_sig is the signature on the unbonding tx
-	// by the covenant (i.e., SK corresponding to covenant_pk in params)
-	// It must be provided after processing undelagate message by the consumer chain and after
-	// validator sig will be provided by validator
+	// The signatures on the unbonding tx by the covenant
+	// (i.e., SK corresponding to covenant_pk in params)
+	// It must be provided after processing undelagate message by the consumer chain
 	CovenantUnbondingSigs []*SignatureInfo
+}
+
+func (ud *Undelegation) HasCovenantQuorumOnSlashing(quorum uint32) bool {
+	return len(ud.CovenantUnbondingSigs) >= int(quorum)
+}
+
+func (ud *Undelegation) HasCovenantQuorumOnUnbonding(quorum uint32) bool {
+	return len(ud.CovenantUnbondingSigs) >= int(quorum)
+}
+
+func (ud *Undelegation) HasAllSignatures(covenantQuorum uint32) bool {
+	return ud.HasCovenantQuorumOnUnbonding(covenantQuorum) && ud.HasCovenantQuorumOnSlashing(covenantQuorum)
 }
 
 type CovenantSignatureInfo struct {
