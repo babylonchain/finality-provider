@@ -125,6 +125,9 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 	}
 
 	stakingOutputIdx, err := bbntypes.GetOutputIdxInBTCTx(stakingMsgTx, si.StakingOutput)
+	if err != nil {
+		return nil, err
+	}
 
 	decodedSlashingAddr, err := btcutil.DecodeAddress(ce.params.SlashingAddress, &ce.config.ActiveNetParams)
 	if err != nil {
@@ -179,6 +182,9 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 			covenantPrivKey,
 			encKey,
 		)
+		if err != nil {
+			return nil, err
+		}
 		covSigs = append(covSigs, covenantSig.MustMarshal())
 	}
 
@@ -321,6 +327,9 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 			covenantPrivKey,
 			encKey,
 		)
+		if err != nil {
+			return nil, err
+		}
 		covSlashingSigs = append(covSlashingSigs, covenantSig.MustMarshal())
 	}
 
