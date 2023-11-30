@@ -270,6 +270,7 @@ github.com/babylonchain/babylon-private v0.0.0-20231025095102-7c3744b15d98 h1:mA
 github.com/babylonchain/babylon-private v0.0.0-20231025095102-7c3744b15d98/go.mod h1:zQsbXiE3LBanEB0kZ8LfiVoP7TMzfVlPrSP3cyEHako=
 github.com/babylonchain/babylon-private v0.0.0-20231109083355-a680fcc5261f/go.mod h1:Omv/7j7d/KioUlGhffrA1uajzYwx959cLElstveJwKc=
 github.com/babylonchain/babylon-private v0.0.0-20231123033744-c31e470a8b0d/go.mod h1:nTxsy7JADtFtehkvn4ktf4DYXPcX/bssMTNLJbALo04=
+github.com/babylonchain/babylon-private v0.0.0-20231129064956-8ad04811f959/go.mod h1:hUJ0eyIpD9p9S+weU48es4P0FYDgIo2Nfg39AFiKj8Q=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf h1:NJU3YuruPqV8w6/y45Zsb8FudcWSkTBugdpTT7kJmjw=
 github.com/babylonchain/ibc-go/v7 v7.0.0-20230324085744-4d6a0d2c0fcf/go.mod h1:BFh8nKWjr5zeR2OZfhkzdgDzj1+KjRn3aJLpwapStj8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

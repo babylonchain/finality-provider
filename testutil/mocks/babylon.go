@@ -264,7 +264,7 @@ func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(valPk, block
 // SubmitCovenantSig mocks base method.
 func (m *MockClientController) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantSig", valPk, delPk, stakingTxHash, sig)
+	ret := m.ctrl.Call(m, "SubmitCovenantSigs", valPk, delPk, stakingTxHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -273,7 +273,7 @@ func (m *MockClientController) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, 
 // SubmitCovenantSig indicates an expected call of SubmitCovenantSig.
 func (mr *MockClientControllerMockRecorder) SubmitCovenantSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSig", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantSig), valPk, delPk, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantSig), valPk, delPk, stakingTxHash, sig)
 }
 
 // SubmitCovenantUnbondingSigs mocks base method.
@@ -595,7 +595,7 @@ func (mr *MockCovenantAPIsMockRecorder) QueryUnbondingDelegations(limit interfac
 // SubmitCovenantSig mocks base method.
 func (m *MockCovenantAPIs) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantSig", valPk, delPk, stakingTxHash, sig)
+	ret := m.ctrl.Call(m, "SubmitCovenantSigs", valPk, delPk, stakingTxHash, sig)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -604,7 +604,7 @@ func (m *MockCovenantAPIs) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, stak
 // SubmitCovenantSig indicates an expected call of SubmitCovenantSig.
 func (mr *MockCovenantAPIsMockRecorder) SubmitCovenantSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSig", reflect.TypeOf((*MockCovenantAPIs)(nil).SubmitCovenantSig), valPk, delPk, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSigs", reflect.TypeOf((*MockCovenantAPIs)(nil).SubmitCovenantSig), valPk, delPk, stakingTxHash, sig)
 }
 
 // SubmitCovenantUnbondingSigs mocks base method.

@@ -75,17 +75,18 @@ type ValidatorAPIs interface {
 
 // CovenantAPIs contains interfaces needed when the program is running in the covenant mode
 type CovenantAPIs interface {
-	// SubmitCovenantSig submits the Covenant signature to the consumer chain
+	// SubmitCovenantSigs submits Covenant signatures to the consumer chain, each corresponding to
+	// a validator that the delegation is (re-)staked to
 	// it returns tx hash and error
-	SubmitCovenantSig(covPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)
+	SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string, sigs [][]byte) (*types.TxResponse, error)
 
-	// SubmitCovenantUnbondingSigs submits the Covenant signatures to the consumer chain
+	// SubmitCovenantUnbondingSigs submits the Covenant signatures for undelegation to the consumer chain
 	// it returns tx hash and error
 	SubmitCovenantUnbondingSigs(
 		covPk *btcec.PublicKey,
 		stakingTxHash string,
 		unbondingSig *schnorr.Signature,
-		slashUnbondingSig *schnorr.Signature,
+		slashUnbondingSigs [][]byte,
 	) (*types.TxResponse, error)
 
 	// QueryPendingDelegations queries BTC delegations that are in status of pending

@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
+	"github.com/babylonchain/babylon/btcstaking"
+	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -27,10 +30,13 @@ type CovenantEmulator struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
+	pk *btcec.PublicKey
+
 	cc clientcontroller.ClientController
 	kc *val.ChainKeyringController
 
 	config *covcfg.Config
+	params *types.StakingParams
 	logger *logrus.Logger
 
 	// input is used to pass passphrase to the keyring
@@ -60,8 +66,14 @@ func NewCovenantEmulator(
 		return nil, err
 	}
 
-	if _, err := kc.GetChainPrivKey(passphrase); err != nil {
+	sk, err := kc.GetChainPrivKey(passphrase)
+	if err != nil {
 		return nil, fmt.Errorf("covenant key %s is not found: %w", config.BabylonConfig.Key, err)
+	}
+
+	pk, err := btcec.ParsePubKey(sk.PubKey().Bytes())
+	if err != nil {
+		return nil, err
 	}
 
 	return &CovenantEmulator{
@@ -71,33 +83,38 @@ func NewCovenantEmulator(
 		logger:     logger,
 		input:      input,
 		passphrase: passphrase,
+		pk:         pk,
 		quit:       make(chan struct{}),
 	}, nil
 }
 
 // AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
-// TODO the logic will be largely replaced when new staking utilities are introduced
 func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*service.AddCovenantSigResponse, error) {
-	if btcDel.CovenantSig != nil {
-		return nil, fmt.Errorf("the Covenant sig already existed in the Bitcoin delection")
+	// the quorum is already achieved, skip sending more sigs
+	if btcDel.HasCovenantQuorum(ce.params.CovenantQuorum) {
+		return nil, nil
 	}
 
+	stakingTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.StakingTxHex)
+	if err != nil {
+		return nil, err
+	}
 	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.SlashingTxHex)
 	if err != nil {
 		return nil, err
 	}
-	err = slashingTx.Validate(&ce.config.ActiveNetParams, ce.config.SlashingAddress)
-	if err != nil {
-		return nil, fmt.Errorf("invalid delegation: %w", err)
+	if err := slashingTx.Validate(
+		&ce.config.ActiveNetParams,
+		ce.params.SlashingAddress,
+		sdkmath.LegacyNewDecFromBigInt(ce.params.SlashingRate),
+		ce.params.MinSlashingTxFeeSat,
+		stakingTx.TxOut[btcDel.StakingOutputIdx].Value,
+	); err != nil {
+		return nil, fmt.Errorf("invalid slashing tx in the delegation: %w", err)
 	}
 
-	stakingTx, err := bstypes.NewBabylonTaprootTxFromHex(btcDel.StakingTxHex)
-	if err != nil {
-		return nil, err
-	}
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	if err != nil {
-		return nil, err
+	if err := ce.validateDelegation(btcDel); err != nil {
+		return nil, fmt.Errorf("invalid delegation: %w", err)
 	}
 
 	// get Covenant private key from the keyring
@@ -106,36 +123,70 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
 	}
 
-	covenantSig, err := slashingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
-		covenantPrivKey,
+	stakingInfo, err := btcstaking.BuildStakingInfo(
+		btcDel.BtcPk,
+		btcDel.ValBtcPks,
+		ce.params.CovenantPks,
+		ce.params.CovenantQuorum,
+		btcDel.GetStakingTime(),
+		btcutil.Amount(btcDel.TotalSat),
 		&ce.config.ActiveNetParams,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	stakingTxHash := stakingMsgTx.TxHash().String()
-
-	covenantSchnorrSig, err := covenantSig.ToBTCSig()
+	slashingPathInfo, err := stakingInfo.SlashingPathSpendInfo()
 	if err != nil {
 		return nil, err
 	}
-	res, err := ce.cc.SubmitCovenantSig(btcDel.ValBtcPk, btcDel.BtcPk, stakingTxHash, covenantSchnorrSig)
 
-	valPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.ValBtcPk).MarshalHex()
+	covSigs := make([][]byte, 0, len(btcDel.ValBtcPks))
+	for _, valPk := range btcDel.ValBtcPks {
+		encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+		if err != nil {
+			return nil, err
+		}
+		covenantSig, err := slashingTx.EncSign(
+			stakingTx,
+			btcDel.StakingOutputIdx,
+			slashingPathInfo.GetPkScriptPath(),
+			covenantPrivKey,
+			encKey,
+		)
+		covSigs = append(covSigs, covenantSig.MustMarshal())
+	}
+
+	res, err := ce.cc.SubmitCovenantSigs(ce.pk, stakingTx.TxHash().String(), covSigs)
+
 	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()
 	if err != nil {
 		ce.logger.WithFields(logrus.Fields{
 			"err":          err,
-			"validator_pk": valPkHex,
 			"delegator_pk": delPkHex,
 		}).Error("failed to submit Covenant signature")
 		return nil, err
 	}
 
 	return &service.AddCovenantSigResponse{TxHash: res.TxHash}, nil
+}
+
+func (ce *CovenantEmulator) validateDelegation(del *types.Delegation) error {
+	stakingTx, _, err := bbntypes.NewBTCTxFromHex(del.StakingTxHex)
+	if err != nil {
+		return err
+	}
+	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(del.SlashingTxHex)
+	if err != nil {
+		return err
+	}
+	return slashingTx.Validate(
+		&ce.config.ActiveNetParams,
+		ce.params.SlashingAddress,
+		sdkmath.LegacyNewDecFromBigInt(ce.params.SlashingRate),
+		ce.params.MinSlashingTxFeeSat,
+		stakingTx.TxOut[del.StakingOutputIdx].Value,
+	)
 }
 
 // AddCovenantUnbondingSignatures adds Covenant signature on the given Bitcoin delegation and submits it to Babylon
@@ -147,10 +198,6 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 
 	if del.BtcUndelegation == nil {
 		return nil, fmt.Errorf("delegation does not have an unbonding transaction")
-	}
-
-	if del.BtcUndelegation.ValidatorUnbondingSig == nil {
-		return nil, fmt.Errorf("delegation does not have a validator signature for unbonding transaction yet")
 	}
 
 	// In normal operation it is not possible to have one of this signatures and not have the other
@@ -289,18 +336,11 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 			if err != nil {
 				ce.logger.WithFields(logrus.Fields{
 					"err": err,
-				}).Error("failed to get slashing address")
+				}).Error("failed to get staking params")
 				continue
 			}
-			slashingAddress := params.SlashingAddress
-			_, err = btcutil.DecodeAddress(slashingAddress, &ce.config.ActiveNetParams)
-			if err != nil {
-				ce.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("invalid slashing address")
-				continue
-			}
-			ce.config.SlashingAddress = slashingAddress
+			// update params
+			ce.params = params
 
 			// 1. Get all pending delegations first, these are more important than the unbonding ones
 			dels, err := ce.cc.QueryPendingDelegations(limit)

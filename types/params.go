@@ -1,8 +1,9 @@
 package types
 
 import (
+	"math/big"
+
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
 )
 
 type StakingParams struct {
@@ -11,8 +12,8 @@ type StakingParams struct {
 	// W-deep
 	FinalizationTimeoutBlocks uint64
 
-	// Minimum amount of satoshis required for slashing transaction
-	MinSlashingTxFeeSat btcutil.Amount
+	// Minimum amount of tx fee (quantified in Satoshi) needed for the pre-signed slashing tx
+	MinSlashingTxFeeSat int64
 
 	// Bitcoin public keys of the covenant committee
 	CovenantPks []*btcec.PublicKey
@@ -20,6 +21,15 @@ type StakingParams struct {
 	// Address to which slashing transactions are sent
 	SlashingAddress string
 
-	// Minimum commission required by the consumer chain
-	MinCommissionRate string
+	// Minimum number of signatures needed for the covenant multisignature
+	CovenantQuorum uint32
+
+	// Chain-wide minimum commission rate that a validator can charge their delegators
+	MinCommissionRate *big.Int
+
+	// The staked amount to be slashed, expressed as a decimal (e.g., 0.5 for 50%).
+	SlashingRate *big.Int
+
+	// Maximum number of active BTC validators in the BTC staking protocol
+	MaxActiveBtcValidators uint32
 }

@@ -5,12 +5,11 @@ import (
 	"strings"
 	"sync"
 
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/sirupsen/logrus"
 
@@ -182,7 +181,7 @@ func (app *ValidatorApp) RegisterValidator(valPkStr string) (*RegisterValidatorR
 		BtcSigType: bstypes.BTCSigType_BIP340,
 	}
 
-	commissionRate, err := math.LegacyNewDecFromStr(validator.Commission)
+	commissionRate, err := sdkmath.LegacyNewDecFromStr(validator.Commission)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +294,7 @@ func (app *ValidatorApp) Stop() error {
 func (app *ValidatorApp) CreateValidator(
 	keyName, chainID, passPhrase, hdPath string,
 	description *stakingtypes.Description,
-	commission *sdktypes.Dec,
+	commission *sdkmath.LegacyDec,
 ) (*CreateValidatorResult, error) {
 
 	req := &createValidatorRequest{

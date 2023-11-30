@@ -21,7 +21,6 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/btcutil"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -172,10 +171,13 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
-		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
+		MinSlashingTxFeeSat:       stakingParamRes.Params.MinSlashingTxFeeSat,
 		CovenantPks:               covenantPks,
 		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
-		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate.String(),
+		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
+		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate.BigInt(),
+		SlashingRate:              stakingParamRes.Params.SlashingRate.BigInt(),
+		MaxActiveBtcValidators:    stakingParamRes.Params.MaxActiveBtcValidators,
 	}, nil
 }
 
@@ -340,20 +342,19 @@ func (bc *BabylonController) CommitPubRandList(
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
-// SubmitCovenantSig submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
+// SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitCovenantSig(
+func (bc *BabylonController) SubmitCovenantSigs(
 	covPk *btcec.PublicKey,
 	stakingTxHash string,
-	sig *schnorr.Signature,
+	sigs [][]byte,
 ) (*types.TxResponse, error) {
-	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
 
 	msg := &btcstakingtypes.MsgAddCovenantSig{
 		Signer:        bc.MustGetTxSigner(),
 		Pk:            bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash: stakingTxHash,
-		Sig:           &bip340Sig,
+		Sigs:          sigs,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -370,18 +371,16 @@ func (bc *BabylonController) SubmitCovenantUnbondingSigs(
 	covPk *btcec.PublicKey,
 	stakingTxHash string,
 	unbondingSig *schnorr.Signature,
-	slashUnbondingSig *schnorr.Signature,
+	slashUnbondingSigs [][]byte,
 ) (*types.TxResponse, error) {
 	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
 
-	bip340SlashUnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(slashUnbondingSig)
-
 	msg := &btcstakingtypes.MsgAddCovenantUnbondingSigs{
-		Signer:                 bc.MustGetTxSigner(),
-		Pk:                     bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
-		StakingTxHash:          stakingTxHash,
-		UnbondingTxSig:         &bip340UnbondingSig,
-		SlashingUnbondingTxSig: &bip340SlashUnbondingSig,
+		Signer:                  bc.MustGetTxSigner(),
+		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
+		StakingTxHash:           stakingTxHash,
+		UnbondingTxSig:          &bip340UnbondingSig,
+		SlashingUnbondingTxSigs: slashUnbondingSigs,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -776,11 +775,10 @@ func ConvertErrType(err error) error {
 
 func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
 	var (
-		stakingTxHex       string
-		slashingTxHex      string
-		covenantSchnorrSig *schnorr.Signature
-		undelegation       *types.Undelegation
-		err                error
+		stakingTxHex  string
+		slashingTxHex string
+		covenantSigs  []*types.CovenantSignatureInfo
+		undelegation  *types.Undelegation
 	)
 
 	if del.StakingTx == nil {
@@ -795,11 +793,12 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 
 	slashingTxHex = del.SlashingTx.ToHexStr()
 
-	if del.CovenantSig != nil {
-		covenantSchnorrSig, err = del.CovenantSig.ToBTCSig()
-		if err != nil {
-			panic(err)
+	for _, s := range del.CovenantSigs {
+		covSigInfo := &types.CovenantSignatureInfo{
+			Pk:   s.CovPk.MustToBTCPK(),
+			Sigs: s.AdaptorSigs,
 		}
+		covenantSigs = append(covenantSigs, covSigInfo)
 	}
 
 	if del.BtcUndelegation != nil {
@@ -818,18 +817,17 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		EndHeight:       del.EndHeight,
 		StakingTxHex:    stakingTxHex,
 		SlashingTxHex:   slashingTxHex,
-		CovenantSig:     covenantSchnorrSig,
+		CovenantSigs:    covenantSigs,
 		BtcUndelegation: undelegation,
 	}
 }
 
 func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Undelegation {
 	var (
-		unbondingTxHex             string
-		slashingTxHex              string
-		covenantSlashingSchnorrSig *schnorr.Signature
-		covenantUnbondingSigs      []*types.SignatureInfo
-		err                        error
+		unbondingTxHex        string
+		slashingTxHex         string
+		covenantSlashingSigs  []*types.CovenantSignatureInfo
+		covenantUnbondingSigs []*types.SignatureInfo
 	)
 
 	if undel.UnbondingTx == nil {
@@ -844,33 +842,30 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 
 	slashingTxHex = undel.SlashingTx.ToHexStr()
 
-	if undel.CovenantSlashingSig != nil {
-		covenantSlashingSchnorrSig, err = undel.CovenantSlashingSig.ToBTCSig()
+	for _, unbondingSig := range undel.CovenantUnbondingSigList {
+		sig, err := unbondingSig.Sig.ToBTCSig()
 		if err != nil {
 			panic(err)
 		}
+		sigInfo := &types.SignatureInfo{
+			Pk:  unbondingSig.Pk.MustToBTCPK(),
+			Sig: sig,
+		}
+		covenantUnbondingSigs = append(covenantUnbondingSigs, sigInfo)
 	}
 
-	if undel.CovenantUnbondingSigList != nil {
-		sigs := make([]*types.SignatureInfo, 0, len(undel.CovenantUnbondingSigList))
-		for _, unbondingSig := range undel.CovenantUnbondingSigList {
-			sig, err := unbondingSig.Sig.ToBTCSig()
-			if err != nil {
-				panic(err)
-			}
-			sigInfo := &types.SignatureInfo{
-				Pk:  unbondingSig.Pk.MustToBTCPK(),
-				Sig: sig,
-			}
-			sigs = append(sigs, sigInfo)
+	for _, s := range undel.CovenantSlashingSigs {
+		covSigInfo := &types.CovenantSignatureInfo{
+			Pk:   s.CovPk.MustToBTCPK(),
+			Sigs: s.AdaptorSigs,
 		}
-		covenantUnbondingSigs = sigs
+		covenantSlashingSigs = append(covenantSlashingSigs, covSigInfo)
 	}
 
 	return &types.Undelegation{
 		UnbondingTxHex:        unbondingTxHex,
 		SlashingTxHex:         slashingTxHex,
-		CovenantSlashingSig:   covenantSlashingSchnorrSig,
+		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
 	}
 }

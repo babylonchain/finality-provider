@@ -1,36 +1,57 @@
 package types
 
 import (
+	"math"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 )
 
 type Delegation struct {
-	// btc_pk is the Bitcoin secp256k1 PK of this BTC delegation
+	// The Bitcoin secp256k1 PK of this BTC delegation
 	BtcPk *btcec.PublicKey
-	// val_btc_pk is the Bitcoin secp256k1 PK of the BTC validator that
+	// The Bitcoin secp256k1 PK of the BTC validator that
 	// this BTC delegation delegates to
 	ValBtcPks []*btcec.PublicKey
-	// start_height is the start BTC height of the BTC delegation
+	// The start BTC height of the BTC delegation
 	// it is the start BTC height of the timelock
 	StartHeight uint64
-	// end_height is the end height of the BTC delegation
+	// The end height of the BTC delegation
 	// it is the end BTC height of the timelock - w
 	EndHeight uint64
-	// staking_tx_hex is the hex string of the staking tx
+	// The total amount of BTC stakes in this delegation
+	// quantified in satoshi
+	TotalSat uint64
+	// The hex string of the staking tx
 	StakingTxHex string
-	// slashing_tx_hex is the hex string of the slashing tx
-	// It is partially signed by SK corresponding to btc_pk, but not signed by
-	// validator or covenant yet.
+	// The index of the staking output in the staking tx
+	StakingOutputIdx uint32
+	// The hex string of the slashing tx
 	SlashingTxHex string
-	// covenant_sig is the signature on the slashing tx
+	// The signature on the slashing tx
 	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It will be a part of the witness for the staking tx output.
-	CovenantSig *schnorr.Signature
+	CovenantSigs []*CovenantSignatureInfo
 	// if this object is present it menans that staker requested undelegation, and whole
-	// delegation is being undelegated.
-	// directly in delegation object
+	// delegation is being undelegated directly in delegation object
 	BtcUndelegation *Undelegation
+}
+
+// HasCovenantQuorum returns whether a delegation has sufficient sigs
+// from Covenant members to make a quorum
+func (d *Delegation) HasCovenantQuorum(quorum uint32) bool {
+	return uint32(len(d.CovenantSigs)) >= quorum
+}
+
+func (d *Delegation) GetStakingTime() uint16 {
+	diff := d.EndHeight - d.StartHeight
+
+	if diff > math.MaxUint16 {
+		// In valid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
+		panic("invalid delegation in database")
+	}
+
+	return uint16(diff)
 }
 
 // Undelegation signalizes that the delegation is being undelegated
@@ -46,12 +67,17 @@ type Undelegation struct {
 	// covenant_slashing_sig is the signature on the slashing tx
 	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
-	CovenantSlashingSig *schnorr.Signature
+	CovenantSlashingSigs []*CovenantSignatureInfo
 	// covenant_unbonding_sig is the signature on the unbonding tx
 	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain and after
 	// validator sig will be provided by validator
 	CovenantUnbondingSigs []*SignatureInfo
+}
+
+type CovenantSignatureInfo struct {
+	Pk   *btcec.PublicKey
+	Sigs [][]byte
 }
 
 type SignatureInfo struct {
