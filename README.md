@@ -36,6 +36,10 @@ EOTS signatures
 **Note:** EOTS stands for Extractable One Time Signature. You can read more about it
 in
 the [Babylon BTC Staking Litepaper](https://docs.babylonchain.io/assets/files/btc_staking_litepaper-32bfea0c243773f0bfac63e148387aef.pdf).
+The BTC validator will commit a unique EOTS randomness at each future height it needs
+to vote. If the BTC validator votes for two blocks using the same committed EOTS
+randomness, then its secret key will be extracted and all of its BTC delegations will
+be slashed on Bitcoin, ensuring slashable safety.
 
 1. **EOTS Key Management:**
     - Generates [Schnorr](https://en.wikipedia.org/wiki/Schnorr_signature) key pairs
