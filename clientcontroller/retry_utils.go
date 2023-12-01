@@ -2,20 +2,10 @@ package clientcontroller
 
 import (
 	"errors"
-	"time"
 
 	sdkErr "cosmossdk.io/errors"
-	"github.com/avast/retry-go/v4"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-)
-
-// Variables used for retries
-var (
-	rtyAttNum = uint(5)
-	rtyAtt    = retry.Attempts(rtyAttNum)
-	rtyDel    = retry.Delay(time.Millisecond * 400)
-	rtyErr    = retry.LastErrorOnly(true)
 )
 
 // these errors are considered unrecoverable because these indicate
