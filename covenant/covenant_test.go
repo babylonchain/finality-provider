@@ -55,6 +55,9 @@ func FuzzAddCovenantSig(f *testing.F) {
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logrus.New())
 		require.NoError(t, err)
 
+		err = ce.UpdateParams()
+		require.NoError(t, err)
+
 		// generate BTC delegation
 		changeAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
 		require.NoError(t, err)

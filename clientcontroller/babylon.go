@@ -694,6 +694,7 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		SlashingTxHex:         slashingTxHex,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
+		UnbondingTime:         undel.UnbondingTime,
 	}
 }
 

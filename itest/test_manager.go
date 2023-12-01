@@ -423,12 +423,8 @@ func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateK
 	return record.PrivKey
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64, params *types.StakingParams) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	params, err := tm.BabylonClient.QueryStakingParams()
-	slashingRate := sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
-	params.SlashingRate = slashingRate
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
@@ -448,7 +444,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		stakingTime,
 		stakingAmount,
 		params.SlashingAddress.String(), changeAddress.String(),
-		slashingRate,
+		params.SlashingRate,
 	)
 
 	// delegator Babylon key pairs
@@ -529,19 +525,17 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 
 func (tm *TestManager) InsertBTCUnbonding(
 	t *testing.T,
-	stakingMsgTx *wire.MsgTx,
-	unbondingValue uint64,
+	actualDel *types.Delegation,
 	delSK *btcec.PrivateKey,
-	validatorPks []*btcec.PublicKey,
 	changeAddress string,
-	slashingRate sdkmath.LegacyDec,
+	params *types.StakingParams,
 ) {
-	stkTxHash := stakingMsgTx.TxHash()
-
-	params, err := tm.BabylonClient.QueryStakingParams()
+	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(actualDel.StakingTxHex)
 	require.NoError(t, err)
+	stakingTxHash := stakingMsgTx.TxHash()
 
 	unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
+	unbondingValue := int64(actualDel.TotalSat - 1000)
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -550,14 +544,14 @@ func (tm *TestManager) InsertBTCUnbonding(
 		t,
 		btcNetworkParams,
 		delSK,
-		validatorPks,
+		actualDel.ValBtcPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
-		wire.NewOutPoint(&stkTxHash, 0),
+		wire.NewOutPoint(&stakingTxHash, 0),
 		unbondingTime,
-		int64(unbondingValue),
+		unbondingValue,
 		params.SlashingAddress.String(), changeAddress,
-		slashingRate,
+		params.SlashingRate,
 	)
 
 	unbondingTxMsg := testUnbondingInfo.UnbondingTx
@@ -577,9 +571,15 @@ func (tm *TestManager) InsertBTCUnbonding(
 	require.NoError(t, err)
 
 	_, err = tm.BabylonClient.CreateBTCUndelegation(
-		serializedUnbondingTx, uint32(unbondingTime), int64(unbondingValue), testUnbondingInfo.SlashingTx, unbondingSig,
+		serializedUnbondingTx, uint32(unbondingTime), unbondingValue, testUnbondingInfo.SlashingTx, unbondingSig,
 	)
 	require.NoError(t, err)
+}
+
+func (tm *TestManager) getParams(t *testing.T) *types.StakingParams {
+	p, err := tm.BabylonClient.QueryStakingParams()
+	require.NoError(t, err)
+	return p
 }
 
 func defaultValidatorConfig(keyringDir, testDir string) *valcfg.Config {

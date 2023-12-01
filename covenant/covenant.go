@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon/btcstaking"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -20,6 +21,14 @@ import (
 	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/val"
+)
+
+var (
+	// TODO: Maybe configurable?
+	RtyAttNum = uint(5)
+	RtyAtt    = retry.Attempts(RtyAttNum)
+	RtyDel    = retry.Delay(time.Millisecond * 400)
+	RtyErr    = retry.LastErrorOnly(true)
 )
 
 type CovenantEmulator struct {
@@ -75,11 +84,6 @@ func NewCovenantEmulator(
 		return nil, err
 	}
 
-	params, err := cc.QueryStakingParams()
-	if err != nil {
-		return nil, err
-	}
-
 	return &CovenantEmulator{
 		cc:         cc,
 		kc:         kc,
@@ -87,10 +91,19 @@ func NewCovenantEmulator(
 		logger:     logger,
 		input:      input,
 		passphrase: passphrase,
-		params:     params,
 		pk:         pk,
 		quit:       make(chan struct{}),
 	}, nil
+}
+
+func (ce *CovenantEmulator) UpdateParams() error {
+	params, err := ce.getParamsWithRetry()
+	if err != nil {
+		return err
+	}
+	ce.params = params
+
+	return nil
 }
 
 // AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
@@ -376,15 +389,12 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 		select {
 		case <-covenantSigTicker.C:
 			// 0. Update slashing address in case it is changed upon governance proposal
-			params, err := ce.cc.QueryStakingParams()
-			if err != nil {
+			if err := ce.UpdateParams(); err != nil {
 				ce.logger.WithFields(logrus.Fields{
 					"err": err,
 				}).Error("failed to get staking params")
 				continue
 			}
-			// update params
-			ce.params = params
 
 			// 1. Get all pending delegations first, these are more important than the unbonding ones
 			dels, err := ce.cc.QueryPendingDelegations(limit)
@@ -465,6 +475,31 @@ func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath
 	covenantSk := secp256k1.PrivKeyFromBytes(sdkCovenantSk.Key)
 
 	return covenantSk, covenantSk.PubKey(), nil
+}
+
+func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
+	var (
+		params *types.StakingParams
+		err    error
+	)
+
+	if err := retry.Do(func() error {
+		params, err = ce.cc.QueryStakingParams()
+		if err != nil {
+			return err
+		}
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		ce.logger.WithFields(logrus.Fields{
+			"attempt":      n + 1,
+			"max_attempts": RtyAttNum,
+			"error":        err,
+		}).Debug("failed to query the consumer chain for the staking params")
+	})); err != nil {
+		return nil, err
+	}
+
+	return params, nil
 }
 
 func (ce *CovenantEmulator) Start() error {
