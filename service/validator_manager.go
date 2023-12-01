@@ -8,6 +8,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 
@@ -85,7 +86,7 @@ func (vm *ValidatorManager) monitorCriticalErr() {
 			if err != nil {
 				panic(fmt.Errorf("failed to get the validator instance: %w", err))
 			}
-			if errors.Is(criticalErr.err, types.ErrValidatorSlashed) {
+			if errors.Is(criticalErr.err, btcstakingtypes.ErrBTCValAlreadySlashed) {
 				vm.setValidatorSlashed(vi)
 				vm.logger.WithFields(logrus.Fields{
 					"err": criticalErr,

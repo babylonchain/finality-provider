@@ -9,6 +9,7 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -220,7 +221,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			res, err := v.tryFastSync(targetBlock)
 			v.isLagging.Store(false)
 			if err != nil {
-				if errors.Is(err, types.ErrValidatorSlashed) {
+				if errors.Is(err, bstypes.ErrBTCValAlreadySlashed) {
 					v.reportCriticalErr(err)
 					continue
 				}
