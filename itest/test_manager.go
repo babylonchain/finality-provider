@@ -70,6 +70,7 @@ type TestDelegationData struct {
 	StakingTx               *wire.MsgTx
 	StakingTxInfo           *btcctypes.TransactionInfo
 	DelegatorSig            *bbntypes.BIP340Signature
+	ValidatorPks            []*btcec.PublicKey
 
 	SlashingAddr  string
 	ChangeAddr    string
@@ -500,6 +501,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 	_, err = tm.BabylonClient.CreateBTCDelegation(
 		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
+		validatorPks,
 		pop,
 		uint32(stakingTime),
 		stakingAmount,
@@ -513,6 +515,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		DelegatorKey:            delBtcPubKey,
 		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
 		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
+		ValidatorPks:            validatorPks,
 		StakingTx:               testStakingInfo.StakingTx,
 		SlashingTx:              testStakingInfo.SlashingTx,
 		StakingTxInfo:           txInfo,

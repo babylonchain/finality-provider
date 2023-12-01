@@ -1,7 +1,6 @@
 BUILDDIR ?= $(CURDIR)/build
 TOOLS_DIR := tools
 
-BTCD_PKG := github.com/btcsuite/btcd
 BABYLON_PKG := github.com/babylonchain/babylon/cmd/babylond
 
 GO_BIN := ${GOPATH}/bin
@@ -35,9 +34,6 @@ all: build install
 
 build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
 
-clean: 
-	rm -rf $(BUILDDIR)
-
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
 	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
 
@@ -48,7 +44,7 @@ build-docker:
 	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/btc-validator -f Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
-.PHONY: build build-docker clean
+.PHONY: build build-docker
 
 test:
 	go test ./...

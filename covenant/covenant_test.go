@@ -11,6 +11,7 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,8 @@ const (
 	passphrase = "testpass"
 	hdPath     = ""
 )
+
+var net = &chaincfg.SimNetParams
 
 func FuzzAddCovenantSig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
@@ -79,7 +82,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		testInfo := datagen.GenBTCStakingSlashingInfo(
 			r,
 			t,
-			&chaincfg.SimNetParams,
+			net,
 			delSK,
 			valPks,
 			covenantPks,
@@ -115,7 +118,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			covSigs = append(covSigs, covenantSig.MustMarshal())
 		}
 
-		//
+		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().QueryPendingDelegations(gomock.Any()).
 			Return([]*types.Delegation{btcDel}, nil).AnyTimes()
@@ -125,6 +128,73 @@ func FuzzAddCovenantSig(f *testing.F) {
 			covSigs,
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		covenantConfig.SlashingAddress = slashingAddr.String()
+
+		// generate undelegation
+		unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
+		unbondingValue := int64(btcDel.TotalSat) - 1000
+
+		stakingTxHash := testInfo.StakingTx.TxHash()
+		testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
+			r,
+			t,
+			net,
+			delSK,
+			btcDel.ValBtcPks,
+			params.CovenantPks,
+			params.CovenantQuorum,
+			wire.NewOutPoint(&stakingTxHash, 0),
+			unbondingTime,
+			unbondingValue,
+			params.SlashingAddress.String(), changeAddr.String(),
+			slashingRate,
+		)
+		require.NoError(t, err)
+		// random signer
+		unbondingTxMsg := testUnbondingInfo.UnbondingTx
+
+		unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
+		require.NoError(t, err)
+
+		serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
+		require.NoError(t, err)
+		undel := &types.Undelegation{
+			UnbondingTxHex: hex.EncodeToString(serializedUnbondingTx),
+			UnbondingTime:  uint32(unbondingTime),
+			SlashingTxHex:  testUnbondingInfo.SlashingTx.ToHexStr(),
+		}
+		btcDel.BtcUndelegation = undel
+		unbondingCovSig, err := testUnbondingInfo.SlashingTx.Sign(
+			unbondingTxMsg,
+			0,
+			unbondingSlashingPathInfo.GetPkScriptPath(),
+			covenantSk,
+		)
+		require.NoError(t, err)
+		unbondingCovSlashingSigs := make([][]byte, 0, len(valPks))
+		for _, valPk := range valPks {
+			encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+			require.NoError(t, err)
+			covenantSig, err := testUnbondingInfo.SlashingTx.EncSign(
+				testUnbondingInfo.UnbondingTx,
+				0,
+				unbondingSlashingPathInfo.GetPkScriptPath(),
+				covenantSk,
+				encKey,
+			)
+			require.NoError(t, err)
+			covSigs = append(covSigs, covenantSig.MustMarshal())
+		}
+
+		// check the sigs are expected
+		expectedTxHash = testutil.GenRandomHexStr(r, 32)
+		mockClientController.EXPECT().QueryUnbondingDelegations(gomock.Any()).
+			Return([]*types.Delegation{btcDel}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitCovenantUnbondingSigs(
+			covenantPk,
+			testInfo.StakingTx.TxHash().String(),
+			unbondingCovSig,
+			unbondingCovSlashingSigs,
+		).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 	})
 }

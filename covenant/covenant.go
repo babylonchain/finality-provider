@@ -422,7 +422,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 					ce.logger.WithFields(logrus.Fields{
 						"err":        err,
 						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Covenant sig to the Bitcoin delegation")
+					}).Error("failed to submit Covenant sig to the Bitcoin undelegation")
 				}
 			}
 

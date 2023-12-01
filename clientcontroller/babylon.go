@@ -639,6 +639,7 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 	return &types.Delegation{
 		BtcPk:           del.BtcPk.MustToBTCPK(),
 		ValBtcPks:       valBtcPks,
+		TotalSat:        del.TotalSat,
 		StartHeight:     del.StartHeight,
 		EndHeight:       del.EndHeight,
 		StakingTxHex:    stakingTxHex,
@@ -700,6 +701,7 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
+	valPks []*btcec.PublicKey,
 	pop *btcstakingtypes.ProofOfPossession,
 	stakingTime uint32,
 	stakingValue int64,
@@ -707,10 +709,15 @@ func (bc *BabylonController) CreateBTCDelegation(
 	slashingTx *btcstakingtypes.BTCSlashingTx,
 	delSig *bbntypes.BIP340Signature,
 ) (*types.TxResponse, error) {
+	valBtcPks := make([]bbntypes.BIP340PubKey, 0, len(valPks))
+	for _, v := range valPks {
+		valBtcPks = append(valBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
+	}
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
 		Signer:       bc.mustGetTxSigner(),
 		BabylonPk:    delBabylonPk,
 		BtcPk:        delBtcPk,
+		ValBtcPkList: valBtcPks,
 		Pop:          pop,
 		StakingTime:  stakingTime,
 		StakingValue: stakingValue,
