@@ -28,7 +28,7 @@ func TestValidatorLifeCycle(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
-	params := tm.getParams(t)
+	params := tm.GetParams(t)
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -55,7 +55,7 @@ func TestDoubleSigning(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
-	params := tm.getParams(t)
+	params := tm.GetParams(t)
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -97,7 +97,7 @@ func TestFastSync(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
-	params := tm.getParams(t)
+	params := tm.GetParams(t)
 
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
@@ -141,7 +141,7 @@ func TestCovenantLifeCycle(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
-	params := tm.getParams(t)
+	params := tm.GetParams(t)
 
 	valPk := valIns.MustGetBtcPk()
 	valBtcPk := valIns.GetBtcPkBIP340()

@@ -576,7 +576,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) getParams(t *testing.T) *types.StakingParams {
+func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {
 	p, err := tm.BabylonClient.QueryStakingParams()
 	require.NoError(t, err)
 	return p
