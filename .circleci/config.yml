@@ -63,6 +63,14 @@ jobs:
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
           repo: "eotsmanager"
           extra-build-args: "--secret id=sshKey,src=/home/circleci/.ssh/$DEPLOY_KEY_NAME"
+      - aws-ecr/build-image:
+          push-image: false
+          dockerfile: Dockerfile
+          path: ./covenant
+          build-path: ./
+          tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
+          repo: "covenant"
+          extra-build-args: "--secret id=sshKey,src=/home/circleci/.ssh/$DEPLOY_KEY_NAME"
       - run:
           name: Save Docker image to export it to workspace
           command: |
@@ -96,6 +104,11 @@ jobs:
           registry-id: AWS_ECR_REGISTRY_ID
           region: "$AWS_REGION"
           repo: "eotsmanager"
+          tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
+      - aws-ecr/push-image:
+          registry-id: AWS_ECR_REGISTRY_ID
+          region: "$AWS_REGION"
+          repo: "covenant"
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
 
 workflows:
