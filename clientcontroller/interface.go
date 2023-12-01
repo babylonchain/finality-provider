@@ -103,7 +103,7 @@ func NewClientController(cfg *valcfg.Config, logger *logrus.Logger) (ClientContr
 	)
 	switch cfg.ChainName {
 	case babylonConsumerChainName:
-		cc, err = NewBabylonController(cfg.DataDir, cfg.BabylonConfig, logger)
+		cc, err = NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}

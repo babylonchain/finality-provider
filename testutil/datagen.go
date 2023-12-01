@@ -96,10 +96,9 @@ func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
 		FinalizationTimeoutBlocks: 100,
 		MinSlashingTxFeeSat:       0,
 		CovenantPks:               covenantPks,
-		SlashingAddress:           slashingAddr.String(),
+		SlashingAddress:           slashingAddr,
 		CovenantQuorum:            uint32(covThreshold),
-		SlashingRate:              GenRandomDec(r).BigInt(),
-		MaxActiveBtcValidators:    100,
+		SlashingRate:              GenRandomDec(r),
 	}
 }
 

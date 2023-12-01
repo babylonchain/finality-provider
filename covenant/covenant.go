@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -129,17 +128,13 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 		return nil, err
 	}
 
-	decodedSlashingAddr, err := btcutil.DecodeAddress(ce.params.SlashingAddress, &ce.config.ActiveNetParams)
-	if err != nil {
-		return nil, err
-	}
 	if err := btcstaking.CheckTransactions(
 		slashingMsgTx,
 		stakingMsgTx,
 		stakingOutputIdx,
-		ce.params.MinSlashingTxFeeSat,
-		sdkmath.LegacyNewDecFromBigInt(ce.params.SlashingRate),
-		decodedSlashingAddr,
+		int64(ce.params.MinSlashingTxFeeSat),
+		ce.params.SlashingRate,
+		ce.params.SlashingAddress,
 		&ce.config.ActiveNetParams,
 	); err != nil {
 		return nil, fmt.Errorf("invalid txs in the delegation: %w", err)
@@ -265,17 +260,13 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		return nil, err
 	}
 
-	decodedSlashingAddr, err := btcutil.DecodeAddress(ce.params.SlashingAddress, &ce.config.ActiveNetParams)
-	if err != nil {
-		return nil, err
-	}
 	err = btcstaking.CheckTransactions(
 		slashingMsgTx,
 		unbondingMsgTx,
 		unbondingOutputIdx,
-		ce.params.MinSlashingTxFeeSat,
-		sdkmath.LegacyNewDecFromBigInt(ce.params.SlashingRate),
-		decodedSlashingAddr,
+		int64(ce.params.MinSlashingTxFeeSat),
+		ce.params.SlashingRate,
+		ce.params.SlashingAddress,
 		&ce.config.ActiveNetParams,
 	)
 	if err != nil {

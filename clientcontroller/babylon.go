@@ -5,35 +5,26 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"os"
-	"path"
-	"strings"
-	"sync"
 	"time"
 
 	"cosmossdk.io/math"
-	"github.com/avast/retry-go/v4"
-	bbnapp "github.com/babylonchain/babylon/app"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sttypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"github.com/cosmos/relayer/v2/relayer/provider"
-	pv "github.com/cosmos/relayer/v2/relayer/provider"
-	zaplogfmt "github.com/jsternberg/zap-logfmt"
-	"github.com/juju/fslock"
 	"github.com/sirupsen/logrus"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/babylonchain/btc-validator/types"
 	"github.com/babylonchain/btc-validator/valcfg"
@@ -42,113 +33,83 @@ import (
 var _ ClientController = &BabylonController{}
 
 type BabylonController struct {
-	provider *cosmos.CosmosProvider
-	logger   *logrus.Logger
-	timeout  time.Duration
-}
-
-func newRootLogger(format string, debug bool) (*zap.Logger, error) {
-	config := zap.NewProductionEncoderConfig()
-	config.EncodeTime = func(ts time.Time, encoder zapcore.PrimitiveArrayEncoder) {
-		encoder.AppendString(ts.UTC().Format("2006-01-02T15:04:05.000000Z07:00"))
-	}
-	config.LevelKey = "lvl"
-
-	var enc zapcore.Encoder
-	switch format {
-	case "json":
-		enc = zapcore.NewJSONEncoder(config)
-	case "auto", "console":
-		enc = zapcore.NewConsoleEncoder(config)
-	case "logfmt":
-		enc = zaplogfmt.NewEncoder(config)
-	default:
-		return nil, fmt.Errorf("unrecognized log format %q", format)
-	}
-
-	level := zap.InfoLevel
-	if debug {
-		level = zap.DebugLevel
-	}
-	return zap.New(zapcore.NewCore(
-		enc,
-		os.Stderr,
-		level,
-	)), nil
+	bbnClient *bbnclient.Client
+	cfg       *valcfg.BBNConfig
+	btcParams *chaincfg.Params
+	logger    *logrus.Logger
 }
 
 func NewBabylonController(
-	homedir string,
 	cfg *valcfg.BBNConfig,
+	btcParams *chaincfg.Params,
 	logger *logrus.Logger,
 ) (*BabylonController, error) {
 
-	zapLogger, err := newRootLogger("console", true)
-	if err != nil {
-		return nil, err
+	bbnConfig := valcfg.BBNConfigToBabylonConfig(cfg)
+
+	if err := bbnConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
 	}
 
-	// Create tmp Babylon app to retrieve and register codecs
-	tmpBabylon := bbnapp.NewTmpBabylonApp()
-
-	cosmosConfig := valcfg.BBNConfigToCosmosProviderConfig(cfg)
-
-	provider, err := cosmosConfig.NewProvider(
-		zapLogger,
-		homedir,
-		true,
-		"babylon",
+	bc, err := bbnclient.New(
+		&bbnConfig,
+		logger,
 	)
-
 	if err != nil {
-		return nil, err
-	}
-
-	cp := provider.(*cosmos.CosmosProvider)
-
-	cp.PCfg.KeyDirectory = cfg.KeyDirectory
-	// Need to override this manually as otherwise oprion from config is ignored
-	cp.Cdc = cosmos.Codec{
-		InterfaceRegistry: tmpBabylon.InterfaceRegistry(),
-		Marshaler:         tmpBabylon.AppCodec(),
-		TxConfig:          tmpBabylon.TxConfig(),
-		Amino:             tmpBabylon.LegacyAmino(),
-	}
-
-	err = cp.Init(context.Background())
-
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
 	}
 
 	return &BabylonController{
-		cp,
+		bc,
+		cfg,
+		btcParams,
 		logger,
-		cfg.Timeout,
 	}, nil
 }
 
-func (bc *BabylonController) MustGetTxSigner() string {
-	address, err := bc.provider.Address()
+func (bc *BabylonController) mustGetTxSigner() string {
+	signer := bc.GetKeyAddress()
+	prefix := bc.cfg.AccountPrefix
+	return sdk.MustBech32ifyAddressBytes(prefix, signer)
+}
+
+func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
+	// get key address, retrieves address based on key name which is configured in
+	// cfg *stakercfg.BBNConfig. If this fails, it means we have misconfiguration problem
+	// and we should panic.
+	// This is checked at the start of BabylonController, so if it fails something is really wrong
+
+	keyRec, err := bc.bbnClient.GetKeyring().Key(bc.cfg.Key)
+
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to get key address: %s", err))
 	}
-	return address
+
+	addr, err := keyRec.GetAddress()
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get key address: %s", err))
+	}
+
+	return addr
 }
 
 func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	queryCkptClient := btcctypes.NewQueryClient(bc.provider)
-
+	// query btc checkpoint params
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
+	queryCkptClient := btcctypes.NewQueryClient(clientCtx)
 	ckptQueryRequest := &btcctypes.QueryParamsRequest{}
 	ckptParamRes, err := queryCkptClient.Params(ctx, ckptQueryRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
 	}
 
-	queryStakingClient := btcstakingtypes.NewQueryClient(bc.provider)
+	// query btc staking params
+	clientCtx = sdkclient.Context{Client: bc.bbnClient.RPCClient}
+	queryStakingClient := btcstakingtypes.NewQueryClient(clientCtx)
 	stakingQueryRequest := &btcstakingtypes.QueryParamsRequest{}
 	stakingParamRes, err := queryStakingClient.Params(ctx, stakingQueryRequest)
 	if err != nil {
@@ -163,15 +124,19 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		}
 		covenantPks = append(covenantPks, covPk)
 	}
+	slashingAddress, err := btcutil.DecodeAddress(stakingParamRes.Params.SlashingAddress, bc.btcParams)
+	if err != nil {
+		return nil, err
+	}
 
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
 		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
-		MinSlashingTxFeeSat:       stakingParamRes.Params.MinSlashingTxFeeSat,
+		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
 		CovenantPks:               covenantPks,
-		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
+		SlashingAddress:           slashingAddress,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
-		SlashingRate:              stakingParamRes.Params.SlashingRate.BigInt(),
+		SlashingRate:              stakingParamRes.Params.SlashingRate,
 	}, nil
 }
 
@@ -180,90 +145,12 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxRe
 }
 
 func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
-	var (
-		rlyResp     *provider.RelayerTxResponse
-		callbackErr error
-		wg          sync.WaitGroup
+	return bc.bbnClient.ReliablySendMsgs(
+		context.Background(),
+		msgs,
+		expectedErrors,
+		unrecoverableErrors,
 	)
-
-	callback := func(rtr *provider.RelayerTxResponse, err error) {
-		rlyResp = rtr
-		callbackErr = err
-		wg.Done()
-	}
-
-	wg.Add(1)
-
-	// convert message type
-	relayerMsgs := []pv.RelayerMessage{}
-	for _, m := range msgs {
-		relayerMsg := cosmos.NewCosmosMessage(m, func(signer string) {})
-		relayerMsgs = append(relayerMsgs, relayerMsg)
-	}
-
-	ctx := context.Background()
-	if err := retry.Do(func() error {
-		var sendMsgErr error
-		krErr := bc.accessKeyWithLock(func() {
-			sendMsgErr = bc.provider.SendMessagesToMempool(ctx, relayerMsgs, "", ctx, []func(*provider.RelayerTxResponse, error){callback})
-		})
-		if krErr != nil {
-			bc.logger.WithFields(logrus.Fields{
-				"error": krErr,
-			}).Error("unrecoverable err when submitting the tx, skip retrying")
-			return retry.Unrecoverable(krErr)
-		}
-		if sendMsgErr != nil {
-			sendMsgErr = ConvertErrType(sendMsgErr)
-			if IsUnrecoverable(sendMsgErr) {
-				bc.logger.WithFields(logrus.Fields{
-					"error": sendMsgErr,
-				}).Error("unrecoverable err when submitting the tx, skip retrying")
-				return retry.Unrecoverable(sendMsgErr)
-			}
-			if IsExpected(sendMsgErr) {
-				// this is necessary because if err is returned
-				// the callback function will not be executed so
-				// that the inside wg.Done will not be executed
-				wg.Done()
-				bc.logger.WithFields(logrus.Fields{
-					"error": sendMsgErr,
-				}).Error("expected err when submitting the tx, skip retrying")
-				return nil
-			}
-			return sendMsgErr
-		}
-		return nil
-	}, retry.Context(ctx), rtyAtt, rtyDel, rtyErr, retry.OnRetry(func(n uint, err error) {
-		bc.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": rtyAttNum,
-			"error":        err,
-		}).Error()
-	})); err != nil {
-		return nil, err
-	}
-
-	wg.Wait()
-
-	if callbackErr != nil {
-		callbackErr = ConvertErrType(callbackErr)
-		if IsExpected(callbackErr) {
-			return nil, nil
-		}
-		return nil, callbackErr
-	}
-
-	if rlyResp == nil {
-		// this case could happen if the error within the retry is an expected error
-		return nil, nil
-	}
-
-	if rlyResp.Code != 0 {
-		return rlyResp, fmt.Errorf("transaction failed with code: %d", rlyResp.Code)
-	}
-
-	return rlyResp, nil
 }
 
 // RegisterValidator registers a BTC validator via a MsgCreateBTCValidator to Babylon
@@ -288,7 +175,7 @@ func (bc *BabylonController) RegisterValidator(
 	}
 
 	msg := &btcstakingtypes.MsgCreateBTCValidator{
-		Signer:      bc.MustGetTxSigner(),
+		Signer:      bc.mustGetTxSigner(),
 		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
 		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		Pop:         &bbnPop,
@@ -321,7 +208,7 @@ func (bc *BabylonController) CommitPubRandList(
 	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
 
 	msg := &finalitytypes.MsgCommitPubRandList{
-		Signer:      bc.MustGetTxSigner(),
+		Signer:      bc.mustGetTxSigner(),
 		ValBtcPk:    bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		StartHeight: startHeight,
 		PubRandList: schnorrPubRandList,
@@ -345,7 +232,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 ) (*types.TxResponse, error) {
 
 	msg := &btcstakingtypes.MsgAddCovenantSig{
-		Signer:        bc.MustGetTxSigner(),
+		Signer:        bc.mustGetTxSigner(),
 		Pk:            bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash: stakingTxHash,
 		Sigs:          sigs,
@@ -370,7 +257,7 @@ func (bc *BabylonController) SubmitCovenantUnbondingSigs(
 	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
 
 	msg := &btcstakingtypes.MsgAddCovenantUnbondingSigs{
-		Signer:                  bc.MustGetTxSigner(),
+		Signer:                  bc.mustGetTxSigner(),
 		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash:           stakingTxHash,
 		UnbondingTxSig:          &bip340UnbondingSig,
@@ -388,7 +275,7 @@ func (bc *BabylonController) SubmitCovenantUnbondingSigs(
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 func (bc *BabylonController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
 	msg := &finalitytypes.MsgAddFinalitySig{
-		Signer:       bc.MustGetTxSigner(),
+		Signer:       bc.mustGetTxSigner(),
 		ValBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		BlockHeight:  blockHeight,
 		BlockAppHash: blockHash,
@@ -412,7 +299,7 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blo
 	msgs := make([]sdk.Msg, 0, len(blocks))
 	for i, b := range blocks {
 		msg := &finalitytypes.MsgAddFinalitySig{
-			Signer:       bc.MustGetTxSigner(),
+			Signer:       bc.mustGetTxSigner(),
 			ValBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 			BlockHeight:  b.Height,
 			BlockAppHash: b.Hash,
@@ -441,14 +328,13 @@ func (bc *BabylonController) QueryUnbondingDelegations(limit uint64) ([]*types.D
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
 func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*types.Delegation, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 	pagination := &sdkquery.PageRequest{
 		Limit: limit,
 	}
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
 	// query all the unsigned delegations
@@ -470,11 +356,10 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 }
 
 func (bc *BabylonController) QueryValidatorSlashed(valPk *btcec.PublicKey) (bool, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 	valPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(valPk)
 
 	queryRequest := &btcstakingtypes.QueryBTCValidatorRequest{ValBtcPkHex: valPubKey.MarshalHex()}
@@ -500,11 +385,10 @@ func (bc *BabylonController) getNDelegations(
 		Limit: n,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
-
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
 	queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
@@ -572,10 +456,10 @@ func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
 func (bc *BabylonController) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
@@ -615,10 +499,10 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 		Key:     startKey,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
@@ -648,10 +532,10 @@ func getContextWithCancel(timeout time.Duration) (context.Context, context.Cance
 }
 
 func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 
@@ -672,10 +556,10 @@ func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error)
 }
 
 func (bc *BabylonController) QueryActivatedHeight() (uint64, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
@@ -690,9 +574,9 @@ func (bc *BabylonController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := bc.provider.RPCClient.BlockchainInfo(ctx, 0, 0)
+	chainInfo, err := bc.bbnClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
 	if err != nil {
@@ -707,64 +591,12 @@ func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {
 	}, nil
 }
 
-// accessKeyWithLock triggers a function that access key ring while acquiring
-// the file system lock, in order to remain thread-safe when multiple concurrent
-// relayers are running on the same machine and accessing the same keyring
-// adapted from
-// https://github.com/babylonchain/babylon-relayer/blob/f962d0940832a8f84f747c5d9cbc67bc1b156386/bbnrelayer/utils.go#L212
-func (bc *BabylonController) accessKeyWithLock(accessFunc func()) error {
-	// use lock file to guard concurrent access to the keyring
-	lockFilePath := path.Join(bc.provider.PCfg.KeyDirectory, "keys.lock")
-	lock := fslock.New(lockFilePath)
-	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("failed to acquire file system lock (%s): %w", lockFilePath, err)
-	}
-
-	// trigger function that access keyring
-	accessFunc()
-
-	// unlock and release access
-	if err := lock.Unlock(); err != nil {
-		return fmt.Errorf("error unlocking file system lock (%s), please manually delete", lockFilePath)
-	}
-
-	return nil
-}
-
 func (bc *BabylonController) Close() error {
-	if !bc.provider.RPCClient.IsRunning() {
+	if !bc.bbnClient.RPCClient.IsRunning() {
 		return nil
 	}
 
-	return bc.provider.RPCClient.Stop()
-}
-
-func ConvertErrType(err error) error {
-	if err == nil {
-		return nil
-	}
-	switch {
-	case strings.Contains(err.Error(), btcstakingtypes.ErrBTCValAlreadySlashed.Error()):
-		return types.ErrValidatorSlashed
-	case strings.Contains(err.Error(), finalitytypes.ErrBlockNotFound.Error()):
-		return types.ErrBlockNotFound
-	case strings.Contains(err.Error(), finalitytypes.ErrInvalidFinalitySig.Error()):
-		return types.ErrInvalidFinalitySig
-	case strings.Contains(err.Error(), finalitytypes.ErrHeightTooHigh.Error()):
-		return types.ErrHeightTooHigh
-	case strings.Contains(err.Error(), finalitytypes.ErrNoPubRandYet.Error()):
-		return types.ErrNoPubRandYet
-	case strings.Contains(err.Error(), finalitytypes.ErrPubRandNotFound.Error()):
-		return types.ErrPubRandNotFound
-	case strings.Contains(err.Error(), finalitytypes.ErrTooFewPubRand.Error()):
-		return types.ErrTooFewPubRand
-	case strings.Contains(err.Error(), finalitytypes.ErrInvalidPubRand.Error()):
-		return types.ErrInvalidPubRand
-	case strings.Contains(err.Error(), finalitytypes.ErrDuplicatedFinalitySig.Error()):
-		return types.ErrDuplicatedFinalitySig
-	default:
-		return err
-	}
+	return bc.bbnClient.RPCClient.Stop()
 }
 
 func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
@@ -876,7 +708,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	delSig *bbntypes.BIP340Signature,
 ) (*types.TxResponse, error) {
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:       bc.MustGetTxSigner(),
+		Signer:       bc.mustGetTxSigner(),
 		BabylonPk:    delBabylonPk,
 		BtcPk:        delBtcPk,
 		Pop:          pop,
@@ -905,7 +737,7 @@ func (bc *BabylonController) CreateBTCUndelegation(
 	delSig *bbntypes.BIP340Signature,
 ) (*provider.RelayerTxResponse, error) {
 	msg := &btcstakingtypes.MsgBTCUndelegate{
-		Signer:               bc.MustGetTxSigner(),
+		Signer:               bc.mustGetTxSigner(),
 		UnbondingTx:          unbondingTx,
 		UnbondingTime:        unbondingTime,
 		UnbondingValue:       unbondingValue,
@@ -926,7 +758,7 @@ func (bc *BabylonController) CreateBTCUndelegation(
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	msg := &btclctypes.MsgInsertHeaders{
-		Signer:  bc.MustGetTxSigner(),
+		Signer:  bc.mustGetTxSigner(),
 		Headers: headers,
 	}
 
@@ -946,10 +778,10 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 		Limit: 100,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
 
@@ -974,10 +806,10 @@ func (bc *BabylonController) QueryValidators() ([]*btcstakingtypes.BTCValidator,
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := btclctypes.NewQueryClient(clientCtx)
 
@@ -1002,10 +834,10 @@ func (bc *BabylonController) QueryBTCValidatorDelegations(valBtcPk *bbntypes.BIP
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
-	ctx, cancel := getContextWithCancel(bc.timeout)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 
-	clientCtx := sdkclient.Context{Client: bc.provider.RPCClient}
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 
 	queryClient := finalitytypes.NewQueryClient(clientCtx)
 

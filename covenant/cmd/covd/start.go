@@ -45,7 +45,7 @@ func startCovenantFn(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load config at %s: %w", configFilePath, err)
 	}
 
-	bbnClient, err := clientcontroller.NewBabylonController(cfg.CovenantDir, cfg.BabylonConfig, cfgLogger)
+	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, cfgLogger)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}

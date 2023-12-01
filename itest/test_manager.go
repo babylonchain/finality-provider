@@ -97,7 +97,7 @@ func StartManager(t *testing.T) *TestManager {
 	err = bh.Start()
 	require.NoError(t, err)
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir)
-	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
+	bc, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, logger)
 	require.NoError(t, err)
 
 	// 3. prepare EOTS manager
@@ -427,7 +427,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 
 	params, err := tm.BabylonClient.QueryStakingParams()
 	slashingRate := sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
-	params.SlashingRate = slashingRate.BigInt()
+	params.SlashingRate = slashingRate
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
@@ -446,7 +446,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		params.CovenantQuorum,
 		stakingTime,
 		stakingAmount,
-		params.SlashingAddress, changeAddress.String(),
+		params.SlashingAddress.String(), changeAddress.String(),
 		slashingRate,
 	)
 
@@ -517,7 +517,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		SlashingTx:              testStakingInfo.SlashingTx,
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
-		SlashingAddr:            params.SlashingAddress,
+		SlashingAddr:            params.SlashingAddress.String(),
 		ChangeAddr:              changeAddress.String(),
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
@@ -553,7 +553,7 @@ func (tm *TestManager) InsertBTCUnbonding(
 		wire.NewOutPoint(&stkTxHash, 0),
 		unbondingTime,
 		int64(unbondingValue),
-		params.SlashingAddress, changeAddress,
+		params.SlashingAddress.String(), changeAddress,
 		slashingRate,
 	)
 
