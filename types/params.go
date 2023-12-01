@@ -24,9 +24,6 @@ type StakingParams struct {
 	// Minimum number of signatures needed for the covenant multisignature
 	CovenantQuorum uint32
 
-	// Chain-wide minimum commission rate that a validator can charge their delegators
-	MinCommissionRate *big.Int
-
 	// The staked amount to be slashed, expressed as a decimal (e.g., 0.5 for 50%).
 	SlashingRate *big.Int
 

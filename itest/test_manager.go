@@ -426,6 +426,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	params, err := tm.BabylonClient.QueryStakingParams()
+	slashingRate := sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
+	params.SlashingRate = slashingRate.BigInt()
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
@@ -445,7 +447,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		stakingTime,
 		stakingAmount,
 		params.SlashingAddress, changeAddress.String(),
-		sdkmath.LegacyNewDecFromBigInt(params.SlashingRate),
+		slashingRate,
 	)
 
 	// delegator Babylon key pairs

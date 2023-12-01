@@ -24,7 +24,6 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/module"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sttypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
@@ -89,17 +88,10 @@ func NewBabylonController(
 		return nil, err
 	}
 
-	// HACK: replace the modules in public rpc-client to add BTC staking / finality modules
-	// so that it recognises their message formats
-	// TODO: fix this either by fixing rpc-client side
-	var moduleBasics []module.AppModuleBasic
-	for _, mbasic := range bbnapp.NewTmpBabylonApp().BasicModuleManager {
-		moduleBasics = append(moduleBasics, mbasic)
-	}
+	// Create tmp Babylon app to retrieve and register codecs
+	tmpBabylon := bbnapp.NewTmpBabylonApp()
 
 	cosmosConfig := valcfg.BBNConfigToCosmosProviderConfig(cfg)
-
-	cosmosConfig.Modules = moduleBasics
 
 	provider, err := cosmosConfig.NewProvider(
 		zapLogger,
@@ -116,7 +108,12 @@ func NewBabylonController(
 
 	cp.PCfg.KeyDirectory = cfg.KeyDirectory
 	// Need to override this manually as otherwise oprion from config is ignored
-	cp.Cdc = cosmos.MakeCodec(moduleBasics, []string{})
+	cp.Cdc = cosmos.Codec{
+		InterfaceRegistry: tmpBabylon.InterfaceRegistry(),
+		Marshaler:         tmpBabylon.AppCodec(),
+		TxConfig:          tmpBabylon.TxConfig(),
+		Amino:             tmpBabylon.LegacyAmino(),
+	}
 
 	err = cp.Init(context.Background())
 
@@ -174,9 +171,7 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		CovenantPks:               covenantPks,
 		SlashingAddress:           stakingParamRes.Params.SlashingAddress,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
-		MinCommissionRate:         stakingParamRes.Params.MinCommissionRate.BigInt(),
 		SlashingRate:              stakingParamRes.Params.SlashingRate.BigInt(),
-		MaxActiveBtcValidators:    stakingParamRes.Params.MaxActiveBtcValidators,
 	}, nil
 }
 
