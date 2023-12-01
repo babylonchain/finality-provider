@@ -72,11 +72,8 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 	}
 }
 
-func GenRandomDec(r *rand.Rand) sdkmath.LegacyDec {
-	// generate a random slashing rate with random precision,
-	// this will include both valid and invalid ranges, so we can test both cases
-	randomPrecision := r.Int63n(4) // [0,3]
-	return sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 1001)), randomPrecision)
+func GenValidSlashingRate(r *rand.Rand) sdkmath.LegacyDec {
+	return sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
 }
 
 func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
@@ -94,11 +91,11 @@ func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
 	return &types.StakingParams{
 		ComfirmationTimeBlocks:    10,
 		FinalizationTimeoutBlocks: 100,
-		MinSlashingTxFeeSat:       0,
+		MinSlashingTxFeeSat:       1,
 		CovenantPks:               covenantPks,
 		SlashingAddress:           slashingAddr,
 		CovenantQuorum:            uint32(covThreshold),
-		SlashingRate:              GenRandomDec(r),
+		SlashingRate:              GenValidSlashingRate(r),
 	}
 }
 

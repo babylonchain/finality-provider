@@ -3,10 +3,9 @@ package covenant_test
 import (
 	"encoding/hex"
 	"math/rand"
-	"os"
 	"testing"
 
-	sdkmath "cosmossdk.io/math"
+	"github.com/babylonchain/babylon/btcstaking"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -55,43 +54,29 @@ func FuzzAddCovenantSig(f *testing.F) {
 		// create and start covenant emulator
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logrus.New())
 		require.NoError(t, err)
-		err = ce.Start()
-		require.NoError(t, err)
-		defer func() {
-			err = ce.Stop()
-			require.NoError(t, err)
-			err := os.RemoveAll(covenantConfig.CovenantDir)
-			require.NoError(t, err)
-		}()
 
 		// generate BTC delegation
-		slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
-		require.NoError(t, err)
 		changeAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
 		require.NoError(t, err)
 		delSK, delPK, err := datagen.GenRandomBTCKeyPair(r)
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		covThreshold := datagen.RandomInt(r, 5) + 1
-		covNum := covThreshold * 2
-		covenantPks := testutil.GenBtcPublicKeys(r, t, int(covNum))
 		valNum := datagen.RandomInt(r, 5) + 1
 		valPks := testutil.GenBtcPublicKeys(r, t, int(valNum))
-		slashingRate := sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
 		testInfo := datagen.GenBTCStakingSlashingInfo(
 			r,
 			t,
 			net,
 			delSK,
 			valPks,
-			covenantPks,
-			uint32(covThreshold),
+			params.CovenantPks,
+			params.CovenantQuorum,
 			stakingTimeBlocks,
 			stakingValue,
-			slashingAddr.String(),
+			params.SlashingAddress.String(),
 			changeAddr.String(),
-			slashingRate,
+			params.SlashingRate,
 		)
 		stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
 		require.NoError(t, err)
@@ -120,14 +105,15 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().QueryPendingDelegations(gomock.Any()).
-			Return([]*types.Delegation{btcDel}, nil).AnyTimes()
 		mockClientController.EXPECT().SubmitCovenantSigs(
 			covenantPk,
 			testInfo.StakingTx.TxHash().String(),
 			covSigs,
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		res, err := ce.AddCovenantSignature(btcDel)
+		require.NoError(t, err)
+		require.Equal(t, expectedTxHash, res.TxHash)
 
 		// generate undelegation
 		unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
@@ -146,7 +132,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			unbondingTime,
 			unbondingValue,
 			params.SlashingAddress.String(), changeAddr.String(),
-			slashingRate,
+			params.SlashingRate,
 		)
 		require.NoError(t, err)
 		// random signer
@@ -163,10 +149,13 @@ func FuzzAddCovenantSig(f *testing.F) {
 			SlashingTxHex:  testUnbondingInfo.SlashingTx.ToHexStr(),
 		}
 		btcDel.BtcUndelegation = undel
-		unbondingCovSig, err := testUnbondingInfo.SlashingTx.Sign(
+		stakingTxUnbondigPathInfo, err := testInfo.StakingInfo.UnbondingPathSpendInfo()
+		require.NoError(t, err)
+		unbondingCovSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
 			unbondingTxMsg,
-			0,
-			unbondingSlashingPathInfo.GetPkScriptPath(),
+			testInfo.StakingTx,
+			btcDel.StakingOutputIdx,
+			stakingTxUnbondigPathInfo.GetPkScriptPath(),
 			covenantSk,
 		)
 		require.NoError(t, err)
@@ -182,7 +171,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				encKey,
 			)
 			require.NoError(t, err)
-			covSigs = append(covSigs, covenantSig.MustMarshal())
+			unbondingCovSlashingSigs = append(unbondingCovSlashingSigs, covenantSig.MustMarshal())
 		}
 
 		// check the sigs are expected
@@ -196,5 +185,8 @@ func FuzzAddCovenantSig(f *testing.F) {
 			unbondingCovSlashingSigs,
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		res, err = ce.AddCovenantUnbondingSignatures(btcDel)
+		require.NoError(t, err)
+		require.Equal(t, expectedTxHash, res.TxHash)
 	})
 }

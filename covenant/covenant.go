@@ -75,6 +75,11 @@ func NewCovenantEmulator(
 		return nil, err
 	}
 
+	params, err := cc.QueryStakingParams()
+	if err != nil {
+		return nil, err
+	}
+
 	return &CovenantEmulator{
 		cc:         cc,
 		kc:         kc,
@@ -82,6 +87,7 @@ func NewCovenantEmulator(
 		logger:     logger,
 		input:      input,
 		passphrase: passphrase,
+		params:     params,
 		pk:         pk,
 		quit:       make(chan struct{}),
 	}, nil
