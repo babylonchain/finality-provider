@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package e2etest
 
 import (
@@ -110,9 +113,11 @@ func TestFastSync(t *testing.T) {
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
+
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
+	var finalizedBlocks []*types.BlockInfo
+	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, 1)
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
