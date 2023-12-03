@@ -170,7 +170,7 @@ func TestCovenantLifeCycle(t *testing.T) {
 
 	t.Log("undelegation is found, waiting for covenant sigs")
 
-	// after providing validator unbodning signature, we should wait for covenant to provide both valid signatures
+	// after providing validator unbonding signature, we should wait for covenant to provide both valid signatures
 	require.Eventually(t, func() bool {
 		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {

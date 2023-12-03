@@ -168,6 +168,10 @@ func createValDaemon(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	descBytes, err := description.Marshal()
+	if err != nil {
+		return err
+	}
 
 	client, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
@@ -181,7 +185,7 @@ func createValDaemon(ctx *cli.Context) error {
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
-		description,
+		descBytes,
 		&commissionRate,
 	)
 
@@ -194,7 +198,7 @@ func createValDaemon(ctx *cli.Context) error {
 	return nil
 }
 
-func getDescriptionFromContext(ctx *cli.Context) ([]byte, error) {
+func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
 	// get information for description
 	monikerStr := ctx.String(monikerFlag)
 	identityStr := ctx.String(identityFlag)
@@ -204,12 +208,7 @@ func getDescriptionFromContext(ctx *cli.Context) ([]byte, error) {
 
 	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContractStr, detailsStr)
 
-	des, err := description.EnsureLength()
-	if err != nil {
-		return nil, err
-	}
-
-	return des.Marshal()
+	return description.EnsureLength()
 }
 
 var lsValDaemonCmd = cli.Command{

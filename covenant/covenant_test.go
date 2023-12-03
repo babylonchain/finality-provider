@@ -83,11 +83,12 @@ func FuzzAddCovenantSig(f *testing.F) {
 		)
 		stakingTxBytes, err := bbntypes.SerializeBTCTx(testInfo.StakingTx)
 		require.NoError(t, err)
+		startHeight := datagen.RandomInt(r, 1000) + 100
 		btcDel := &types.Delegation{
 			BtcPk:            delPK,
 			ValBtcPks:        valPks,
-			StartHeight:      1000, // not relevant here
-			EndHeight:        uint64(1000 + stakingTimeBlocks),
+			StartHeight:      startHeight, // not relevant here
+			EndHeight:        startHeight + uint64(stakingTimeBlocks),
 			TotalSat:         uint64(stakingValue),
 			StakingTxHex:     hex.EncodeToString(stakingTxBytes),
 			StakingOutputIdx: 0,
@@ -152,13 +153,13 @@ func FuzzAddCovenantSig(f *testing.F) {
 			SlashingTxHex:  testUnbondingInfo.SlashingTx.ToHexStr(),
 		}
 		btcDel.BtcUndelegation = undel
-		stakingTxUnbondigPathInfo, err := testInfo.StakingInfo.UnbondingPathSpendInfo()
+		stakingTxUnbondingPathInfo, err := testInfo.StakingInfo.UnbondingPathSpendInfo()
 		require.NoError(t, err)
 		unbondingCovSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
 			unbondingTxMsg,
 			testInfo.StakingTx,
 			btcDel.StakingOutputIdx,
-			stakingTxUnbondigPathInfo.GetPkScriptPath(),
+			stakingTxUnbondingPathInfo.GetPkScriptPath(),
 			covenantSk,
 		)
 		require.NoError(t, err)

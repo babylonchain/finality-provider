@@ -10,7 +10,7 @@ import (
 type Delegation struct {
 	// The Bitcoin secp256k1 PK of this BTC delegation
 	BtcPk *btcec.PublicKey
-	// The Bitcoin secp256k1 PK of the BTC validator that
+	// The Bitcoin secp256k1 PKs of the BTC validators that
 	// this BTC delegation delegates to
 	ValBtcPks []*btcec.PublicKey
 	// The start BTC height of the BTC delegation
@@ -28,11 +28,11 @@ type Delegation struct {
 	StakingOutputIdx uint32
 	// The hex string of the slashing tx
 	SlashingTxHex string
-	// The signature on the slashing tx
-	// by the covenant (i.e., SK corresponding to covenant_pk in params)
+	// The signatures on the slashing tx
+	// by the covenants (i.e., SKs corresponding to covenant_pks in params)
 	// It will be a part of the witness for the staking tx output.
 	CovenantSigs []*CovenantAdaptorSigInfo
-	// if this object is present it menans that staker requested undelegation, and whole
+	// if this object is present it means that staker requested undelegation, and whole
 	// delegation is being undelegated directly in delegation object
 	BtcUndelegation *Undelegation
 }
@@ -62,7 +62,7 @@ type Undelegation struct {
 	// output to unbonding output. Unbonding output will usually have lower timelock
 	// than staking output.
 	UnbondingTxHex string
-	// The hex string of the slashing tx for unbodning transactions
+	// The hex string of the slashing tx for unbonding transactions
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
 	// validator or covenant yet.
 	SlashingTxHex string
