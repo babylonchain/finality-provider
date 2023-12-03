@@ -95,23 +95,14 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 }
 
 func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
 	// query btc checkpoint params
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-	queryCkptClient := btcctypes.NewQueryClient(clientCtx)
-	ckptQueryRequest := &btcctypes.QueryParamsRequest{}
-	ckptParamRes, err := queryCkptClient.Params(ctx, ckptQueryRequest)
+	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
 	}
 
 	// query btc staking params
-	clientCtx = sdkclient.Context{Client: bc.bbnClient.RPCClient}
-	queryStakingClient := btcstakingtypes.NewQueryClient(clientCtx)
-	stakingQueryRequest := &btcstakingtypes.QueryParamsRequest{}
-	stakingParamRes, err := queryStakingClient.Params(ctx, stakingQueryRequest)
+	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParams()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query staking params: %v", err)
 	}
@@ -328,21 +319,11 @@ func (bc *BabylonController) QueryUnbondingDelegations(limit uint64) ([]*types.D
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
 func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*types.Delegation, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
 	pagination := &sdkquery.PageRequest{
 		Limit: limit,
 	}
 
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
-	// query all the unsigned delegations
-	queryRequest := &btcstakingtypes.QueryBTCDelegationsRequest{
-		Status:     btcstakingtypes.BTCDelegationStatus(status),
-		Pagination: pagination,
-	}
-	res, err := queryClient.BTCDelegations(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
@@ -385,17 +366,7 @@ func (bc *BabylonController) getNDelegations(
 		Limit: n,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
-	queryRequest := &btcstakingtypes.QueryBTCValidatorDelegationsRequest{
-		ValBtcPkHex: valBtcPk.MarshalHex(),
-		Pagination:  pagination,
-	}
-	res, err := queryClient.BTCValidatorDelegations(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.BTCValidatorDelegations(valBtcPk.MarshalHex(), pagination)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query BTC delegations: %v", err)
@@ -456,19 +427,10 @@ func (bc *BabylonController) getNValidatorDelegationsMatchingCriteria(
 
 // QueryValidatorVotingPower queries the voting power of the validator at a given height
 func (bc *BabylonController) QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
-	// query all the unsigned delegations
-	queryRequest := &btcstakingtypes.QueryBTCValidatorPowerAtHeightRequest{
-		ValBtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(valPk).MarshalHex(),
-		Height:      blockHeight,
-	}
-	res, err := queryClient.BTCValidatorPowerAtHeight(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.BTCValidatorPowerAtHeight(
+		bbntypes.NewBIP340PubKeyFromBTCPK(valPk).MarshalHex(),
+		blockHeight,
+	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query BTC delegations: %w", err)
 	}
@@ -499,18 +461,7 @@ func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, st
 		Key:     startKey,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	queryRequest := &finalitytypes.QueryListBlocksRequest{
-		Status:     status,
-		Pagination: pagination,
-	}
-	res, err := queryClient.ListBlocks(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.ListBlocks(status, pagination)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
 	}
@@ -587,23 +538,23 @@ func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {
 	// at request will contain nil header
 	return &types.BlockInfo{
 		Height: uint64(chainInfo.BlockMetas[0].Header.Height),
-		Hash:   chainInfo.BlockMetas[0].Header.LastCommitHash,
+		Hash:   chainInfo.BlockMetas[0].Header.AppHash,
 	}, nil
 }
 
 func (bc *BabylonController) Close() error {
-	if !bc.bbnClient.RPCClient.IsRunning() {
+	if !bc.bbnClient.IsRunning() {
 		return nil
 	}
 
-	return bc.bbnClient.RPCClient.Stop()
+	return bc.bbnClient.Stop()
 }
 
 func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
 	var (
 		stakingTxHex  string
 		slashingTxHex string
-		covenantSigs  []*types.CovenantSignatureInfo
+		covenantSigs  []*types.CovenantAdaptorSigInfo
 		undelegation  *types.Undelegation
 	)
 
@@ -620,7 +571,7 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 	slashingTxHex = del.SlashingTx.ToHexStr()
 
 	for _, s := range del.CovenantSigs {
-		covSigInfo := &types.CovenantSignatureInfo{
+		covSigInfo := &types.CovenantAdaptorSigInfo{
 			Pk:   s.CovPk.MustToBTCPK(),
 			Sigs: s.AdaptorSigs,
 		}
@@ -653,8 +604,8 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 	var (
 		unbondingTxHex        string
 		slashingTxHex         string
-		covenantSlashingSigs  []*types.CovenantSignatureInfo
-		covenantUnbondingSigs []*types.SignatureInfo
+		covenantSlashingSigs  []*types.CovenantAdaptorSigInfo
+		covenantUnbondingSigs []*types.CovenantSchnorrSigInfo
 	)
 
 	if undel.UnbondingTx == nil {
@@ -674,7 +625,7 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		if err != nil {
 			panic(err)
 		}
-		sigInfo := &types.SignatureInfo{
+		sigInfo := &types.CovenantSchnorrSigInfo{
 			Pk:  unbondingSig.Pk.MustToBTCPK(),
 			Sig: sig,
 		}
@@ -682,7 +633,7 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 	}
 
 	for _, s := range undel.CovenantSlashingSigs {
-		covSigInfo := &types.CovenantSignatureInfo{
+		covSigInfo := &types.CovenantAdaptorSigInfo{
 			Pk:   s.CovPk.MustToBTCPK(),
 			Sigs: s.AdaptorSigs,
 		}

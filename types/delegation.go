@@ -31,7 +31,7 @@ type Delegation struct {
 	// The signature on the slashing tx
 	// by the covenant (i.e., SK corresponding to covenant_pk in params)
 	// It will be a part of the witness for the staking tx output.
-	CovenantSigs []*CovenantSignatureInfo
+	CovenantSigs []*CovenantAdaptorSigInfo
 	// if this object is present it menans that staker requested undelegation, and whole
 	// delegation is being undelegated directly in delegation object
 	BtcUndelegation *Undelegation
@@ -69,11 +69,11 @@ type Undelegation struct {
 	// The signatures on the slashing tx by the covenant
 	// (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
-	CovenantSlashingSigs []*CovenantSignatureInfo
+	CovenantSlashingSigs []*CovenantAdaptorSigInfo
 	// The signatures on the unbonding tx by the covenant
 	// (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
-	CovenantUnbondingSigs []*SignatureInfo
+	CovenantUnbondingSigs []*CovenantSchnorrSigInfo
 }
 
 func (ud *Undelegation) HasCovenantQuorumOnSlashing(quorum uint32) bool {
@@ -88,12 +88,12 @@ func (ud *Undelegation) HasAllSignatures(covenantQuorum uint32) bool {
 	return ud.HasCovenantQuorumOnUnbonding(covenantQuorum) && ud.HasCovenantQuorumOnSlashing(covenantQuorum)
 }
 
-type CovenantSignatureInfo struct {
+type CovenantAdaptorSigInfo struct {
 	Pk   *btcec.PublicKey
 	Sigs [][]byte
 }
 
-type SignatureInfo struct {
+type CovenantSchnorrSigInfo struct {
 	Pk  *btcec.PublicKey
 	Sig *schnorr.Signature
 }

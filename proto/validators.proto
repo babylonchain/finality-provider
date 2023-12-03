@@ -81,8 +81,8 @@ message AddFinalitySignatureRequest {
     string btc_pk = 1;
     // height is the height of the Babylon block
     uint64 height = 2;
-    // last_commit_hash is the last commit hash of the Babylon block
-    bytes last_commit_hash = 3;
+    // app_hash is the AppHash of the Babylon block
+    bytes app_hash = 3;
 }
 
 message AddFinalitySignatureResponse {

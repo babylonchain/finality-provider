@@ -82,9 +82,9 @@ func (c *ValidatorServiceGRpcClient) CreateValidator(
 
 func (c *ValidatorServiceGRpcClient) AddFinalitySignature(ctx context.Context, valPk string, height uint64, lch []byte) (*proto.AddFinalitySignatureResponse, error) {
 	req := &proto.AddFinalitySignatureRequest{
-		BtcPk:          valPk,
-		Height:         height,
-		LastCommitHash: lch,
+		BtcPk:   valPk,
+		Height:  height,
+		AppHash: lch,
 	}
 
 	res, err := c.client.AddFinalitySignature(ctx, req)
