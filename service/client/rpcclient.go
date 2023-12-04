@@ -6,6 +6,7 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -59,16 +60,21 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(
 func (c *ValidatorServiceGRpcClient) CreateValidator(
 	ctx context.Context,
 	keyName, chainID, passphrase, hdPath string,
-	description []byte,
+	description types.Description,
 	commission *sdkmath.LegacyDec,
 ) (*proto.CreateValidatorResponse, error) {
+
+	descBytes, err := description.Marshal()
+	if err != nil {
+		return nil, err
+	}
 
 	req := &proto.CreateValidatorRequest{
 		KeyName:     keyName,
 		ChainId:     chainID,
 		Passphrase:  passphrase,
 		HdPath:      hdPath,
-		Description: description,
+		Description: descBytes,
 		Commission:  commission.String(),
 	}
 

@@ -168,10 +168,6 @@ func createValDaemon(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	descBytes, err := description.Marshal()
-	if err != nil {
-		return err
-	}
 
 	client, cleanUp, err := dc.NewValidatorServiceGRpcClient(daemonAddress)
 	if err != nil {
@@ -185,7 +181,7 @@ func createValDaemon(ctx *cli.Context) error {
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
-		descBytes,
+		description,
 		&commissionRate,
 	)
 

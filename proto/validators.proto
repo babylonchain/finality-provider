@@ -52,10 +52,9 @@ message CreateValidatorRequest {
     // description defines the description terms for the validator
     bytes description = 5;
     // commission defines the commission rate for the validator
-    // TODO failed to use the customized type: github.com/cosmos/cosmos-sdk/types.Dec
-    string commission = 6  [
-        (cosmos_proto.scalar)  = "cosmos.Dec",
-        (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
+    string commission = 6 [
+        (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+        (gogoproto.nullable)   = false
     ];
 }
 
@@ -120,7 +119,10 @@ message StoreValidator {
     // description defines the description terms for the validator
     bytes description = 3;
     // commission defines the commission rate for the validator
-    string commission = 4;
+    string commission = 4 [
+        (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+        (gogoproto.nullable)   = false
+    ];
     // pop is the proof of possession of babylon_pk and btc_pk
     ProofOfPossession pop = 5;
     // key_name is the identifier of the keyring
@@ -148,7 +150,10 @@ message ValidatorInfo {
     // description defines the description terms for the validator
     bytes description = 3;
     // commission defines the commission rate for the validator
-    string commission = 4;
+    string commission = 4 [
+        (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
+        (gogoproto.nullable)   = false
+    ];
     // last_voted_height defines the height of the last voted Babylon block
     uint64 last_voted_height = 5;
     // last_committed_height defines the height of the last Babylon block
