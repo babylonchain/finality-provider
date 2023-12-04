@@ -19,10 +19,10 @@ import (
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/proto"
-	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
+	"github.com/babylonchain/btc-validator/validator/proto"
+	"github.com/babylonchain/btc-validator/validator/service"
 )
 
 func GenRandomByteArray(r *rand.Rand, length uint64) []byte {

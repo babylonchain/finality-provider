@@ -2,6 +2,7 @@ package covenant
 
 import (
 	"fmt"
+	"github.com/babylonchain/btc-validator/keyring"
 	"strings"
 	"sync"
 	"time"
@@ -17,9 +18,7 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 )
 
 var (
@@ -40,7 +39,7 @@ type CovenantEmulator struct {
 	pk *btcec.PublicKey
 
 	cc clientcontroller.ClientController
-	kc *val.ChainKeyringController
+	kc *keyring.ChainKeyringController
 
 	config *covcfg.Config
 	params *types.StakingParams
@@ -58,7 +57,7 @@ func NewCovenantEmulator(
 	logger *logrus.Logger,
 ) (*CovenantEmulator, error) {
 	input := strings.NewReader("")
-	kr, err := service.CreateKeyring(
+	kr, err := keyring.CreateKeyring(
 		config.BabylonConfig.KeyDirectory,
 		config.BabylonConfig.ChainID,
 		config.BabylonConfig.KeyringBackend,
@@ -68,7 +67,7 @@ func NewCovenantEmulator(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.BabylonConfig.Key, input)
+	kc, err := keyring.NewChainKeyringControllerWithKeyring(kr, config.BabylonConfig.Key, input)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +105,7 @@ func (ce *CovenantEmulator) UpdateParams() error {
 }
 
 // AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
-func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*service.AddCovenantSigResponse, error) {
+func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*AddCovenantSigResponse, error) {
 	// 1. the quorum is already achieved, skip sending more sigs
 	if btcDel.HasCovenantQuorum(ce.params.CovenantQuorum) {
 		return nil, nil
@@ -196,11 +195,11 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*ser
 		return nil, err
 	}
 
-	return &service.AddCovenantSigResponse{TxHash: res.TxHash}, nil
+	return &AddCovenantSigResponse{TxHash: res.TxHash}, nil
 }
 
 // AddCovenantUnbondingSignatures adds Covenant signature on the given Bitcoin delegation and submits it to Babylon
-func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation) (*service.AddCovenantSigResponse, error) {
+func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation) (*AddCovenantSigResponse, error) {
 	if del == nil {
 		return nil, fmt.Errorf("btc delegation is nil")
 	}
@@ -337,7 +336,7 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		return nil, err
 	}
 
-	return &service.AddCovenantSigResponse{
+	return &AddCovenantSigResponse{
 		TxHash: res.TxHash,
 	}, nil
 }
@@ -427,14 +426,14 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 }
 
 func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyPair, error) {
-	sdkCtx, err := service.CreateClientCtx(
+	sdkCtx, err := keyring.CreateClientCtx(
 		keyringDir, chainID,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	krController, err := val.NewChainKeyringController(
+	krController, err := keyring.NewChainKeyringController(
 		sdkCtx,
 		keyName,
 		backend,

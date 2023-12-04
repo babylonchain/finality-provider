@@ -30,9 +30,9 @@ import (
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 	"github.com/babylonchain/btc-validator/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
+	"github.com/babylonchain/btc-validator/validator/service"
 )
 
 var (

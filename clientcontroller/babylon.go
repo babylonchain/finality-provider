@@ -26,26 +26,26 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/sirupsen/logrus"
 
+	"github.com/babylonchain/btc-validator/config"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 var _ ClientController = &BabylonController{}
 
 type BabylonController struct {
 	bbnClient *bbnclient.Client
-	cfg       *valcfg.BBNConfig
+	cfg       *config.BBNConfig
 	btcParams *chaincfg.Params
 	logger    *logrus.Logger
 }
 
 func NewBabylonController(
-	cfg *valcfg.BBNConfig,
+	cfg *config.BBNConfig,
 	btcParams *chaincfg.Params,
 	logger *logrus.Logger,
 ) (*BabylonController, error) {
 
-	bbnConfig := valcfg.BBNConfigToBabylonConfig(cfg)
+	bbnConfig := config.BBNConfigToBabylonConfig(cfg)
 
 	if err := bbnConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)

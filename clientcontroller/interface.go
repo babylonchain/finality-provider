@@ -2,14 +2,15 @@ package clientcontroller
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/sirupsen/logrus"
 
+	"github.com/babylonchain/btc-validator/config"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -96,14 +97,14 @@ type CovenantAPIs interface {
 	QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error)
 }
 
-func NewClientController(cfg *valcfg.Config, logger *logrus.Logger) (ClientController, error) {
+func NewClientController(chainName string, bbnConfig *config.BBNConfig, netParams *chaincfg.Params, logger *logrus.Logger) (ClientController, error) {
 	var (
 		cc  ClientController
 		err error
 	)
-	switch cfg.ChainName {
+	switch chainName {
 	case babylonConsumerChainName:
-		cc, err = NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, logger)
+		cc, err = NewBabylonController(bbnConfig, netParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
