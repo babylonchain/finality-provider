@@ -106,7 +106,7 @@ func (ce *CovenantEmulator) UpdateParams() error {
 }
 
 // AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
-func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*service.AddCovenantSigResponse, error) {
+func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*AddCovenantSigResponse, error) {
 	// 1. the quorum is already achieved, skip sending more sigs
 	if btcDel.HasCovenantQuorum(ce.params.CovenantQuorum) {
 		return nil, nil
@@ -337,7 +337,7 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		return nil, err
 	}
 
-	return &service.AddCovenantSigResponse{
+	return &AddCovenantSigResponse{
 		TxHash: res.TxHash,
 	}, nil
 }
