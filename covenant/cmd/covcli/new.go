@@ -77,7 +77,7 @@ func createCovenantKey(ctx *cli.Context) error {
 	passphrase := ctx.String(passphraseFlag)
 	hdPath := ctx.String(hdPathFlag)
 
-	covenantPk, err := covenant.CreateCovenantKey(
+	keyPair, err := covenant.CreateCovenantKey(
 		keyringDir,
 		chainID,
 		keyName,
@@ -90,7 +90,7 @@ func createCovenantKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create covenant key: %w", err)
 	}
 
-	bip340Key := types.NewBIP340PubKeyFromBTCPK(covenantPk)
+	bip340Key := types.NewBIP340PubKeyFromBTCPK(keyPair.PublicKey)
 	printRespJSON(
 		&covenantKey{
 			Name:      ctx.String(keyNameFlag),

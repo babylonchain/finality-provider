@@ -2,32 +2,23 @@ package clientcontroller
 
 import (
 	"errors"
-	"time"
 
-	"github.com/avast/retry-go/v4"
-
-	"github.com/babylonchain/btc-validator/types"
-)
-
-// Variables used for retries
-var (
-	rtyAttNum = uint(5)
-	rtyAtt    = retry.Attempts(rtyAttNum)
-	rtyDel    = retry.Delay(time.Millisecond * 400)
-	rtyErr    = retry.LastErrorOnly(true)
+	sdkErr "cosmossdk.io/errors"
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 )
 
 // these errors are considered unrecoverable because these indicate
 // something critical in the validator program or the consumer chain
-var unrecoverableErrors = []error{
-	types.ErrBlockNotFound,
-	types.ErrInvalidFinalitySig,
-	types.ErrHeightTooHigh,
-	types.ErrInvalidPubRand,
-	types.ErrNoPubRandYet,
-	types.ErrPubRandNotFound,
-	types.ErrTooFewPubRand,
-	types.ErrValidatorSlashed,
+var unrecoverableErrors = []*sdkErr.Error{
+	finalitytypes.ErrBlockNotFound,
+	finalitytypes.ErrInvalidFinalitySig,
+	finalitytypes.ErrHeightTooHigh,
+	finalitytypes.ErrInvalidPubRand,
+	finalitytypes.ErrNoPubRandYet,
+	finalitytypes.ErrPubRandNotFound,
+	finalitytypes.ErrTooFewPubRand,
+	btcstakingtypes.ErrBTCValAlreadySlashed,
 }
 
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list
@@ -41,10 +32,10 @@ func IsUnrecoverable(err error) bool {
 	return false
 }
 
-var expectedErrors = []error{
+var expectedErrors = []*sdkErr.Error{
 	// if due to some low-level reason (e.g., network), we submit duplicated finality sig,
 	// we should just ignore the error
-	types.ErrDuplicatedFinalitySig,
+	finalitytypes.ErrDuplicatedFinalitySig,
 }
 
 // IsExpected returns true when the error is in the expectedErrors list

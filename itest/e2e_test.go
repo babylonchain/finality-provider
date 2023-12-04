@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/types"
@@ -27,11 +28,13 @@ func TestValidatorLifeCycle(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
+	params := tm.GetParams(t)
+
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
@@ -52,11 +55,13 @@ func TestDoubleSigning(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
+	params := tm.GetParams(t)
+
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
@@ -76,7 +81,7 @@ func TestDoubleSigning(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
 		Height: finalizedBlocks[0].Height,
-		Hash:   datagen.GenRandomLastCommitHash(r),
+		Hash:   datagen.GenRandomAppHash(r),
 	}
 	_, extractedKey, err := valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)
@@ -92,11 +97,13 @@ func TestFastSync(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
+	params := tm.GetParams(t)
+
 	// check the public randomness is committed
 	tm.WaitForValPubRandCommitted(t, valIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
@@ -106,9 +113,11 @@ func TestFastSync(t *testing.T) {
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
+
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
+	var finalizedBlocks []*types.BlockInfo
+	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, 1)
 
 	n := 3
 	// stop the validator for a few blocks then restart to trigger the fast sync
@@ -128,63 +137,42 @@ func TestFastSync(t *testing.T) {
 	require.True(t, currentHeight < finalizedHeight+uint64(n))
 }
 
-func TestValidatorUnbondingSigSubmission(t *testing.T) {
-	tm, valIns := StartManagerWithValidator(t)
-	defer tm.Stop(t)
-
-	// check the public randomness is committed
-	tm.WaitForValPubRandCommitted(t, valIns)
-
-	// send a BTC delegation
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
-
-	// check the BTC delegation is pending
-	_ = tm.WaitForNPendingDels(t, 1)
-
-	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-
-	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
-
-	_ = tm.WaitForValNUnbondingDels(t, valIns.GetBtcPkBIP340(), 1)
-}
-
 func TestCovenantLifeCycle(t *testing.T) {
 	tm, valIns := StartManagerWithValidator(t)
 	defer tm.Stop(t)
 
-	// send BTC delegation and make sure it's deep enough in btclightclient module
-	delData := tm.InsertBTCDelegation(t, valIns.MustGetBtcPk(), stakingTime, stakingAmount)
+	params := tm.GetParams(t)
 
+	valPk := valIns.MustGetBtcPk()
+	valBtcPk := valIns.GetBtcPkBIP340()
+	// send BTC delegation and make sure it's deep enough in btclightclient module
+	delData := tm.InsertBTCDelegation(t, []*btcec.PublicKey{valPk}, stakingTime, stakingAmount, params)
 	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
-	err := valIns.Stop()
+	del := dels[0]
+	err := tm.Va.Stop()
 	require.NoError(t, err)
 
-	tm.InsertBTCUnbonding(t, delData.StakingTx, delData.DelegatorPrivKey, valIns.MustGetBtcPk())
+	tm.InsertBTCUnbonding(
+		t,
+		del,
+		delData.DelegatorPrivKey,
+		delData.ChangeAddr,
+		params,
+	)
 
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {
 			return false
 		}
 		return len(dels) == 1 && dels[0].BtcUndelegation != nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
-	require.NoError(t, err)
-	delegationWithUndelegation := dels[0]
+	t.Log("undelegation is found, waiting for covenant sigs")
 
-	validatorPrivKey, err := valIns.BtcPrivKey()
-	require.NoError(t, err)
-
-	tm.AddValidatorUnbondingSignature(
-		t,
-		delegationWithUndelegation,
-		validatorPrivKey,
-	)
-
-	// after providing validator unbodning signature, we should wait for covenant to provide both valid signatures
+	// after providing validator unbonding signature, we should wait for covenant to provide both valid signatures
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valIns.GetBtcPkBIP340(), 1000)
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {
 			return false
 		}
@@ -199,6 +187,6 @@ func TestCovenantLifeCycle(t *testing.T) {
 			return false
 		}
 
-		return del.BtcUndelegation.CovenantSlashingSig != nil && del.BtcUndelegation.CovenantUnbondingSig != nil
+		return len(del.BtcUndelegation.CovenantSlashingSigs) != 0 && len(del.BtcUndelegation.CovenantUnbondingSigs) != 0
 	}, 1*time.Minute, eventuallyPollTime)
 }

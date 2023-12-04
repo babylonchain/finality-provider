@@ -9,6 +9,7 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -122,8 +123,9 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	btcPk, err := bbntypes.NewBIP340PubKey(btcPkBytes)
 	require.NoError(t, err)
-	bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
+	keyPair, err := kc.CreateChainKey(passphrase, hdPath)
 	require.NoError(t, err)
+	bbnPk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
 	valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 	require.NoError(t, err)
 	pop, err := kc.CreatePop(valRecord.PrivKey, passphrase)

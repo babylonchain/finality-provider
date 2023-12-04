@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -60,16 +60,21 @@ func (c *ValidatorServiceGRpcClient) RegisterValidator(
 func (c *ValidatorServiceGRpcClient) CreateValidator(
 	ctx context.Context,
 	keyName, chainID, passphrase, hdPath string,
-	description *stakingtypes.Description,
-	commission *sdktypes.Dec,
+	description types.Description,
+	commission *sdkmath.LegacyDec,
 ) (*proto.CreateValidatorResponse, error) {
+
+	descBytes, err := description.Marshal()
+	if err != nil {
+		return nil, err
+	}
 
 	req := &proto.CreateValidatorRequest{
 		KeyName:     keyName,
 		ChainId:     chainID,
 		Passphrase:  passphrase,
 		HdPath:      hdPath,
-		Description: description,
+		Description: descBytes,
 		Commission:  commission.String(),
 	}
 
@@ -83,9 +88,9 @@ func (c *ValidatorServiceGRpcClient) CreateValidator(
 
 func (c *ValidatorServiceGRpcClient) AddFinalitySignature(ctx context.Context, valPk string, height uint64, lch []byte) (*proto.AddFinalitySignatureResponse, error) {
 	req := &proto.AddFinalitySignatureRequest{
-		BtcPk:          valPk,
-		Height:         height,
-		LastCommitHash: lch,
+		BtcPk:   valPk,
+		Height:  height,
+		AppHash: lch,
 	}
 
 	res, err := c.client.AddFinalitySignature(ctx, req)

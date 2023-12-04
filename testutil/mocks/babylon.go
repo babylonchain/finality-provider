@@ -81,21 +81,6 @@ func (mr *MockClientControllerMockRecorder) QueryActivatedHeight() *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockClientController)(nil).QueryActivatedHeight))
 }
 
-// QueryBTCValidatorUnbondingDelegations mocks base method.
-func (m *MockClientController) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valPk, max)
-	ret0, _ := ret[0].([]*types.Delegation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryBTCValidatorUnbondingDelegations indicates an expected call of QueryBTCValidatorUnbondingDelegations.
-func (mr *MockClientControllerMockRecorder) QueryBTCValidatorUnbondingDelegations(valPk, max interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryBTCValidatorUnbondingDelegations), valPk, max)
-}
-
 // QueryBestBlock mocks base method.
 func (m *MockClientController) QueryBestBlock() (*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
@@ -232,7 +217,7 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(valPk, blo
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description string) (*types.TxResponse, error) {
+func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description []byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -261,34 +246,34 @@ func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(valPk, block
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBatchFinalitySigs", reflect.TypeOf((*MockClientController)(nil).SubmitBatchFinalitySigs), valPk, blocks, sigs)
 }
 
-// SubmitCovenantSig mocks base method.
-func (m *MockClientController) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
+// SubmitCovenantSigs mocks base method.
+func (m *MockClientController) SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string, sigs [][]byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantSig", valPk, delPk, stakingTxHash, sig)
+	ret := m.ctrl.Call(m, "SubmitCovenantSigs", covPk, stakingTxHash, sigs)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SubmitCovenantSig indicates an expected call of SubmitCovenantSig.
-func (mr *MockClientControllerMockRecorder) SubmitCovenantSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
+// SubmitCovenantSigs indicates an expected call of SubmitCovenantSigs.
+func (mr *MockClientControllerMockRecorder) SubmitCovenantSigs(covPk, stakingTxHash, sigs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSig", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantSig), valPk, delPk, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantSigs), covPk, stakingTxHash, sigs)
 }
 
 // SubmitCovenantUnbondingSigs mocks base method.
-func (m *MockClientController) SubmitCovenantUnbondingSigs(valPk, delPk *btcec.PublicKey, stakingTxHash string, unbondingSig, slashUnbondingSig *schnorr.Signature) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitCovenantUnbondingSigs(covPk *btcec.PublicKey, stakingTxHash string, unbondingSig *schnorr.Signature, slashUnbondingSigs [][]byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantUnbondingSigs", valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
+	ret := m.ctrl.Call(m, "SubmitCovenantUnbondingSigs", covPk, stakingTxHash, unbondingSig, slashUnbondingSigs)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitCovenantUnbondingSigs indicates an expected call of SubmitCovenantUnbondingSigs.
-func (mr *MockClientControllerMockRecorder) SubmitCovenantUnbondingSigs(valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) SubmitCovenantUnbondingSigs(covPk, stakingTxHash, unbondingSig, slashUnbondingSigs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantUnbondingSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantUnbondingSigs), valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantUnbondingSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantUnbondingSigs), covPk, stakingTxHash, unbondingSig, slashUnbondingSigs)
 }
 
 // SubmitFinalitySig mocks base method.
@@ -304,21 +289,6 @@ func (m *MockClientController) SubmitFinalitySig(valPk *btcec.PublicKey, blockHe
 func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockClientController)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
-}
-
-// SubmitValidatorUnbondingSig mocks base method.
-func (m *MockClientController) SubmitValidatorUnbondingSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPk, delPk, stakingTxHash, sig)
-	ret0, _ := ret[0].(*types.TxResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SubmitValidatorUnbondingSig indicates an expected call of SubmitValidatorUnbondingSig.
-func (mr *MockClientControllerMockRecorder) SubmitValidatorUnbondingSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockClientController)(nil).SubmitValidatorUnbondingSig), valPk, delPk, stakingTxHash, sig)
 }
 
 // MockValidatorAPIs is a mock of ValidatorAPIs interface.
@@ -372,21 +342,6 @@ func (m *MockValidatorAPIs) QueryActivatedHeight() (uint64, error) {
 func (mr *MockValidatorAPIsMockRecorder) QueryActivatedHeight() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryActivatedHeight))
-}
-
-// QueryBTCValidatorUnbondingDelegations mocks base method.
-func (m *MockValidatorAPIs) QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBTCValidatorUnbondingDelegations", valPk, max)
-	ret0, _ := ret[0].([]*types.Delegation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryBTCValidatorUnbondingDelegations indicates an expected call of QueryBTCValidatorUnbondingDelegations.
-func (mr *MockValidatorAPIsMockRecorder) QueryBTCValidatorUnbondingDelegations(valPk, max interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBTCValidatorUnbondingDelegations", reflect.TypeOf((*MockValidatorAPIs)(nil).QueryBTCValidatorUnbondingDelegations), valPk, max)
 }
 
 // QueryBestBlock mocks base method.
@@ -480,7 +435,7 @@ func (mr *MockValidatorAPIsMockRecorder) QueryValidatorVotingPower(valPk, blockH
 }
 
 // RegisterValidator mocks base method.
-func (m *MockValidatorAPIs) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description string) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description []byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -522,21 +477,6 @@ func (m *MockValidatorAPIs) SubmitFinalitySig(valPk *btcec.PublicKey, blockHeigh
 func (mr *MockValidatorAPIsMockRecorder) SubmitFinalitySig(valPk, blockHeight, blockHash, sig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockValidatorAPIs)(nil).SubmitFinalitySig), valPk, blockHeight, blockHash, sig)
-}
-
-// SubmitValidatorUnbondingSig mocks base method.
-func (m *MockValidatorAPIs) SubmitValidatorUnbondingSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitValidatorUnbondingSig", valPk, delPk, stakingTxHash, sig)
-	ret0, _ := ret[0].(*types.TxResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SubmitValidatorUnbondingSig indicates an expected call of SubmitValidatorUnbondingSig.
-func (mr *MockValidatorAPIsMockRecorder) SubmitValidatorUnbondingSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitValidatorUnbondingSig", reflect.TypeOf((*MockValidatorAPIs)(nil).SubmitValidatorUnbondingSig), valPk, delPk, stakingTxHash, sig)
 }
 
 // MockCovenantAPIs is a mock of CovenantAPIs interface.
@@ -592,32 +532,32 @@ func (mr *MockCovenantAPIsMockRecorder) QueryUnbondingDelegations(limit interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryUnbondingDelegations", reflect.TypeOf((*MockCovenantAPIs)(nil).QueryUnbondingDelegations), limit)
 }
 
-// SubmitCovenantSig mocks base method.
-func (m *MockCovenantAPIs) SubmitCovenantSig(valPk, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error) {
+// SubmitCovenantSigs mocks base method.
+func (m *MockCovenantAPIs) SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string, sigs [][]byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantSig", valPk, delPk, stakingTxHash, sig)
+	ret := m.ctrl.Call(m, "SubmitCovenantSigs", covPk, stakingTxHash, sigs)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SubmitCovenantSig indicates an expected call of SubmitCovenantSig.
-func (mr *MockCovenantAPIsMockRecorder) SubmitCovenantSig(valPk, delPk, stakingTxHash, sig interface{}) *gomock.Call {
+// SubmitCovenantSigs indicates an expected call of SubmitCovenantSigs.
+func (mr *MockCovenantAPIsMockRecorder) SubmitCovenantSigs(covPk, stakingTxHash, sigs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSig", reflect.TypeOf((*MockCovenantAPIs)(nil).SubmitCovenantSig), valPk, delPk, stakingTxHash, sig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSigs", reflect.TypeOf((*MockCovenantAPIs)(nil).SubmitCovenantSigs), covPk, stakingTxHash, sigs)
 }
 
 // SubmitCovenantUnbondingSigs mocks base method.
-func (m *MockCovenantAPIs) SubmitCovenantUnbondingSigs(valPk, delPk *btcec.PublicKey, stakingTxHash string, unbondingSig, slashUnbondingSig *schnorr.Signature) (*types.TxResponse, error) {
+func (m *MockCovenantAPIs) SubmitCovenantUnbondingSigs(covPk *btcec.PublicKey, stakingTxHash string, unbondingSig *schnorr.Signature, slashUnbondingSigs [][]byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantUnbondingSigs", valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
+	ret := m.ctrl.Call(m, "SubmitCovenantUnbondingSigs", covPk, stakingTxHash, unbondingSig, slashUnbondingSigs)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitCovenantUnbondingSigs indicates an expected call of SubmitCovenantUnbondingSigs.
-func (mr *MockCovenantAPIsMockRecorder) SubmitCovenantUnbondingSigs(valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig interface{}) *gomock.Call {
+func (mr *MockCovenantAPIsMockRecorder) SubmitCovenantUnbondingSigs(covPk, stakingTxHash, unbondingSig, slashUnbondingSigs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantUnbondingSigs", reflect.TypeOf((*MockCovenantAPIs)(nil).SubmitCovenantUnbondingSigs), valPk, delPk, stakingTxHash, unbondingSig, slashUnbondingSig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantUnbondingSigs", reflect.TypeOf((*MockCovenantAPIs)(nil).SubmitCovenantUnbondingSigs), covPk, stakingTxHash, unbondingSig, slashUnbondingSigs)
 }

@@ -9,14 +9,13 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	bbntypes "github.com/babylonchain/babylon/types"
-	types2 "github.com/babylonchain/babylon/x/btcstaking/types"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
@@ -124,8 +123,6 @@ func (v *ValidatorInstance) Start() error {
 	v.wg.Add(1)
 	go v.randomnessCommitmentLoop()
 	v.wg.Add(1)
-	go v.unbondindSigSubmissionLoop()
-	v.wg.Add(1)
 	go v.checkLaggingLoop()
 
 	return nil
@@ -173,181 +170,6 @@ func (v *ValidatorInstance) Stop() error {
 
 func (v *ValidatorInstance) IsRunning() bool {
 	return v.isStarted.Load()
-}
-
-func (v *ValidatorInstance) signUnbondingTransactions(
-	privKey *btcec.PrivateKey,
-	toSign []*types.Delegation) ([]unbondingTxSigData, error) {
-
-	var dataWithSignatures []unbondingTxSigData
-	for _, delegation := range toSign {
-		stakingTx, err := types2.NewBabylonTaprootTxFromHex(delegation.StakingTxHex)
-		if err != nil {
-			return nil, err
-		}
-		fundingTx, err := stakingTx.ToMsgTx()
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to deserialize staking tx: %w", err)
-		}
-
-		fundingTxHash := fundingTx.TxHash().String()
-
-		txToSign, err := types2.NewBabylonTaprootTxFromHex(delegation.BtcUndelegation.UnbondingTxHex)
-		if err != nil {
-			return nil, err
-		}
-
-		sig, err := txToSign.Sign(
-			fundingTx,
-			stakingTx.Script,
-			privKey,
-			&v.cfg.ActiveNetParams,
-		)
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
-		}
-
-		utd := unbondingTxSigData{
-			stakerPk:      bbntypes.NewBIP340PubKeyFromBTCPK(delegation.BtcPk),
-			stakingTxHash: fundingTxHash,
-			signature:     sig,
-		}
-
-		dataWithSignatures = append(dataWithSignatures, utd)
-	}
-
-	return dataWithSignatures, nil
-}
-
-func (v *ValidatorInstance) sendSignaturesForUnbondingTransactions(sigsToSend []unbondingTxSigData) []unbondingTxSigSendResult {
-	var eg errgroup.Group
-	var mu sync.Mutex
-	var res []unbondingTxSigSendResult
-
-	for _, sigData := range sigsToSend {
-		sd := sigData
-		eg.Go(func() error {
-			schnorrSig, err := sd.signature.ToBTCSig()
-			if err != nil {
-				res = append(res, unbondingTxSigSendResult{
-					err:           err,
-					stakingTxHash: sd.stakingTxHash,
-				})
-			}
-			_, err = v.cc.SubmitValidatorUnbondingSig(
-				v.MustGetBtcPk(),
-				sd.stakerPk.MustToBTCPK(),
-				sd.stakingTxHash,
-				schnorrSig,
-			)
-
-			mu.Lock()
-			defer mu.Unlock()
-
-			if err != nil {
-				res = append(res, unbondingTxSigSendResult{
-					err:           err,
-					stakingTxHash: sd.stakingTxHash,
-				})
-			} else {
-				res = append(res, unbondingTxSigSendResult{
-					err:           nil,
-					stakingTxHash: sd.stakingTxHash,
-				})
-			}
-
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
-		// this should not happen as we do not return errors from our sending
-		v.logger.Fatalf("Failed to wait for signatures send")
-	}
-
-	return res
-}
-
-func (v *ValidatorInstance) unbondindSigSubmissionLoop() {
-	defer v.wg.Done()
-
-	sendUnbondingSigTicker := time.NewTicker(v.cfg.UnbondingSigSubmissionInterval)
-	defer sendUnbondingSigTicker.Stop()
-
-	for {
-		select {
-		case <-sendUnbondingSigTicker.C:
-			delegationsNeedingSignatures, err := v.cc.QueryBTCValidatorUnbondingDelegations(
-				v.MustGetBtcPk(),
-				// TODO: parameterize the max number of delegations to be queried
-				// it should not be to high to not take too long time to sign them
-				10,
-			)
-
-			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":            err,
-					"babylon_pk_hex": v.GetBabylonPkHex(),
-				}).Error("failed to query Babylon for BTC validator unbonding delegations")
-				continue
-			}
-
-			if len(delegationsNeedingSignatures) == 0 {
-				continue
-			}
-
-			v.logger.WithFields(logrus.Fields{
-				"num_delegations": len(delegationsNeedingSignatures),
-				"btc_pk_hex":      v.GetBtcPkHex(),
-			}).Debug("Retrieved delegations which need unbonding signatures")
-
-			validatorPrivKey, err := v.getEOTSPrivKey()
-
-			if err != nil {
-				// Kill the app, if we can't recover our private key, then we have some bug
-				v.logger.WithFields(logrus.Fields{
-					"err":            err,
-					"babylon_pk_hex": v.GetBabylonPkHex(),
-				}).Fatalf("failed to get validator private key")
-			}
-
-			signed, err := v.signUnbondingTransactions(validatorPrivKey, delegationsNeedingSignatures)
-
-			if err != nil {
-				// We received some malformed data from Babylon either there is some bug in babylon code
-				// or we are on some malcious fork. Log it as error and continue.
-				v.logger.WithFields(logrus.Fields{
-					"err":            err,
-					"babylon_pk_hex": v.GetBabylonPkHex(),
-				}).Errorf("failed to sign unbonding transactions")
-				continue
-			}
-
-			sendResult := v.sendSignaturesForUnbondingTransactions(signed)
-
-			for _, res := range sendResult {
-				if res.err != nil {
-					// Just log send errors, as if we failed to submit signaute, we will retry in next tick
-					v.logger.WithFields(logrus.Fields{
-						"err":            res.err,
-						"babylon_pk_hex": v.GetBabylonPkHex(),
-						"staking_tx":     res.stakingTxHash,
-					}).Errorf("failed to send signature for unbonding transaction")
-				} else {
-					v.logger.WithFields(logrus.Fields{
-						"babylon_pk_hex": v.GetBabylonPkHex(),
-						"staking_tx":     res.stakingTxHash,
-					}).Infof("successfully sent signature for unbonding transaction")
-				}
-			}
-
-		case <-v.quit:
-			v.logger.Debug("the unbonding sig submission loop is closing")
-			return
-		}
-	}
 }
 
 func (v *ValidatorInstance) finalitySigSubmissionLoop() {
@@ -399,7 +221,7 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 			res, err := v.tryFastSync(targetBlock)
 			v.isLagging.Store(false)
 			if err != nil {
-				if errors.Is(err, types.ErrValidatorSlashed) {
+				if errors.Is(err, bstypes.ErrBTCValAlreadySlashed) {
 					v.reportCriticalErr(err)
 					continue
 				}
@@ -855,9 +677,9 @@ func (v *ValidatorInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockI
 func (v *ValidatorInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
 	// build proper finality signature request
 	msg := &ftypes.MsgAddFinalitySig{
-		ValBtcPk:            v.btcPk,
-		BlockHeight:         b.Height,
-		BlockLastCommitHash: b.Hash,
+		ValBtcPk:     v.btcPk,
+		BlockHeight:  b.Height,
+		BlockAppHash: b.Hash,
 	}
 	msgToSign := msg.MsgToSign()
 	sig, err := v.em.SignEOTS(v.btcPk.MustMarshal(), v.GetChainID(), msgToSign, b.Height, v.passphrase)

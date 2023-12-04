@@ -5,13 +5,12 @@ import (
 	"strings"
 	"sync"
 
-	"cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -182,7 +181,7 @@ func (app *ValidatorApp) RegisterValidator(valPkStr string) (*RegisterValidatorR
 		BtcSigType: bstypes.BTCSigType_BIP340,
 	}
 
-	commissionRate, err := math.LegacyNewDecFromStr(validator.Commission)
+	commissionRate, err := sdkmath.LegacyNewDecFromStr(validator.Commission)
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +285,8 @@ func (app *ValidatorApp) Stop() error {
 
 func (app *ValidatorApp) CreateValidator(
 	keyName, chainID, passPhrase, hdPath string,
-	description *stakingtypes.Description,
-	commission *sdktypes.Dec,
+	description []byte,
+	commission *sdkmath.LegacyDec,
 ) (*CreateValidatorResult, error) {
 
 	req := &createValidatorRequest{
@@ -331,10 +330,11 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	bbnPk, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+	keyPair, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
+	pk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
 
 	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), req.passPhrase)
 	if err != nil {
@@ -346,7 +346,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}
 
-	validator := val.NewStoreValidator(bbnPk, valPk, req.keyName, req.chainID, pop, req.description, req.commission)
+	validator := val.NewStoreValidator(pk, valPk, req.keyName, req.chainID, pop, req.description, req.commission)
 
 	if err := app.vs.SaveValidator(validator); err != nil {
 		return nil, fmt.Errorf("failed to save validator: %w", err)

@@ -35,7 +35,7 @@ type ValidatorAPIs interface {
 		valPk *btcec.PublicKey,
 		pop []byte,
 		commission *big.Int,
-		description string,
+		description []byte,
 	) (*types.TxResponse, error)
 
 	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
@@ -47,14 +47,6 @@ type ValidatorAPIs interface {
 
 	// SubmitBatchFinalitySigs submits a batch of finality signatures to the consumer chain
 	SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error)
-
-	// SubmitValidatorUnbondingSig submits the validator signature for unbonding transaction to the consumer chain
-	SubmitValidatorUnbondingSig(
-		valPk *btcec.PublicKey,
-		delPk *btcec.PublicKey,
-		stakingTxHash string,
-		sig *schnorr.Signature,
-	) (*types.TxResponse, error)
 
 	// Note: the following queries are only for PoC
 
@@ -79,27 +71,22 @@ type ValidatorAPIs interface {
 	// QueryActivatedHeight returns the activated height of the consumer chain
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
-
-	// QueryBTCValidatorUnbondingDelegations queries the unbonding delegations. UnbondingDelegations:
-	// - already received unbodning transaction on babylon chain
-	// - not received validator signature yet
-	QueryBTCValidatorUnbondingDelegations(valPk *btcec.PublicKey, max uint64) ([]*types.Delegation, error)
 }
 
 // CovenantAPIs contains interfaces needed when the program is running in the covenant mode
 type CovenantAPIs interface {
-	// SubmitCovenantSig submits the Covenant signature to the consumer chain
+	// SubmitCovenantSigs submits Covenant signatures to the consumer chain, each corresponding to
+	// a validator that the delegation is (re-)staked to
 	// it returns tx hash and error
-	SubmitCovenantSig(valPk *btcec.PublicKey, delPk *btcec.PublicKey, stakingTxHash string, sig *schnorr.Signature) (*types.TxResponse, error)
+	SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string, sigs [][]byte) (*types.TxResponse, error)
 
-	// SubmitCovenantUnbondingSigs submits the Covenant signatures to the consumer chain
+	// SubmitCovenantUnbondingSigs submits the Covenant signatures for undelegation to the consumer chain
 	// it returns tx hash and error
 	SubmitCovenantUnbondingSigs(
-		valPk *btcec.PublicKey,
-		delPk *btcec.PublicKey,
+		covPk *btcec.PublicKey,
 		stakingTxHash string,
 		unbondingSig *schnorr.Signature,
-		slashUnbondingSig *schnorr.Signature,
+		slashUnbondingSigs [][]byte,
 	) (*types.TxResponse, error)
 
 	// QueryPendingDelegations queries BTC delegations that are in status of pending
@@ -116,7 +103,7 @@ func NewClientController(cfg *valcfg.Config, logger *logrus.Logger) (ClientContr
 	)
 	switch cfg.ChainName {
 	case babylonConsumerChainName:
-		cc, err = NewBabylonController(cfg.DataDir, cfg.BabylonConfig, logger)
+		cc, err = NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}

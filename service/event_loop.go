@@ -76,7 +76,7 @@ func (app *ValidatorApp) registrationLoop() {
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
 				req.commission.BigInt(),
-				req.description.String(),
+				req.description,
 			)
 
 			if err != nil {

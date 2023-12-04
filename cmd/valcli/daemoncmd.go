@@ -37,7 +37,7 @@ const (
 	keyNameFlag           = "key-name"
 	valBTCPkFlag          = "btc-pk"
 	blockHeightFlag       = "height"
-	lastCommitHashFlag    = "last-commit-hash"
+	appHashFlag           = "app-hash"
 	passphraseFlag        = "passphrase"
 	hdPathFlag            = "hd-path"
 	chainIdFlag           = "chain-id"
@@ -56,7 +56,7 @@ const (
 
 var (
 	defaultValdDaemonAddress = "127.0.0.1:" + strconv.Itoa(valcfg.DefaultRPCPort)
-	defaultLastCommitHashStr = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
+	defaultAppHashStr        = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
 )
 
 var getDaemonInfoCmd = cli.Command{
@@ -181,7 +181,7 @@ func createValDaemon(ctx *cli.Context) error {
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
-		&description,
+		description,
 		&commissionRate,
 	)
 
@@ -203,6 +203,7 @@ func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, erro
 	detailsStr := ctx.String(detailsFlag)
 
 	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContractStr, detailsStr)
+
 	return description.EnsureLength()
 }
 
@@ -353,9 +354,9 @@ var addFinalitySigDaemonCmd = cli.Command{
 			Required: true,
 		},
 		cli.StringFlag{
-			Name:  lastCommitHashFlag,
+			Name:  appHashFlag,
 			Usage: "The last commit hash of the chain block",
-			Value: defaultLastCommitHashStr,
+			Value: defaultAppHashStr,
 		},
 	},
 	Action: addFinalitySig,
@@ -374,7 +375,7 @@ func addFinalitySig(ctx *cli.Context) error {
 		return err
 	}
 
-	lch, err := types.NewLastCommitHashFromHex(ctx.String(lastCommitHashFlag))
+	lch, err := types.NewAppHashFromHex(ctx.String(appHashFlag))
 	if err != nil {
 		return err
 	}

@@ -44,7 +44,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		cfg.ValidatorModeConfig.AutoChainScanningMode = false
 		cfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
@@ -81,7 +81,7 @@ func FuzzRegisterValidator(f *testing.F) {
 				validator.MustGetBIP340BTCPK().MustToBTCPK(),
 				popBytes,
 				testutil.ZeroCommissionRate().BigInt(),
-				testutil.EmptyDescription().String(),
+				testutil.EmptyDescription(),
 			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, err := app.RegisterValidator(validator.MustGetBIP340BTCPK().MarshalHex())

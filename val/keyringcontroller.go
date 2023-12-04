@@ -8,8 +8,10 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
+
+	"github.com/babylonchain/btc-validator/types"
 )
 
 const (
@@ -68,7 +70,7 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*secp256k1.PubKey, error) {
+func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.KeyPair, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
@@ -96,14 +98,12 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*se
 		return nil, err
 	}
 
-	pubKey, err := record.GetPubKey()
-	if err != nil {
-		return nil, err
-	}
+	privKey := record.GetLocal().PrivKey.GetCachedValue()
 
-	switch v := pubKey.(type) {
-	case *secp256k1.PubKey:
-		return v, nil
+	switch v := privKey.(type) {
+	case *sdksecp256k1.PrivKey:
+		sk, pk := btcec.PrivKeyFromBytes(v.Key)
+		return &types.KeyPair{PublicKey: pk, PrivateKey: sk}, nil
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
@@ -121,7 +121,7 @@ func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey, passph
 	return bstypes.NewPoP(bbnPrivKey, btcPrivKey)
 }
 
-func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*secp256k1.PrivKey, error) {
+func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*sdksecp256k1.PrivKey, error) {
 	kc.input.Reset(passphrase)
 	k, err := kc.kr.Key(kc.valName)
 	if err != nil {
@@ -131,7 +131,7 @@ func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*secp256k1
 	privKeyCached := k.GetLocal().PrivKey.GetCachedValue()
 
 	switch v := privKeyCached.(type) {
-	case *secp256k1.PrivKey:
+	case *sdksecp256k1.PrivKey:
 		return v, nil
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
