@@ -3,10 +3,9 @@ package store
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	bolt "go.etcd.io/bbolt"
-
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 // BboltStore implements the Store interface
@@ -165,10 +164,10 @@ func NewBboltStore(path string, bucketName string) (BboltStore, error) {
 
 	// Set default values
 	if path == "" {
-		path = valcfg.DefaultDBPath
+		return BboltStore{}, fmt.Errorf("db path is empty")
 	}
 	if bucketName == "" {
-		bucketName = valcfg.DefaultDBName
+		return BboltStore{}, fmt.Errorf("db bucket name is empty")
 	}
 
 	// Open DB

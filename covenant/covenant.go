@@ -2,6 +2,7 @@ package covenant
 
 import (
 	"fmt"
+	"github.com/babylonchain/btc-validator/keyring"
 	"strings"
 	"sync"
 	"time"
@@ -17,9 +18,8 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/service"
+	"github.com/babylonchain/btc-validator/covenant/service"
 	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/val"
 )
 
 var (
@@ -40,7 +40,7 @@ type CovenantEmulator struct {
 	pk *btcec.PublicKey
 
 	cc clientcontroller.ClientController
-	kc *val.ChainKeyringController
+	kc *keyring.ChainKeyringController
 
 	config *covcfg.Config
 	params *types.StakingParams
@@ -58,7 +58,7 @@ func NewCovenantEmulator(
 	logger *logrus.Logger,
 ) (*CovenantEmulator, error) {
 	input := strings.NewReader("")
-	kr, err := service.CreateKeyring(
+	kr, err := keyring.CreateKeyring(
 		config.BabylonConfig.KeyDirectory,
 		config.BabylonConfig.ChainID,
 		config.BabylonConfig.KeyringBackend,
@@ -68,7 +68,7 @@ func NewCovenantEmulator(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	kc, err := val.NewChainKeyringControllerWithKeyring(kr, config.BabylonConfig.Key, input)
+	kc, err := keyring.NewChainKeyringControllerWithKeyring(kr, config.BabylonConfig.Key, input)
 	if err != nil {
 		return nil, err
 	}
@@ -427,14 +427,14 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 }
 
 func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyPair, error) {
-	sdkCtx, err := service.CreateClientCtx(
+	sdkCtx, err := keyring.CreateClientCtx(
 		keyringDir, chainID,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	krController, err := val.NewChainKeyringController(
+	krController, err := keyring.NewChainKeyringController(
 		sdkCtx,
 		keyName,
 		backend,

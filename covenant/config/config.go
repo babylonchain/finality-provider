@@ -2,17 +2,16 @@ package config
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/babylonchain/btc-validator/config"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
-	"github.com/sirupsen/logrus"
-
-	"github.com/babylonchain/btc-validator/valcfg"
 )
 
 const (
@@ -47,7 +46,7 @@ type Config struct {
 
 	ActiveNetParams chaincfg.Params
 
-	BabylonConfig *valcfg.BBNConfig `group:"babylon" namespace:"babylon"`
+	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -180,7 +179,7 @@ func FileExists(name string) bool {
 }
 
 func DefaultConfig() Config {
-	bbnCfg := valcfg.DefaultBBNConfig()
+	bbnCfg := config.DefaultBBNConfig()
 	bbnCfg.Key = defaultCovenantKeyName
 	bbnCfg.KeyDirectory = DefaultCovenantDir
 	cfg := Config{
