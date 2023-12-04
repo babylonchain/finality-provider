@@ -18,7 +18,6 @@ import (
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/covenant/service"
 	"github.com/babylonchain/btc-validator/types"
 )
 
@@ -196,11 +195,11 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 		return nil, err
 	}
 
-	return &service.AddCovenantSigResponse{TxHash: res.TxHash}, nil
+	return &AddCovenantSigResponse{TxHash: res.TxHash}, nil
 }
 
 // AddCovenantUnbondingSignatures adds Covenant signature on the given Bitcoin delegation and submits it to Babylon
-func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation) (*service.AddCovenantSigResponse, error) {
+func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation) (*AddCovenantSigResponse, error) {
 	if del == nil {
 		return nil, fmt.Errorf("btc delegation is nil")
 	}
