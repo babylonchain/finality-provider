@@ -7,7 +7,6 @@ import (
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/service"
 )
@@ -33,7 +32,7 @@ var startValidator = cli.Command{
 		cli.StringFlag{
 			Name:  configFileFlag,
 			Usage: "The path to the covenant config file",
-			Value: covcfg.DefaultConfigFile,
+			Value: valcfg.DefaultConfigFile,
 		},
 		cli.StringFlag{
 			Name:  valPkFlag,
