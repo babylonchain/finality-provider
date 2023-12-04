@@ -41,7 +41,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 
 		// create a Covenant key pair in the keyring
 		covenantConfig := covcfg.DefaultConfig()
-		covenantSk, covenantPk, err := covenant.CreateCovenantKey(
+		covKeyPair, err := covenant.CreateCovenantKey(
 			covenantConfig.BabylonConfig.KeyDirectory,
 			covenantConfig.BabylonConfig.ChainID,
 			covenantConfig.BabylonConfig.Key,
@@ -102,7 +102,12 @@ func FuzzAddCovenantSig(f *testing.F) {
 		for _, valPk := range valPks {
 			encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
 			require.NoError(t, err)
-			covenantSig, err := testInfo.SlashingTx.EncSign(testInfo.StakingTx, 0, slashingSpendInfo.GetPkScriptPath(), covenantSk, encKey)
+			covenantSig, err := testInfo.SlashingTx.EncSign(
+				testInfo.StakingTx,
+				0,
+				slashingSpendInfo.GetPkScriptPath(),
+				covKeyPair.PrivateKey, encKey,
+			)
 			require.NoError(t, err)
 			covSigs = append(covSigs, covenantSig.MustMarshal())
 		}
@@ -110,7 +115,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().SubmitCovenantSigs(
-			covenantPk,
+			covKeyPair.PublicKey,
 			testInfo.StakingTx.TxHash().String(),
 			covSigs,
 		).
@@ -160,7 +165,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			testInfo.StakingTx,
 			btcDel.StakingOutputIdx,
 			stakingTxUnbondingPathInfo.GetPkScriptPath(),
-			covenantSk,
+			covKeyPair.PrivateKey,
 		)
 		require.NoError(t, err)
 		unbondingCovSlashingSigs := make([][]byte, 0, len(valPks))
@@ -171,7 +176,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 				testUnbondingInfo.UnbondingTx,
 				0,
 				unbondingSlashingPathInfo.GetPkScriptPath(),
-				covenantSk,
+				covKeyPair.PrivateKey,
 				encKey,
 			)
 			require.NoError(t, err)
@@ -183,7 +188,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		mockClientController.EXPECT().QueryUnbondingDelegations(gomock.Any()).
 			Return([]*types.Delegation{btcDel}, nil).AnyTimes()
 		mockClientController.EXPECT().SubmitCovenantUnbondingSigs(
-			covenantPk,
+			covKeyPair.PublicKey,
 			testInfo.StakingTx.TxHash().String(),
 			unbondingCovSig,
 			unbondingCovSlashingSigs,

@@ -90,11 +90,11 @@ func StartManager(t *testing.T) *TestManager {
 	covenantConfig := defaultCovenantConfig(testDir)
 	err = covenantConfig.Validate()
 	require.NoError(t, err)
-	_, covenantPk, err := covenant.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
+	covKeyPair, err := covenant.CreateCovenantKey(testDir, chainID, covenantKeyName, keyring.BackendTest, passphrase, hdPath)
 	require.NoError(t, err)
 
 	// 2. prepare Babylon node
-	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covenantPk))
+	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covKeyPair.PublicKey))
 	err = bh.Start()
 	require.NoError(t, err)
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir)

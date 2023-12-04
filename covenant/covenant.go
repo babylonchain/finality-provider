@@ -13,7 +13,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -427,12 +426,12 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 }
 
-func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*btcec.PrivateKey, *btcec.PublicKey, error) {
+func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyPair, error) {
 	sdkCtx, err := service.CreateClientCtx(
 		keyringDir, chainID,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	krController, err := val.NewChainKeyringController(
@@ -441,17 +440,10 @@ func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath
 		backend,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	sdkCovenantSk, _, err := krController.CreateChainKey(passphrase, hdPath)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	covenantSk := secp256k1.PrivKeyFromBytes(sdkCovenantSk.Key)
-
-	return covenantSk, covenantSk.PubKey(), nil
+	return krController.CreateChainKey(passphrase, hdPath)
 }
 
 func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {

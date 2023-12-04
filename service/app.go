@@ -10,6 +10,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -329,10 +330,11 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, err
 	}
 
-	_, bbnPk, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+	keyPair, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chain key for the validator: %w", err)
 	}
+	pk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
 
 	valRecord, err := app.eotsManager.KeyRecord(valPk.MustMarshal(), req.passPhrase)
 	if err != nil {
@@ -344,7 +346,7 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to create proof-of-possession of the validator: %w", err)
 	}
 
-	validator := val.NewStoreValidator(bbnPk, valPk, req.keyName, req.chainID, pop, req.description, req.commission)
+	validator := val.NewStoreValidator(pk, valPk, req.keyName, req.chainID, pop, req.description, req.commission)
 
 	if err := app.vs.SaveValidator(validator); err != nil {
 		return nil, fmt.Errorf("failed to save validator: %w", err)

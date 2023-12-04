@@ -71,10 +71,6 @@ func (app *ValidatorApp) registrationLoop() {
 				continue
 			}
 
-			if err != nil {
-				req.errResponse <- err
-				continue
-			}
 			res, err := app.cc.RegisterValidator(
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),

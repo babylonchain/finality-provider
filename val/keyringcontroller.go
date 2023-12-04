@@ -10,7 +10,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+
+	"github.com/babylonchain/btc-validator/types"
 )
 
 const (
@@ -69,22 +70,22 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*sdksecp256k1.PrivKey, *sdksecp256k1.PubKey, error) {
+func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.KeyPair, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
 	entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	mnemonic, err := bip39.NewMnemonic(entropySeed)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// TODO use a better way to remind the user to keep it
@@ -94,18 +95,17 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*sd
 	kc.input.Reset(passphrase + "\n" + passphrase)
 	record, err := kc.kr.NewAccount(kc.valName, mnemonic, passphrase, hdPath, algo)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	privKey := record.GetLocal().PrivKey.GetCachedValue()
 
 	switch v := privKey.(type) {
 	case *sdksecp256k1.PrivKey:
-		pubkeyObject := secp256k1.PrivKeyFromBytes(v.Key).PubKey()
-		pk := pubkeyObject.SerializeCompressed()
-		return v, &sdksecp256k1.PubKey{Key: pk}, nil
+		sk, pk := btcec.PrivKeyFromBytes(v.Key)
+		return &types.KeyPair{PublicKey: pk, PrivateKey: sk}, nil
 	default:
-		return nil, nil, fmt.Errorf("unsupported key type in keyring")
+		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 }
 

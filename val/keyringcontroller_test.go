@@ -8,6 +8,7 @@ import (
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
@@ -50,8 +51,9 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		btcPk, err := types.NewBIP340PubKey(btcPkBytes)
 		require.NoError(t, err)
-		_, bbnPk, err := kc.CreateChainKey(passphrase, hdPath)
+		keyPair, err := kc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
+		bbnPk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
 		valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
 		pop, err := kc.CreatePop(valRecord.PrivKey, passphrase)
