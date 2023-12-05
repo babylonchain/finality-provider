@@ -187,6 +187,12 @@ func TestCovenantLifeCycle(t *testing.T) {
 			return false
 		}
 
-		return len(del.BtcUndelegation.CovenantSlashingSigs) != 0 && len(del.BtcUndelegation.CovenantUnbondingSigs) != 0
+		if len(del.BtcUndelegation.CovenantSlashingSigs) != 0 && len(del.BtcUndelegation.CovenantUnbondingSigs) != 0 {
+			return true
+		}
+
+		return false
 	}, 1*time.Minute, eventuallyPollTime)
+
+	t.Log("covenant signatures for undelegation are submitted")
 }

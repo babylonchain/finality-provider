@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/types"
@@ -37,11 +37,11 @@ type ChainPoller struct {
 	cfg           *cfg.ChainPollerConfig
 	blockInfoChan chan *types.BlockInfo
 	nextHeight    uint64
-	logger        *logrus.Logger
+	logger        *zap.Logger
 }
 
 func NewChainPoller(
-	logger *logrus.Logger,
+	logger *zap.Logger,
 	cfg *cfg.ChainPollerConfig,
 	cc clientcontroller.ClientController,
 ) *ChainPoller {
@@ -57,7 +57,7 @@ func NewChainPoller(
 func (cp *ChainPoller) Start(startHeight uint64) error {
 	var startErr error
 	cp.startOnce.Do(func() {
-		cp.logger.Infof("Starting the chain poller")
+		cp.logger.Info("Starting the chain poller")
 
 		err := cp.validateStartHeight(startHeight)
 		if err != nil {
@@ -77,7 +77,7 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 func (cp *ChainPoller) Stop() error {
 	var stopError error
 	cp.stopOnce.Do(func() {
-		cp.logger.Infof("Stopping the chain poller")
+		cp.logger.Info("Stopping the chain poller")
 		err := cp.cc.Close()
 		if err != nil {
 			stopError = err
@@ -110,11 +110,12 @@ func (cp *ChainPoller) latestBlockWithRetry() (*types.BlockInfo, error) {
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		cp.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"error":        err,
-		}).Debug("failed to query the consumer chain for the latest block")
+		cp.logger.Debug(
+			"failed to query the consumer chain for the latest block",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return nil, err
 	}
@@ -133,12 +134,13 @@ func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		cp.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"height":       height,
-			"error":        err,
-		}).Debug("failed to query the consumer chain for the block")
+		cp.logger.Debug(
+			"failed to query the consumer chain for the latest block",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Uint64("height", height),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return nil, err
 	}
@@ -158,9 +160,7 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 	for {
 		lastestBlock, err := cp.latestBlockWithRetry()
 		if err != nil {
-			cp.logger.WithFields(logrus.Fields{
-				"error": err,
-			}).Error("Failed to query babylon for the latest status")
+			cp.logger.Debug("failed to query babylon for the latest status", zap.Error(err))
 			continue
 		}
 
@@ -182,9 +182,7 @@ func (cp *ChainPoller) waitForActivation() {
 	for {
 		activatedHeight, err := cp.cc.QueryActivatedHeight()
 		if err != nil {
-			cp.logger.WithFields(logrus.Fields{
-				"error": err,
-			}).Debug("failed to query the consumer chain for the activated height")
+			cp.logger.Debug("failed to query the consumer chain for the activated height", zap.Error(err))
 		} else {
 			if cp.GetNextHeight() < activatedHeight {
 				cp.SetNextHeight(activatedHeight)
@@ -207,7 +205,7 @@ func (cp *ChainPoller) pollChain() {
 
 	cp.waitForActivation()
 
-	var failedCycles uint64
+	var failedCycles uint32
 
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
@@ -216,24 +214,24 @@ func (cp *ChainPoller) pollChain() {
 		block, err := cp.blockWithRetry(blockToRetrieve)
 		if err != nil {
 			failedCycles++
-			cp.logger.WithFields(logrus.Fields{
-				"error":        err,
-				"currFailures": failedCycles,
-				"blockToGet":   blockToRetrieve,
-			}).Error("failed to query the consumer chain for the block")
+			cp.logger.Debug(
+				"failed to query the consumer chain for the block",
+				zap.Uint32("current_failures", failedCycles),
+				zap.Uint64("block_to_retrieve", blockToRetrieve),
+				zap.Error(err),
+			)
 		} else {
 			// no error and we got the header we wanted to get, bump the state and push
 			// notification about data
 			cp.SetNextHeight(blockToRetrieve + 1)
 			failedCycles = 0
 
-			cp.logger.WithFields(logrus.Fields{
-				"height": block.Height,
-			}).Info("the poller retrieved the block from the consumer chain")
+			cp.logger.Info("the poller retrieved the block from the consumer chain",
+				zap.Uint64("height", block.Height))
 
-			// Push the data to the channel.
-			// If the cosumers are to slow i.e the buffer is full, this will block and we will
-			// stop retrieving data from the node.
+			// push the data to the channel
+			// Note: if the consumer is too slow -- the buffer is full
+			// the channel will block, and we will stop retrieving data from the node
 			cp.blockInfoChan <- block
 		}
 

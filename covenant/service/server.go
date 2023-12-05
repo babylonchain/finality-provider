@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 
 	"github.com/lightningnetwork/lnd/signal"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/covenant"
 )
@@ -16,7 +16,7 @@ type CovenantServer struct {
 
 	ce *covenant.CovenantEmulator
 
-	logger *logrus.Logger
+	logger *zap.Logger
 
 	interceptor signal.Interceptor
 
@@ -24,7 +24,7 @@ type CovenantServer struct {
 }
 
 // NewCovenantServer creates a new server with the given config.
-func NewCovenantServer(l *logrus.Logger, ce *covenant.CovenantEmulator, sig signal.Interceptor) *CovenantServer {
+func NewCovenantServer(l *zap.Logger, ce *covenant.CovenantEmulator, sig signal.Interceptor) *CovenantServer {
 	return &CovenantServer{
 		logger:      l,
 		ce:          ce,
@@ -49,7 +49,7 @@ func (s *CovenantServer) RunUntilShutdown() error {
 		return fmt.Errorf("failed to start covenant emulator: %w", err)
 	}
 
-	s.logger.Infof("Covenant Emulator Daemon is fully active!")
+	s.logger.Info("Covenant Emulator Daemon is fully active!")
 
 	// Wait for shutdown signal from either a graceful server stop or from
 	// the interrupt handler.

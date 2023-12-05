@@ -13,7 +13,9 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/jessevdk/go-flags"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+
+	"github.com/babylonchain/btc-validator/log"
 )
 
 const (
@@ -62,7 +64,7 @@ type Config struct {
 //  2. Pre-parse the command line to check for an alternative config file
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
-func LoadConfig() (*Config, *logrus.Logger, error) {
+func LoadConfig() (*Config, *zap.Logger, error) {
 	// Pre-parse the command line options to pick up an alternative config
 	// file.
 	preCfg := DefaultConfig()
@@ -116,15 +118,8 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 		return nil, nil, err
 	}
 
-	cfgLogger := logrus.New()
-	cfgLogger.Out = os.Stdout
 	// Make sure everything we just loaded makes sense.
 	if err := cfg.Validate(); err != nil {
-		return nil, nil, err
-	}
-
-	logRuslLevel, err := logrus.ParseLevel(cfg.LogLevel)
-	if err != nil {
 		return nil, nil, err
 	}
 
@@ -137,20 +132,21 @@ func LoadConfig() (*Config, *logrus.Logger, error) {
 	}
 	mw := io.MultiWriter(os.Stdout, f)
 
-	cfgLogger.SetOutput(mw)
-	cfgLogger.SetLevel(logRuslLevel)
+	cfgLogger, err := log.NewRootLogger("console", cfg.LogLevel, mw)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Warn about missing config file only after all other configuration is
 	// done. This prevents the warning on help messages and invalid
 	// options.  Note this should go directly before the return.
 	if configFileError != nil {
-		cfgLogger.Warnf("%v", configFileError)
 		if cfg.DumpCfg {
-			cfgLogger.Infof("Writing configuration file to %s", configFilePath)
+			cfgLogger.Info("Writing configuration file", zap.String("path", configFilePath))
 			fileParser := flags.NewParser(&cfg, flags.Default)
 			err := flags.NewIniParser(fileParser).WriteFile(configFilePath, flags.IniIncludeComments|flags.IniIncludeDefaults)
 			if err != nil {
-				cfgLogger.Warnf("Error writing configuration file: %v", err)
+				cfgLogger.Error("Error writing configuration file", zap.Error(err))
 				return nil, nil, err
 			}
 		}
@@ -209,13 +205,7 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	_, err := logrus.ParseLevel(cfg.LogLevel)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = net.ResolveTCPAddr("tcp", cfg.RpcListener)
+	_, err := net.ResolveTCPAddr("tcp", cfg.RpcListener)
 	if err != nil {
 		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
 	}

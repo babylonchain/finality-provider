@@ -22,8 +22,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/covenant"
@@ -82,9 +82,7 @@ func StartManager(t *testing.T) *TestManager {
 	testDir, err := tempDirWithName("vale2etest")
 	require.NoError(t, err)
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
-	logger.Out = os.Stdout
+	logger := zap.NewNop()
 
 	// 1. prepare covenant key, which will be used as input of Babylon node
 	covenantConfig := defaultCovenantConfig(testDir)
@@ -274,27 +272,6 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 	return dels
 }
 
-func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*types.Delegation {
-	var (
-		dels []*types.Delegation
-		err  error
-	)
-	// wait for our validator to:
-	// - detect new unbonding
-	// - send signature
-	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
-		if err != nil {
-			return false
-		}
-
-		return len(dels) == 1 && dels[0].BtcUndelegation != nil
-
-	}, 1*time.Minute, eventuallyPollTime)
-
-	return dels
-}
-
 func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
 	allChecked := true
 	for _, d := range dels {
@@ -386,13 +363,6 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	t.Logf("the block is finalized at %v", blocks[0].Height)
 
 	return blocks
-}
-
-func (tm *TestManager) WaitForValStopped(t *testing.T, valPk *bbntypes.BIP340PubKey) {
-	require.Eventually(t, func() bool {
-		_, err := tm.Va.GetValidatorInstance(valPk)
-		return err != nil
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
 func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
@@ -506,6 +476,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		delegatorSig)
 	require.NoError(t, err)
 
+	t.Log("successfully submitted a BTC delegation")
+
 	return &TestDelegationData{
 		DelegatorPrivKey:        delBtcPrivKey,
 		DelegatorKey:            delBtcPubKey,
@@ -574,6 +546,8 @@ func (tm *TestManager) InsertBTCUnbonding(
 		serializedUnbondingTx, uint32(unbondingTime), unbondingValue, testUnbondingInfo.SlashingTx, unbondingSig,
 	)
 	require.NoError(t, err)
+
+	t.Log("successfully submitted a BTC undelegation")
 }
 
 func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {

@@ -12,8 +12,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/covenant"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
@@ -52,7 +52,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 
 		// create and start covenant emulator
-		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, logrus.New())
+		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, zap.NewNop())
 		require.NoError(t, err)
 
 		err = ce.UpdateParams()

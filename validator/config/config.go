@@ -2,7 +2,6 @@ package valcfg
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/config"
 	"io"
 	"net"
 	"os"
@@ -12,10 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/babylonchain/btc-validator/config"
+	"github.com/babylonchain/btc-validator/log"
+
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
-	"github.com/sirupsen/logrus"
 
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 )
@@ -60,7 +63,7 @@ var (
 
 // Config is the main config for the vald cli command
 type Config struct {
-	DebugLevel string `long:"debuglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	LogLevel string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
 	// ChainName and ChainID (if any) of the chain config identify a consumer chain
 	ChainName                      string        `long:"chainname" description:"the name of the consumer chain" choice:"babylon"`
 	ValdDir                        string        `long:"validatorddir" description:"The base directory that contains validator's data, logs, configuration file, etc."`
@@ -111,7 +114,7 @@ func DefaultConfig() Config {
 		ChainName:                      defaultChainName,
 		ConfigFile:                     DefaultConfigFile,
 		DataDir:                        defaultDataDir,
-		DebugLevel:                     defaultLogLevel,
+		LogLevel:                       defaultLogLevel,
 		LogDir:                         defaultLogDir,
 		DatabaseConfig:                 &dbCfg,
 		BabylonConfig:                  &bbnCfg,
@@ -150,7 +153,7 @@ func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) 
 		return nil, err
 	}
 	return &eotscfg.Config{
-		LogLevel:       appCfg.DebugLevel,
+		LogLevel:       appCfg.LogLevel,
 		EOTSDir:        appCfg.ValdDir,
 		ConfigFile:     appCfg.ConfigFile,
 		KeyDirectory:   appCfg.BabylonConfig.KeyDirectory,
@@ -167,7 +170,7 @@ func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) 
 //  2. Pre-parse the command line to check for an alternative config file
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
-func LoadConfig(filePath string) (*Config, *logrus.Logger, error) {
+func LoadConfig(filePath string) (*Config, *zap.Logger, error) {
 	// Pre-parse the command line options to pick up an alternative config
 	// file.
 	preCfg := DefaultConfig()
@@ -196,15 +199,10 @@ func LoadConfig(filePath string) (*Config, *logrus.Logger, error) {
 		configFileError = err
 	}
 
-	cfgLogger := logrus.New()
-	cfgLogger.Out = os.Stdout
 	// Make sure everything we just loaded makes sense.
 	if err := cfg.Validate(); err != nil {
 		return nil, nil, err
 	}
-
-	// ignore error here as we already validated the value
-	logRuslLevel, _ := logrus.ParseLevel(cfg.DebugLevel)
 
 	// At this point we know config is valid, create logger which also log to file
 	logFilePath := filepath.Join(cfg.LogDir, defaultLogFilename)
@@ -214,20 +212,21 @@ func LoadConfig(filePath string) (*Config, *logrus.Logger, error) {
 	}
 	mw := io.MultiWriter(os.Stdout, f)
 
-	cfgLogger.Out = mw
-	cfgLogger.Level = logRuslLevel
+	cfgLogger, err := log.NewRootLogger("console", cfg.LogLevel, mw)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Warn about missing config file only after all other configuration is
 	// done. This prevents the warning on help messages and invalid
 	// options.  Note this should go directly before the return.
 	if configFileError != nil {
-		cfgLogger.Warnf("%v", configFileError)
 		if cfg.DumpCfg {
-			cfgLogger.Infof("Writing configuration file to %s", filePath)
+			cfgLogger.Info("Writing configuration file", zap.String("path", filePath))
 			fileParser := flags.NewParser(&cfg, flags.Default)
 			err := flags.NewIniParser(fileParser).WriteFile(filePath, flags.IniIncludeComments|flags.IniIncludeDefaults)
 			if err != nil {
-				cfgLogger.Warnf("Error writing configuration file: %v", err)
+				cfgLogger.Error("Error writing configuration file", zap.Error(err))
 				return nil, nil, err
 			}
 		}
@@ -303,12 +302,7 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	_, err := logrus.ParseLevel(cfg.DebugLevel)
-	if err != nil {
-		return err
-	}
-
-	_, err = net.ResolveTCPAddr("tcp", cfg.RpcListener)
+	_, err := net.ResolveTCPAddr("tcp", cfg.RpcListener)
 	if err != nil {
 		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
 	}

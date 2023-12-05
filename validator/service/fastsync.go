@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/types"
 )
@@ -78,11 +78,12 @@ func (v *ValidatorInstance) FastSync(startHeight, endHeight uint64) (*FastSyncRe
 
 		responses = append(responses, res)
 
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":    v.GetBtcPkHex(),
-			"start_height":  catchUpBlocks[0].Height,
-			"synced_height": syncedHeight,
-		}).Debug("the validator is catching up by sending finality signatures in a batch")
+		v.logger.Debug(
+			"the validator is catching up by sending finality signatures in a batch",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("start_height", catchUpBlocks[0].Height),
+			zap.Uint64("synced_height", syncedHeight),
+		)
 	}
 
 	v.MustSetLastProcessedHeight(endHeight)

@@ -8,8 +8,8 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -48,7 +48,7 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 		require.NoError(t, err)
-		logger := logrus.New()
+		logger := zap.NewNop()
 		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
 		require.NoError(t, err)
 		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logger)

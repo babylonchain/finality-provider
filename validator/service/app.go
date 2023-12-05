@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -8,11 +9,12 @@ import (
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	valkr "github.com/babylonchain/btc-validator/keyring"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+
+	valkr "github.com/babylonchain/btc-validator/keyring"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
@@ -40,7 +42,7 @@ type ValidatorApp struct {
 	kr     keyring.Keyring
 	vs     *valstore.ValidatorStore
 	config *valcfg.Config
-	logger *logrus.Logger
+	logger *zap.Logger
 	input  *strings.Reader
 
 	validatorManager *ValidatorManager
@@ -53,7 +55,7 @@ type ValidatorApp struct {
 
 func NewValidatorAppFromConfig(
 	config *valcfg.Config,
-	logger *logrus.Logger,
+	logger *zap.Logger,
 ) (*ValidatorApp, error) {
 	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.ActiveNetParams, logger)
 	if err != nil {
@@ -80,7 +82,7 @@ func NewValidatorAppFromConfig(
 			return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
 		}
 		// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
-		logger.Infof("successfully connected to a remote EOTS manager at %s", config.EOTSManagerAddress)
+		logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 	}
 
 	return NewValidatorApp(config, cc, em, logger)
@@ -90,7 +92,7 @@ func NewValidatorApp(
 	config *valcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
-	logger *logrus.Logger,
+	logger *zap.Logger,
 ) (*ValidatorApp, error) {
 	input := strings.NewReader("")
 	kr, err := valkr.CreateKeyring(
@@ -229,7 +231,7 @@ func (app *ValidatorApp) getValPrivKey(valPk []byte) (*btcec.PrivateKey, error) 
 func (app *ValidatorApp) Start() error {
 	var startErr error
 	app.startOnce.Do(func() {
-		app.logger.Infof("Starting ValidatorApp")
+		app.logger.Info("Starting ValidatorApp")
 
 		app.eventWg.Add(1)
 		go app.eventLoop()
@@ -244,7 +246,7 @@ func (app *ValidatorApp) Start() error {
 func (app *ValidatorApp) Stop() error {
 	var stopErr error
 	app.stopOnce.Do(func() {
-		app.logger.Infof("Stopping ValidatorApp")
+		app.logger.Info("Stopping ValidatorApp")
 
 		// Always stop the submission loop first to not generate additional events and actions
 		app.logger.Debug("Stopping submission loop")
@@ -353,12 +355,115 @@ func (app *ValidatorApp) handleCreateValidatorRequest(req *createValidatorReques
 		return nil, fmt.Errorf("failed to save validator: %w", err)
 	}
 
-	app.logger.WithFields(logrus.Fields{
-		"btc_pub_key": valPk.MarshalHex(),
-		"name":        req.keyName,
-	}).Debug("successfully created a validator")
+	app.logger.Info("successfully created a validator",
+		zap.String("btc_pk", valPk.MarshalHex()),
+		zap.String("key_name", req.keyName),
+	)
 
 	return &createValidatorResponse{
 		ValPk: valPk,
 	}, nil
+}
+
+// main event loop for the validator app
+func (app *ValidatorApp) eventLoop() {
+	defer app.eventWg.Done()
+
+	for {
+		select {
+		case req := <-app.createValidatorRequestChan:
+			res, err := app.handleCreateValidatorRequest(req)
+			if err != nil {
+				req.errResponse <- err
+				continue
+			}
+
+			req.successResponse <- &createValidatorResponse{ValPk: res.ValPk}
+
+		case ev := <-app.validatorRegisteredEventChan:
+			valStored, err := app.vs.GetStoreValidator(ev.btcPubKey.MustMarshal())
+			if err != nil {
+				// we always check if the validator is in the DB before sending the registration request
+				app.logger.Fatal(
+					"registered validator not found in DB",
+					zap.String("pk", ev.btcPubKey.MarshalHex()),
+					zap.Error(err),
+				)
+			}
+
+			// change the status of the validator to registered
+			err = app.vs.SetValidatorStatus(valStored, proto.ValidatorStatus_REGISTERED)
+			if err != nil {
+				app.logger.Fatal("failed to set validator status to REGISTERED",
+					zap.String("pk", ev.btcPubKey.MarshalHex()),
+					zap.Error(err),
+				)
+			}
+
+			// return to the caller
+			ev.successResponse <- &RegisterValidatorResponse{
+				bbnPubKey: valStored.GetBabylonPK(),
+				btcPubKey: valStored.MustGetBIP340BTCPK(),
+				TxHash:    ev.txHash,
+			}
+
+		case <-app.eventQuit:
+			app.logger.Debug("exiting main event loop")
+			return
+		}
+	}
+}
+
+func (app *ValidatorApp) registrationLoop() {
+	defer app.sentWg.Done()
+	for {
+		select {
+		case req := <-app.registerValidatorRequestChan:
+			// we won't do any retries here to not block the loop for more important messages.
+			// Most probably it fails due so some user error so we just return the error to the user.
+			// TODO: need to start passing context here to be able to cancel the request in case of app quiting
+			popBytes, err := req.pop.Marshal()
+			if err != nil {
+				req.errResponse <- err
+				continue
+			}
+
+			res, err := app.cc.RegisterValidator(
+				req.bbnPubKey.Key,
+				req.btcPubKey.MustToBTCPK(),
+				popBytes,
+				req.commission.BigInt(),
+				req.description,
+			)
+
+			if err != nil {
+				app.logger.Error(
+					"failed to register validator",
+					zap.String("pk", req.btcPubKey.MarshalHex()),
+					zap.Error(err),
+				)
+				req.errResponse <- err
+				continue
+			}
+
+			app.logger.Info(
+				"successfully registered validator on babylon",
+				zap.String("btc_pk", req.btcPubKey.MarshalHex()),
+				zap.String("babylon_pk", hex.EncodeToString(req.bbnPubKey.Key)),
+				zap.String("txHash", res.TxHash),
+			)
+
+			app.validatorRegisteredEventChan <- &validatorRegisteredEvent{
+				btcPubKey: req.btcPubKey,
+				bbnPubKey: req.bbnPubKey,
+				txHash:    res.TxHash,
+				// pass the channel to the event so that we can send the response to the user which requested
+				// the registration
+				successResponse: req.successResponse,
+			}
+		case <-app.sentQuit:
+			app.logger.Debug("exiting registration loop")
+			return
+		}
+	}
 }
