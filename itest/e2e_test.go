@@ -159,7 +159,7 @@ func TestCovenantLifeCycle(t *testing.T) {
 	)
 
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
+		dels, err := tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {
 			return false
 		}
@@ -170,7 +170,7 @@ func TestCovenantLifeCycle(t *testing.T) {
 
 	// after providing validator unbonding signature, we should wait for covenant to provide both valid signatures
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
+		dels, err := tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {
 			return false
 		}
