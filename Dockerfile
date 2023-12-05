@@ -47,11 +47,11 @@ RUN apk add bash curl jq
 
 COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/vald /bin/vald
 COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/valcli /bin/valcli
+COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/covd /bin/covd
+COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/covcli /bin/covcli
+COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/eotsd /bin/eotsd
+COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/eotscli /bin/eotscli
 
 WORKDIR /home/btcvalidator
 RUN chown -R btcvalidator /home/btcvalidator
 USER btcvalidator
-
-ENTRYPOINT ["/bin/vald"]
-CMD []
-STOPSIGNAL SIGTERM
