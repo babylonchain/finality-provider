@@ -200,6 +200,8 @@ func StartManagerWithValidator(t *testing.T) (*TestManager, *service.ValidatorIn
 func (tm *TestManager) Stop(t *testing.T) {
 	err := tm.Va.Stop()
 	require.NoError(t, err)
+	err = tm.CovenantEmulator.Stop()
+	require.NoError(t, err)
 	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	err = os.RemoveAll(tm.ValConfig.DatabaseConfig.Path)
@@ -208,8 +210,6 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	tm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(tm.EOTSServerHandler.baseDir)
-	require.NoError(t, err)
-	err = tm.CovenantEmulator.Stop()
 	require.NoError(t, err)
 }
 
