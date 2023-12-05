@@ -149,8 +149,6 @@ func TestCovenantLifeCycle(t *testing.T) {
 	delData := tm.InsertBTCDelegation(t, []*btcec.PublicKey{valPk}, stakingTime, stakingAmount, params)
 	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	del := dels[0]
-	err := tm.Va.Stop()
-	require.NoError(t, err)
 
 	tm.InsertBTCUnbonding(
 		t,
