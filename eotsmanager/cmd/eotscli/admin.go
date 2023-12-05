@@ -6,7 +6,6 @@ import (
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
-	"os"
 	"path/filepath"
 
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
@@ -55,7 +54,6 @@ func initHome(c *cli.Context) error {
 	}
 	force := c.Bool(forceFlag)
 
-	_, err = os.Stat(util.CleanAndExpandPath(homePath))
 	if util.FileExists(homePath) && !force {
 		return fmt.Errorf("home path %s already exists", homePath)
 	}
