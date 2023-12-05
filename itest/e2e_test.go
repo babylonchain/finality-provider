@@ -149,6 +149,8 @@ func TestCovenantLifeCycle(t *testing.T) {
 	delData := tm.InsertBTCDelegation(t, []*btcec.PublicKey{valPk}, stakingTime, stakingAmount, params)
 	dels := tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
 	del := dels[0]
+	err := tm.Va.Stop()
+	require.NoError(t, err)
 
 	tm.InsertBTCUnbonding(
 		t,
@@ -159,7 +161,7 @@ func TestCovenantLifeCycle(t *testing.T) {
 	)
 
 	require.Eventually(t, func() bool {
-		dels, err := tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {
 			return false
 		}
@@ -170,7 +172,7 @@ func TestCovenantLifeCycle(t *testing.T) {
 
 	// after providing validator unbonding signature, we should wait for covenant to provide both valid signatures
 	require.Eventually(t, func() bool {
-		dels, err := tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
+		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(valBtcPk, 1000)
 		if err != nil {
 			return false
 		}
