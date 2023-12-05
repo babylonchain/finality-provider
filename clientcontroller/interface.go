@@ -1,9 +1,8 @@
 package clientcontroller
 
 import (
+	"cosmossdk.io/math"
 	"fmt"
-	"math/big"
-
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
@@ -36,7 +35,7 @@ type ValidatorAPIs interface {
 		chainPk []byte,
 		valPk *btcec.PublicKey,
 		pop []byte,
-		commission *big.Int,
+		commission *math.LegacyDec,
 		description []byte,
 	) (*types.TxResponse, error)
 
