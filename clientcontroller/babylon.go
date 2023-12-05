@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"time"
 
 	"cosmossdk.io/math"
@@ -150,15 +149,13 @@ func (bc *BabylonController) RegisterValidator(
 	chainPk []byte,
 	valPk *btcec.PublicKey,
 	pop []byte,
-	commission *big.Int,
+	commission *math.LegacyDec,
 	description []byte,
 ) (*types.TxResponse, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
 		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
 	}
-
-	sdkCommission := math.LegacyNewDecFromBigInt(commission)
 
 	var sdkDescription sttypes.Description
 	if err := sdkDescription.Unmarshal(description); err != nil {
@@ -170,7 +167,7 @@ func (bc *BabylonController) RegisterValidator(
 		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
 		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		Pop:         &bbnPop,
-		Commission:  &sdkCommission,
+		Commission:  commission,
 		Description: &sdkDescription,
 	}
 

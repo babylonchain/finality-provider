@@ -5,9 +5,9 @@
 package mocks
 
 import (
-	big "math/big"
 	reflect "reflect"
 
+	math "cosmossdk.io/math"
 	types "github.com/babylonchain/btc-validator/types"
 	btcec "github.com/btcsuite/btcd/btcec/v2"
 	schnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -217,7 +217,7 @@ func (mr *MockClientControllerMockRecorder) QueryValidatorVotingPower(valPk, blo
 }
 
 // RegisterValidator mocks base method.
-func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description []byte) (*types.TxResponse, error) {
+func (m *MockClientController) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *math.LegacyDec, description []byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
@@ -435,7 +435,7 @@ func (mr *MockValidatorAPIsMockRecorder) QueryValidatorVotingPower(valPk, blockH
 }
 
 // RegisterValidator mocks base method.
-func (m *MockValidatorAPIs) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *big.Int, description []byte) (*types.TxResponse, error) {
+func (m *MockValidatorAPIs) RegisterValidator(chainPk []byte, valPk *btcec.PublicKey, pop []byte, commission *math.LegacyDec, description []byte) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterValidator", chainPk, valPk, pop, commission, description)
 	ret0, _ := ret[0].(*types.TxResponse)
