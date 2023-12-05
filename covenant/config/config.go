@@ -29,23 +29,18 @@ const (
 )
 
 var (
+	// DefaultCovenantDir specifies the default home directory for the covenant:
 	//   C:\Users\<username>\AppData\Local\ on Windows
 	//   ~/.vald on Linux
 	//   ~/Library/Application Support/Covd on MacOS
 	DefaultCovenantDir = btcutil.AppDataDir("covd", false)
-
-	DefaultConfigFile = filepath.Join(DefaultCovenantDir, defaultConfigFileName)
 )
 
 type Config struct {
 	LogLevel        string        `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
-	CovenantDir     string        `long:"covenantdir" description:"The base directory of the Covenant emulator"`
-	DumpCfg         bool          `long:"dumpcfg" description:"If config file does not exist, create it with current settings"`
 	QueryInterval   time.Duration `long:"queryinterval" description:"The interval between each query for pending BTC delegations"`
 	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Covenant processes each time"`
-	// slashing address can be empty as it will be set from Babylon params
-	SlashingAddress string `long:"slashingaddress" description:"The slashing address that the slashed fund is sent to"`
-	BitcoinNetwork  string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
+	BitcoinNetwork  string        `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
 	ActiveNetParams chaincfg.Params
 
@@ -60,33 +55,21 @@ type Config struct {
 //  2. Pre-parse the command line to check for an alternative config file
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
-func LoadConfig(filePath string) (*Config, *zap.Logger, error) {
-	// Pre-parse the command line options to pick up an alternative config
-	// file.
-	preCfg := DefaultConfig()
-	if _, err := flags.Parse(&preCfg); err != nil {
-		return nil, nil, err
-	}
-
-	if !FileExists(filePath) {
+func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
+	// The home directory is required to have a configuration file with a specific name
+	// under it.
+	cfgFile := ConfigFile(homePath)
+	if !FileExists(cfgFile) {
 		return nil, nil, fmt.Errorf("specified config file does "+
-			"not exist in %s", filePath)
+			"not exist in %s", cfgFile)
 	}
 
-	// Next, load any additional configuration options from the file.
-	var configFileError error
-	cfg := preCfg
+	// If there are issues parsing the config file, return an error
+	var cfg Config
 	fileParser := flags.NewParser(&cfg, flags.Default)
-	err := flags.NewIniParser(fileParser).ParseFile(filePath)
+	err := flags.NewIniParser(fileParser).ParseFile(cfgFile)
 	if err != nil {
-		// If it's a parsing related error, then we'll return
-		// immediately, otherwise we can proceed as possibly the config
-		// file doesn't exist which is OK.
-		if _, ok := err.(*flags.IniError); ok {
-			return nil, nil, err
-		}
-
-		configFileError = err
+		return nil, nil, err
 	}
 
 	// Make sure everything we just loaded makes sense.
@@ -94,58 +77,22 @@ func LoadConfig(filePath string) (*Config, *zap.Logger, error) {
 		return nil, nil, err
 	}
 
-	// At this point we know config is valid, create logger which also log to file
-	logFilePath := filepath.Join(cfg.CovenantDir, defaultLogFilename)
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, nil, err
-	}
-	mw := io.MultiWriter(os.Stdout, f)
-
-	cfgLogger, err := log.NewRootLogger("console", cfg.LogLevel, mw)
+	// Initialize the logger basecd on the configuration
+	logger, err := initLogger(homePath, cfg.LogLevel)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Warn about missing config file only after all other configuration is
-	// done. This prevents the warning on help messages and invalid
-	// options.  Note this should go directly before the return.
-	if configFileError != nil {
-		if cfg.DumpCfg {
-			cfgLogger.Info("Writing configuration file", zap.String("path", filePath))
-			fileParser := flags.NewParser(&cfg, flags.Default)
-			err := flags.NewIniParser(fileParser).WriteFile(filePath, flags.IniIncludeComments|flags.IniIncludeDefaults)
-			if err != nil {
-				cfgLogger.Error("Error writing configuration file", zap.Error(err))
-				return nil, nil, err
-			}
-		}
-	}
-
-	return &cfg, cfgLogger, nil
+	return &cfg, logger, nil
 }
 
 // Validate check the given configuration to be sane. This makes sure no
 // illegal values or combination of values are set. All file system paths are
 // normalized. The cleaned up config is returned on success.
 func (cfg *Config) Validate() error {
-	err := os.MkdirAll(cfg.CovenantDir, 0700)
-	if err != nil {
-		// Show a nicer error message if it's because a symlink
-		// is linked to a directory that does not exist
-		// (probably because it's not mounted).
-		if e, ok := err.(*os.PathError); ok && os.IsExist(err) {
-			link, lerr := os.Readlink(e.Path)
-			if lerr == nil {
-				str := "is symlink %s -> %s mounted?"
-				err = fmt.Errorf(str, e.Path, link)
-			}
-		}
-
-		return fmt.Errorf("failed to create covd directory '%s': %w", cfg.CovenantDir, err)
-	}
-
 	switch cfg.BitcoinNetwork {
+	case "mainnet":
+		cfg.ActiveNetParams = chaincfg.MainNetParams
 	case "testnet":
 		cfg.ActiveNetParams = chaincfg.TestNet3Params
 	case "regtest":
@@ -170,23 +117,47 @@ func FileExists(name string) bool {
 	return true
 }
 
-func DefaultConfig() Config {
+func ConfigFile(homePath string) string {
+	return filepath.Join(homePath, defaultConfigFileName)
+}
+
+func LogFile(homePath string) string {
+	return filepath.Join(homePath, defaultLogFilename)
+}
+
+func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
+	logFilePath := LogFile(homePath)
+	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+	mw := io.MultiWriter(os.Stdout, f)
+
+	logger, err := log.NewRootLogger("console", logLevel, mw)
+	if err != nil {
+		return nil, err
+	}
+	return logger, nil
+}
+
+func DefaultConfigWithHomePath(homePath string) Config {
 	bbnCfg := config.DefaultBBNConfig()
 	bbnCfg.Key = defaultCovenantKeyName
-	bbnCfg.KeyDirectory = DefaultCovenantDir
+	bbnCfg.KeyDirectory = homePath
 	cfg := Config{
 		LogLevel:        defaultLogLevel,
-		CovenantDir:     DefaultCovenantDir,
-		DumpCfg:         false,
 		QueryInterval:   defaultQueryInterval,
 		DelegationLimit: defaultDelegationLimit,
-		SlashingAddress: emptySlashingAddress,
 		BitcoinNetwork:  defaultBitcoinNetwork,
-		ActiveNetParams: chaincfg.Params{},
+		ActiveNetParams: chaincfg.SimNetParams,
 		BabylonConfig:   &bbnCfg,
 	}
 
 	_ = cfg.Validate()
 
 	return cfg
+}
+
+func DefaultConfig() Config {
+	return DefaultConfigWithHomePath(DefaultCovenantDir)
 }

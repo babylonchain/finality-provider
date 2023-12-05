@@ -14,7 +14,7 @@ import (
 
 const (
 	passphraseFlag = "passphrase"
-	configFileFlag = "config"
+	homeFlag       = "home"
 
 	defaultPassphrase = ""
 )
@@ -30,19 +30,19 @@ var startCovenant = cli.Command{
 			Value: defaultPassphrase,
 		},
 		cli.StringFlag{
-			Name:  configFileFlag,
-			Usage: "The path to the covenant config file",
-			Value: covcfg.DefaultConfigFile,
+			Name:  homeFlag,
+			Usage: "The path to the covenant home directory",
+			Value: covcfg.DefaultCovenantDir,
 		},
 	},
 	Action: startCovenantFn,
 }
 
 func startCovenantFn(ctx *cli.Context) error {
-	configFilePath := ctx.String(configFileFlag)
-	cfg, cfgLogger, err := covcfg.LoadConfig(configFilePath)
+	homePath := ctx.String(homeFlag)
+	cfg, cfgLogger, err := covcfg.LoadConfig(homePath)
 	if err != nil {
-		return fmt.Errorf("failed to load config at %s: %w", configFilePath, err)
+		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
 	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, cfgLogger)

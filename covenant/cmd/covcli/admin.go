@@ -11,7 +11,10 @@ import (
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 )
 
-const configFileFlag = "config"
+const (
+	homeFlag  = "home"
+	forceFlag = "force"
+)
 
 var adminCommands = []cli.Command{
 	{
@@ -20,46 +23,51 @@ var adminCommands = []cli.Command{
 		Usage:     "Different utility and admin commands.",
 		Category:  "Admin",
 		Subcommands: []cli.Command{
-			dumpCfgCommand,
+			initCommand,
 		},
 	},
 }
 
-var dumpCfgCommand = cli.Command{
-	Name:      "dump-config",
-	ShortName: "dc",
-	Usage:     "Dump default configuration file.",
+var initCommand = cli.Command{
+	Name:      "init",
+	ShortName: "in",
+	Usage:     "Initialize a covenant home directory.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  configFileFlag,
-			Usage: "Path to where the default config file will be dumped",
-			Value: covcfg.DefaultConfigFile,
+			Name:  homeFlag,
+			Usage: "Path to where the home directory will be initialized",
+			Value: covcfg.DefaultCovenantDir,
+		},
+		cli.BoolFlag{
+			Name:     forceFlag,
+			Usage:    "Override existing configuration",
+			Required: false,
 		},
 	},
-	Action: dumpCfg,
+	Action: initHome,
 }
 
-func dumpCfg(c *cli.Context) error {
-	configPath := c.String(configFileFlag)
+func initHome(c *cli.Context) error {
+	homePath := c.String(homeFlag)
+	force := c.Bool(forceFlag)
 
-	if covcfg.FileExists(configPath) {
-		return fmt.Errorf("config already exists under provided path: %s", configPath)
+	_, err := os.Stat(homePath)
+	if os.IsExist(err) {
+		if !force {
+			return fmt.Errorf("home path %s already exists", homePath)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
 	}
 
 	// ensure the directory exists
-	configDir := filepath.Dir(configPath)
+	configDir := filepath.Dir(homePath)
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return err
 	}
 
-	defaultConfig := covcfg.DefaultConfig()
+	defaultConfig := covcfg.DefaultConfigWithHomePath(homePath)
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
-	err := flags.NewIniParser(fileParser).WriteFile(configPath, flags.IniIncludeComments|flags.IniIncludeDefaults)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }
