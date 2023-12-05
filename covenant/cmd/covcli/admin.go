@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-
+	"github.com/babylonchain/btc-validator/util"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
+	"os"
+	"path/filepath"
 
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 )
@@ -48,21 +48,25 @@ var initCommand = cli.Command{
 }
 
 func initHome(c *cli.Context) error {
-	homePath := c.String(homeFlag)
+	homePath, err := filepath.Abs(c.String(homeFlag))
+	if err != nil {
+		return err
+	}
 	force := c.Bool(forceFlag)
 
-	_, err := os.Stat(homePath)
-	if os.IsExist(err) {
-		if !force {
-			return fmt.Errorf("home path %s already exists", homePath)
-		}
-	} else if !os.IsNotExist(err) {
-		return err
+	_, err = os.Stat(util.CleanAndExpandPath(homePath))
+	if util.FileExists(homePath) && !force {
+		return fmt.Errorf("home path %s already exists", homePath)
 	}
 
 	// ensure the directory exists
-	configDir := filepath.Dir(homePath)
-	if err := os.MkdirAll(configDir, 0700); err != nil {
+	homeDir := util.CleanAndExpandPath(homePath)
+	if err := util.MakeDirectory(homeDir); err != nil {
+		return err
+	}
+	// Create log directory
+	logDir := util.CleanAndExpandPath(covcfg.LogDir(homePath))
+	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}
 

@@ -8,7 +8,7 @@ import (
 )
 
 func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "[covenant-emulator] %v\n", err)
+	fmt.Fprintf(os.Stderr, "[covd] %v\n", err)
 	os.Exit(1)
 }
 

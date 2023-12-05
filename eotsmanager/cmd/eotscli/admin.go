@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-
+	"github.com/babylonchain/btc-validator/util"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
+	"os"
+	"path/filepath"
 
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 )
@@ -18,57 +19,60 @@ var adminCommands = []cli.Command{
 		Usage:     "Different utility and admin commands.",
 		Category:  "Admin",
 		Subcommands: []cli.Command{
-			dumpCfgCommand,
+			initCommand,
 		},
 	},
 }
 
 const (
-	configFileDirFlag = "config-file-dir"
+	homeFlag  = "home"
+	forceFlag = "force"
 )
 
-var (
-	defaultConfigPath = eotscfg.DefaultConfigFile
-)
-
-var dumpCfgCommand = cli.Command{
-	Name:      "dump-config",
-	ShortName: "dc",
+var initCommand = cli.Command{
+	Name:      "init",
+	ShortName: "ini",
 	Usage:     "Dump default configuration file.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  configFileDirFlag,
-			Usage: "Path to where the default config file will be dumped",
-			Value: defaultConfigPath,
+			Name:  homeFlag,
+			Usage: "Path to where the home directory will be initialized",
+			Value: eotscfg.DefaultEOTSDir,
+		},
+		cli.BoolFlag{
+			Name:     forceFlag,
+			Usage:    "Override existing configuration",
+			Required: false,
 		},
 	},
-	Action: dumpCfg,
+	Action: initHome,
 }
 
-func dumpCfg(c *cli.Context) error {
-	configPath := c.String(configFileDirFlag)
-
-	if eotscfg.FileExists(configPath) {
-		return cli.NewExitError(
-			fmt.Sprintf("config already exists under provided path: %s", configPath),
-			1,
-		)
-	}
-
-	// ensure the directory exists
-	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, 0700); err != nil {
-		return err
-	}
-
-	defaultConfig := eotscfg.DefaultConfig()
-	fileParser := flags.NewParser(&defaultConfig, flags.Default)
-
-	err := flags.NewIniParser(fileParser).WriteFile(configPath, flags.IniIncludeComments|flags.IniIncludeDefaults)
-
+func initHome(c *cli.Context) error {
+	homePath, err := filepath.Abs(c.String(homeFlag))
 	if err != nil {
 		return err
 	}
+	force := c.Bool(forceFlag)
 
-	return nil
+	_, err = os.Stat(util.CleanAndExpandPath(homePath))
+	if util.FileExists(homePath) && !force {
+		return fmt.Errorf("home path %s already exists", homePath)
+	}
+
+	// Create home directory
+	homeDir := util.CleanAndExpandPath(homePath)
+	if err := util.MakeDirectory(homeDir); err != nil {
+		return err
+	}
+	// Create log directory
+	logDir := util.CleanAndExpandPath(eotscfg.LogDir(homePath))
+	if err := util.MakeDirectory(logDir); err != nil {
+		return err
+	}
+
+	defaultConfig := valcfg.DefaultConfig()
+	fileParser := flags.NewParser(&defaultConfig, flags.Default)
+
+	return flags.NewIniParser(fileParser).WriteFile(valcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

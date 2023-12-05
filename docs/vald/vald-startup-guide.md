@@ -14,7 +14,7 @@
 You can start the validator daemon using the following command:
 
 ```bash
-$ vald
+$ vald --home /path/to/vald/home
 ```
 
 This will start the RPC server at the address specified in the configuration under

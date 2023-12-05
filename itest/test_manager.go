@@ -575,7 +575,6 @@ func defaultValidatorConfig(keyringDir, testDir string) *valcfg.Config {
 
 func defaultCovenantConfig(testDir string) *covcfg.Config {
 	cfg := covcfg.DefaultConfig()
-	cfg.CovenantDir = testDir
 	cfg.BabylonConfig.KeyDirectory = testDir
 
 	return &cfg
@@ -587,14 +586,7 @@ func defaultEOTSConfig(t *testing.T) *eotsconfig.Config {
 	eotsDir, err := baseDir("zEOTSTest")
 	require.NoError(t, err)
 
-	configFile := filepath.Join(eotsDir, "covd-test.conf")
-	dataDir := filepath.Join(eotsDir, "data")
-	logDir := filepath.Join(eotsDir, "log")
-
-	cfg.EOTSDir = eotsDir
-	cfg.ConfigFile = configFile
-	cfg.LogDir = logDir
-	cfg.KeyDirectory = dataDir
+	cfg.KeyDirectory = eotsDir
 	cfg.DatabaseConfig.Path = filepath.Join(eotsDir, "db")
 
 	return &cfg

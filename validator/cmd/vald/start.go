@@ -13,7 +13,7 @@ import (
 
 const (
 	passphraseFlag = "passphrase"
-	configFileFlag = "config"
+	homeFlag       = "home"
 	valPkFlag      = "validator-pk"
 
 	defaultPassphrase = ""
@@ -30,9 +30,9 @@ var startValidator = cli.Command{
 			Value: defaultPassphrase,
 		},
 		cli.StringFlag{
-			Name:  configFileFlag,
-			Usage: "The path to the covenant config file",
-			Value: valcfg.DefaultConfigFile,
+			Name:  homeFlag,
+			Usage: "The path to the validator home directory",
+			Value: valcfg.DefaultValdDir,
 		},
 		cli.StringFlag{
 			Name:  valPkFlag,
@@ -44,10 +44,10 @@ var startValidator = cli.Command{
 
 func startValidatorFn(ctx *cli.Context) error {
 	passphrase := ctx.String(passphraseFlag)
-	configFilePath := ctx.String(configFileFlag)
+	homePath := ctx.String(homeFlag)
 	valPkStr := ctx.String(valPkFlag)
 
-	cfg, cfgLogger, err := valcfg.LoadConfig(configFilePath)
+	cfg, cfgLogger, err := valcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}

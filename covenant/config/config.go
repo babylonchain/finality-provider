@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/babylonchain/btc-validator/util"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ const (
 	defaultQueryInterval   = 15 * time.Second
 	defaultDelegationLimit = uint64(100)
 	defaultBitcoinNetwork  = "simnet"
-	emptySlashingAddress   = ""
+	defaultLogDirname      = "logs"
 )
 
 var (
@@ -59,7 +60,7 @@ func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
 	cfgFile := ConfigFile(homePath)
-	if !FileExists(cfgFile) {
+	if !util.FileExists(cfgFile) {
 		return nil, nil, fmt.Errorf("specified config file does "+
 			"not exist in %s", cfgFile)
 	}
@@ -108,21 +109,16 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func FileExists(name string) bool {
-	if _, err := os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-	return true
-}
-
 func ConfigFile(homePath string) string {
 	return filepath.Join(homePath, defaultConfigFileName)
 }
 
+func LogDir(homePath string) string {
+	return filepath.Join(homePath, defaultLogDirname)
+}
+
 func LogFile(homePath string) string {
-	return filepath.Join(homePath, defaultLogFilename)
+	return filepath.Join(LogDir(homePath), defaultLogFilename)
 }
 
 func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
