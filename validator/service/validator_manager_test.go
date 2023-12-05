@@ -1,18 +1,20 @@
 package service_test
 
 import (
-	"github.com/babylonchain/btc-validator/keyring"
 	"math/rand"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/babylonchain/btc-validator/keyring"
+
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
@@ -93,7 +95,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	cfg.StatusUpdateInterval = 10 * time.Millisecond
 	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
 	cfg.BabylonConfig.KeyDirectory = t.TempDir()
-	logger := logrus.New()
+	logger := zap.NewNop()
 
 	input := strings.NewReader("")
 	kr, err := keyring.CreateKeyring(

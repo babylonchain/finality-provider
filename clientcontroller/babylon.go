@@ -24,7 +24,7 @@ import (
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sttypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/config"
 	"github.com/babylonchain/btc-validator/types"
@@ -36,13 +36,13 @@ type BabylonController struct {
 	bbnClient *bbnclient.Client
 	cfg       *config.BBNConfig
 	btcParams *chaincfg.Params
-	logger    *logrus.Logger
+	logger    *zap.Logger
 }
 
 func NewBabylonController(
 	cfg *config.BBNConfig,
 	btcParams *chaincfg.Params,
-	logger *logrus.Logger,
+	logger *zap.Logger,
 ) (*BabylonController, error) {
 
 	bbnConfig := config.BBNConfigToBabylonConfig(cfg)
@@ -683,7 +683,6 @@ func (bc *BabylonController) CreateBTCDelegation(
 		return nil, err
 	}
 
-	bc.logger.Infof("successfully submitted a BTC delegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
@@ -709,7 +708,6 @@ func (bc *BabylonController) CreateBTCUndelegation(
 		return nil, err
 	}
 
-	bc.logger.Infof("successfully submitted a BTC undelegation, code: %v, height: %v, tx hash: %s", res.Code, res.Height, res.TxHash)
 	return res, nil
 }
 

@@ -8,7 +8,7 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/validator/proto"
 	valstore "github.com/babylonchain/btc-validator/validator/store"
@@ -147,11 +147,8 @@ func (v *ValidatorInstance) SetStatus(s proto.ValidatorStatus) error {
 
 func (v *ValidatorInstance) MustSetStatus(s proto.ValidatorStatus) {
 	if err := v.SetStatus(s); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"status":     s.String(),
-		}).Fatal("failed to set validator status")
+		v.logger.Fatal("failed to set validator status",
+			zap.String("pk", v.GetBtcPkHex()), zap.String("status", s.String()))
 	}
 }
 
@@ -161,11 +158,8 @@ func (v *ValidatorInstance) SetLastProcessedHeight(height uint64) error {
 
 func (v *ValidatorInstance) MustSetLastProcessedHeight(height uint64) {
 	if err := v.SetLastProcessedHeight(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to set last processed height")
+		v.logger.Fatal("failed to set last processed height",
+			zap.String("pk", v.GetBtcPkHex()), zap.Uint64("last_processed_height", height))
 	}
 }
 
@@ -175,11 +169,8 @@ func (v *ValidatorInstance) SetLastCommittedHeight(height uint64) error {
 
 func (v *ValidatorInstance) MustSetLastCommittedHeight(height uint64) {
 	if err := v.SetLastCommittedHeight(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to set last committed height")
+		v.logger.Fatal("failed to set last committed height",
+			zap.String("pk", v.GetBtcPkHex()), zap.Uint64("last_committed_height", height))
 	}
 }
 
@@ -189,11 +180,8 @@ func (v *ValidatorInstance) updateStateAfterFinalitySigSubmission(height uint64)
 
 func (v *ValidatorInstance) MustUpdateStateAfterFinalitySigSubmission(height uint64) {
 	if err := v.updateStateAfterFinalitySigSubmission(height); err != nil {
-		v.logger.WithFields(logrus.Fields{
-			"err":        err,
-			"btc_pk_hex": v.GetBtcPkHex(),
-			"height":     height,
-		}).Fatal("failed to update state after finality sig submission")
+		v.logger.Fatal("failed to update state after finality signature submitted",
+			zap.String("pk", v.GetBtcPkHex()), zap.Uint64("height", height))
 	}
 }
 

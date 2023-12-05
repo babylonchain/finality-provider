@@ -2,12 +2,13 @@ package clientcontroller
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/chaincfg"
 	"math/big"
+
+	"github.com/btcsuite/btcd/chaincfg"
+	"go.uber.org/zap"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/config"
 	"github.com/babylonchain/btc-validator/types"
@@ -97,7 +98,7 @@ type CovenantAPIs interface {
 	QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error)
 }
 
-func NewClientController(chainName string, bbnConfig *config.BBNConfig, netParams *chaincfg.Params, logger *logrus.Logger) (ClientController, error) {
+func NewClientController(chainName string, bbnConfig *config.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
 	var (
 		cc  ClientController
 		err error

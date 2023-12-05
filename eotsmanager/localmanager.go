@@ -13,7 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/codec"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
@@ -31,12 +31,12 @@ var _ EOTSManager = &LocalEOTSManager{}
 type LocalEOTSManager struct {
 	kr     keyring.Keyring
 	es     *EOTSStore
-	logger *logrus.Logger
+	logger *zap.Logger
 	// input is to send passphrase to kr
 	input *strings.Reader
 }
 
-func NewLocalEOTSManager(eotsCfg *config.Config, logger *logrus.Logger) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTSManager, error) {
 	keyringDir := eotsCfg.KeyDirectory
 	if keyringDir == "" {
 		homeDir, err := os.UserHomeDir()
@@ -127,7 +127,11 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 		return nil, err
 	}
 
-	lm.logger.Infof("successfully created an EOTS key %s: %s", name, eotsPk.MarshalHex())
+	lm.logger.Info(
+		"successfully created an EOTS key",
+		zap.String("key name", name),
+		zap.String("pk", eotsPk.MarshalHex()),
+	)
 
 	return eotsPk.MustMarshal(), nil
 }

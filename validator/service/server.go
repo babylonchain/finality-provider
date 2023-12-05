@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/lightningnetwork/lnd/signal"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
@@ -20,7 +20,7 @@ type Server struct {
 	started int32
 
 	cfg    *valcfg.Config
-	logger *logrus.Logger
+	logger *zap.Logger
 
 	rpcServer   *rpcServer
 	interceptor signal.Interceptor
@@ -29,7 +29,7 @@ type Server struct {
 }
 
 // NewValidatorServer creates a new server with the given config.
-func NewValidatorServer(cfg *valcfg.Config, l *logrus.Logger, v *ValidatorApp, sig signal.Interceptor) *Server {
+func NewValidatorServer(cfg *valcfg.Config, l *zap.Logger, v *ValidatorApp, sig signal.Interceptor) *Server {
 	return &Server{
 		cfg:         cfg,
 		logger:      l,
@@ -72,7 +72,7 @@ func (s *Server) RunUntilShutdown() error {
 		return fmt.Errorf("failed to start gRPC listener: %v", err)
 	}
 
-	s.logger.Infof("BTC Validator Daemon is fully active!")
+	s.logger.Info("BTC Validator Daemon is fully active!")
 
 	// Wait for shutdown signal from either a graceful server stop or from
 	// the interrupt handler.
@@ -91,7 +91,7 @@ func (s *Server) startGrpcListen(grpcServer *grpc.Server, listeners []net.Listen
 	for _, lis := range listeners {
 		wg.Add(1)
 		go func(lis net.Listener) {
-			s.logger.Infof("RPC server listening on %s", lis.Addr())
+			s.logger.Info("RPC server listening", zap.String("address", lis.Addr().String()))
 
 			// Close the ready chan to indicate we are listening.
 			defer lis.Close()

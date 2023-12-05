@@ -2,10 +2,13 @@ package covenant
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/keyring"
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/babylonchain/btc-validator/keyring"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon/btcstaking"
@@ -14,7 +17,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/sirupsen/logrus"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
@@ -43,7 +45,7 @@ type CovenantEmulator struct {
 
 	config *covcfg.Config
 	params *types.StakingParams
-	logger *logrus.Logger
+	logger *zap.Logger
 
 	// input is used to pass passphrase to the keyring
 	input      *strings.Reader
@@ -54,7 +56,7 @@ func NewCovenantEmulator(
 	config *covcfg.Config,
 	cc clientcontroller.ClientController,
 	passphrase string,
-	logger *logrus.Logger,
+	logger *zap.Logger,
 ) (*CovenantEmulator, error) {
 	input := strings.NewReader("")
 	kr, err := keyring.CreateKeyring(
@@ -185,13 +187,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 	// 4. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(ce.pk, stakingMsgTx.TxHash().String(), covSigs)
 
-	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()
 	if err != nil {
-		ce.logger.WithFields(logrus.Fields{
-			"err":           err,
-			"validator_pks": btcDel.ValBtcPks,
-			"delegator_pk":  delPkHex,
-		}).Error("failed to submit Covenant signature")
 		return nil, err
 	}
 
@@ -326,13 +322,7 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		covSlashingSigs,
 	)
 
-	delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(del.BtcPk).MarshalHex()
-
 	if err != nil {
-		ce.logger.WithFields(logrus.Fields{
-			"err":          err,
-			"delegator_pk": delPkHex,
-		}).Error("failed to submit covenant signatures")
 		return nil, err
 	}
 
@@ -365,55 +355,52 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 		case <-covenantSigTicker.C:
 			// 0. Update slashing address in case it is changed upon governance proposal
 			if err := ce.UpdateParams(); err != nil {
-				ce.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get staking params")
+				ce.logger.Debug("failed to get staking params", zap.Error(err))
 				continue
 			}
 
 			// 1. Get all pending delegations first, these are more important than the unbonding ones
 			dels, err := ce.cc.QueryPendingDelegations(limit)
 			if err != nil {
-				ce.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get pending delegations")
+				ce.logger.Debug("failed to get pending delegations", zap.Error(err))
 				continue
 			}
 			if len(dels) == 0 {
-				ce.logger.WithFields(logrus.Fields{}).Debug("no pending delegations are found")
+				ce.logger.Debug("no pending delegations are found")
 			}
 
 			for _, d := range dels {
 				_, err := ce.AddCovenantSignature(d)
 				if err != nil {
-					ce.logger.WithFields(logrus.Fields{
-						"err":        err,
-						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Covenant sig to the Bitcoin delegation")
+					delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(d.BtcPk).MarshalHex()
+					ce.logger.Error(
+						"failed to submit covenant signatures to the BTC delegation",
+						zap.String("del_btc_pk", delPkHex),
+						zap.Error(err),
+					)
 				}
 			}
 
 			// 2. Get all unbonding delegations
 			unbondingDels, err := ce.cc.QueryUnbondingDelegations(limit)
-
 			if err != nil {
-				ce.logger.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to get pending delegations")
+				ce.logger.Debug("failed to get unbonding delegations", zap.Error(err))
 				continue
 			}
 
 			if len(unbondingDels) == 0 {
-				ce.logger.WithFields(logrus.Fields{}).Debug("no unbonding delegations are found")
+				ce.logger.Debug("no unbonding delegations are found")
 			}
 
 			for _, d := range unbondingDels {
 				_, err := ce.AddCovenantUnbondingSignatures(d)
 				if err != nil {
-					ce.logger.WithFields(logrus.Fields{
-						"err":        err,
-						"del_btc_pk": d.BtcPk,
-					}).Error("failed to submit Covenant sig to the Bitcoin undelegation")
+					delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(d.BtcPk).MarshalHex()
+					ce.logger.Error(
+						"failed to submit covenant signatures to the BTC undelegation",
+						zap.String("del_btc_pk", delPkHex),
+						zap.Error(err),
+					)
 				}
 			}
 
@@ -458,11 +445,12 @@ func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		ce.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"error":        err,
-		}).Debug("failed to query the consumer chain for the staking params")
+		ce.logger.Debug(
+			"failed to query the consumer chain for the staking params",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return nil, err
 	}
@@ -473,7 +461,7 @@ func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
 func (ce *CovenantEmulator) Start() error {
 	var startErr error
 	ce.startOnce.Do(func() {
-		ce.logger.Infof("Starting Covenant Emulator")
+		ce.logger.Info("Starting Covenant Emulator")
 
 		ce.wg.Add(1)
 		go ce.covenantSigSubmissionLoop()
@@ -485,7 +473,7 @@ func (ce *CovenantEmulator) Start() error {
 func (ce *CovenantEmulator) Stop() error {
 	var stopErr error
 	ce.stopOnce.Do(func() {
-		ce.logger.Infof("Stopping Covenant Emulator")
+		ce.logger.Info("Stopping Covenant Emulator")
 
 		// Always stop the submission loop first to not generate additional events and actions
 		ce.logger.Debug("Stopping submission loop")

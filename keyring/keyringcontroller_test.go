@@ -1,18 +1,21 @@
 package keyring_test
 
 import (
-	valstore "github.com/babylonchain/btc-validator/validator/store"
 	"math/rand"
 	"os"
 	"testing"
 
+	"go.uber.org/zap"
+
+	valstore "github.com/babylonchain/btc-validator/validator/store"
+
 	"github.com/babylonchain/babylon/types"
-	valkr "github.com/babylonchain/btc-validator/keyring"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	valkr "github.com/babylonchain/btc-validator/keyring"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/testutil"
@@ -37,7 +40,7 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 
 		cfg := testutil.GenEOTSConfig(r, t)
-		em, err := eotsmanager.NewLocalEOTSManager(cfg, logrus.New())
+		em, err := eotsmanager.NewLocalEOTSManager(cfg, zap.NewNop())
 		defer func() {
 			err := os.RemoveAll(sdkCtx.KeyringDir)
 			require.NoError(t, err)

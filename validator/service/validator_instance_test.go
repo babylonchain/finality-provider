@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
@@ -104,7 +104,7 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	cfg.NumPubRand = uint64(25)
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
-	logger := logrus.New()
+	logger := zap.NewNop()
 	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
 	require.NoError(t, err)
 	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)

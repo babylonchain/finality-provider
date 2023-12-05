@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/lightningnetwork/lnd/signal"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
@@ -24,7 +24,7 @@ func NewEOTSServerHandler(t *testing.T, cfg *config.Config) *EOTSServerHandler {
 	shutdownInterceptor, err := signal.Intercept()
 	require.NoError(t, err)
 
-	logger := logrus.New()
+	logger := zap.NewNop()
 	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, logger)
 	require.NoError(t, err)
 

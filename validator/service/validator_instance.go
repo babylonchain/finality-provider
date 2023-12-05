@@ -14,14 +14,14 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/clientcontroller"
 	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/types"
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
+	"github.com/babylonchain/btc-validator/validator/proto"
 	valstore "github.com/babylonchain/btc-validator/validator/store"
 )
 
@@ -32,7 +32,7 @@ type ValidatorInstance struct {
 	state *valState
 	cfg   *valcfg.Config
 
-	logger *logrus.Logger
+	logger *zap.Logger
 	em     eotsmanager.EOTSManager
 	cc     clientcontroller.ClientController
 	poller *ChainPoller
@@ -61,7 +61,7 @@ func NewValidatorInstance(
 	em eotsmanager.EOTSManager,
 	passphrase string,
 	errChan chan<- *CriticalError,
-	logger *logrus.Logger,
+	logger *zap.Logger,
 ) (*ValidatorInstance, error) {
 	v, err := s.GetStoreValidator(valPk.MustMarshal())
 	if err != nil {
@@ -97,14 +97,15 @@ func (v *ValidatorInstance) Start() error {
 		return fmt.Errorf("the validator instance %s is already started", v.GetBtcPkHex())
 	}
 
-	v.logger.Infof("Starting thread handling validator %s", v.GetBtcPkHex())
+	v.logger.Info("Starting validator instance", zap.String("pk", v.GetBtcPkHex()))
 
 	startHeight, err := v.bootstrap()
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap the validator %s: %w", v.GetBtcPkHex(), err)
 	}
 
-	v.logger.Infof("the validator %s has been bootstrapped to %v", v.GetBtcPkHex(), startHeight)
+	v.logger.Info("the validator %s has been bootstrapped",
+		zap.String("pk", v.GetBtcPkHex()), zap.Uint64("height", startHeight))
 
 	poller := NewChainPoller(v.logger, v.cfg.PollerConfig, v.cc)
 
@@ -158,12 +159,12 @@ func (v *ValidatorInstance) Stop() error {
 		return fmt.Errorf("failed to stop the poller: %w", err)
 	}
 
-	v.logger.Infof("stopping thread handling validator %s", v.GetBtcPkHex())
+	v.logger.Info("stopping validator instance", zap.String("pk", v.GetBtcPkHex()))
 
 	close(v.quit)
 	v.wg.Wait()
 
-	v.logger.Debugf("the thread handling validator %s is successfully stopped", v.GetBtcPkHex())
+	v.logger.Info("the validator instance %s is successfully stopped", zap.String("pk", v.GetBtcPkHex()))
 
 	return nil
 }
@@ -178,17 +179,18 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 	for {
 		select {
 		case b := <-v.poller.GetBlockInfoChan():
-			v.logger.WithFields(logrus.Fields{
-				"btc_pk_hex":   v.GetBtcPkHex(),
-				"block_height": b.Height,
-			}).Debug("the validator received a new block, start processing")
+			v.logger.Debug(
+				"the validator received a new block, start processing",
+				zap.String("pk", v.GetBtcPkHex()),
+				zap.Uint64("height", b.Height),
+			)
 			if b.Height <= v.GetLastProcessedHeight() {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":            v.GetBtcPkHex(),
-					"block_height":          b.Height,
-					"last_processed_height": v.GetLastProcessedHeight(),
-					"last_voted_height":     v.GetLastVotedHeight(),
-				}).Debug("the block has been processed before, skip processing")
+				v.logger.Debug(
+					"the block has been processed before, skip processing",
+					zap.Uint64("height", b.Height),
+					zap.Uint64("last_processed_height", v.GetLastProcessedHeight()),
+					zap.Uint64("last_voted_height", v.GetLastVotedHeight()),
+				)
 				continue
 			}
 			// use the copy of the block to avoid the impact to other receivers
@@ -210,13 +212,13 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 				v.reportCriticalErr(err)
 				continue
 			}
-			if res != nil {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":   v.GetBtcPkHex(),
-					"block_height": b.Height,
-					"tx_hash":      res.TxHash,
-				}).Info("successfully submitted a finality signature to the consumer chain")
-			}
+			v.logger.Info(
+				"successfully submitted a finality signature to the consumer chain",
+				zap.String("pk", v.GetBtcPkHex()),
+				zap.Uint64("height", b.Height),
+				zap.String("tx_hash", res.TxHash),
+			)
+
 		case targetBlock := <-v.laggingTargetChan:
 			res, err := v.tryFastSync(targetBlock)
 			v.isLagging.Store(false)
@@ -225,20 +227,21 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 					v.reportCriticalErr(err)
 					continue
 				}
-				v.logger.WithFields(logrus.Fields{
-					"err":        err,
-					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Error("failed to sync up, will try again later")
+				v.logger.Debug(
+					"failed to sync up, will try again later",
+					zap.String("pk", v.GetBtcPkHex()),
+					zap.Error(err),
+				)
 				continue
 			}
 			// response might be nil if sync is not needed
 			if res != nil {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":            v.GetBtcPkHex(),
-					"tx_hashes":             res.Responses,
-					"synced_height":         res.SyncedHeight,
-					"last_processed_height": res.LastProcessedHeight,
-				}).Info("successfully synced to the latest block")
+				v.logger.Info(
+					"fast sync is finished",
+					zap.String("pk", v.GetBtcPkHex()),
+					zap.Uint64("synced_height", res.SyncedHeight),
+					zap.Uint64("last_processed_height", res.LastProcessedHeight),
+				)
 
 				// set the poller to fetch blocks that have not been processed
 				v.poller.SetNextHeightAndClearBuffer(v.GetLastProcessedHeight() + 1)
@@ -269,12 +272,14 @@ func (v *ValidatorInstance) randomnessCommitmentLoop() {
 				v.reportCriticalErr(err)
 				continue
 			}
+			// txRes could be nil if no need to commit more randomness
 			if txRes != nil {
-				v.logger.WithFields(logrus.Fields{
-					"btc_pk_hex":            v.GetBtcPkHex(),
-					"last_committed_height": v.GetLastCommittedHeight(),
-					"tx_hash":               txRes.TxHash,
-				}).Info("successfully committed public randomness to the consumer chain")
+				v.logger.Info(
+					"successfully committed public randomness to the consumer chain",
+					zap.String("pk", v.GetBtcPkHex()),
+					zap.Uint64("last_committed_height", v.GetLastCommittedHeight()),
+					zap.String("tx_hash", txRes.TxHash),
+				)
 			}
 
 		case <-v.quit:
@@ -305,10 +310,11 @@ func (v *ValidatorInstance) checkLaggingLoop() {
 
 			latestBlock, err := v.getLatestBlockWithRetry()
 			if err != nil {
-				v.logger.WithFields(logrus.Fields{
-					"err":        err,
-					"btc_pk_hex": v.GetBtcPkHex(),
-				}).Error("failed to get the latest block of the consumer chain")
+				v.logger.Debug(
+					"failed to get the latest block of the consumer chain",
+					zap.String("pk", v.GetBtcPkHex()),
+					zap.Error(err),
+				)
 				continue
 			}
 
@@ -332,10 +338,11 @@ func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSync
 		if err := v.SetLastProcessedHeight(targetBlock.Height); err != nil {
 			return nil, err
 		}
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   v.GetBtcPkHex(),
-			"block_height": targetBlock.Height,
-		}).Debug("insufficient public randomness, jumping to the latest block")
+		v.logger.Debug(
+			"insufficient public randomness, jumping to the latest block",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("target_height", targetBlock.Height),
+		)
 		return nil, nil
 	}
 
@@ -345,10 +352,11 @@ func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSync
 		return nil, err
 	}
 	if lastFinalizedBlocks == nil {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   v.GetBtcPkHex(),
-			"block_height": targetBlock.Height,
-		}).Debug("no finalized blocks yet, no need to catch up")
+		v.logger.Debug(
+			"no finalized blocks yet, no need to catch up",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("height", targetBlock.Height),
+		)
 		return nil, nil
 	}
 
@@ -382,21 +390,23 @@ func (v *ValidatorInstance) tryFastSync(targetBlock *types.BlockInfo) (*FastSync
 func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (bool, error) {
 	// check last voted height
 	if v.GetLastVotedHeight() >= b.Height {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":        v.GetBtcPkHex(),
-			"block_height":      b.Height,
-			"last_voted_height": v.GetLastVotedHeight(),
-		}).Debug("the block has been voted before, skip voting")
+		v.logger.Debug(
+			"the block has been voted before, skip voting",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+			zap.Uint64("last_voted_height", v.GetLastVotedHeight()),
+		)
 		return false, nil
 	}
 
 	// check last committed height
 	if v.GetLastCommittedHeight() < b.Height {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":            v.GetBtcPkHex(),
-			"last_committed_height": v.GetLastCommittedHeight(),
-			"block_height":          b.Height,
-		}).Debug("public rand is not committed, skip voting")
+		v.logger.Debug(
+			"public rand is not committed, skip voting",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+			zap.Uint64("last_committed_height", v.GetLastCommittedHeight()),
+		)
 		return false, nil
 	}
 
@@ -406,10 +416,11 @@ func (v *ValidatorInstance) shouldSubmitFinalitySignature(b *types.BlockInfo) (b
 	}
 
 	if power == 0 {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":   v.GetBtcPkHex(),
-			"block_height": b.Height,
-		}).Debug("the validator does not have voting power, skip voting")
+		v.logger.Debug(
+			"the validator does not have voting power, skip voting",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+		)
 		return false, nil
 	}
 
@@ -431,7 +442,7 @@ func (v *ValidatorInstance) checkLagging(currentBlock *types.BlockInfo) bool {
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
 func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*types.TxResponse, error) {
-	var failedCycles uint64
+	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the signature is successfully submitted
 	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
@@ -442,14 +453,16 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 			if clientcontroller.IsUnrecoverable(err) {
 				return nil, err
 			}
-			v.logger.WithFields(logrus.Fields{
-				"currFailures":        failedCycles,
-				"target_block_height": targetBlock.Height,
-				"error":               err,
-			}).Error("err submitting finality signature to the consumer chain")
+			v.logger.Debug(
+				"failed to submit finality signature to the consumer chain",
+				zap.String("pk", v.GetBtcPkHex()),
+				zap.Uint32("current_failures", failedCycles),
+				zap.Uint64("target_block_height", targetBlock.Height),
+				zap.Error(err),
+			)
 
 			failedCycles += 1
-			if failedCycles > v.cfg.MaxSubmissionRetries {
+			if failedCycles > uint32(v.cfg.MaxSubmissionRetries) {
 				return nil, fmt.Errorf("reached max failed cycles with err: %w", err)
 			}
 		} else {
@@ -464,15 +477,16 @@ func (v *ValidatorInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targ
 				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}
 			if finalized {
-				v.logger.WithFields(logrus.Fields{
-					"btc_val_pk":   v.GetBtcPkHex(),
-					"block_height": targetBlock.Height,
-				}).Debug("the block is already finalized, skip submission")
+				v.logger.Debug(
+					"the block is already finalized, skip submission",
+					zap.String("pk", v.GetBtcPkHex()),
+					zap.Uint64("target_height", targetBlock.Height),
+				)
 				return nil, nil
 			}
 
 		case <-v.quit:
-			v.logger.Debugf("the validator instance %s is closing", v.GetBtcPkHex())
+			v.logger.Debug("the validator instance is closing", zap.String("pk", v.GetBtcPkHex()))
 			return nil, nil
 		}
 	}
@@ -490,7 +504,7 @@ func (v *ValidatorInstance) checkBlockFinalization(height uint64) (bool, error) 
 // retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
 func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *types.BlockInfo) (*types.TxResponse, error) {
-	var failedCycles uint64
+	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the public rand is successfully committed
 	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
@@ -501,15 +515,16 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 			if clientcontroller.IsUnrecoverable(err) {
 				return nil, err
 			}
-			v.logger.WithFields(logrus.Fields{
-				"btc_val_pk":          v.GetBtcPkHex(),
-				"currFailures":        failedCycles,
-				"target_block_height": targetBlock.Height,
-				"error":               err,
-			}).Error("err committing public randomness to the consumer chain")
+			v.logger.Debug(
+				"failed to commit public randomness to the consumer chain",
+				zap.String("pk", v.GetBtcPkHex()),
+				zap.Uint32("current_failures", failedCycles),
+				zap.Uint64("target_block_height", targetBlock.Height),
+				zap.Error(err),
+			)
 
 			failedCycles += 1
-			if failedCycles > v.cfg.MaxSubmissionRetries {
+			if failedCycles > uint32(v.cfg.MaxSubmissionRetries) {
 				return nil, fmt.Errorf("reached max failed cycles with err: %w", err)
 			}
 		} else {
@@ -524,15 +539,16 @@ func (v *ValidatorInstance) retryCommitPubRandUntilBlockFinalized(targetBlock *t
 				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}
 			if finalized {
-				v.logger.WithFields(logrus.Fields{
-					"btc_val_pk":   v.GetBtcPkHex(),
-					"block_height": targetBlock.Height,
-				}).Debug("the block is already finalized, skip submission")
+				v.logger.Debug(
+					"the block is already finalized, skip submission",
+					zap.String("pk", v.GetBtcPkHex()),
+					zap.Uint64("target_height", targetBlock.Height),
+				)
 				return nil, nil
 			}
 
 		case <-v.quit:
-			v.logger.Debugf("the validator instance %s is closing", v.GetBtcPkHex())
+			v.logger.Debug("the validator instance is closing", zap.String("pk", v.GetBtcPkHex()))
 			return nil, nil
 		}
 	}
@@ -553,11 +569,12 @@ func (v *ValidatorInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxR
 		// we are running out of the randomness
 		startHeight = lastCommittedHeight + 1
 	} else {
-		v.logger.WithFields(logrus.Fields{
-			"btc_pk_hex":            v.btcPk.MarshalHex(),
-			"last_committed_height": v.GetLastCommittedHeight(),
-			"current_block_height":  tipBlock.Height,
-		}).Debug("the validator has sufficient public randomness, skip committing more")
+		v.logger.Debug(
+			"the validator has sufficient public randomness, skip committing more",
+			zap.String("pk", v.GetBtcPkHex()),
+			zap.Uint64("block_height", tipBlock.Height),
+			zap.Uint64("last_committed_height", v.GetLastCommittedHeight()),
+		)
 		return nil, nil
 	}
 
@@ -716,7 +733,7 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 	for _, ev := range res.Events {
 		if strings.Contains(ev.EventType, "EventSlashedBTCValidator") {
 			evidenceStr := ev.Attributes["evidence"]
-			v.logger.Debugf("found slashing evidence %s", evidenceStr)
+			v.logger.Debug("found slashing evidence")
 			var evidence ftypes.Evidence
 			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
 				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
@@ -774,11 +791,12 @@ func (v *ValidatorInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*typ
 		response = latestFinalisedBlock
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		v.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"error":        err,
-		}).Debug("Failed to query babylon for the latest finalised blocks")
+		v.logger.Debug(
+			"failed to query babylon for the latest finalised blocks",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return nil, err
 	}
@@ -798,11 +816,12 @@ func (v *ValidatorInstance) getLatestBlockWithRetry() (*types.BlockInfo, error) 
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		v.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"error":        err,
-		}).Debug("failed to query the consumer chain for the latest block")
+		v.logger.Debug(
+			"failed to query the consumer chain for the latest block",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return nil, err
 	}
@@ -823,11 +842,12 @@ func (v *ValidatorInstance) GetVotingPowerWithRetry(height uint64) (uint64, erro
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		v.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"error":        err,
-		}).Debug("failed to query the voting power")
+		v.logger.Debug(
+			"failed to query the voting power",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return 0, err
 	}
@@ -848,11 +868,12 @@ func (v *ValidatorInstance) GetValidatorSlashedWithRetry() (bool, error) {
 		}
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
-		v.logger.WithFields(logrus.Fields{
-			"attempt":      n + 1,
-			"max_attempts": RtyAttNum,
-			"error":        err,
-		}).Debug("failed to query the voting power")
+		v.logger.Debug(
+			"failed to query the validator",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
 	})); err != nil {
 		return false, err
 	}

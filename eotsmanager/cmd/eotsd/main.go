@@ -6,6 +6,7 @@ import (
 
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/signal"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
@@ -35,8 +36,7 @@ func main() {
 
 	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, cfgLogger)
 	if err != nil {
-		cfgLogger.Errorf("failed to create EOTS manager: %v", err)
-		os.Exit(1)
+		cfgLogger.Fatal("failed to create EOTS manager", zap.Error(err))
 	}
 
 	eotsServer := eotsservice.NewEOTSManagerServer(cfg, cfgLogger, eotsManager, shutdownInterceptor)

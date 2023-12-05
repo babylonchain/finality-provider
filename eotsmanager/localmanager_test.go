@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/types"
@@ -34,7 +34,7 @@ func FuzzCreateKey(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
+		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
@@ -67,7 +67,7 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logrus.New())
+		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
