@@ -212,6 +212,10 @@ func (v *ValidatorInstance) finalitySigSubmissionLoop() {
 				v.reportCriticalErr(err)
 				continue
 			}
+			if res == nil {
+				v.reportCriticalErr(fmt.Errorf("received an empty response when submitting finality sig"))
+				continue
+			}
 			v.logger.Info(
 				"successfully submitted a finality signature to the consumer chain",
 				zap.String("pk", v.GetBtcPkHex()),
