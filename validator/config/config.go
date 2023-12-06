@@ -157,7 +157,6 @@ func DBPath(homePath string) string {
 func LoadConfig(homePath string) (*Config, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
-	homePath = util.CleanAndExpandPath(homePath)
 	cfgFile := ConfigFile(homePath)
 	if !util.FileExists(cfgFile) {
 		return nil, fmt.Errorf("specified config file does "+

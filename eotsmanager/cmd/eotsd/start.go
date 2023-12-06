@@ -9,6 +9,7 @@ import (
 	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
+	"path/filepath"
 )
 
 var startCommand = cli.Command{
@@ -26,7 +27,11 @@ var startCommand = cli.Command{
 }
 
 func startFn(ctx *cli.Context) error {
-	homePath := util.CleanAndExpandPath(ctx.String(homeFlag))
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	if err != nil {
+		return err
+	}
+	homePath = util.CleanAndExpandPath(homePath)
 
 	cfg, err := config.LoadConfig(homePath)
 	if err != nil {

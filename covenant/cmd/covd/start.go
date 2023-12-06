@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/log"
+	"github.com/babylonchain/btc-validator/util"
+	"path/filepath"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -34,7 +36,12 @@ var startCommand = cli.Command{
 }
 
 func start(ctx *cli.Context) error {
-	homePath := ctx.String(homeFlag)
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	if err != nil {
+		return err
+	}
+	homePath = util.CleanAndExpandPath(homePath)
+
 	cfg, err := covcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)

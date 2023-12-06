@@ -32,14 +32,14 @@ func initHome(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	// Create home directory
+	homePath = util.CleanAndExpandPath(homePath)
 	force := c.Bool(forceFlag)
 
 	if util.FileExists(homePath) && !force {
 		return fmt.Errorf("home path %s already exists", homePath)
 	}
 
-	// Create home directory
-	homePath = util.CleanAndExpandPath(homePath)
 	if err := util.MakeDirectory(homePath); err != nil {
 		return err
 	}

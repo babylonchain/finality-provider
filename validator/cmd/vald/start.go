@@ -7,6 +7,7 @@ import (
 	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
+	"path/filepath"
 
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/service"
@@ -36,7 +37,11 @@ var startCommand = cli.Command{
 }
 
 func start(ctx *cli.Context) error {
-	homePath := util.CleanAndExpandPath(ctx.String(homeFlag))
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	if err != nil {
+		return err
+	}
+	homePath = util.CleanAndExpandPath(homePath)
 	passphrase := ctx.String(passphraseFlag)
 	valPkStr := ctx.String(valPkFlag)
 
