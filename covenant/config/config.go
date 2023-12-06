@@ -109,10 +109,6 @@ func LogDir(homePath string) string {
 	return filepath.Join(homePath, defaultLogDirname)
 }
 
-func LogFile(homePath string) string {
-	return filepath.Join(LogDir(homePath), defaultLogFilename)
-}
-
 func DefaultConfigWithHomePath(homePath string) Config {
 	bbnCfg := config.DefaultBBNConfig()
 	bbnCfg.Key = defaultCovenantKeyName

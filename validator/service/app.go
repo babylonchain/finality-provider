@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/babylonchain/btc-validator/log"
 	"github.com/babylonchain/btc-validator/util"
 	"strings"
 	"sync"
@@ -55,29 +54,10 @@ type ValidatorApp struct {
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
 }
 
-func LoadHome(homePath string, cfg *valcfg.Config) (*zap.Logger, *valstore.ValidatorStore, error) {
-	logger, err := log.NewRootLoggerWithFile(valcfg.LogFile(homePath), cfg.LogLevel)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Create the directory that will store the data
-	if err := util.MakeDirectory(valcfg.DataDir(homePath)); err != nil {
-		return nil, nil, err
-	}
-
-	store, err := valstore.NewValidatorStore(valcfg.DBPath(homePath), cfg.DatabaseConfig.Name, cfg.DatabaseConfig.Backend)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return logger, store, nil
-}
-
 func NewValidatorAppFromConfig(
+	homePath string,
 	config *valcfg.Config,
 	logger *zap.Logger,
-	store *valstore.ValidatorStore,
 ) (*ValidatorApp, error) {
 	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.BTCNetParams, logger)
 	if err != nil {
@@ -93,16 +73,21 @@ func NewValidatorAppFromConfig(
 	// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
-	return NewValidatorApp(config, cc, em, logger, store)
+	return NewValidatorApp(homePath, config, cc, em, logger)
 }
 
 func NewValidatorApp(
+	homePath string,
 	config *valcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	logger *zap.Logger,
-	valStore *valstore.ValidatorStore,
 ) (*ValidatorApp, error) {
+	valStore, err := initStore(homePath, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load store: %w", err)
+	}
+
 	input := strings.NewReader("")
 	kr, err := valkr.CreateKeyring(
 		config.BabylonConfig.KeyDirectory,
@@ -135,6 +120,15 @@ func NewValidatorApp(
 		registerValidatorRequestChan: make(chan *registerValidatorRequest),
 		validatorRegisteredEventChan: make(chan *validatorRegisteredEvent),
 	}, nil
+}
+
+func initStore(homePath string, cfg *valcfg.Config) (*valstore.ValidatorStore, error) {
+	// Create the directory that will store the data
+	if err := util.MakeDirectory(valcfg.DataDir(homePath)); err != nil {
+		return nil, err
+	}
+
+	return valstore.NewValidatorStore(valcfg.DBPath(homePath), cfg.DatabaseConfig.Name, cfg.DatabaseConfig.Backend)
 }
 
 func (app *ValidatorApp) GetConfig() *valcfg.Config {

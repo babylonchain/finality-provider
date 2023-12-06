@@ -110,9 +110,7 @@ func StartManager(t *testing.T) *TestManager {
 	require.NoError(t, err)
 
 	// 4. prepare validator
-	_, valStore, err := service.LoadHome(valHomeDir, cfg)
-	require.NoError(t, err)
-	valApp, err := service.NewValidatorApp(cfg, bc, eotsCli, logger, valStore)
+	valApp, err := service.NewValidatorApp(valHomeDir, cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
 	err = valApp.Start()
 	require.NoError(t, err)

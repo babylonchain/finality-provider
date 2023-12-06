@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/btc-validator/log"
 	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -44,12 +45,12 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	logger, store, err := service.LoadHome(homePath, cfg)
+	logger, err := log.NewRootLoggerWithFile(valcfg.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
-		return fmt.Errorf("failed to load the home directory")
+		return fmt.Errorf("failed to initialize the logger")
 	}
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, store)
+	valApp, err := service.NewValidatorAppFromConfig(homePath, cfg, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator app: %v", err)
 	}

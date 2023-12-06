@@ -47,10 +47,11 @@ func FuzzRegisterValidator(f *testing.F) {
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 
 		// Create randomized config
-		valHomeDir, valCfg, _, valStore := testutil.GenValConfig(r, t)
+		valHomeDir := filepath.Join(t.TempDir(), "val-home")
+		valCfg := testutil.GenValConfig(r, t, valHomeDir)
 		valCfg.ValidatorModeConfig.AutoChainScanningMode = false
 		valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
-		app, err := service.NewValidatorApp(valCfg, mockClientController, em, logger, valStore)
+		app, err := service.NewValidatorApp(valHomeDir, valCfg, mockClientController, em, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(valHomeDir)

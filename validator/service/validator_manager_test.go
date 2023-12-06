@@ -1,6 +1,8 @@
 package service_test
 
 import (
+	"github.com/babylonchain/btc-validator/util"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -99,7 +101,8 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 
 	// create validator app with config
 	// Create randomized config
-	valHomeDir, valCfg, _, valStore := testutil.GenValConfig(r, t)
+	valHomeDir := filepath.Join(t.TempDir(), "val-home")
+	valCfg := testutil.GenValConfig(r, t, valHomeDir)
 	valCfg.StatusUpdateInterval = 10 * time.Millisecond
 	input := strings.NewReader("")
 	kr, err := keyring.CreateKeyring(
@@ -109,6 +112,15 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 		input,
 	)
 	require.NoError(t, err)
+	err = util.MakeDirectory(valcfg.DataDir(valHomeDir))
+	require.NoError(t, err)
+	valStore, err := valstore.NewValidatorStore(
+		valcfg.DBPath(valHomeDir),
+		valCfg.DatabaseConfig.Name,
+		valCfg.DatabaseConfig.Backend,
+	)
+	require.NoError(t, err)
+
 	vm, err := service.NewValidatorManager(valStore, valCfg, cc, em, logger)
 	require.NoError(t, err)
 

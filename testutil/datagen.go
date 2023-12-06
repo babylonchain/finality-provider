@@ -4,10 +4,7 @@ import (
 	"encoding/hex"
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
-	valstore "github.com/babylonchain/btc-validator/validator/store"
-	"go.uber.org/zap"
 	"math/rand"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -157,14 +154,11 @@ func GenEOTSConfig(r *rand.Rand, t *testing.T) *eotscfg.Config {
 	return &eotsCfg
 }
 
-func GenValConfig(r *rand.Rand, t *testing.T) (string, *valcfg.Config, *zap.Logger, *valstore.ValidatorStore) {
-	homeDir := filepath.Join(t.TempDir(), "val-home")
+func GenValConfig(r *rand.Rand, t *testing.T, homeDir string) *valcfg.Config {
 	valCfg := valcfg.DefaultConfigWithHome(homeDir)
 	valCfg.DatabaseConfig = GenDBConfig(r, t)
 
-	logger, store, err := service.LoadHome(homeDir, &valCfg)
-	require.NoError(t, err)
-	return homeDir, &valCfg, logger, store
+	return &valCfg
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {
