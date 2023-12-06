@@ -3,19 +3,14 @@ package config
 import (
 	"fmt"
 	"github.com/babylonchain/btc-validator/util"
-	"io"
-	"os"
 	"path/filepath"
 	"time"
-
-	"go.uber.org/zap"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/babylonchain/btc-validator/config"
-	"github.com/babylonchain/btc-validator/log"
 )
 
 const (
@@ -58,13 +53,13 @@ type Config struct {
 //  2. Pre-parse the command line to check for an alternative config file
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
-func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
+func LoadConfig(homePath string) (*Config, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
 	homePath = util.CleanAndExpandPath(homePath)
 	cfgFile := ConfigFile(homePath)
 	if !util.FileExists(cfgFile) {
-		return nil, nil, fmt.Errorf("specified config file does "+
+		return nil, fmt.Errorf("specified config file does "+
 			"not exist in %s", cfgFile)
 	}
 
@@ -73,21 +68,15 @@ func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 	fileParser := flags.NewParser(&cfg, flags.Default)
 	err := flags.NewIniParser(fileParser).ParseFile(cfgFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Make sure everything we just loaded makes sense.
 	if err := cfg.Validate(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// Initialize the logger basecd on the configuration
-	logger, err := initLogger(homePath, cfg.LogLevel)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &cfg, logger, nil
+	return &cfg, nil
 }
 
 // Validate check the given configuration to be sane. This makes sure no
@@ -122,24 +111,6 @@ func LogDir(homePath string) string {
 
 func LogFile(homePath string) string {
 	return filepath.Join(LogDir(homePath), defaultLogFilename)
-}
-
-func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
-	if err := util.MakeDirectory(LogDir(homePath)); err != nil {
-		return nil, err
-	}
-	logFilePath := LogFile(homePath)
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	mw := io.MultiWriter(os.Stdout, f)
-
-	logger, err := log.NewRootLogger("console", logLevel, mw)
-	if err != nil {
-		return nil, err
-	}
-	return logger, nil
 }
 
 func DefaultConfigWithHomePath(homePath string) Config {

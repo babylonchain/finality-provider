@@ -33,17 +33,22 @@ var startCommand = cli.Command{
 
 func start(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
-	cfg, cfgLogger, err := covcfg.LoadConfig(homePath)
+	cfg, err := covcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, cfgLogger)
+	logger, err := covenant.LoadHome(homePath, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to load home directory %w", err)
+	}
+
+	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}
 
-	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, ctx.String(passphraseFlag), cfgLogger)
+	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, ctx.String(passphraseFlag), logger)
 	if err != nil {
 		return fmt.Errorf("failed to start the covenant emulator: %w", err)
 	}
@@ -54,7 +59,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	srv := covsrv.NewCovenantServer(cfgLogger, ce, shutdownInterceptor)
+	srv := covsrv.NewCovenantServer(logger, ce, shutdownInterceptor)
 	if err != nil {
 		return fmt.Errorf("failed to create covenant server: %w", err)
 	}
