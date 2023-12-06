@@ -39,12 +39,12 @@ func initHome(c *cli.Context) error {
 	}
 
 	// ensure the directory exists
-	homeDir := util.CleanAndExpandPath(homePath)
-	if err := util.MakeDirectory(homeDir); err != nil {
+	homePath = util.CleanAndExpandPath(homePath)
+	if err := util.MakeDirectory(homePath); err != nil {
 		return err
 	}
 	// Create log directory
-	logDir := util.CleanAndExpandPath(covcfg.LogDir(homePath))
+	logDir := covcfg.LogDir(homePath)
 	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}

@@ -39,17 +39,17 @@ func initHome(c *cli.Context) error {
 	}
 
 	// Create home directory
-	homeDir := util.CleanAndExpandPath(homePath)
-	if err := util.MakeDirectory(homeDir); err != nil {
+	homePath = util.CleanAndExpandPath(homePath)
+	if err := util.MakeDirectory(homePath); err != nil {
 		return err
 	}
 	// Create log directory
-	logDir := util.CleanAndExpandPath(valcfg.LogDir(homePath))
+	logDir := valcfg.LogDir(homePath)
 	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}
 
-	defaultConfig := valcfg.DefaultConfig()
+	defaultConfig := valcfg.DefaultConfigWithHome(homePath)
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(valcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)

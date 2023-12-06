@@ -4,7 +4,6 @@ import (
 	"fmt"
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/util"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 	"path/filepath"
@@ -40,18 +39,23 @@ func initHome(c *cli.Context) error {
 	}
 
 	// Create home directory
-	homeDir := util.CleanAndExpandPath(homePath)
-	if err := util.MakeDirectory(homeDir); err != nil {
+	homePath = util.CleanAndExpandPath(homePath)
+	if err := util.MakeDirectory(homePath); err != nil {
 		return err
 	}
 	// Create log directory
-	logDir := util.CleanAndExpandPath(eotscfg.LogDir(homePath))
+	logDir := eotscfg.LogDir(homePath)
 	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}
+	// Create data directory
+	dataDir := eotscfg.DataDir(homePath)
+	if err := util.MakeDirectory(dataDir); err != nil {
+		return err
+	}
 
-	defaultConfig := valcfg.DefaultConfig()
+	defaultConfig := eotscfg.DefaultConfigWithHome(homePath)
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(valcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).WriteFile(eotscfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

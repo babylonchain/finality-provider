@@ -3,18 +3,12 @@ package valcfg
 import (
 	"fmt"
 	"github.com/babylonchain/btc-validator/util"
-	"io"
 	"net"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/babylonchain/btc-validator/config"
-	"github.com/babylonchain/btc-validator/log"
-
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
@@ -42,6 +36,8 @@ const (
 	defaultFastSyncGap                    = 6
 	defaultMaxSubmissionRetries           = 20
 	defaultBitcoinNetwork                 = "simnet"
+	defaultDataDirname                    = "data"
+	defaultDBPath                         = "bbolt-vald.db"
 )
 
 var (
@@ -79,9 +75,7 @@ type Config struct {
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
-	DatabaseConfig *DatabaseConfig `group:"databaseconfig" namespace:"databaseconfig"`
-
-	EOTSManagerConfig *EOTSManagerConfig `group:"eotsmanagerconfig" namespace:"eotsmanagerconfig"`
+	DatabaseConfig *config.DatabaseConfig `group:"databaseconfig" namespace:"databaseconfig"`
 
 	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
 
@@ -94,10 +88,9 @@ func DefaultConfigWithHome(homePath string) Config {
 	bbnCfg := config.DefaultBBNConfig()
 	bbnCfg.Key = defaultValidatorKeyName
 	bbnCfg.KeyDirectory = homePath
-	dbCfg := DefaultDatabaseConfig()
+	dbCfg := config.DefaultDatabaseConfig()
 	pollerCfg := DefaultChainPollerConfig()
 	valCfg := DefaultValidatorConfig()
-	eotsMngrCfg := DefaultEOTSManagerConfig()
 	cfg := Config{
 		ChainName:                      defaultChainName,
 		LogLevel:                       defaultLogLevel,
@@ -105,7 +98,6 @@ func DefaultConfigWithHome(homePath string) Config {
 		BabylonConfig:                  &bbnCfg,
 		ValidatorModeConfig:            &valCfg,
 		PollerConfig:                   &pollerCfg,
-		EOTSManagerConfig:              &eotsMngrCfg,
 		NumPubRand:                     defaultNumPubRand,
 		NumPubRandMax:                  defaultNumPubRandMax,
 		MinRandHeightGap:               defaultMinRandHeightGap,
@@ -146,40 +138,12 @@ func LogFile(homePath string) string {
 	return filepath.Join(LogDir(homePath), defaultLogFilename)
 }
 
-func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
-	// Ensure the log directory exists
-	if err := util.MakeDirectory(LogDir(homePath)); err != nil {
-		return nil, err
-	}
-	logFilePath := LogFile(homePath)
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	mw := io.MultiWriter(os.Stdout, f)
-
-	logger, err := log.NewRootLogger("console", logLevel, mw)
-	if err != nil {
-		return nil, err
-	}
-	return logger, nil
+func DataDir(homePath string) string {
+	return filepath.Join(homePath, defaultDataDirname)
 }
 
-func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) {
-	dbCfg, err := eotscfg.NewDatabaseConfig(
-		appCfg.EOTSManagerConfig.DBBackend,
-		appCfg.EOTSManagerConfig.DBPath,
-		appCfg.EOTSManagerConfig.DBName,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &eotscfg.Config{
-		LogLevel:       appCfg.LogLevel,
-		KeyDirectory:   appCfg.BabylonConfig.KeyDirectory,
-		KeyringBackend: appCfg.BabylonConfig.KeyringBackend,
-		DatabaseConfig: dbCfg,
-	}, nil
+func DBPath(homePath string) string {
+	return filepath.Join(DataDir(homePath), defaultDBPath)
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -190,13 +154,13 @@ func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) 
 //  2. Pre-parse the command line to check for an alternative config file
 //  3. Load configuration file overwriting defaults with any specified options
 //  4. Parse CLI options and overwrite/add any specified options
-func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
+func LoadConfig(homePath string) (*Config, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
 	homePath = util.CleanAndExpandPath(homePath)
 	cfgFile := ConfigFile(homePath)
 	if !util.FileExists(cfgFile) {
-		return nil, nil, fmt.Errorf("specified config file does "+
+		return nil, fmt.Errorf("specified config file does "+
 			"not exist in %s", cfgFile)
 	}
 
@@ -205,30 +169,27 @@ func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 	fileParser := flags.NewParser(&cfg, flags.Default)
 	err := flags.NewIniParser(fileParser).ParseFile(cfgFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Make sure everything we just loaded makes sense.
 	if err := cfg.Validate(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	logger, err := initLogger(homePath, cfg.LogLevel)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &cfg, logger, nil
+	return &cfg, nil
 }
 
 // Validate checks the given configuration to be sane. This makes sure no
 // illegal values or combination of values are set. All file system paths are
 // normalized. The cleaned up config is returned on success.
 func (cfg *Config) Validate() error {
+	if cfg.EOTSManagerAddress == "" {
+		return fmt.Errorf("EOTS manager address not specified")
+	}
 	// Multiple networks can't be selected simultaneously.  Count number of
 	// network flags passed; assign active network params
 	// while we're at it.
-
 	switch cfg.BitcoinNetwork {
 	case "mainnet":
 		cfg.BTCNetParams = chaincfg.MainNetParams

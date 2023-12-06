@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 
@@ -35,16 +35,21 @@ var startCommand = cli.Command{
 }
 
 func start(ctx *cli.Context) error {
+	homePath := util.CleanAndExpandPath(ctx.String(homeFlag))
 	passphrase := ctx.String(passphraseFlag)
-	homePath := ctx.String(homeFlag)
 	valPkStr := ctx.String(valPkFlag)
 
-	cfg, cfgLogger, err := valcfg.LoadConfig(homePath)
+	cfg, err := valcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger)
+	logger, store, err := service.LoadHome(homePath, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to load the home directory")
+	}
+
+	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, store)
 	if err != nil {
 		return fmt.Errorf("failed to create validator app: %v", err)
 	}
@@ -72,7 +77,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	valServer := service.NewValidatorServer(cfg, cfgLogger, valApp, shutdownInterceptor)
+	valServer := service.NewValidatorServer(cfg, logger, valApp, shutdownInterceptor)
 
 	return valServer.RunUntilShutdown()
 }

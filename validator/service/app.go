@@ -3,6 +3,8 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/babylonchain/btc-validator/log"
+	"github.com/babylonchain/btc-validator/util"
 	"strings"
 	"sync"
 
@@ -53,9 +55,29 @@ type ValidatorApp struct {
 	validatorRegisteredEventChan chan *validatorRegisteredEvent
 }
 
+func LoadHome(homePath string, cfg *valcfg.Config) (*zap.Logger, *valstore.ValidatorStore, error) {
+	logger, err := log.NewRootLoggerWithFile(valcfg.LogFile(homePath), cfg.LogLevel)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create the directory that will store the data
+	if err := util.MakeDirectory(valcfg.DataDir(homePath)); err != nil {
+		return nil, nil, err
+	}
+
+	store, err := valstore.NewValidatorStore(valcfg.DBPath(homePath), cfg.DatabaseConfig.Name, cfg.DatabaseConfig.Backend)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return logger, store, nil
+}
+
 func NewValidatorAppFromConfig(
 	config *valcfg.Config,
 	logger *zap.Logger,
+	store *valstore.ValidatorStore,
 ) (*ValidatorApp, error) {
 	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.BTCNetParams, logger)
 	if err != nil {
@@ -64,28 +86,14 @@ func NewValidatorAppFromConfig(
 
 	// if the EOTSManagerAddress is empty, run a local EOTS manager;
 	// otherwise connect a remote one with a gRPC client
-	var em eotsmanager.EOTSManager
-	if config.EOTSManagerAddress == "" {
-		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(config)
-		if err != nil {
-			return nil, err
-		}
-		em, err = eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EOTS manager locally: %w", err)
-		}
-
-		logger.Info("running EOTS manager locally")
-	} else {
-		em, err = client.NewEOTSManagerGRpcClient(config.EOTSManagerAddress)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
-		}
-		// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
-		logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
+	em, err := client.NewEOTSManagerGRpcClient(config.EOTSManagerAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
 	}
+	// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
+	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
-	return NewValidatorApp(config, cc, em, logger)
+	return NewValidatorApp(config, cc, em, logger, store)
 }
 
 func NewValidatorApp(
@@ -93,6 +101,7 @@ func NewValidatorApp(
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	logger *zap.Logger,
+	valStore *valstore.ValidatorStore,
 ) (*ValidatorApp, error) {
 	input := strings.NewReader("")
 	kr, err := valkr.CreateKeyring(
@@ -103,11 +112,6 @@ func NewValidatorApp(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
-	}
-
-	valStore, err := valstore.NewValidatorStore(config.DatabaseConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
 	}
 
 	vm, err := NewValidatorManager(valStore, config, cc, em, logger)

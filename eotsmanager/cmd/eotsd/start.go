@@ -5,6 +5,7 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotsservice "github.com/babylonchain/btc-validator/eotsmanager/service"
+	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 )
@@ -24,14 +25,18 @@ var startCommand = cli.Command{
 }
 
 func startFn(ctx *cli.Context) error {
-	homePath := ctx.String(homeFlag)
+	homePath := util.CleanAndExpandPath(ctx.String(homeFlag))
 
-	cfg, cfgLogger, err := config.LoadConfig(homePath)
+	cfg, err := config.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, cfgLogger)
+	logger, store, err := eotsmanager.LoadHome(homePath, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to load the home directory")
+	}
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, store, logger, homePath)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
@@ -42,7 +47,7 @@ func startFn(ctx *cli.Context) error {
 		return err
 	}
 
-	eotsServer := eotsservice.NewEOTSManagerServer(cfg, cfgLogger, eotsManager, shutdownInterceptor)
+	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, shutdownInterceptor)
 
 	return eotsServer.RunUntilShutdown()
 }

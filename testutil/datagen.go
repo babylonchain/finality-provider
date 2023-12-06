@@ -2,6 +2,11 @@ package testutil
 
 import (
 	"encoding/hex"
+	"github.com/babylonchain/btc-validator/eotsmanager"
+	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
+	valstore "github.com/babylonchain/btc-validator/validator/store"
+	"go.uber.org/zap"
 	"math/rand"
 	"path/filepath"
 	"testing"
@@ -14,13 +19,11 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/config"
 	"github.com/babylonchain/btc-validator/types"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/validator/service"
 )
@@ -138,30 +141,35 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp, p
 	return storedVal
 }
 
-func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
+func GenDBConfig(r *rand.Rand, t *testing.T) *config.DatabaseConfig {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	path := filepath.Join(t.TempDir(), bucketName)
-	dbcfg, err := valcfg.NewDatabaseConfig(
+	dbcfg, err := config.NewDatabaseConfig(
 		"bbolt",
-		path,
 		bucketName,
 	)
 	require.NoError(t, err)
 	return dbcfg
 }
 
-func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
-	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	dir := t.TempDir()
-	path := filepath.Join(dir, bucketName)
-	dbCfg, err := config.NewDatabaseConfig("bbolt", path, bucketName)
+func GenEOTSConfig(r *rand.Rand, t *testing.T) (string, *eotscfg.Config, *zap.Logger, *eotsmanager.EOTSStore) {
+	homeDir := filepath.Join(t.TempDir(), "eots-home")
+	eotsCfg := eotscfg.DefaultConfigWithHome(homeDir)
+	eotsCfg.DatabaseConfig = GenDBConfig(r, t)
+
+	logger, store, err := eotsmanager.LoadHome(homeDir, &eotsCfg)
 	require.NoError(t, err)
-	eotsCfg := &config.Config{
-		KeyDirectory:   dir,
-		KeyringBackend: keyring.BackendTest,
-		DatabaseConfig: dbCfg,
-	}
-	return eotsCfg
+
+	return homeDir, &eotsCfg, logger, store
+}
+
+func GenValConfig(r *rand.Rand, t *testing.T) (string, *valcfg.Config, *zap.Logger, *valstore.ValidatorStore) {
+	homeDir := filepath.Join(t.TempDir(), "val-home")
+	valCfg := valcfg.DefaultConfigWithHome(homeDir)
+	valCfg.DatabaseConfig = GenDBConfig(r, t)
+
+	logger, store, err := service.LoadHome(homeDir, &valCfg)
+	require.NoError(t, err)
+	return homeDir, &valCfg, logger, store
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {

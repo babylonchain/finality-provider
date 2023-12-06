@@ -2,8 +2,8 @@ package eotsmanager
 
 import (
 	"fmt"
-	"os"
-	"path"
+	"github.com/babylonchain/btc-validator/log"
+	"github.com/babylonchain/btc-validator/util"
 	"strings"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -36,20 +36,7 @@ type LocalEOTSManager struct {
 	input *strings.Reader
 }
 
-func NewLocalEOTSManager(eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTSManager, error) {
-	keyringDir := eotsCfg.KeyDirectory
-	if keyringDir == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, err
-		}
-		keyringDir = path.Join(homeDir, ".eots-manager")
-	}
-
-	if eotsCfg.KeyringBackend == "" {
-		return nil, fmt.Errorf("the keyring backend should not be empty")
-	}
-
+func NewLocalEOTSManager(eotsCfg *config.Config, store *EOTSStore, logger *zap.Logger, keyringDir string) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
 	kr, err := keyring.New(
 		"eots-manager",
@@ -62,17 +49,32 @@ func NewLocalEOTSManager(eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTS
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	es, err := NewEOTSStore(eotsCfg.DatabaseConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open the store for validators: %w", err)
-	}
-
 	return &LocalEOTSManager{
 		kr:     kr,
-		es:     es,
+		es:     store,
 		logger: logger,
 		input:  inputReader,
 	}, nil
+}
+
+func LoadHome(homeDir string, cfg *config.Config) (*zap.Logger, *EOTSStore, error) {
+	// Create the logger
+	logger, err := log.NewRootLoggerWithFile(config.LogFile(homeDir), cfg.LogLevel)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create the directory that will store the data
+	if err := util.MakeDirectory(config.DataDir(homeDir)); err != nil {
+		return nil, nil, err
+	}
+
+	store, err := NewEOTSStore(config.DBPath(homeDir), cfg.DatabaseConfig.Name, cfg.DatabaseConfig.Backend)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return logger, store, nil
 }
 
 func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, error) {
