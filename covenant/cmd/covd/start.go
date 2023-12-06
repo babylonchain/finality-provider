@@ -12,14 +12,7 @@ import (
 	covsrv "github.com/babylonchain/btc-validator/covenant/service"
 )
 
-const (
-	passphraseFlag = "passphrase"
-	homeFlag       = "home"
-
-	defaultPassphrase = ""
-)
-
-var startCovenant = cli.Command{
+var startCommand = cli.Command{
 	Name:        "start",
 	Usage:       "covd start",
 	Description: "Start the Covenant Emulator Daemon. Note that the Covenant should be created beforehand",
@@ -35,17 +28,17 @@ var startCovenant = cli.Command{
 			Value: covcfg.DefaultCovenantDir,
 		},
 	},
-	Action: startCovenantFn,
+	Action: start,
 }
 
-func startCovenantFn(ctx *cli.Context) error {
+func start(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
 	cfg, cfgLogger, err := covcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, cfgLogger)
+	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, cfgLogger)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}

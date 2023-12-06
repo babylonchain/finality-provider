@@ -3,26 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/urfave/cli"
-
 	"github.com/babylonchain/btc-validator/covenant"
 	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-)
-
-const (
-	keyNameFlag           = "key-name"
-	passphraseFlag        = "passphrase"
-	hdPathFlag            = "hd-path"
-	chainIdFlag           = "chain-id"
-	keyringDirFlag        = "keyring-dir"
-	keyringBackendFlag    = "keyring-backend"
-	defaultChainID        = "chain-test"
-	defaultKeyringBackend = keyring.BackendTest
-	defaultPassphrase     = ""
-	defaultHdPath         = ""
+	"github.com/urfave/cli"
 )
 
 type covenantKey struct {
@@ -30,9 +14,9 @@ type covenantKey struct {
 	PublicKey string `json:"public-key"`
 }
 
-var createCovenant = cli.Command{
-	Name:      "create-covenant",
-	ShortName: "cc",
+var createKeyCommand = cli.Command{
+	Name:      "create-key",
+	ShortName: "ck",
 	Usage:     "Create a Covenant account in the keyring.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
@@ -61,16 +45,16 @@ var createCovenant = cli.Command{
 			Value: defaultKeyringBackend,
 		},
 		cli.StringFlag{
-			Name:  keyringDirFlag,
-			Usage: "The directory where the keyring is stored",
+			Name:  homeFlag,
+			Usage: "The home directory for the covenant",
 			Value: covcfg.DefaultCovenantDir,
 		},
 	},
-	Action: createCovenantKey,
+	Action: createKey,
 }
 
-func createCovenantKey(ctx *cli.Context) error {
-	keyringDir := ctx.String(keyringDirFlag)
+func createKey(ctx *cli.Context) error {
+	homePath := ctx.String(homeFlag)
 	chainID := ctx.String(chainIdFlag)
 	keyName := ctx.String(keyNameFlag)
 	backend := ctx.String(keyringBackendFlag)
@@ -78,7 +62,7 @@ func createCovenantKey(ctx *cli.Context) error {
 	hdPath := ctx.String(hdPathFlag)
 
 	keyPair, err := covenant.CreateCovenantKey(
-		keyringDir,
+		homePath,
 		chainID,
 		keyName,
 		backend,

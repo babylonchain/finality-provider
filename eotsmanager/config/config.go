@@ -55,6 +55,7 @@ type Config struct {
 func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
+	homePath = util.CleanAndExpandPath(homePath)
 	cfgFile := ConfigFile(homePath)
 	if !util.FileExists(cfgFile) {
 		return nil, nil, fmt.Errorf("specified config file does "+
@@ -107,6 +108,9 @@ func LogFile(homePath string) string {
 }
 
 func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
+	if err := util.MakeDirectory(LogDir(homePath)); err != nil {
+		return nil, err
+	}
 	// TODO: Add log rotation
 	logFilePath := LogFile(homePath)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -124,13 +128,17 @@ func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
 
 func DefaultConfigWithHome(homePath string) Config {
 	dbCfg := DefaultDatabaseConfig()
-	return Config{
+	cfg := Config{
 		LogLevel:       defaultLogLevel,
 		KeyringBackend: defaultKeyringBackend,
 		KeyDirectory:   homePath,
 		DatabaseConfig: &dbCfg,
 		RpcListener:    defaultRpcListener,
 	}
+	if err := cfg.Validate(); err != nil {
+		panic(err)
+	}
+	return cfg
 }
 func DefaultConfig() Config {
 	return DefaultConfigWithHome(DefaultEOTSDir)

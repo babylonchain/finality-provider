@@ -136,7 +136,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 		int64(ce.params.MinSlashingTxFeeSat),
 		ce.params.SlashingRate,
 		ce.params.SlashingAddress,
-		&ce.config.ActiveNetParams,
+		&ce.config.BTCNetParams,
 	); err != nil {
 		return nil, fmt.Errorf("invalid txs in the delegation: %w", err)
 	}
@@ -154,7 +154,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 		ce.params.CovenantQuorum,
 		btcDel.GetStakingTime(),
 		btcutil.Amount(btcDel.TotalSat),
-		&ce.config.ActiveNetParams,
+		&ce.config.BTCNetParams,
 	)
 	if err != nil {
 		return nil, err
@@ -227,7 +227,7 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		ce.params.CovenantQuorum,
 		uint16(del.BtcUndelegation.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
-		&ce.config.ActiveNetParams,
+		&ce.config.BTCNetParams,
 	)
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		int64(ce.params.MinSlashingTxFeeSat),
 		ce.params.SlashingRate,
 		ce.params.SlashingAddress,
-		&ce.config.ActiveNetParams,
+		&ce.config.BTCNetParams,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
@@ -254,7 +254,7 @@ func (ce *CovenantEmulator) AddCovenantUnbondingSignatures(del *types.Delegation
 		ce.params.CovenantQuorum,
 		del.GetStakingTime(),
 		btcutil.Amount(del.TotalSat),
-		&ce.config.ActiveNetParams,
+		&ce.config.BTCNetParams,
 	)
 	if err != nil {
 		return nil, err

@@ -50,7 +50,7 @@ var (
 	//   ~/Library/Application Support/Vald on MacOS
 	DefaultValdDir = btcutil.AppDataDir("vald", false)
 
-	defaultActiveNetParams    = chaincfg.SimNetParams
+	defaultBTCNetParams       = chaincfg.SimNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
 	defaultRpcListener        = "localhost:" + strconv.Itoa(DefaultRPCPort)
 )
@@ -73,9 +73,9 @@ type Config struct {
 	FastSyncGap                    uint64        `long:"fastsyncgap" description:"The block gap that will trigger the fast sync"`
 	EOTSManagerAddress             string        `long:"eotsmanageraddress" description:"The address of the remote EOTS manager; Empty if the EOTS manager is running locally"`
 
-	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
+	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choise:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
-	ActiveNetParams chaincfg.Params
+	BTCNetParams chaincfg.Params
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
@@ -118,12 +118,14 @@ func DefaultConfigWithHome(homePath string) Config {
 		FastSyncGap:                    defaultFastSyncGap,
 		MaxSubmissionRetries:           defaultMaxSubmissionRetries,
 		BitcoinNetwork:                 defaultBitcoinNetwork,
-		ActiveNetParams:                defaultActiveNetParams,
+		BTCNetParams:                   defaultBTCNetParams,
 		EOTSManagerAddress:             defaultEOTSManagerAddress,
 		RpcListener:                    defaultRpcListener,
 	}
 
-	_ = cfg.Validate()
+	if err := cfg.Validate(); err != nil {
+		panic(err)
+	}
 
 	return cfg
 }
@@ -145,6 +147,10 @@ func LogFile(homePath string) string {
 }
 
 func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
+	// Ensure the log directory exists
+	if err := util.MakeDirectory(LogDir(homePath)); err != nil {
+		return nil, err
+	}
 	logFilePath := LogFile(homePath)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -187,6 +193,7 @@ func NewEOTSManagerConfigFromAppConfig(appCfg *Config) (*eotscfg.Config, error) 
 func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
+	homePath = util.CleanAndExpandPath(homePath)
 	cfgFile := ConfigFile(homePath)
 	if !util.FileExists(cfgFile) {
 		return nil, nil, fmt.Errorf("specified config file does "+
@@ -223,14 +230,16 @@ func (cfg *Config) Validate() error {
 	// while we're at it.
 
 	switch cfg.BitcoinNetwork {
+	case "mainnet":
+		cfg.BTCNetParams = chaincfg.MainNetParams
 	case "testnet":
-		cfg.ActiveNetParams = chaincfg.TestNet3Params
+		cfg.BTCNetParams = chaincfg.TestNet3Params
 	case "regtest":
-		cfg.ActiveNetParams = chaincfg.RegressionNetParams
+		cfg.BTCNetParams = chaincfg.RegressionNetParams
 	case "simnet":
-		cfg.ActiveNetParams = chaincfg.SimNetParams
+		cfg.BTCNetParams = chaincfg.SimNetParams
 	case "signet":
-		cfg.ActiveNetParams = chaincfg.SigNetParams
+		cfg.BTCNetParams = chaincfg.SigNetParams
 	default:
 		return fmt.Errorf("invalid network: %v", cfg.BitcoinNetwork)
 	}

@@ -35,6 +35,8 @@ var (
 	//   ~/.vald on Linux
 	//   ~/Library/Application Support/Covd on MacOS
 	DefaultCovenantDir = btcutil.AppDataDir("covd", false)
+
+	defaultBTCNetParams = chaincfg.SimNetParams
 )
 
 type Config struct {
@@ -43,7 +45,7 @@ type Config struct {
 	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Covenant processes each time"`
 	BitcoinNetwork  string        `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
-	ActiveNetParams chaincfg.Params
+	BTCNetParams chaincfg.Params
 
 	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
 }
@@ -59,6 +61,7 @@ type Config struct {
 func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 	// The home directory is required to have a configuration file with a specific name
 	// under it.
+	homePath = util.CleanAndExpandPath(homePath)
 	cfgFile := ConfigFile(homePath)
 	if !util.FileExists(cfgFile) {
 		return nil, nil, fmt.Errorf("specified config file does "+
@@ -93,15 +96,15 @@ func LoadConfig(homePath string) (*Config, *zap.Logger, error) {
 func (cfg *Config) Validate() error {
 	switch cfg.BitcoinNetwork {
 	case "mainnet":
-		cfg.ActiveNetParams = chaincfg.MainNetParams
+		cfg.BTCNetParams = chaincfg.MainNetParams
 	case "testnet":
-		cfg.ActiveNetParams = chaincfg.TestNet3Params
+		cfg.BTCNetParams = chaincfg.TestNet3Params
 	case "regtest":
-		cfg.ActiveNetParams = chaincfg.RegressionNetParams
+		cfg.BTCNetParams = chaincfg.RegressionNetParams
 	case "simnet":
-		cfg.ActiveNetParams = chaincfg.SimNetParams
+		cfg.BTCNetParams = chaincfg.SimNetParams
 	case "signet":
-		cfg.ActiveNetParams = chaincfg.SigNetParams
+		cfg.BTCNetParams = chaincfg.SigNetParams
 	default:
 		return fmt.Errorf("unsupported Bitcoin network: %s", cfg.BitcoinNetwork)
 	}
@@ -122,6 +125,9 @@ func LogFile(homePath string) string {
 }
 
 func initLogger(homePath string, logLevel string) (*zap.Logger, error) {
+	if err := util.MakeDirectory(LogDir(homePath)); err != nil {
+		return nil, err
+	}
 	logFilePath := LogFile(homePath)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -145,11 +151,13 @@ func DefaultConfigWithHomePath(homePath string) Config {
 		QueryInterval:   defaultQueryInterval,
 		DelegationLimit: defaultDelegationLimit,
 		BitcoinNetwork:  defaultBitcoinNetwork,
-		ActiveNetParams: chaincfg.SimNetParams,
+		BTCNetParams:    defaultBTCNetParams,
 		BabylonConfig:   &bbnCfg,
 	}
 
-	_ = cfg.Validate()
+	if err := cfg.Validate(); err != nil {
+		panic(err)
+	}
 
 	return cfg
 }

@@ -7,36 +7,16 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 	"path/filepath"
-
-	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
-)
-
-var adminCommands = []cli.Command{
-	{
-		Name:      "admin",
-		ShortName: "ad",
-		Usage:     "Different utility and admin commands.",
-		Category:  "Admin",
-		Subcommands: []cli.Command{
-			initCommand,
-		},
-	},
-}
-
-const (
-	homeFlag  = "home"
-	forceFlag = "force"
 )
 
 var initCommand = cli.Command{
-	Name:      "init",
-	ShortName: "ini",
-	Usage:     "Dump default configuration file.",
+	Name:  "init",
+	Usage: "Initialize a validator home directory",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
 			Usage: "Path to where the home directory will be initialized",
-			Value: eotscfg.DefaultEOTSDir,
+			Value: valcfg.DefaultValdDir,
 		},
 		cli.BoolFlag{
 			Name:     forceFlag,
@@ -64,7 +44,7 @@ func initHome(c *cli.Context) error {
 		return err
 	}
 	// Create log directory
-	logDir := util.CleanAndExpandPath(eotscfg.LogDir(homePath))
+	logDir := util.CleanAndExpandPath(valcfg.LogDir(homePath))
 	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}

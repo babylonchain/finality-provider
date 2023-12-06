@@ -98,9 +98,9 @@ $ make install
 The above will produce the following binaries:
 
 - `eotsd`: The daemon program for the EOTS manager.
-- `eotcli`: The CLI tool for interacting with the EOTS daemon.
 - `vald`: The daemon program for the btc-validator.
 - `valcli`: The CLI tool for interacting with the btc-validator daemon.
+- `covd`: The daemon program for the covenant emulator.
 
 To build locally,
 
@@ -113,7 +113,7 @@ The above will lead to a build directory having the following structure:
 
 ```bash
 $ ls build
-    ├── eotcli
+    ├── covd
     ├── eotsd
     ├── valcli
     └── vald

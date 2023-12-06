@@ -57,7 +57,7 @@ func NewValidatorAppFromConfig(
 	config *valcfg.Config,
 	logger *zap.Logger,
 ) (*ValidatorApp, error) {
-	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.ActiveNetParams, logger)
+	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.BTCNetParams, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", config.ChainName, err)
 	}

@@ -2,40 +2,22 @@ package main
 
 import (
 	"fmt"
+	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 	"github.com/babylonchain/btc-validator/util"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 	"path/filepath"
-
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
 )
-
-const (
-	homeFlag  = "home"
-	forceFlag = "force"
-)
-
-var adminCommands = []cli.Command{
-	{
-		Name:      "admin",
-		ShortName: "ad",
-		Usage:     "Different utility and admin commands.",
-		Category:  "Admin",
-		Subcommands: []cli.Command{
-			initCommand,
-		},
-	},
-}
 
 var initCommand = cli.Command{
-	Name:      "init",
-	ShortName: "in",
-	Usage:     "Initialize a covenant home directory.",
+	Name:  "init",
+	Usage: "Initialize eotsd home directory.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
 			Usage: "Path to where the home directory will be initialized",
-			Value: covcfg.DefaultCovenantDir,
+			Value: eotscfg.DefaultEOTSDir,
 		},
 		cli.BoolFlag{
 			Name:     forceFlag,
@@ -57,19 +39,19 @@ func initHome(c *cli.Context) error {
 		return fmt.Errorf("home path %s already exists", homePath)
 	}
 
-	// ensure the directory exists
+	// Create home directory
 	homeDir := util.CleanAndExpandPath(homePath)
 	if err := util.MakeDirectory(homeDir); err != nil {
 		return err
 	}
 	// Create log directory
-	logDir := util.CleanAndExpandPath(covcfg.LogDir(homePath))
+	logDir := util.CleanAndExpandPath(eotscfg.LogDir(homePath))
 	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}
 
-	defaultConfig := covcfg.DefaultConfigWithHomePath(homePath)
+	defaultConfig := valcfg.DefaultConfig()
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).WriteFile(valcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

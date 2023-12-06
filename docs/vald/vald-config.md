@@ -9,15 +9,15 @@ to create a keyring and request funds.
 
 ## Validator daemon (`vald`) configuration
 
-The `valcli` tools serves as a control plane for the Validator Daemon (`vald`).
+The `vald` tools serves as a control plane for the Validator Daemon.
 Below, instructions are provided for configuring the daemons.
 
-The `valcli admin init` command initializes a home directory for the BTC
+The `vald init` command initializes a home directory for the BTC
 validator daemon. This directory is created in the default home location or in a
 location specified by the `--home` flag.
 
 ```bash
-$ valcli admin init --home /path/to/vald-home/
+$ vald init --home /path/to/vald-home/
 ```
 
 After initialization, the home directory will have the following structure
@@ -28,7 +28,7 @@ $ ls /path/to/vald-home/
   ├── logs      # Vald logs
 ```
 
-If the `--config-file-dir` flag is not specified, then the default home directory
+If the `--home` flag is not specified, then the default home directory
 will be used. For different operating systems, those are:
 
 - **MacOS** `~/Library/Application Support/Vald`

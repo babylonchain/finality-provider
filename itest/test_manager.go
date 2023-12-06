@@ -96,7 +96,7 @@ func StartManager(t *testing.T) *TestManager {
 	err = bh.Start()
 	require.NoError(t, err)
 	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir)
-	bc, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, logger)
+	bc, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
 	// 3. prepare EOTS manager

@@ -9,9 +9,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const homeFlag = "home"
-
-var startEots = cli.Command{
+var startCommand = cli.Command{
 	Name:        "start",
 	Usage:       "eotsd start",
 	Description: "Start the Extractable One Time Signature Daemon.",
@@ -22,10 +20,10 @@ var startEots = cli.Command{
 			Value: config.DefaultEOTSDir,
 		},
 	},
-	Action: startEotsFn,
+	Action: startFn,
 }
 
-func startEotsFn(ctx *cli.Context) error {
+func startFn(ctx *cli.Context) error {
 	homePath := ctx.String(homeFlag)
 
 	cfg, cfgLogger, err := config.LoadConfig(homePath)

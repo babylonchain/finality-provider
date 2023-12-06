@@ -11,15 +11,7 @@ import (
 	"github.com/babylonchain/btc-validator/validator/service"
 )
 
-const (
-	passphraseFlag = "passphrase"
-	homeFlag       = "home"
-	valPkFlag      = "validator-pk"
-
-	defaultPassphrase = ""
-)
-
-var startValidator = cli.Command{
+var startCommand = cli.Command{
 	Name:        "start",
 	Usage:       "vald start",
 	Description: "Start the validator daemon. Note that eotsd should be started beforehand",
@@ -39,10 +31,10 @@ var startValidator = cli.Command{
 			Usage: "The public key of the validator to start",
 		},
 	},
-	Action: startValidatorFn,
+	Action: start,
 }
 
-func startValidatorFn(ctx *cli.Context) error {
+func start(ctx *cli.Context) error {
 	passphrase := ctx.String(passphraseFlag)
 	homePath := ctx.String(homeFlag)
 	valPkStr := ctx.String(valPkFlag)
