@@ -1,8 +1,10 @@
 package eotsmanager_test
 
 import (
+	"go.uber.org/zap"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -24,13 +26,14 @@ func FuzzCreateKey(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		valName := testutil.GenRandomHexStr(r, 4)
-		homeDir, eotsCfg, logger, store := testutil.GenEOTSConfig(r, t)
+		homeDir := filepath.Join(t.TempDir(), "eots-home")
+		eotsCfg := testutil.GenEOTSConfig(r, t)
 		defer func() {
 			err := os.RemoveAll(homeDir)
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, store, logger, homeDir)
+		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
@@ -55,13 +58,14 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 		r := rand.New(rand.NewSource(seed))
 
 		valName := testutil.GenRandomHexStr(r, 4)
-		homeDir, eotsCfg, logger, store := testutil.GenEOTSConfig(r, t)
+		homeDir := filepath.Join(t.TempDir(), "eots-home")
+		eotsCfg := testutil.GenEOTSConfig(r, t)
 		defer func() {
 			err := os.RemoveAll(homeDir)
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(eotsCfg, store, logger, homeDir)
+		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
 		valPk, err := lm.CreateKey(valName, passphrase, hdPath)

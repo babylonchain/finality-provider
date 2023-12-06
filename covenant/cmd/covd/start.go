@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/log"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -38,9 +40,9 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	logger, err := covenant.LoadHome(homePath, cfg)
+	logger, err := log.NewRootLoggerWithFile(config.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
-		return fmt.Errorf("failed to load home directory %w", err)
+		return fmt.Errorf("failed to load the logger")
 	}
 
 	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)

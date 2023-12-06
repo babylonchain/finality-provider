@@ -23,8 +23,7 @@ func NewEOTSServerHandler(t *testing.T, cfg *config.Config, eotsHomeDir string) 
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
-	_, store, err := eotsmanager.LoadHome(eotsHomeDir, cfg)
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, store, logger, eotsHomeDir)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, cfg, logger)
 	require.NoError(t, err)
 
 	eotsServer := service.NewEOTSManagerServer(cfg, logger, eotsManager, shutdownInterceptor)

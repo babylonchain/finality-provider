@@ -54,7 +54,7 @@ func initHome(c *cli.Context) error {
 		return err
 	}
 
-	defaultConfig := eotscfg.DefaultConfigWithHome(homePath)
+	defaultConfig := eotscfg.DefaultConfig()
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(eotscfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)

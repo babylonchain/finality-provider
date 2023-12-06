@@ -3,6 +3,7 @@ package service_test
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -98,8 +99,9 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
-	eotsHomeDir, eotsCfg, _, eotsStore := testutil.GenEOTSConfig(r, t)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, eotsStore, logger, eotsHomeDir)
+	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
+	eotsCfg := testutil.GenEOTSConfig(r, t)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 	require.NoError(t, err)
 
 	// create validator app with config

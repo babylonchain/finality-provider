@@ -3,6 +3,7 @@ package service_test
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -30,8 +31,9 @@ func FuzzRegisterValidator(f *testing.F) {
 
 		logger := zap.NewNop()
 		// create an EOTS manager
-		eotsHomeDir, eotsCfg, _, eotsStore := testutil.GenEOTSConfig(r, t)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, eotsStore, logger, eotsHomeDir)
+		eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
+		eotsCfg := testutil.GenEOTSConfig(r, t)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(eotsHomeDir)

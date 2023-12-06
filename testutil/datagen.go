@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"encoding/hex"
-	"github.com/babylonchain/btc-validator/eotsmanager"
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	valstore "github.com/babylonchain/btc-validator/validator/store"
@@ -151,15 +150,11 @@ func GenDBConfig(r *rand.Rand, t *testing.T) *config.DatabaseConfig {
 	return dbcfg
 }
 
-func GenEOTSConfig(r *rand.Rand, t *testing.T) (string, *eotscfg.Config, *zap.Logger, *eotsmanager.EOTSStore) {
-	homeDir := filepath.Join(t.TempDir(), "eots-home")
-	eotsCfg := eotscfg.DefaultConfigWithHome(homeDir)
+func GenEOTSConfig(r *rand.Rand, t *testing.T) *eotscfg.Config {
+	eotsCfg := eotscfg.DefaultConfig()
 	eotsCfg.DatabaseConfig = GenDBConfig(r, t)
 
-	logger, store, err := eotsmanager.LoadHome(homeDir, &eotsCfg)
-	require.NoError(t, err)
-
-	return homeDir, &eotsCfg, logger, store
+	return &eotsCfg
 }
 
 func GenValConfig(r *rand.Rand, t *testing.T) (string, *valcfg.Config, *zap.Logger, *valstore.ValidatorStore) {

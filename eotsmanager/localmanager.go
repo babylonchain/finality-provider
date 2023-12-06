@@ -2,7 +2,6 @@ package eotsmanager
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/log"
 	"github.com/babylonchain/btc-validator/util"
 	"strings"
 
@@ -36,17 +35,17 @@ type LocalEOTSManager struct {
 	input *strings.Reader
 }
 
-func NewLocalEOTSManager(eotsCfg *config.Config, store *EOTSStore, logger *zap.Logger, keyringDir string) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
-	kr, err := keyring.New(
-		"eots-manager",
-		eotsCfg.KeyringBackend,
-		keyringDir,
-		inputReader,
-		codec.MakeCodec(),
-	)
+
+	store, err := initEotsStore(homeDir, eotsCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create keyring: %w", err)
+		return nil, fmt.Errorf("failed to initialize store: %w", err)
+	}
+
+	kr, err := initKeyring(homeDir, eotsCfg, inputReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize keyring: %w", err)
 	}
 
 	return &LocalEOTSManager{
@@ -57,24 +56,23 @@ func NewLocalEOTSManager(eotsCfg *config.Config, store *EOTSStore, logger *zap.L
 	}, nil
 }
 
-func LoadHome(homeDir string, cfg *config.Config) (*zap.Logger, *EOTSStore, error) {
-	// Create the logger
-	logger, err := log.NewRootLoggerWithFile(config.LogFile(homeDir), cfg.LogLevel)
-	if err != nil {
-		return nil, nil, err
-	}
-
+func initEotsStore(homeDir string, eotsCfg *config.Config) (*EOTSStore, error) {
 	// Create the directory that will store the data
 	if err := util.MakeDirectory(config.DataDir(homeDir)); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	store, err := NewEOTSStore(config.DBPath(homeDir), cfg.DatabaseConfig.Name, cfg.DatabaseConfig.Backend)
-	if err != nil {
-		return nil, nil, err
-	}
+	return NewEOTSStore(config.DBPath(homeDir), eotsCfg.DatabaseConfig.Name, eotsCfg.DatabaseConfig.Backend)
+}
 
-	return logger, store, nil
+func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Reader) (keyring.Keyring, error) {
+	return keyring.New(
+		"eots-manager",
+		eotsCfg.KeyringBackend,
+		homeDir,
+		inputReader,
+		codec.MakeCodec(),
+	)
 }
 
 func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, error) {

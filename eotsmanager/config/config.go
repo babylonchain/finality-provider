@@ -35,7 +35,6 @@ var (
 
 type Config struct {
 	LogLevel       string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
-	KeyDirectory   string `long:"key-dir" description:"Directory to store keys in"`
 	KeyringBackend string `long:"keyring-type" description:"Type of keyring to use"`
 
 	DatabaseConfig *config.DatabaseConfig
@@ -113,12 +112,11 @@ func DBPath(homePath string) string {
 	return filepath.Join(DataDir(homePath), defaultDBPath)
 }
 
-func DefaultConfigWithHome(homePath string) Config {
+func DefaultConfig() Config {
 	dbCfg := config.DefaultDatabaseConfig()
 	cfg := Config{
 		LogLevel:       defaultLogLevel,
 		KeyringBackend: defaultKeyringBackend,
-		KeyDirectory:   homePath,
 		DatabaseConfig: &dbCfg,
 		RpcListener:    defaultRpcListener,
 	}
@@ -126,7 +124,4 @@ func DefaultConfigWithHome(homePath string) Config {
 		panic(err)
 	}
 	return cfg
-}
-func DefaultConfig() Config {
-	return DefaultConfigWithHome(DefaultEOTSDir)
 }

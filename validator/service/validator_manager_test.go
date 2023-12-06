@@ -3,6 +3,7 @@ package service_test
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -91,8 +92,9 @@ func waitForStatus(t *testing.T, valIns *service.ValidatorInstance, s proto.Vali
 func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorManager, *bbntypes.BIP340PubKey, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
-	eotsHomeDir, eotsCfg, _, eotsStore := testutil.GenEOTSConfig(r, t)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, eotsStore, logger, eotsHomeDir)
+	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
+	eotsCfg := testutil.GenEOTSConfig(r, t)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 	require.NoError(t, err)
 
 	// create validator app with config

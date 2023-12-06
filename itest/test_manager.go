@@ -583,7 +583,6 @@ func defaultCovenantConfig(homeDir string) *covcfg.Config {
 
 func defaultEOTSConfig(t *testing.T, eotsHomeDir string) *eotsconfig.Config {
 	cfg := eotsconfig.DefaultConfig()
-	cfg.KeyDirectory = eotsHomeDir
 
 	return &cfg
 }

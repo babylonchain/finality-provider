@@ -5,6 +5,7 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/eotsmanager/config"
 	eotsservice "github.com/babylonchain/btc-validator/eotsmanager/service"
+	"github.com/babylonchain/btc-validator/log"
 	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -32,11 +33,12 @@ func startFn(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	logger, store, err := eotsmanager.LoadHome(homePath, cfg)
+	logger, err := log.NewRootLoggerWithFile(config.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
-		return fmt.Errorf("failed to load the home directory")
+		return fmt.Errorf("failed to load the logger")
 	}
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(cfg, store, logger, homePath)
+
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}

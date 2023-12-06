@@ -2,7 +2,6 @@ package covenant
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/log"
 	"strings"
 	"sync"
 	"time"
@@ -51,10 +50,6 @@ type CovenantEmulator struct {
 	// input is used to pass passphrase to the keyring
 	input      *strings.Reader
 	passphrase string
-}
-
-func LoadHome(homePath string, cfg *covcfg.Config) (*zap.Logger, error) {
-	return log.NewRootLoggerWithFile(covcfg.LogFile(homePath), cfg.LogLevel)
 }
 
 func NewCovenantEmulator(

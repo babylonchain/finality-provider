@@ -1,8 +1,10 @@
 package keyring_test
 
 import (
+	"go.uber.org/zap"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	valstore "github.com/babylonchain/btc-validator/validator/store"
@@ -37,8 +39,9 @@ func FuzzCreatePoP(f *testing.F) {
 		kc, err := valkr.NewChainKeyringController(sdkCtx, keyName, keyring.BackendTest)
 		require.NoError(t, err)
 
-		eotsHome, cfg, logger, store := testutil.GenEOTSConfig(r, t)
-		em, err := eotsmanager.NewLocalEOTSManager(cfg, store, logger, eotsHome)
+		eotsHome := filepath.Join(t.TempDir(), "eots-home")
+		cfg := testutil.GenEOTSConfig(r, t)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, cfg, zap.NewNop())
 		defer func() {
 			err := os.RemoveAll(eotsHome)
 			require.NoError(t, err)
