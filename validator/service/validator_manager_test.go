@@ -94,10 +94,6 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	eotsHomeDir, eotsCfg, _, eotsStore := testutil.GenEOTSConfig(r, t)
 	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, eotsStore, logger, eotsHomeDir)
 	require.NoError(t, err)
-	defer func() {
-		err = os.RemoveAll(eotsHomeDir)
-		require.NoError(t, err)
-	}()
 
 	// create validator app with config
 	// Create randomized config
@@ -113,10 +109,6 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	vm, err := service.NewValidatorManager(valStore, valCfg, cc, em, logger)
 	require.NoError(t, err)
-	defer func() {
-		err = os.RemoveAll(valHomeDir)
-		require.NoError(t, err)
-	}()
 
 	// create registered validator
 	keyName := datagen.GenRandomHexStr(r, 10)
@@ -142,6 +134,10 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 
 	cleanUp := func() {
 		err = vm.Stop()
+		require.NoError(t, err)
+		err = os.RemoveAll(eotsHomeDir)
+		require.NoError(t, err)
+		err = os.RemoveAll(valHomeDir)
 		require.NoError(t, err)
 	}
 

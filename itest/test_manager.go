@@ -59,6 +59,7 @@ type TestManager struct {
 	Va                *service.ValidatorApp
 	EOTSClient        *client.EOTSManagerGRpcClient
 	BabylonClient     *clientcontroller.BabylonController
+	baseDir           string
 }
 
 type TestDelegationData struct {
@@ -95,19 +96,23 @@ func StartManager(t *testing.T) *TestManager {
 	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covKeyPair.PublicKey))
 	err = bh.Start()
 	require.NoError(t, err)
-	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir)
+	valHomeDir := filepath.Join(testDir, "val-home")
+	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), valHomeDir)
 	bc, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
 	// 3. prepare EOTS manager
-	eotsCfg := defaultEOTSConfig(t)
-	eh := NewEOTSServerHandler(t, eotsCfg)
+	eotsHomeDir := filepath.Join(testDir, "eots-home")
+	eotsCfg := defaultEOTSConfig(t, eotsHomeDir)
+	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
 	// 4. prepare validator
-	valApp, err := service.NewValidatorApp(cfg, bc, eotsCli, logger)
+	_, valStore, err := service.LoadHome(valHomeDir, cfg)
+	require.NoError(t, err)
+	valApp, err := service.NewValidatorApp(cfg, bc, eotsCli, logger, valStore)
 	require.NoError(t, err)
 	err = valApp.Start()
 	require.NoError(t, err)
@@ -128,6 +133,7 @@ func StartManager(t *testing.T) *TestManager {
 		CovenanConfig:     covenantConfig,
 		EOTSClient:        eotsCli,
 		BabylonClient:     bc,
+		baseDir:           testDir,
 	}
 
 	tm.WaitForServicesStart(t)
@@ -204,13 +210,9 @@ func (tm *TestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.ValConfig.DatabaseConfig.Path)
-	require.NoError(t, err)
-	err = os.RemoveAll(tm.ValConfig.BabylonConfig.KeyDirectory)
+	err = os.RemoveAll(tm.baseDir)
 	require.NoError(t, err)
 	tm.EOTSServerHandler.Stop()
-	err = os.RemoveAll(tm.EOTSServerHandler.baseDir)
-	require.NoError(t, err)
 }
 
 func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
@@ -556,8 +558,8 @@ func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {
 	return p
 }
 
-func defaultValidatorConfig(keyringDir, testDir string) *valcfg.Config {
-	cfg := valcfg.DefaultConfig()
+func defaultValidatorConfig(keyringDir, homeDir string) *valcfg.Config {
+	cfg := valcfg.DefaultConfigWithHome(homeDir)
 
 	cfg.ValidatorModeConfig.AutoChainScanningMode = false
 	// babylon configs for sending transactions
@@ -567,27 +569,21 @@ func defaultValidatorConfig(keyringDir, testDir string) *valcfg.Config {
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
 	cfg.BabylonConfig.GasAdjustment = 20
-	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg
 }
 
-func defaultCovenantConfig(testDir string) *covcfg.Config {
-	cfg := covcfg.DefaultConfig()
-	cfg.BabylonConfig.KeyDirectory = testDir
+func defaultCovenantConfig(homeDir string) *covcfg.Config {
+	cfg := covcfg.DefaultConfigWithHomePath(homeDir)
+	cfg.BabylonConfig.KeyDirectory = homeDir
 
 	return &cfg
 }
 
-func defaultEOTSConfig(t *testing.T) *eotsconfig.Config {
+func defaultEOTSConfig(t *testing.T, eotsHomeDir string) *eotsconfig.Config {
 	cfg := eotsconfig.DefaultConfig()
-
-	eotsDir, err := baseDir("zEOTSTest")
-	require.NoError(t, err)
-
-	cfg.KeyDirectory = eotsDir
-	cfg.DatabaseConfig.Path = filepath.Join(eotsDir, "db")
+	cfg.KeyDirectory = eotsHomeDir
 
 	return &cfg
 }

@@ -101,10 +101,6 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	eotsHomeDir, eotsCfg, _, eotsStore := testutil.GenEOTSConfig(r, t)
 	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, eotsStore, logger, eotsHomeDir)
 	require.NoError(t, err)
-	defer func() {
-		err = os.RemoveAll(eotsHomeDir)
-		require.NoError(t, err)
-	}()
 
 	// create validator app with config
 	// Create randomized config
@@ -115,10 +111,6 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	app, err := service.NewValidatorApp(valCfg, cc, em, logger, valStore)
 	require.NoError(t, err)
-	defer func() {
-		err = os.RemoveAll(valHomeDir)
-		require.NoError(t, err)
-	}()
 	err = app.Start()
 	require.NoError(t, err)
 
@@ -131,6 +123,10 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 
 	cleanUp := func() {
 		err = app.Stop()
+		require.NoError(t, err)
+		err = os.RemoveAll(eotsHomeDir)
+		require.NoError(t, err)
+		err = os.RemoveAll(valHomeDir)
 		require.NoError(t, err)
 	}
 
