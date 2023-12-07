@@ -104,11 +104,9 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 	require.NoError(t, err)
 
-	// create validator app with config
-	// Create randomized config
+	// create validator app with randomized config
 	valHomeDir := filepath.Join(t.TempDir(), "val-home")
 	valCfg := testutil.GenValConfig(r, t, valHomeDir)
-	// create validator app with config
 	valCfg.NumPubRand = uint64(25)
 	valCfg.ValidatorModeConfig.AutoChainScanningMode = false
 	valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight

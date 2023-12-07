@@ -103,7 +103,7 @@ func StartManager(t *testing.T) *TestManager {
 
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
-	eotsCfg := defaultEOTSConfig(t, eotsHomeDir)
+	eotsCfg := defaultEOTSConfig()
 	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
@@ -579,7 +579,7 @@ func defaultCovenantConfig(homeDir string) *covcfg.Config {
 	return &cfg
 }
 
-func defaultEOTSConfig(t *testing.T, eotsHomeDir string) *eotsconfig.Config {
+func defaultEOTSConfig() *eotsconfig.Config {
 	cfg := eotsconfig.DefaultConfig()
 
 	return &cfg

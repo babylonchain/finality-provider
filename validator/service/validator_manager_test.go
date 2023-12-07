@@ -99,8 +99,7 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 	require.NoError(t, err)
 
-	// create validator app with config
-	// Create randomized config
+	// create validator app with randomized config
 	valHomeDir := filepath.Join(t.TempDir(), "val-home")
 	valCfg := testutil.GenValConfig(r, t, valHomeDir)
 	valCfg.StatusUpdateInterval = 10 * time.Millisecond
