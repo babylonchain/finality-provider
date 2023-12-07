@@ -1,8 +1,11 @@
 package service_test
 
 import (
+	"github.com/babylonchain/btc-validator/util"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +25,6 @@ import (
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/testutil/mocks"
 	"github.com/babylonchain/btc-validator/types"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/validator/service"
 	valstore "github.com/babylonchain/btc-validator/validator/store"
@@ -90,31 +92,35 @@ func waitForStatus(t *testing.T, valIns *service.ValidatorInstance, s proto.Vali
 }
 
 func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController) (*service.ValidatorManager, *bbntypes.BIP340PubKey, func()) {
-	// create validator app with config
-	cfg := valcfg.DefaultConfig()
-	cfg.StatusUpdateInterval = 10 * time.Millisecond
-	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-	cfg.BabylonConfig.KeyDirectory = t.TempDir()
 	logger := zap.NewNop()
+	// create an EOTS manager
+	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
+	eotsCfg := testutil.GenEOTSConfig(r, t)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
+	require.NoError(t, err)
 
+	// create validator app with randomized config
+	valHomeDir := filepath.Join(t.TempDir(), "val-home")
+	valCfg := testutil.GenValConfig(r, t, valHomeDir)
+	valCfg.StatusUpdateInterval = 10 * time.Millisecond
 	input := strings.NewReader("")
 	kr, err := keyring.CreateKeyring(
-		cfg.BabylonConfig.KeyDirectory,
-		cfg.BabylonConfig.ChainID,
-		cfg.BabylonConfig.KeyringBackend,
+		valCfg.BabylonConfig.KeyDirectory,
+		valCfg.BabylonConfig.ChainID,
+		valCfg.BabylonConfig.KeyringBackend,
 		input,
 	)
 	require.NoError(t, err)
-
-	valStore, err := valstore.NewValidatorStore(cfg.DatabaseConfig)
+	err = util.MakeDirectory(valcfg.DataDir(valHomeDir))
+	require.NoError(t, err)
+	valStore, err := valstore.NewValidatorStore(
+		valcfg.DBPath(valHomeDir),
+		valCfg.DatabaseConfig.Name,
+		valCfg.DatabaseConfig.Backend,
+	)
 	require.NoError(t, err)
 
-	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
-	require.NoError(t, err)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
-	require.NoError(t, err)
-
-	vm, err := service.NewValidatorManager(valStore, &cfg, cc, em, logger)
+	vm, err := service.NewValidatorManager(valStore, valCfg, cc, em, logger)
 	require.NoError(t, err)
 
 	// create registered validator
@@ -142,11 +148,9 @@ func newValidatorManagerWithRegisteredValidator(t *testing.T, r *rand.Rand, cc c
 	cleanUp := func() {
 		err = vm.Stop()
 		require.NoError(t, err)
-		err := os.RemoveAll(cfg.DatabaseConfig.Path)
+		err = os.RemoveAll(eotsHomeDir)
 		require.NoError(t, err)
-		err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
-		require.NoError(t, err)
-		err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
+		err = os.RemoveAll(valHomeDir)
 		require.NoError(t, err)
 	}
 

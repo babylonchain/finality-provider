@@ -2,7 +2,10 @@ package log
 
 import (
 	"fmt"
+	"github.com/babylonchain/btc-validator/util"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,4 +56,21 @@ func NewRootLogger(format string, level string, w io.Writer) (*zap.Logger, error
 		zapcore.AddSync(w),
 		lvl,
 	)), nil
+}
+
+func NewRootLoggerWithFile(logFile string, level string) (*zap.Logger, error) {
+	if err := util.MakeDirectory(filepath.Dir(logFile)); err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+	mw := io.MultiWriter(os.Stdout, f)
+
+	logger, err := NewRootLogger("console", level, mw)
+	if err != nil {
+		return nil, err
+	}
+	return logger, nil
 }

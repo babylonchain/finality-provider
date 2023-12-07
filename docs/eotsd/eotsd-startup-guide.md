@@ -14,7 +14,7 @@
 You can start the EOTS daemon using the following command:
 
 ```bash
-$ eotsd
+$ eotsd --home /path/to/eotsd/home
 ```
 
 This will start the rpc server at the address specified in the configuration under

@@ -3,6 +3,7 @@ package store_test
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,12 +18,13 @@ func FuzzValidatorStore(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
+		dbPath := filepath.Join(t.TempDir(), "db")
 		dbcfg := testutil.GenDBConfig(r, t)
-		vs, err := valstore.NewValidatorStore(dbcfg)
+		vs, err := valstore.NewValidatorStore(dbPath, dbcfg.Name, dbcfg.Backend)
 		require.NoError(t, err)
 
 		defer func() {
-			err := os.RemoveAll(dbcfg.Path)
+			err := os.RemoveAll(dbPath)
 			require.NoError(t, err)
 		}()
 

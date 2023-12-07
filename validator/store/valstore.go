@@ -10,9 +10,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	gproto "google.golang.org/protobuf/proto"
 
-	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/store"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
+	"github.com/babylonchain/btc-validator/validator/proto"
 )
 
 const (
@@ -39,8 +38,8 @@ type ValidatorStore struct {
 	s store.Store
 }
 
-func NewValidatorStore(dbcfg *valcfg.DatabaseConfig) (*ValidatorStore, error) {
-	s, err := openStore(dbcfg)
+func NewValidatorStore(dbPath string, dbName string, dbBackend string) (*ValidatorStore, error) {
+	s, err := openStore(dbPath, dbName, dbBackend)
 	if err != nil {
 		return nil, err
 	}
@@ -201,10 +200,10 @@ func (vs *ValidatorStore) Close() error {
 
 // openStore returns a Store instance with the given db type, path and name
 // currently, we only support bbolt
-func openStore(dbcfg *valcfg.DatabaseConfig) (store.Store, error) {
-	switch dbcfg.Backend {
+func openStore(dbPath string, dbName string, dbBackend string) (store.Store, error) {
+	switch dbBackend {
 	case "bbolt":
-		return store.NewBboltStore(dbcfg.Path, dbcfg.Name)
+		return store.NewBboltStore(dbPath, dbName)
 	default:
 		return nil, fmt.Errorf("unsupported database type")
 	}

@@ -3,6 +3,7 @@ package service_test
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -14,7 +15,6 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/types"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/validator/service"
 )
@@ -29,30 +29,34 @@ func FuzzRegisterValidator(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		// create validator app with db and mocked Babylon client
-		cfg := valcfg.DefaultConfig()
-		cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
+		logger := zap.NewNop()
+		// create an EOTS manager
+		eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
+		eotsCfg := testutil.GenEOTSConfig(r, t)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
+		require.NoError(t, err)
 		defer func() {
-			err := os.RemoveAll(cfg.DatabaseConfig.Path)
-			require.NoError(t, err)
-			err = os.RemoveAll(cfg.EOTSManagerConfig.DBPath)
-			require.NoError(t, err)
-			err = os.RemoveAll(cfg.BabylonConfig.KeyDirectory)
+			err = os.RemoveAll(eotsHomeDir)
 			require.NoError(t, err)
 		}()
+
+		// Create mocked babylon client
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		cfg.ValidatorModeConfig.AutoChainScanningMode = false
-		cfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
+
+		// Create randomized config
+		valHomeDir := filepath.Join(t.TempDir(), "val-home")
+		valCfg := testutil.GenValConfig(r, t, valHomeDir)
+		valCfg.ValidatorModeConfig.AutoChainScanningMode = false
+		valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
+		app, err := service.NewValidatorApp(valHomeDir, valCfg, mockClientController, em, logger)
 		require.NoError(t, err)
-		logger := zap.NewNop()
-		em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
-		require.NoError(t, err)
-		app, err := service.NewValidatorApp(&cfg, mockClientController, em, logger)
-		require.NoError(t, err)
+		defer func() {
+			err = os.RemoveAll(valHomeDir)
+			require.NoError(t, err)
+		}()
 
 		err = app.Start()
 		require.NoError(t, err)

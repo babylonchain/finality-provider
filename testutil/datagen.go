@@ -2,8 +2,9 @@ package testutil
 
 import (
 	"encoding/hex"
+	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
+	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"math/rand"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,13 +15,11 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/codec"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/config"
 	"github.com/babylonchain/btc-validator/types"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/validator/service"
 )
@@ -138,30 +137,28 @@ func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp, p
 	return storedVal
 }
 
-func GenDBConfig(r *rand.Rand, t *testing.T) *valcfg.DatabaseConfig {
+func GenDBConfig(r *rand.Rand, t *testing.T) *config.DatabaseConfig {
 	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	path := filepath.Join(t.TempDir(), bucketName)
-	dbcfg, err := valcfg.NewDatabaseConfig(
+	dbcfg, err := config.NewDatabaseConfig(
 		"bbolt",
-		path,
 		bucketName,
 	)
 	require.NoError(t, err)
 	return dbcfg
 }
 
-func GenEOTSConfig(r *rand.Rand, t *testing.T) *config.Config {
-	bucketName := GenRandomHexStr(r, 10) + "-bbolt.db"
-	dir := t.TempDir()
-	path := filepath.Join(dir, bucketName)
-	dbCfg, err := config.NewDatabaseConfig("bbolt", path, bucketName)
-	require.NoError(t, err)
-	eotsCfg := &config.Config{
-		KeyDirectory:   dir,
-		KeyringBackend: keyring.BackendTest,
-		DatabaseConfig: dbCfg,
-	}
-	return eotsCfg
+func GenEOTSConfig(r *rand.Rand, t *testing.T) *eotscfg.Config {
+	eotsCfg := eotscfg.DefaultConfig()
+	eotsCfg.DatabaseConfig = GenDBConfig(r, t)
+
+	return &eotsCfg
+}
+
+func GenValConfig(r *rand.Rand, t *testing.T, homeDir string) *valcfg.Config {
+	valCfg := valcfg.DefaultConfigWithHome(homeDir)
+	valCfg.DatabaseConfig = GenDBConfig(r, t)
+
+	return &valCfg
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {

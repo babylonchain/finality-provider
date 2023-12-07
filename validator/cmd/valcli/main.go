@@ -3,11 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/babylonchain/btc-validator/config"
 	"os"
 
 	"github.com/urfave/cli"
-
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 )
 
 func fatal(err error) {
@@ -27,7 +26,6 @@ func printRespJSON(resp interface{}) {
 
 const (
 	dbTypeFlag = "db-type"
-	dbPathFlag = "db-path"
 	dbNameFlag = "db-name"
 )
 
@@ -39,22 +37,23 @@ func main() {
 		cli.StringFlag{
 			Name:  dbTypeFlag,
 			Usage: "The type of the database",
-			Value: valcfg.DefaultBackend,
-		},
-		cli.StringFlag{
-			Name:  dbPathFlag,
-			Usage: "The path of the database file",
-			Value: valcfg.DefaultDBPath,
+			Value: config.DefaultBackend,
 		},
 		cli.StringFlag{
 			Name:  dbNameFlag,
 			Usage: "The name of the database bucket",
-			Value: valcfg.DefaultDBName,
+			Value: config.DefaultDBName,
 		},
 	}
 
-	app.Commands = append(app.Commands, daemonCommands...)
-	app.Commands = append(app.Commands, adminCommands...)
+	app.Commands = append(app.Commands,
+		getDaemonInfoCmd,
+		createValDaemonCmd,
+		lsValDaemonCmd,
+		valInfoDaemonCmd,
+		registerValDaemonCmd,
+		addFinalitySigDaemonCmd,
+	)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)

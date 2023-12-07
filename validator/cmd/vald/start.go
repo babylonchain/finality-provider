@@ -2,24 +2,18 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/btc-validator/log"
+	"github.com/babylonchain/btc-validator/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
+	"path/filepath"
 
 	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/service"
 )
 
-const (
-	passphraseFlag = "passphrase"
-	configFileFlag = "config"
-	valPkFlag      = "validator-pk"
-
-	defaultPassphrase = ""
-)
-
-var startValidator = cli.Command{
+var startCommand = cli.Command{
 	Name:        "start",
 	Usage:       "vald start",
 	Description: "Start the validator daemon. Note that eotsd should be started beforehand",
@@ -30,29 +24,38 @@ var startValidator = cli.Command{
 			Value: defaultPassphrase,
 		},
 		cli.StringFlag{
-			Name:  configFileFlag,
-			Usage: "The path to the covenant config file",
-			Value: valcfg.DefaultConfigFile,
+			Name:  homeFlag,
+			Usage: "The path to the validator home directory",
+			Value: valcfg.DefaultValdDir,
 		},
 		cli.StringFlag{
 			Name:  valPkFlag,
 			Usage: "The public key of the validator to start",
 		},
 	},
-	Action: startValidatorFn,
+	Action: start,
 }
 
-func startValidatorFn(ctx *cli.Context) error {
+func start(ctx *cli.Context) error {
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	if err != nil {
+		return err
+	}
+	homePath = util.CleanAndExpandPath(homePath)
 	passphrase := ctx.String(passphraseFlag)
-	configFilePath := ctx.String(configFileFlag)
 	valPkStr := ctx.String(valPkFlag)
 
-	cfg, cfgLogger, err := valcfg.LoadConfig(configFilePath)
+	cfg, err := valcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, cfgLogger)
+	logger, err := log.NewRootLoggerWithFile(valcfg.LogFile(homePath), cfg.LogLevel)
+	if err != nil {
+		return fmt.Errorf("failed to initialize the logger")
+	}
+
+	valApp, err := service.NewValidatorAppFromConfig(homePath, cfg, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create validator app: %v", err)
 	}
@@ -80,7 +83,7 @@ func startValidatorFn(ctx *cli.Context) error {
 		return err
 	}
 
-	valServer := service.NewValidatorServer(cfg, cfgLogger, valApp, shutdownInterceptor)
+	valServer := service.NewValidatorServer(cfg, logger, valApp, shutdownInterceptor)
 
 	return valServer.RunUntilShutdown()
 }

@@ -3,6 +3,7 @@ package service_test
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -13,7 +14,6 @@ import (
 	"github.com/babylonchain/btc-validator/eotsmanager"
 	"github.com/babylonchain/btc-validator/testutil"
 	"github.com/babylonchain/btc-validator/types"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
 	"github.com/babylonchain/btc-validator/validator/proto"
 	"github.com/babylonchain/btc-validator/validator/service"
 )
@@ -97,19 +97,20 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 }
 
 func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.ValidatorApp, *proto.StoreValidator, func()) {
-	// create validator app with config
-	cfg := valcfg.DefaultConfig()
-	cfg.DatabaseConfig = testutil.GenDBConfig(r, t)
-	cfg.BabylonConfig.KeyDirectory = t.TempDir()
-	cfg.NumPubRand = uint64(25)
-	cfg.ValidatorModeConfig.AutoChainScanningMode = false
-	cfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
 	logger := zap.NewNop()
-	eotsCfg, err := valcfg.NewEOTSManagerConfigFromAppConfig(&cfg)
+	// create an EOTS manager
+	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
+	eotsCfg := testutil.GenEOTSConfig(r, t)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 	require.NoError(t, err)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsCfg, logger)
-	require.NoError(t, err)
-	app, err := service.NewValidatorApp(&cfg, cc, em, logger)
+
+	// create validator app with randomized config
+	valHomeDir := filepath.Join(t.TempDir(), "val-home")
+	valCfg := testutil.GenValConfig(r, t, valHomeDir)
+	valCfg.NumPubRand = uint64(25)
+	valCfg.ValidatorModeConfig.AutoChainScanningMode = false
+	valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
+	app, err := service.NewValidatorApp(valHomeDir, valCfg, cc, em, logger)
 	require.NoError(t, err)
 	err = app.Start()
 	require.NoError(t, err)
@@ -121,15 +122,12 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	err = app.StartHandlingValidator(validator.MustGetBIP340BTCPK(), passphrase)
 	require.NoError(t, err)
 
-	config := app.GetConfig()
 	cleanUp := func() {
 		err = app.Stop()
 		require.NoError(t, err)
-		err := os.RemoveAll(config.DatabaseConfig.Path)
+		err = os.RemoveAll(eotsHomeDir)
 		require.NoError(t, err)
-		err = os.RemoveAll(config.BabylonConfig.KeyDirectory)
-		require.NoError(t, err)
-		err = os.RemoveAll(config.EOTSManagerConfig.DBPath)
+		err = os.RemoveAll(valHomeDir)
 		require.NoError(t, err)
 	}
 

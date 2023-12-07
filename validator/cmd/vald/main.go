@@ -16,7 +16,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "vald"
 	app.Usage = "BTC Validator Daemon (vald)."
-	app.Commands = append(app.Commands, startValidator)
+	app.Commands = append(app.Commands, startCommand, initCommand)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)

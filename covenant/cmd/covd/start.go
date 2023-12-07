@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/babylonchain/btc-validator/eotsmanager/config"
+	"github.com/babylonchain/btc-validator/log"
+	"github.com/babylonchain/btc-validator/util"
+	"path/filepath"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
@@ -12,14 +16,7 @@ import (
 	covsrv "github.com/babylonchain/btc-validator/covenant/service"
 )
 
-const (
-	passphraseFlag = "passphrase"
-	configFileFlag = "config"
-
-	defaultPassphrase = ""
-)
-
-var startCovenant = cli.Command{
+var startCommand = cli.Command{
 	Name:        "start",
 	Usage:       "covd start",
 	Description: "Start the Covenant Emulator Daemon. Note that the Covenant should be created beforehand",
@@ -30,27 +27,37 @@ var startCovenant = cli.Command{
 			Value: defaultPassphrase,
 		},
 		cli.StringFlag{
-			Name:  configFileFlag,
-			Usage: "The path to the covenant config file",
-			Value: covcfg.DefaultConfigFile,
+			Name:  homeFlag,
+			Usage: "The path to the covenant home directory",
+			Value: covcfg.DefaultCovenantDir,
 		},
 	},
-	Action: startCovenantFn,
+	Action: start,
 }
 
-func startCovenantFn(ctx *cli.Context) error {
-	configFilePath := ctx.String(configFileFlag)
-	cfg, cfgLogger, err := covcfg.LoadConfig(configFilePath)
+func start(ctx *cli.Context) error {
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
 	if err != nil {
-		return fmt.Errorf("failed to load config at %s: %w", configFilePath, err)
+		return err
+	}
+	homePath = util.CleanAndExpandPath(homePath)
+
+	cfg, err := covcfg.LoadConfig(homePath)
+	if err != nil {
+		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.ActiveNetParams, cfgLogger)
+	logger, err := log.NewRootLoggerWithFile(config.LogFile(homePath), cfg.LogLevel)
+	if err != nil {
+		return fmt.Errorf("failed to load the logger")
+	}
+
+	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create rpc client for the consumer chain: %w", err)
 	}
 
-	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, ctx.String(passphraseFlag), cfgLogger)
+	ce, err := covenant.NewCovenantEmulator(cfg, bbnClient, ctx.String(passphraseFlag), logger)
 	if err != nil {
 		return fmt.Errorf("failed to start the covenant emulator: %w", err)
 	}
@@ -61,7 +68,7 @@ func startCovenantFn(ctx *cli.Context) error {
 		return err
 	}
 
-	srv := covsrv.NewCovenantServer(cfgLogger, ce, shutdownInterceptor)
+	srv := covsrv.NewCovenantServer(logger, ce, shutdownInterceptor)
 	if err != nil {
 		return fmt.Errorf("failed to create covenant server: %w", err)
 	}

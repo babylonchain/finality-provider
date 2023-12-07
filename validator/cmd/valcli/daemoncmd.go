@@ -15,23 +15,6 @@ import (
 	dc "github.com/babylonchain/btc-validator/validator/service/client"
 )
 
-var daemonCommands = []cli.Command{
-	{
-		Name:      "daemon",
-		ShortName: "dn",
-		Usage:     "More advanced commands which require validator daemon to be running.",
-		Category:  "Daemon commands",
-		Subcommands: []cli.Command{
-			getDaemonInfoCmd,
-			createValDaemonCmd,
-			lsValDaemonCmd,
-			valInfoDaemonCmd,
-			registerValDaemonCmd,
-			addFinalitySigDaemonCmd,
-		},
-	},
-}
-
 const (
 	valdDaemonAddressFlag = "daemon-address"
 	keyNameFlag           = "key-name"
