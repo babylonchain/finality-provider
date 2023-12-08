@@ -195,11 +195,8 @@ func (vm *ValidatorManager) setValidatorSlashed(vi *ValidatorInstance) {
 }
 
 func (vm *ValidatorManager) StartValidator(valPk *bbntypes.BIP340PubKey, passphrase string) error {
-	// currently we expect that only a single validator started at a time
-	// we can remove the constraint when we want to run multiple validators
-	// in the same daemon
-	if vm.isStarted.Swap(true) {
-		return fmt.Errorf("a validator instance is already started")
+	if !vm.isStarted.Load() {
+		vm.isStarted.Store(true)
 	}
 
 	vm.wg.Add(1)
