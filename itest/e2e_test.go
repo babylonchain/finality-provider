@@ -119,18 +119,6 @@ func TestMultipleValidators(t *testing.T) {
 	}
 	tm.Wg.Wait()
 
-	// check the 3 BTC delegations are pending
-	dels := tm.WaitForNPendingDels(t, 3)
-
-	// submit Covenant sigs for each delegation
-	for _, del := range dels {
-		tm.Wg.Add(1)
-		go func(btcDel *types.Delegation) {
-			defer tm.Wg.Done()
-		}(del)
-	}
-	tm.Wg.Wait()
-
 	for _, valIns := range valInstances {
 		tm.Wg.Add(1)
 		go func(v *service.ValidatorInstance) {
