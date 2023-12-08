@@ -754,8 +754,8 @@ func (v *ValidatorInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *type
 }
 
 func (v *ValidatorInstance) getPollerStartingHeight() (uint64, error) {
-	if !v.cfg.ValidatorModeConfig.AutoChainScanningMode {
-		return v.cfg.ValidatorModeConfig.StaticChainScanningStartHeight, nil
+	if !v.cfg.PollerConfig.AutoChainScanningMode {
+		return v.cfg.PollerConfig.StaticChainScanningStartHeight, nil
 	}
 
 	// Set initial block to the maximum of

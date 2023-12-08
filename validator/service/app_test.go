@@ -49,8 +49,8 @@ func FuzzRegisterValidator(f *testing.F) {
 		// Create randomized config
 		valHomeDir := filepath.Join(t.TempDir(), "val-home")
 		valCfg := testutil.GenValConfig(r, t, valHomeDir)
-		valCfg.ValidatorModeConfig.AutoChainScanningMode = false
-		valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = randomStartingHeight
+		valCfg.PollerConfig.AutoChainScanningMode = false
+		valCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
 		app, err := service.NewValidatorApp(valHomeDir, valCfg, mockClientController, em, logger)
 		require.NoError(t, err)
 		defer func() {

@@ -2,16 +2,18 @@ package valcfg
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/util"
 	"net"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"github.com/babylonchain/btc-validator/config"
+	"github.com/babylonchain/btc-validator/util"
+
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
+
+	"github.com/babylonchain/btc-validator/config"
 
 	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
 )
@@ -38,6 +40,7 @@ const (
 	defaultBitcoinNetwork                 = "simnet"
 	defaultDataDirname                    = "data"
 	defaultDBPath                         = "bbolt-vald.db"
+	defaultMaxNumValidators               = 3
 )
 
 var (
@@ -68,6 +71,7 @@ type Config struct {
 	FastSyncLimit                  uint64        `long:"fastsynclimit" description:"The maximum number of blocks to catch up for each fast sync"`
 	FastSyncGap                    uint64        `long:"fastsyncgap" description:"The block gap that will trigger the fast sync"`
 	EOTSManagerAddress             string        `long:"eotsmanageraddress" description:"The address of the remote EOTS manager; Empty if the EOTS manager is running locally"`
+	MaxNumValidators               uint32        `long:"maxnumvalidators" description:"The maximum number of validator instances running concurrently within the daemon"`
 
 	BitcoinNetwork string `long:"bitcoinnetwork" description:"Bitcoin network to run on" choise:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
@@ -79,8 +83,6 @@ type Config struct {
 
 	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
 
-	ValidatorModeConfig *ValidatorConfig `group:"validator" namespace:"validator"`
-
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., localhost:1234"`
 }
 
@@ -90,13 +92,11 @@ func DefaultConfigWithHome(homePath string) Config {
 	bbnCfg.KeyDirectory = homePath
 	dbCfg := config.DefaultDatabaseConfig()
 	pollerCfg := DefaultChainPollerConfig()
-	valCfg := DefaultValidatorConfig()
 	cfg := Config{
 		ChainName:                      defaultChainName,
 		LogLevel:                       defaultLogLevel,
 		DatabaseConfig:                 &dbCfg,
 		BabylonConfig:                  &bbnCfg,
-		ValidatorModeConfig:            &valCfg,
 		PollerConfig:                   &pollerCfg,
 		NumPubRand:                     defaultNumPubRand,
 		NumPubRandMax:                  defaultNumPubRandMax,
@@ -113,6 +113,7 @@ func DefaultConfigWithHome(homePath string) Config {
 		BTCNetParams:                   defaultBTCNetParams,
 		EOTSManagerAddress:             defaultEOTSManagerAddress,
 		RpcListener:                    defaultRpcListener,
+		MaxNumValidators:               defaultMaxNumValidators,
 	}
 
 	if err := cfg.Validate(); err != nil {

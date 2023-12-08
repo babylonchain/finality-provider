@@ -385,7 +385,7 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 
 	t.Log("restarting the validator instance")
 
-	tm.ValConfig.ValidatorModeConfig.AutoChainScanningMode = true
+	tm.ValConfig.PollerConfig.AutoChainScanningMode = true
 	err = valIns.Start()
 	require.NoError(t, err)
 }
@@ -562,7 +562,7 @@ func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {
 func defaultValidatorConfig(keyringDir, homeDir string) *valcfg.Config {
 	cfg := valcfg.DefaultConfigWithHome(homeDir)
 
-	cfg.ValidatorModeConfig.AutoChainScanningMode = false
+	cfg.PollerConfig.AutoChainScanningMode = false
 	// babylon configs for sending transactions
 	cfg.BabylonConfig.KeyDirectory = keyringDir
 	// need to use this one to send otherwise we will have account sequence mismatch
