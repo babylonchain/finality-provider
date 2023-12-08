@@ -108,8 +108,8 @@ func startValidatorAppWithRegisteredValidator(t *testing.T, r *rand.Rand, cc cli
 	valHomeDir := filepath.Join(t.TempDir(), "val-home")
 	valCfg := testutil.GenValConfig(r, t, valHomeDir)
 	valCfg.NumPubRand = uint64(25)
-	valCfg.ValidatorModeConfig.AutoChainScanningMode = false
-	valCfg.ValidatorModeConfig.StaticChainScanningStartHeight = startingHeight
+	valCfg.PollerConfig.AutoChainScanningMode = false
+	valCfg.PollerConfig.StaticChainScanningStartHeight = startingHeight
 	app, err := service.NewValidatorApp(valHomeDir, valCfg, cc, em, logger)
 	require.NoError(t, err)
 	err = app.Start()

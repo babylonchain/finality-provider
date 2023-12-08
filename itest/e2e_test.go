@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/btc-validator/validator/service"
 )
 
 var (
@@ -25,8 +26,10 @@ var (
 // activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
 func TestValidatorLifeCycle(t *testing.T) {
-	tm, valIns := StartManagerWithValidator(t)
+	tm, valInsList := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
+
+	valIns := valInsList[0]
 
 	params := tm.GetParams(t)
 
@@ -52,8 +55,10 @@ func TestValidatorLifeCycle(t *testing.T) {
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
 func TestDoubleSigning(t *testing.T) {
-	tm, valIns := StartManagerWithValidator(t)
+	tm, valInsList := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
+
+	valIns := valInsList[0]
 
 	params := tm.GetParams(t)
 
@@ -92,10 +97,47 @@ func TestDoubleSigning(t *testing.T) {
 	t.Logf("the equivocation attack is successful")
 }
 
+// TestMultipleValidators tests starting with multiple validators
+func TestMultipleValidators(t *testing.T) {
+	n := 3
+	tm, valInstances := StartManagerWithValidator(t, n)
+	defer tm.Stop(t)
+
+	params := tm.GetParams(t)
+
+	// submit BTC delegations for each validator
+	for _, valIns := range valInstances {
+		tm.Wg.Add(1)
+		go func(v *service.ValidatorInstance) {
+			defer tm.Wg.Done()
+			// check the public randomness is committed
+			tm.WaitForValPubRandCommitted(t, v)
+
+			// send a BTC delegation
+			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{v.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+		}(valIns)
+	}
+	tm.Wg.Wait()
+
+	for _, valIns := range valInstances {
+		tm.Wg.Add(1)
+		go func(v *service.ValidatorInstance) {
+			defer tm.Wg.Done()
+			_ = tm.WaitForValNActiveDels(t, v.GetBtcPkBIP340(), 1)
+		}(valIns)
+	}
+	tm.Wg.Wait()
+
+	// check there's a block finalized
+	_ = tm.WaitForNFinalizedBlocks(t, 1)
+}
+
 // TestFastSync tests the fast sync process where the validator is terminated and restarted with fast sync
 func TestFastSync(t *testing.T) {
-	tm, valIns := StartManagerWithValidator(t)
+	tm, valInsList := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
+
+	valIns := valInsList[0]
 
 	params := tm.GetParams(t)
 
@@ -138,8 +180,10 @@ func TestFastSync(t *testing.T) {
 }
 
 func TestCovenantLifeCycle(t *testing.T) {
-	tm, valIns := StartManagerWithValidator(t)
+	tm, valInsList := StartManagerWithValidator(t, 1)
 	defer tm.Stop(t)
+
+	valIns := valInsList[0]
 
 	params := tm.GetParams(t)
 

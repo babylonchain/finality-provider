@@ -195,18 +195,19 @@ func (vm *ValidatorManager) setValidatorSlashed(vi *ValidatorInstance) {
 }
 
 func (vm *ValidatorManager) StartValidator(valPk *bbntypes.BIP340PubKey, passphrase string) error {
-	// currently we expect that only a single validator started at a time
-	// we can remove the constraint when we want to run multiple validators
-	// in the same daemon
-	if vm.isStarted.Swap(true) {
-		return fmt.Errorf("a validator instance is already started")
+	if !vm.isStarted.Load() {
+		vm.isStarted.Store(true)
+
+		vm.wg.Add(1)
+		go vm.monitorCriticalErr()
+
+		vm.wg.Add(1)
+		go vm.monitorStatusUpdate()
 	}
 
-	vm.wg.Add(1)
-	go vm.monitorCriticalErr()
-
-	vm.wg.Add(1)
-	go vm.monitorStatusUpdate()
+	if vm.numOfRunningValidators() >= int(vm.config.MaxNumValidators) {
+		return fmt.Errorf("reaching maximum number of running validators %v", vm.config.MaxNumValidators)
+	}
 
 	if err := vm.addValidatorInstance(valPk, passphrase); err != nil {
 		return err
@@ -280,6 +281,13 @@ func (vm *ValidatorManager) removeValidatorInstance(valPk *bbntypes.BIP340PubKey
 
 	delete(vm.vals, keyHex)
 	return nil
+}
+
+func (vm *ValidatorManager) numOfRunningValidators() int {
+	vm.mu.Lock()
+	defer vm.mu.Unlock()
+
+	return len(vm.vals)
 }
 
 // addValidatorInstance creates a validator instance, starts it and adds it into the validator manager
