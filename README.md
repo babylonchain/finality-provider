@@ -134,3 +134,7 @@ Follow the [vald configuration guide](docs/vald/vald-config.md).
 ## 6. Starting the Validator Daemon
 
 Follow the [vald startup guide](docs/vald/vald-startup-guide.md).
+
+## 7. Interacting with daemon using valcli
+
+Follow the [valcli usage guide](docs/interacting-with-daemons.md).

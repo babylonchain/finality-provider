@@ -3,8 +3,8 @@
 Before proceeding, make sure you have installed the required binaries, configured and
 started both EOTS and the BTC validator daemon.
 
-- [Starting the EOTS daemon](./eotsd/startup-guide.md)
-- [Starting the BTC validator daemon](./vald/startup-guide.md)
+- [Starting the EOTS daemon](./eotsd/eotsd-startup-guide.md)
+- [Starting the BTC validator daemon](./vald/vald-startup-guide.md)
 
 The following guide will show how to interact with the daemons to create a BTC
 validator and register it to Babylon.
