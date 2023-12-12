@@ -1,4 +1,4 @@
-# Interacting with daemons
+# Staking operations
 
 Before proceeding, make sure you have installed the required binaries, configured and
 started both EOTS and the BTC validator daemon.
