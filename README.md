@@ -1,4 +1,4 @@
-# BTC-Validator
+# Finality-Provider
 
 A toolset crafted for the creation and
 management of Finality Providers.
