@@ -3,12 +3,12 @@ package eotsmanager
 import (
 	"fmt"
 
-	"github.com/babylonchain/btc-validator/eotsmanager/types"
-	"github.com/babylonchain/btc-validator/store"
+	"github.com/babylonchain/finality-provider/eotsmanager/types"
+	"github.com/babylonchain/finality-provider/store"
 )
 
 const (
-	validatorKeyNamePrefix = "val-key"
+	finalityProviderKeyNamePrefix = "fp-key"
 )
 
 type EOTSStore struct {
@@ -32,22 +32,22 @@ func (es *EOTSStore) Close() error {
 	return nil
 }
 
-func (es *EOTSStore) saveValidatorKey(pk []byte, keyName string) error {
-	k := getValidatorKeyNameKey(pk)
+func (es *EOTSStore) saveFinalityProviderKey(pk []byte, keyName string) error {
+	k := getFinalityProviderKeyNameKey(pk)
 
 	exists, err := es.s.Exists(k)
 	if err != nil {
 		return nil
 	}
 	if exists {
-		return types.ErrValidatorAlreadyExisted
+		return types.ErrFinalityProviderAlreadyExisted
 	}
 
 	return es.s.Put(k, []byte(keyName))
 }
 
-func (es *EOTSStore) getValidatorKeyName(pk []byte) (string, error) {
-	k := getValidatorKeyNameKey(pk)
+func (es *EOTSStore) getFinalityProviderKeyName(pk []byte) (string, error) {
+	k := getFinalityProviderKeyNameKey(pk)
 	v, err := es.s.Get(k)
 	if err != nil {
 		return "", err
@@ -56,8 +56,8 @@ func (es *EOTSStore) getValidatorKeyName(pk []byte) (string, error) {
 	return string(v), nil
 }
 
-func getValidatorKeyNameKey(pk []byte) []byte {
-	return append([]byte(validatorKeyNamePrefix), pk...)
+func getFinalityProviderKeyNameKey(pk []byte) []byte {
+	return append([]byte(finalityProviderKeyNamePrefix), pk...)
 }
 
 func openStore(dbPath string, dbName string, dbBackend string) (store.Store, error) {

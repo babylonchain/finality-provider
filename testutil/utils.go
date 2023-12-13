@@ -7,8 +7,8 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/golang/mock/gomock"
 
-	"github.com/babylonchain/btc-validator/testutil/mocks"
-	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/finality-provider/testutil/mocks"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 func EmptyDescription() []byte {

@@ -52,17 +52,17 @@ const (
 
 	// defaultAgentName is the default name of the software that is added as
 	// the first part of the user agent string.
-	defaultAgentName = "vald"
+	defaultAgentName = "fpd"
 )
 
 // agentName stores the name of the software that is added as the first part of
-// the user agent string. This defaults to the value "vald" when being run as
-// a standalone component but can be overwritten by LiT for example when vald
+// the user agent string. This defaults to the value "fpd" when being run as
+// a standalone component but can be overwritten by LiT for example when fpd
 // is integrated into the UI.
 var agentName = defaultAgentName
 
 // SetAgentName overwrites the default agent name which can be used to identify
-// the software vald is bundled in (for example LiT). This function panics if
+// the software fpd is bundled in (for example LiT). This function panics if
 // the agent name contains characters outside of the allowed semantic alphabet.
 func SetAgentName(newAgentName string) {
 	for _, r := range newAgentName {

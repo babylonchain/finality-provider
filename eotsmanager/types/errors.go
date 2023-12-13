@@ -3,5 +3,5 @@ package types
 import "errors"
 
 var (
-	ErrValidatorAlreadyExisted = errors.New("the validator has already existed")
+	ErrFinalityProviderAlreadyExisted = errors.New("the finality provider has already existed")
 )

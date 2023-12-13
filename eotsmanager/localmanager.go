@@ -2,7 +2,7 @@ package eotsmanager
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/util"
+	"github.com/babylonchain/finality-provider/util"
 	"strings"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -14,10 +14,10 @@ import (
 	"github.com/cosmos/go-bip39"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/btc-validator/codec"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/eotsmanager/randgenerator"
-	eotstypes "github.com/babylonchain/btc-validator/eotsmanager/types"
+	"github.com/babylonchain/finality-provider/codec"
+	"github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/eotsmanager/randgenerator"
+	eotstypes "github.com/babylonchain/finality-provider/eotsmanager/types"
 )
 
 const (
@@ -77,7 +77,7 @@ func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Re
 
 func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, error) {
 	if lm.keyExists(name) {
-		return nil, eotstypes.ErrValidatorAlreadyExisted
+		return nil, eotstypes.ErrFinalityProviderAlreadyExisted
 	}
 
 	keyringAlgos, _ := lm.kr.SupportedAlgorithms()
@@ -123,7 +123,7 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 
-	if err := lm.es.saveValidatorKey(eotsPk.MustMarshal(), name); err != nil {
+	if err := lm.es.saveFinalityProviderKey(eotsPk.MustMarshal(), name); err != nil {
 		return nil, err
 	}
 
@@ -138,14 +138,14 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 
 // TODO the current implementation is a PoC, which does not contain any anti-slasher mechanism
 //
-//	a simple anti-slasher mechanism could be that the manager remembers the tuple (valPk, chainID, height) or
+//	a simple anti-slasher mechanism could be that the manager remembers the tuple (fpPk, chainID, height) or
 //	the hash of each generated randomness and return error if the same randomness is requested tweice
-func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
+func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 
 	for i := uint32(0); i < num; i++ {
 		height := startHeight + uint64(i)
-		_, pubRand, err := lm.getRandomnessPair(valPk, chainID, height, passphrase)
+		_, pubRand, err := lm.getRandomnessPair(fpPk, chainID, height, passphrase)
 		if err != nil {
 			return nil, err
 		}
@@ -156,13 +156,13 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(valPk []byte, chainID []byt
 	return prList, nil
 }
 
-func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
-	privRand, _, err := lm.getRandomnessPair(valPk, chainID, height, passphrase)
+func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
+	privRand, _, err := lm.getRandomnessPair(fpPk, chainID, height, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private randomness: %w", err)
 	}
 
-	privKey, err := lm.getEOTSPrivKey(valPk, passphrase)
+	privKey, err := lm.getEOTSPrivKey(fpPk, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
@@ -170,8 +170,8 @@ func (lm *LocalEOTSManager) SignEOTS(valPk []byte, chainID []byte, msg []byte, h
 	return eots.Sign(privKey, privRand, msg)
 }
 
-func (lm *LocalEOTSManager) SignSchnorrSig(valPk []byte, msg []byte, passphrase string) (*schnorr.Signature, error) {
-	privKey, err := lm.getEOTSPrivKey(valPk, passphrase)
+func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase string) (*schnorr.Signature, error) {
+	privKey, err := lm.getEOTSPrivKey(fpPk, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
@@ -183,9 +183,9 @@ func (lm *LocalEOTSManager) Close() error {
 	return lm.es.Close()
 }
 
-// getRandomnessPair returns a randomness pair generated based on the given validator key, chainID and height
-func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, height uint64, passphrase string) (*eots.PrivateRand, *eots.PublicRand, error) {
-	record, err := lm.KeyRecord(valPk, passphrase)
+// getRandomnessPair returns a randomness pair generated based on the given finality provider key, chainID and height
+func (lm *LocalEOTSManager) getRandomnessPair(fpPk []byte, chainID []byte, height uint64, passphrase string) (*eots.PrivateRand, *eots.PublicRand, error) {
+	record, err := lm.KeyRecord(fpPk, passphrase)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -194,12 +194,12 @@ func (lm *LocalEOTSManager) getRandomnessPair(valPk []byte, chainID []byte, heig
 }
 
 // TODO: we ignore passPhrase in local implementation for now
-func (lm *LocalEOTSManager) KeyRecord(valPk []byte, passphrase string) (*eotstypes.KeyRecord, error) {
-	name, err := lm.es.getValidatorKeyName(valPk)
+func (lm *LocalEOTSManager) KeyRecord(fpPk []byte, passphrase string) (*eotstypes.KeyRecord, error) {
+	name, err := lm.es.getFinalityProviderKeyName(fpPk)
 	if err != nil {
 		return nil, err
 	}
-	privKey, err := lm.getEOTSPrivKey(valPk, passphrase)
+	privKey, err := lm.getEOTSPrivKey(fpPk, passphrase)
 	if err != nil {
 		return nil, err
 	}
@@ -210,8 +210,8 @@ func (lm *LocalEOTSManager) KeyRecord(valPk []byte, passphrase string) (*eotstyp
 	}, nil
 }
 
-func (lm *LocalEOTSManager) getEOTSPrivKey(valPk []byte, passphrase string) (*btcec.PrivateKey, error) {
-	keyName, err := lm.es.getValidatorKeyName(valPk)
+func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btcec.PrivateKey, error) {
+	keyName, err := lm.es.getFinalityProviderKeyName(fpPk)
 	if err != nil {
 		return nil, err
 	}

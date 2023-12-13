@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/babylonchain/babylon/types"
-	"github.com/babylonchain/btc-validator/covenant"
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
+	"github.com/babylonchain/finality-provider/covenant"
+	covcfg "github.com/babylonchain/finality-provider/covenant/config"
 	"github.com/urfave/cli"
 )
 

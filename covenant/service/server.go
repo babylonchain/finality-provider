@@ -7,7 +7,7 @@ import (
 	"github.com/lightningnetwork/lnd/signal"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/btc-validator/covenant"
+	"github.com/babylonchain/finality-provider/covenant"
 )
 
 // CovenantServer is the main daemon construct for the covenant emulator.

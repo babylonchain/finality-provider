@@ -11,7 +11,7 @@ import (
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
 
-	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 const (
@@ -20,8 +20,8 @@ const (
 )
 
 type ChainKeyringController struct {
-	kr      keyring.Keyring
-	valName string
+	kr     keyring.Keyring
+	fpName string
 	// input is to send passphrase to kr
 	input *strings.Reader
 }
@@ -48,9 +48,9 @@ func NewChainKeyringController(ctx client.Context, name, keyringBackend string) 
 	}
 
 	return &ChainKeyringController{
-		valName: name,
-		kr:      kr,
-		input:   inputReader,
+		fpName: name,
+		kr:     kr,
+		input:  inputReader,
 	}, nil
 }
 
@@ -60,9 +60,9 @@ func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string, input
 	}
 
 	return &ChainKeyringController{
-		kr:      kr,
-		valName: name,
-		input:   input,
+		kr:     kr,
+		fpName: name,
+		input:  input,
 	}, nil
 }
 
@@ -89,11 +89,11 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 	}
 
 	// TODO use a better way to remind the user to keep it
-	fmt.Printf("Generated mnemonic for the validator %s is:\n%s\n", kc.valName, mnemonic)
+	fmt.Printf("Generated mnemonic for the finality provider %s is:\n%s\n", kc.fpName, mnemonic)
 
 	// we need to repeat the passphrase to mock the reentry
 	kc.input.Reset(passphrase + "\n" + passphrase)
-	record, err := kc.kr.NewAccount(kc.valName, mnemonic, passphrase, hdPath, algo)
+	record, err := kc.kr.NewAccount(kc.fpName, mnemonic, passphrase, hdPath, algo)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey, passph
 
 func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*sdksecp256k1.PrivKey, error) {
 	kc.input.Reset(passphrase)
-	k, err := kc.kr.Key(kc.valName)
+	k, err := kc.kr.Key(kc.fpName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}

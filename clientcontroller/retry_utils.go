@@ -9,7 +9,7 @@ import (
 )
 
 // these errors are considered unrecoverable because these indicate
-// something critical in the validator program or the consumer chain
+// something critical in the finality provider program or the consumer chain
 var unrecoverableErrors = []*sdkErr.Error{
 	finalitytypes.ErrBlockNotFound,
 	finalitytypes.ErrInvalidFinalitySig,
@@ -18,7 +18,7 @@ var unrecoverableErrors = []*sdkErr.Error{
 	finalitytypes.ErrNoPubRandYet,
 	finalitytypes.ErrPubRandNotFound,
 	finalitytypes.ErrTooFewPubRand,
-	btcstakingtypes.ErrBTCValAlreadySlashed,
+	btcstakingtypes.ErrFpAlreadySlashed,
 }
 
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list

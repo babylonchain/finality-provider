@@ -5,11 +5,11 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/eotsmanager/proto"
+	"github.com/babylonchain/finality-provider/eotsmanager"
+	"github.com/babylonchain/finality-provider/eotsmanager/proto"
 )
 
-// rpcServer is the main RPC server for the BTC-Validator daemon that handles
+// rpcServer is the main RPC server for the EOTS daemon that handles
 // gRPC incoming requests.
 type rpcServer struct {
 	proto.UnimplementedEOTSManagerServer

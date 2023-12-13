@@ -4,7 +4,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 
-	"github.com/babylonchain/btc-validator/eotsmanager/types"
+	"github.com/babylonchain/finality-provider/eotsmanager/types"
 )
 
 type EOTSManager interface {
@@ -15,24 +15,24 @@ type EOTSManager interface {
 
 	// CreateRandomnessPairList generates a list of Schnorr randomness pairs from
 	// startHeight to startHeight+(num-1) where num means the number of public randomness
-	// It fails if the validator does not exist or a randomness pair has been created before
+	// It fails if the finality provider does not exist or a randomness pair has been created before
 	// or passPhrase is incorrect
 	// NOTE: the randomness is deterministically generated based on the EOTS key, chainID and
 	// block height
 	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error)
 
-	// KeyRecord returns the validator record
-	// It fails if the validator does not exist or passPhrase is incorrect
+	// KeyRecord returns the finality provider record
+	// It fails if the finality provider does not exist or passPhrase is incorrect
 	KeyRecord(uid []byte, passphrase string) (*types.KeyRecord, error)
 
-	// SignEOTS signs an EOTS using the private key of the validator and the corresponding
+	// SignEOTS signs an EOTS using the private key of the finality provider and the corresponding
 	// secret randomness of the give chain at the given height
-	// It fails if the validator does not exist or there's no randomness committed to the given height
+	// It fails if the finality provider does not exist or there's no randomness committed to the given height
 	// or passPhrase is incorrect
 	SignEOTS(uid []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error)
 
-	// SignSchnorrSig signs a Schnorr signature using the private key of the validator
-	// It fails if the validator does not exist or the message size is not 32 bytes
+	// SignSchnorrSig signs a Schnorr signature using the private key of the finality provider
+	// It fails if the finality provider does not exist or the message size is not 32 bytes
 	// or passPhrase is incorrect
 	SignSchnorrSig(uid []byte, msg []byte, passphrase string) (*schnorr.Signature, error)
 

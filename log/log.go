@@ -2,7 +2,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/util"
+	"github.com/babylonchain/finality-provider/util"
 	"io"
 	"os"
 	"path/filepath"

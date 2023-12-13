@@ -58,11 +58,11 @@ jobs:
       - run:
           name: Save Docker image to export it to workspace
           command: |
-            docker save $(docker image ls --format '{{.Repository}}:{{.Tag}}') > /tmp/btcvalidator.tar
+            docker save $(docker image ls --format '{{.Repository}}:{{.Tag}}') > /tmp/finality-provider.tar
       - persist_to_workspace:
           root: /tmp
           paths:
-            - btcvalidator.tar
+            - finality-provider.tar
 
   push_docker:
     machine:
@@ -74,7 +74,7 @@ jobs:
       - run:
           name: Load Docker image from workspace
           command: |
-            docker load -i /tmp/btcvalidator.tar
+            docker load -i /tmp/finality-provider.tar
       - aws-ecr/ecr-login:
           aws-access-key-id: AWS_ACCESS_KEY_ID
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
