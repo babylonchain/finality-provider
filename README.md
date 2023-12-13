@@ -1,62 +1,36 @@
-# BTC-Validator
+# Finality Provider
+
+A toolset crafted for the creation and
+management of Finality Providers.
 
 ## 1. Overview
 
-BTC-Validator is a standalone program crafted for the creation and management of BTC
-validators. The program includes a CLI functionality for the creation, management,
-and storage of validator keys, as well as the creation and registration of validators
-on the consumer chain.
+Finality providers are responsible for voting
+at a finality round on top of [CometBFT](https://github.com/cometbft/cometbft).
+Similar to any native PoS validator,
+a finality provider can receive voting power delegations from BTC stakers, and
+can earn commission from the staking rewards denominated in Babylon tokens.
 
-Once a validator is registered on the chain, BTC-Validator consistently polls for new
-blocks. It actively engages with the blockchain by sending finality signatures and
-committing public randomness at regular intervals.
+The finality provider toolset does not have
+any special hardware requirements
+and can operate on standard mid-sized machines
+running a UNIX-flavored operating system.
+It consists of the following programs:
+- *Babylon full node*: An instance of a Babylon node connecting to
+  the Babylon network. Running one is not a strict requirement,
+  but it is recommended for security compared to trusting a third-party RPC node.
+- *Extractable One-Time Signature (EOTS) manager*:
+  A daemon responsible for securely maintaining the finality provider’s
+  private key and producing extractable one time signatures from it.
+- *Finality Provider*: A daemon managing the finality provider.
+  It connects to the EOTS manager to generate EOTS public randomness and
+  finality votes for Babylon blocks, which it submits to Babylon through
+  the node connection.
 
-The program consists of two essential components: the **EOTS manager Daemon** and the
-**Validator Daemon**.
+The following graphic demonstrates the interconnections between the above programs:
 
-#### 1. EOTS Manager Daemon
+![Finality Provider Interconnections](./docs/finality-toolset.png)
 
-The EOTS Daemon is responsible for managing EOTS keys, producing EOTS randomness and
-EOTS signatures
-
-**Note:** EOTS stands for Extractable One Time Signature. You can read more about it
-in
-the [Babylon BTC Staking Litepaper](https://docs.babylonchain.io/assets/files/btc_staking_litepaper-32bfea0c243773f0bfac63e148387aef.pdf).
-The BTC validator will commit a unique EOTS randomness at each future height it needs
-to vote. If the BTC validator votes for two blocks using the same committed EOTS
-randomness, then its secret key will be extracted and all of its BTC delegations will
-be slashed on Bitcoin, ensuring slashable safety.
-
-1. **EOTS Key Management:**
-    - Generates [Schnorr](https://en.wikipedia.org/wiki/Schnorr_signature) key pairs
-      for the validator using the
-      [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
-      standard.
-    - Persists generated key pairs in the
-      internal [bolt db](https://github.com/etcd-io/bbolt) storage.
-
-2. **Randomness Generation:**
-    - Generates lists of EOTS randomness pairs based on the EOTS key, chainID, and
-      block height.
-    - The randomness is deterministically generated and tied to specific parameters.
-
-3. **Signature Generation:**
-    - Signs EOTS using the private key of the validator and corresponding secret
-      randomness for a given chain at a specified height.
-    - Signs Schnorr signatures using the private key of the validator.
-
-#### 2. Validator Daemon
-
-The Validator Daemon is responsible for committing public randomness and submitting
-finality signatures.
-
-1. **Finality Signatures:**
-    - Sends the finality signature to the consumer chain (Babylon) for each
-      registered validator and for each block there's an EOTS randomness commitment.
-
-2. **EOTS Randomness Commitment:**
-    - Ensures the generation of EOTS randomness commitment on the Babylon ledger for
-      each block the BTC validator intends to vote for.
 
 ## 2. Installation
 
@@ -72,14 +46,14 @@ the [official Go installation guide](https://golang.org/doc/install).
 To get started, clone the repository to your local machine from Github:
 
 ```bash
-$ git clone git@github.com:babylonchain/btc-validator.git
+$ git clone git@github.com:babylonchain/finality-provider.git
 ```
 
 You can choose a specific version from
-the [official releases page](https://github.com/babylonchain/btc-validator/releases)
+the [official releases page](https://github.com/babylonchain/finality-provider/releases)
 
 ```bash
-$ cd btc-validator # cd into the project directory
+$ cd finality-provider # cd into the project directory
 $ git checkout <release-tag>
 ```
 
@@ -87,7 +61,7 @@ $ git checkout <release-tag>
 
 ```bash
 # cd into the project directory
-$ cd btc-validator 
+$ cd finality-provider
 
 # installs the compiled binaries to your
 # $GOPATH/bin directory allowing access
@@ -98,14 +72,13 @@ $ make install
 The above will produce the following binaries:
 
 - `eotsd`: The daemon program for the EOTS manager.
-- `vald`: The daemon program for the btc-validator.
-- `valcli`: The CLI tool for interacting with the btc-validator daemon.
-- `covd`: The daemon program for the covenant emulator.
+- `fpd`: The daemon program for the finality-provider.
+- `fpcli`: The CLI tool for interacting with the finality-provider daemon.
 
 To build locally,
 
 ```bash
-$ cd btc-validator # cd into the project directory
+$ cd finality-provider # cd into the project directory
 $ make build
 ```
 
@@ -113,24 +86,49 @@ The above will lead to a build directory having the following structure:
 
 ```bash
 $ ls build
-    ├── covd
     ├── eotsd
-    ├── valcli
-    └── vald
+    ├── fpcli
+    └── fpd
 ```
 
-## 3. EOTS Daemon Configuration
+## 3. Setting up a finality provider
 
-Follow the [eots configuration guide](docs/eotsd/eotsd-config.md).
+#### 3.1. Setting up a Babylon Full Node
 
-## 4. Starting the EOTS Daemon
+Before setting up the finality provider toolset,
+an operator must ensure a working connection with a Babylon full node.
+It is highly recommended that operators run their own node to avoid
+trusting third parties. Instructions on how to set up a full Babylon node
+can be found in 
+[the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/setup-node).
 
-Follow the  [eots startup guide](docs/eotsd/eotsd-startup-guide.md).
+The finality provider requires a Babylon keyring with loaded funds to be attached to it
+in order to be able to send transactions to Babylon.
+To setup such a keyring, follow the instructions in
+[the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds).
 
-## 5. Validator Daemon Configuration
+#### 3.2. Setting up the EOTS Manager
 
-Follow the [vald configuration guide](docs/vald/vald-config.md).
+After a node and a keyring have been set up,
+the operator can set up and run the
+Extractable One Time Signature (EOTS) manager daemon.
+A complete overview of the EOTS manager, its operation, and
+its configuration options can be found in the
+[EOTS Manager page](docs/eots.md)
 
-## 6. Starting the Validator Daemon
+#### 3.3. Setting up a Finality Provider 
 
-Follow the [vald startup guide](docs/vald/vald-startup-guide.md).
+The last step is to set up and run
+the finality daemon.
+A complete overview of the finality daemon, its operation, and
+its configuration options can be found in the
+[Finality page](docs/finality-provider.md).
+
+## 4. Delegations & Rewards
+
+A finality provider receives BTC delegations through delegators
+interacting with Babylon and choosing it as the recipient of their delegations.
+To perform a self-delegation,
+the operator can either visit the staking web app we provide,
+or run the Babylon [BTC Staker program](https://github.com/babylonchain/btc-staker) once.
+The BTC staker connects to a Bitcoin wallet and Babylon to perform delegations.
