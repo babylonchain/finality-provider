@@ -8,16 +8,17 @@ committing public randomness for the blocks it
 intends to provide finality signatures for, and
 submitting finality signatures.
 
-The daemon can manage and perform the above operations for multiple
-finality providers. 
-
-1. **EOTS Randomness Commitment**: The daemon monitors the Babylon chain and
+The daemon can manage and perform the following operations for multiple
+finality providers:
+1. **Creation and Registration**: Creates and registers finality 
+   providers to Babylon.
+2. **EOTS Randomness Commitment**: The daemon monitors the Babylon chain and
    commits EOTS public randomness for every Babylon block each
    finality provider intends to vote for. The commit intervals can be specified
    in the configuration.
    The EOTS public randomness is retrieved through the finality provider daemon's
    connection with the [EOTS daemon](eots.md).
-2. **Finality Votes Submission**: The daemon monitors the Babylon chain
+3. **Finality Votes Submission**: The daemon monitors the Babylon chain
    and produces finality votes for each block each maintained finality provider
    has committed to vote for.
 
