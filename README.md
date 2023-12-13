@@ -1,4 +1,4 @@
-# Finality-Provider
+# Finality Provider
 
 A toolset crafted for the creation and
 management of Finality Providers.
@@ -6,9 +6,9 @@ management of Finality Providers.
 ## 1. Overview
 
 Finality providers are responsible for voting
-at a finality round on top of Tendermint.
+at a finality round on top of [CometBFT](https://github.com/cometbft/cometbft).
 Similar to any native PoS validator,
-a finality provider can receive voting power delegations from BTC stakers,and
+a finality provider can receive voting power delegations from BTC stakers, and
 can earn commission from the staking rewards denominated in Babylon tokens.
 
 The finality provider toolset does not have
@@ -46,11 +46,11 @@ the [official Go installation guide](https://golang.org/doc/install).
 To get started, clone the repository to your local machine from Github:
 
 ```bash
-$ git clone git@github.com:babylonchain/btc-validator.git
+$ git clone git@github.com:babylonchain/finality-provider.git
 ```
 
 You can choose a specific version from
-the [official releases page](https://github.com/babylonchain/btc-validator/releases)
+the [official releases page](https://github.com/babylonchain/finality-provider/releases)
 
 ```bash
 $ cd finality-provider # cd into the project directory
@@ -72,8 +72,8 @@ $ make install
 The above will produce the following binaries:
 
 - `eotsd`: The daemon program for the EOTS manager.
-- `find`: The daemon program for the finality-provider.
-- `fincli`: The CLI tool for interacting with the finality-provider daemon.
+- `fpd`: The daemon program for the finality-provider.
+- `fpcli`: The CLI tool for interacting with the finality-provider daemon.
 
 To build locally,
 
@@ -87,8 +87,8 @@ The above will lead to a build directory having the following structure:
 ```bash
 $ ls build
     ├── eotsd
-    ├── fincli
-    └── find
+    ├── fpcli
+    └── fpd
 ```
 
 ## 3. Setting up a finality provider
@@ -122,7 +122,7 @@ The last step is to set up and run
 the finality daemon.
 A complete overview of the finality daemon, its operation, and
 its configuration options can be found in the
-[Finality page](docs/finality.md).
+[Finality page](docs/finality-provider.md).
 
 ## 4. Delegations & Rewards
 

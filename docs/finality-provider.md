@@ -8,7 +8,7 @@ committing public randomness for the blocks it
 intends to provide finality signatures for, and
 submitting finality signatures.
 
-The daemon can manage and perform the above operations for many
+The daemon can manage and perform the above operations for multiple
 finality providers. 
 
 1. **EOTS Randomness Commitment**: The daemon monitors the Babylon chain and
@@ -21,36 +21,36 @@ finality providers.
    and produces finality votes for each block each maintained finality provider
    has committed to vote for.
 
-The daemon is controlled by the `find` tool.
-The `fincli` tool implements commands for interacting with the daemon.
+The daemon is controlled by the `fpd` tool.
+The `fpcli` tool implements commands for interacting with the daemon.
 
 ## 2. Configuration
 
-The `find init` command initializes a home directory for the
+The `fpd init` command initializes a home directory for the
 finality provider daemon.
 This directory is created in the default home location or in a
 location specified by the `--home` flag.
 
 ```bash
-$ find init --home /path/to/find-home/
+$ fpd init --home /path/to/fpd/home/
 ```
 
 After initialization, the home directory will have the following structure
 
 ```bash
-$ ls /path/to/find-home/
-  ├── find.conf # Find-specific configuration file.
-  ├── logs      # Find logs
+$ ls /path/to/fpd/home/
+  ├── fpd.conf # Fpd-specific configuration file.
+  ├── logs     # Fpd logs
 ```
 
 If the `--home` flag is not specified, then the default home directory
 will be used. For different operating systems, those are:
 
-- **MacOS** `~/Library/Application Support/Find`
-- **Linux** `~/.Find`
-- **Windows** `C:\Users\<username>\AppData\Local\Find`
+- **MacOS** `~/Library/Application Support/Fpd`
+- **Linux** `~/.Fpd`
+- **Windows** `C:\Users\<username>\AppData\Local\Fpd`
 
-Below are some important parameters of the `find.conf` file.
+Below are some important parameters of the `fpd.conf` file.
 
 **Note**:
 The finality provider daemon requires the existence of a keyring that contains
@@ -74,7 +74,7 @@ RPCAddr = http://localhost:26657
 GRPCAddr = https://localhost:9090
 
 # Name of the key in the keyring to use for signing transactions
-Key = node0
+Key = <finality-provider-key-name>
 
 # Type of keyring to use,
 # supported backends - (os|file|kwallet|pass|test|memory)
@@ -82,17 +82,17 @@ Key = node0
 KeyringBackend = test
 
 # Directory where keys will be retrieved from and stored
-KeyDirectory = /Users/<user>/Library/Application Support/Find
+KeyDirectory = /path/to/fpd/home
 ```
 
-To see the complete list of configuration options, check the `find.conf` file.
+To see the complete list of configuration options, check the `fpd.conf` file.
 
 ## 3. Starting the Finality Provider Daemon
 
 You can start the finality provider daemon using the following command:
 
 ```bash
-$ find --home /path/to/find/home
+$ fpd --home /path/to/fpd/home
 ```
 
 This will start the RPC server at the address specified in the configuration under
@@ -100,7 +100,7 @@ the `RawRPCListeners` field. A custom address can also be specified using
 the `--rpclisten` flag.
 
 ```bash
-$ find --rpclisten 'localhost:8082'
+$ fpd --rpclisten 'localhost:8082'
 
 time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager at 127.0.0.1:8081"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting Finality Provider App"
@@ -117,13 +117,13 @@ can also be set in the configuration file.
 
 A finality provider named `my-finality-provider` can be created in the internal
 storage ([bolt db](https://github.com/etcd-io/bbolt))
-through the `fincli daemon create-finality-provider` command.
+through the `fpcli create-finality-provider` command.
 This finality provider is associated with a BTC public key which
 serves as its unique identifier and
 a Babylon account to which staking rewards will be directed.
 
 ```bash
-$ fincli daemon create-finality-provider --key-name my-finality-provider \
+$ fpcli create-finality-provider --key-name my-finality-provider \
                 --chain-id chain-test --passphrase mypassphrase
 {
     "btc_pk": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786"
@@ -136,7 +136,7 @@ The output contains the hash of the Babylon
 finality provider registration transaction.
 
 ```bash
-$ fincli daemon register-finality-provider \
+$ fpcli register-finality-provider \
                  --btc-pk 903fab42070622c551b188c983ce05a31febcab300244daf7d752aba
 {
     "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
@@ -145,7 +145,7 @@ $ fincli daemon register-finality-provider \
 
 To verify that your finality provider has been created,
 we can check the finality providers that are managed by the daemon and their status.
-These can be listed through the `fincli daemon list-finality-providers` command.
+These can be listed through the `fpcli list-finality-providers` command.
 The `status` field can receive the following values:
 
 - `1`: The finality provider is active and has received no delegations yet
@@ -154,10 +154,10 @@ The `status` field can receive the following values:
   anymore OR has been slashed)
  
 The `last_committed_height` field is the Babylon height up to which the finality provider
-has committed sufficient EOTS randomness
+has committed EOTS randomness
 
 ```bash
-$ fincli daemon list-finality-providers
+$ fpcli list-finality-providers
 {
     "finality-providers": [
         ...

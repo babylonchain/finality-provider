@@ -3,7 +3,7 @@
 ## 1. Overview
 
 The EOTS daemon is responsible for managing EOTS keys,
-producing EOTS randomness, and using it to produce signatures.
+producing EOTS randomness, and using them to produce EOTS signatures.
 
 **Note:** EOTS stands for Extractable One Time Signature. You can read more about it
 in
@@ -18,19 +18,19 @@ underlying private key being exposed, leading to the slashing of them and all th
 The EOTS manager is responsible for the following operations:
 1. **EOTS Key Management:**
     - Generates [Schnorr](https://en.wikipedia.org/wiki/Schnorr_signature) key pairs
-      for the validator using the
+      for a given finality provider using the
       [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
       standard.
     - Persists generated key pairs in the
-      internal [bolt db](https://github.com/etcd-io/bbolt) storage.
+      internal Cosmos keyring.
 2. **Randomness Generation:**
     - Generates lists of EOTS randomness pairs based on the EOTS key, chainID, and
       block height.
     - The randomness is deterministically generated and tied to specific parameters.
 3. **Signature Generation:**
-    - Signs EOTS using the private key of the validator and corresponding secret
+    - Signs EOTS using the private key of the finality provider and the corresponding secret
       randomness for a given chain at a specified height.
-    - Signs Schnorr signatures using the private key of the validator.
+    - Signs Schnorr signatures using the private key of the finality provider.
 
 The EOTS manager functions as a daemon controlled by the `eotsd` tool.
 
@@ -41,13 +41,13 @@ manager. This directory is created in the default home location or in a location
 specified by the `--home` flag.
 
 ```bash
-$ eotsd init --home /path/to/eotsd-home/
+$ eotsd init --home /path/to/eotsd/home/
 ```
 
 After initialization, the home directory will have the following structure
 
 ```bash
-$ ls /path/to/eotsd-home/
+$ ls /path/to/eotsd/home/
   ├── eotsd.conf # Eotsd-specific configuration file.
   ├── logs       # Eotsd logs
 ```
@@ -107,5 +107,5 @@ can also be set in the configuration file.
 **Note**: It is recommended to run the `eotsd` daemon on a separate machine or
 network segment to enhance security. This helps isolate the key management
 functionality and reduces the potential attack surface. You can edit the
-`EOTSManagerAddress` in  `vald.conf`  to reference the address of the machine
-where `eotsd` is running.
+`EOTSManagerAddress` in  the configuration file of the finality provider
+to reference the address of the machine where `eotsd` is running.
