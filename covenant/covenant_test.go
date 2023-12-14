@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/btc-validator/covenant"
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/testutil"
-	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/finality-provider/covenant"
+	covcfg "github.com/babylonchain/finality-provider/covenant/config"
+	"github.com/babylonchain/finality-provider/testutil"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 const (
@@ -64,14 +64,14 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		valNum := datagen.RandomInt(r, 5) + 1
-		valPks := testutil.GenBtcPublicKeys(r, t, int(valNum))
+		fpNum := datagen.RandomInt(r, 5) + 1
+		fpPks := testutil.GenBtcPublicKeys(r, t, int(fpNum))
 		testInfo := datagen.GenBTCStakingSlashingInfo(
 			r,
 			t,
 			net,
 			delSK,
-			valPks,
+			fpPks,
 			params.CovenantPks,
 			params.CovenantQuorum,
 			stakingTimeBlocks,
@@ -85,7 +85,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		startHeight := datagen.RandomInt(r, 1000) + 100
 		btcDel := &types.Delegation{
 			BtcPk:            delPK,
-			ValBtcPks:        valPks,
+			FpBtcPks:         fpPks,
 			StartHeight:      startHeight, // not relevant here
 			EndHeight:        startHeight + uint64(stakingTimeBlocks),
 			TotalSat:         uint64(stakingValue),
@@ -96,9 +96,9 @@ func FuzzAddCovenantSig(f *testing.F) {
 		// generate covenant staking sigs
 		slashingSpendInfo, err := testInfo.StakingInfo.SlashingPathSpendInfo()
 		require.NoError(t, err)
-		covSigs := make([][]byte, 0, len(valPks))
-		for _, valPk := range valPks {
-			encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+		covSigs := make([][]byte, 0, len(fpPks))
+		for _, fpPk := range fpPks {
+			encKey, err := asig.NewEncryptionKeyFromBTCPK(fpPk)
 			require.NoError(t, err)
 			covenantSig, err := testInfo.SlashingTx.EncSign(
 				testInfo.StakingTx,
@@ -120,7 +120,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			t,
 			net,
 			delSK,
-			btcDel.ValBtcPks,
+			btcDel.FpBtcPks,
 			params.CovenantPks,
 			params.CovenantQuorum,
 			wire.NewOutPoint(&stakingTxHash, 0),
@@ -156,9 +156,9 @@ func FuzzAddCovenantSig(f *testing.F) {
 		)
 		require.NoError(t, err)
 		// generate covenant unbonding slashing sigs
-		unbondingCovSlashingSigs := make([][]byte, 0, len(valPks))
-		for _, valPk := range valPks {
-			encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+		unbondingCovSlashingSigs := make([][]byte, 0, len(fpPks))
+		for _, fpPk := range fpPks {
+			encKey, err := asig.NewEncryptionKeyFromBTCPK(fpPk)
 			require.NoError(t, err)
 			covenantSig, err := testUnbondingInfo.SlashingTx.EncSign(
 				testUnbondingInfo.UnbondingTx,

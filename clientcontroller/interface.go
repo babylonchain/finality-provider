@@ -9,8 +9,8 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 
-	"github.com/babylonchain/btc-validator/config"
-	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/finality-provider/config"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 )
 
 type ClientController interface {
-	ValidatorAPIs
+	FinalityProviderAPIs
 
 	CovenantAPIs
 
@@ -27,13 +27,13 @@ type ClientController interface {
 	Close() error
 }
 
-// ValidatorAPIs contains interfaces needed when the program is running in the validator mode
-type ValidatorAPIs interface {
-	// RegisterValidator registers a BTC validator to the consumer chain
+// FinalityProviderAPIs contains interfaces needed when the program is running in the finality provider mode
+type FinalityProviderAPIs interface {
+	// RegisterFinalityProvider registers a finality provider to the consumer chain
 	// it returns tx hash and error
-	RegisterValidator(
+	RegisterFinalityProvider(
 		chainPk []byte,
-		valPk *btcec.PublicKey,
+		fpPk *btcec.PublicKey,
 		pop []byte,
 		commission *math.LegacyDec,
 		description []byte,
@@ -41,21 +41,21 @@ type ValidatorAPIs interface {
 
 	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
 	// it returns tx hash and error
-	CommitPubRandList(valPk *btcec.PublicKey, startHeight uint64, pubRandList []*btcec.FieldVal, sig *schnorr.Signature) (*types.TxResponse, error)
+	CommitPubRandList(fpPk *btcec.PublicKey, startHeight uint64, pubRandList []*btcec.FieldVal, sig *schnorr.Signature) (*types.TxResponse, error)
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain
-	SubmitFinalitySig(valPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
+	SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
 
 	// SubmitBatchFinalitySigs submits a batch of finality signatures to the consumer chain
-	SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error)
+	SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error)
 
 	// Note: the following queries are only for PoC
 
-	// QueryValidatorVotingPower queries the voting power of the validator at a given height
-	QueryValidatorVotingPower(valPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
+	// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
 
-	// QueryValidatorSlashed queries if the validator is slashed
-	QueryValidatorSlashed(valPk *btcec.PublicKey) (bool, error)
+	// QueryFinalityProviderSlashed queries if the finality provider is slashed
+	QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error)
 
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
@@ -77,7 +77,7 @@ type ValidatorAPIs interface {
 // CovenantAPIs contains interfaces needed when the program is running in the covenant mode
 type CovenantAPIs interface {
 	// SubmitCovenantSigs submits Covenant signatures to the consumer chain, each corresponding to
-	// a validator that the delegation is (re-)staked to
+	// a finality provider that the delegation is (re-)staked to
 	// it returns tx hash and error
 	SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string,
 		sigs [][]byte, unbondingSig *schnorr.Signature, unbondingSlashingSigs [][]byte) (*types.TxResponse, error)

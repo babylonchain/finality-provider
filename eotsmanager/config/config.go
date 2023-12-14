@@ -2,8 +2,8 @@ package config
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/config"
-	"github.com/babylonchain/btc-validator/util"
+	"github.com/babylonchain/finality-provider/config"
+	"github.com/babylonchain/finality-provider/util"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/jessevdk/go-flags"
@@ -26,7 +26,7 @@ const (
 var (
 	// DefaultEOTSDir the default EOTS home directory:
 	//   C:\Users\<username>\AppData\Local\ on Windows
-	//   ~/.vald on Linux
+	//   ~/.eotsd on Linux
 	//   ~/Library/Application Support/Eotsd on MacOS
 	DefaultEOTSDir = btcutil.AppDataDir("eotsd", false)
 

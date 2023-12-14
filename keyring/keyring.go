@@ -9,7 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
-	"github.com/babylonchain/btc-validator/codec"
+	"github.com/babylonchain/finality-provider/codec"
 )
 
 func CreateKeyring(keyringDir string, chainId string, backend string, input *strings.Reader) (keyring.Keyring, error) {
@@ -45,7 +45,7 @@ func CreateClientCtx(keyringDir string, chainId string) (client.Context, error) 
 		if err != nil {
 			return client.Context{}, err
 		}
-		keyringDir = path.Join(homeDir, ".btc-validator")
+		keyringDir = path.Join(homeDir, ".finality-provider")
 	}
 
 	return client.Context{}.

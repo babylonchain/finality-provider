@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/eotsmanager/types"
-	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/finality-provider/eotsmanager"
+	"github.com/babylonchain/finality-provider/eotsmanager/types"
+	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func FuzzCreateKey(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		valName := testutil.GenRandomHexStr(r, 4)
+		fpName := testutil.GenRandomHexStr(r, 4)
 		homeDir := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := testutil.GenEOTSConfig(r, t)
 		defer func() {
@@ -36,19 +36,19 @@ func FuzzCreateKey(f *testing.F) {
 		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
+		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
 		require.NoError(t, err)
 
-		valRecord, err := lm.KeyRecord(valPk, passphrase)
+		fpRecord, err := lm.KeyRecord(fpPk, passphrase)
 		require.NoError(t, err)
-		require.Equal(t, valName, valRecord.Name)
+		require.Equal(t, fpName, fpRecord.Name)
 
-		sig, err := lm.SignSchnorrSig(valPk, datagen.GenRandomByteArray(r, 32), passphrase)
+		sig, err := lm.SignSchnorrSig(fpPk, datagen.GenRandomByteArray(r, 32), passphrase)
 		require.NoError(t, err)
 		require.NotNil(t, sig)
 
-		_, err = lm.CreateKey(valName, passphrase, hdPath)
-		require.ErrorIs(t, err, types.ErrValidatorAlreadyExisted)
+		_, err = lm.CreateKey(fpName, passphrase, hdPath)
+		require.ErrorIs(t, err, types.ErrFinalityProviderAlreadyExisted)
 	})
 }
 
@@ -57,7 +57,7 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		valName := testutil.GenRandomHexStr(r, 4)
+		fpName := testutil.GenRandomHexStr(r, 4)
 		homeDir := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := testutil.GenEOTSConfig(r, t)
 		defer func() {
@@ -68,18 +68,18 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
-		valPk, err := lm.CreateKey(valName, passphrase, hdPath)
+		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
 		require.NoError(t, err)
 
 		chainID := datagen.GenRandomByteArray(r, 10)
 		startHeight := datagen.RandomInt(r, 100)
 		num := r.Intn(10) + 1
-		pubRandList, err := lm.CreateRandomnessPairList(valPk, chainID, startHeight, uint32(num), passphrase)
+		pubRandList, err := lm.CreateRandomnessPairList(fpPk, chainID, startHeight, uint32(num), passphrase)
 		require.NoError(t, err)
 		require.Len(t, pubRandList, num)
 
 		for i := 0; i < num; i++ {
-			sig, err := lm.SignEOTS(valPk, chainID, datagen.GenRandomByteArray(r, 32), startHeight+uint64(i), passphrase)
+			sig, err := lm.SignEOTS(fpPk, chainID, datagen.GenRandomByteArray(r, 32), startHeight+uint64(i), passphrase)
 			require.NoError(t, err)
 			require.NotNil(t, sig)
 		}

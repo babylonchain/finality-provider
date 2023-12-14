@@ -11,9 +11,9 @@ import (
 type Delegation struct {
 	// The Bitcoin secp256k1 PK of this BTC delegation
 	BtcPk *btcec.PublicKey
-	// The Bitcoin secp256k1 PKs of the BTC validators that
+	// The Bitcoin secp256k1 PKs of the finality providers that
 	// this BTC delegation delegates to
-	ValBtcPks []*btcec.PublicKey
+	FpBtcPks []*btcec.PublicKey
 	// The start BTC height of the BTC delegation
 	// it is the start BTC height of the timelock
 	StartHeight uint64
@@ -48,7 +48,7 @@ func (d *Delegation) GetStakingTime() uint16 {
 	diff := d.EndHeight - d.StartHeight
 
 	if diff > math.MaxUint16 {
-		// In valid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
+		// In a valid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
 		panic("invalid delegation in database")
 	}
 
@@ -65,7 +65,7 @@ type Undelegation struct {
 	UnbondingTxHex string
 	// The hex string of the slashing tx for unbonding transactions
 	// It is partially signed by SK corresponding to btc_pk, but not signed by
-	// validator or covenant yet.
+	// finality provider or covenant yet.
 	SlashingTxHex string
 	// The signatures on the slashing tx by the covenant
 	// (i.e., SK corresponding to covenant_pk in params)

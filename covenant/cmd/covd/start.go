@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/log"
-	"github.com/babylonchain/btc-validator/util"
+	"github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/log"
+	"github.com/babylonchain/finality-provider/util"
 	"path/filepath"
 
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/covenant"
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	covsrv "github.com/babylonchain/btc-validator/covenant/service"
+	"github.com/babylonchain/finality-provider/clientcontroller"
+	"github.com/babylonchain/finality-provider/covenant"
+	covcfg "github.com/babylonchain/finality-provider/covenant/config"
+	covsrv "github.com/babylonchain/finality-provider/covenant/service"
 )
 
 var startCommand = cli.Command{

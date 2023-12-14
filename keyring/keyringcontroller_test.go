@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	valstore "github.com/babylonchain/btc-validator/validator/store"
+	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -15,10 +15,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/stretchr/testify/require"
 
-	valkr "github.com/babylonchain/btc-validator/keyring"
+	fpkr "github.com/babylonchain/finality-provider/keyring"
 
-	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/testutil"
+	"github.com/babylonchain/finality-provider/eotsmanager"
+	"github.com/babylonchain/finality-provider/testutil"
 )
 
 var (
@@ -36,7 +36,7 @@ func FuzzCreatePoP(f *testing.F) {
 		sdkCtx := testutil.GenSdkContext(r, t)
 
 		chainID := testutil.GenRandomHexStr(r, 4)
-		kc, err := valkr.NewChainKeyringController(sdkCtx, keyName, keyring.BackendTest)
+		kc, err := fpkr.NewChainKeyringController(sdkCtx, keyName, keyring.BackendTest)
 		require.NoError(t, err)
 
 		eotsHome := filepath.Join(t.TempDir(), "eots-home")
@@ -55,14 +55,14 @@ func FuzzCreatePoP(f *testing.F) {
 		keyPair, err := kc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
 		bbnPk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
-		valRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
+		fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
-		pop, err := kc.CreatePop(valRecord.PrivKey, passphrase)
+		pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
 		require.NoError(t, err)
-		validator := valstore.NewStoreValidator(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
+		fp := fpstore.NewStoreFinalityProvider(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
 
 		btcSig := new(types.BIP340Signature)
-		err = btcSig.Unmarshal(validator.Pop.BtcSig)
+		err = btcSig.Unmarshal(fp.Pop.BtcSig)
 		require.NoError(t, err)
 		err = pop.Verify(bbnPk, btcPk, &chaincfg.SimNetParams)
 		require.NoError(t, err)

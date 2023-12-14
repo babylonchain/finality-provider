@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/eotsmanager"
-	"github.com/babylonchain/btc-validator/eotsmanager/config"
-	eotsservice "github.com/babylonchain/btc-validator/eotsmanager/service"
-	"github.com/babylonchain/btc-validator/log"
-	"github.com/babylonchain/btc-validator/util"
+	"github.com/babylonchain/finality-provider/eotsmanager"
+	"github.com/babylonchain/finality-provider/eotsmanager/config"
+	eotsservice "github.com/babylonchain/finality-provider/eotsmanager/service"
+	"github.com/babylonchain/finality-provider/log"
+	"github.com/babylonchain/finality-provider/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 	"path/filepath"

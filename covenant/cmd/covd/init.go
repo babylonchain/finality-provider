@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/util"
+	covcfg "github.com/babylonchain/finality-provider/covenant/config"
+	"github.com/babylonchain/finality-provider/util"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 	"path/filepath"

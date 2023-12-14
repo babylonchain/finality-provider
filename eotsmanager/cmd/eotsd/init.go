@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/util"
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/util"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 	"path/filepath"

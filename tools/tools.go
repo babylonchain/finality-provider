@@ -1,7 +1,7 @@
 //go:build tools
 // +build tools
 
-package btcvalidator
+package finalityprovider
 
 import (
 	_ "github.com/babylonchain/babylon/cmd/babylond"

@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/babylonchain/btc-validator/util"
+	"github.com/babylonchain/finality-provider/util"
 	"path/filepath"
 	"time"
 
@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
 
-	"github.com/babylonchain/btc-validator/config"
+	"github.com/babylonchain/finality-provider/config"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 var (
 	// DefaultCovenantDir specifies the default home directory for the covenant:
 	//   C:\Users\<username>\AppData\Local\ on Windows
-	//   ~/.vald on Linux
+	//   ~/.covd on Linux
 	//   ~/Library/Application Support/Covd on MacOS
 	DefaultCovenantDir = btcutil.AppDataDir("covd", false)
 

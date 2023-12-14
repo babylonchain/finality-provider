@@ -2,8 +2,8 @@ package testutil
 
 import (
 	"encoding/hex"
-	eotscfg "github.com/babylonchain/btc-validator/eotsmanager/config"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"math/rand"
 	"testing"
 	"time"
@@ -17,11 +17,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/codec"
-	"github.com/babylonchain/btc-validator/config"
-	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/validator/proto"
-	"github.com/babylonchain/btc-validator/validator/service"
+	"github.com/babylonchain/finality-provider/codec"
+	"github.com/babylonchain/finality-provider/config"
+	"github.com/babylonchain/finality-provider/finality-provider/proto"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 func GenRandomByteArray(r *rand.Rand, length uint64) []byte {
@@ -44,7 +44,7 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	}
 }
 
-func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
+func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *proto.StoreFinalityProvider {
 	// generate BTC key pair
 	btcSK, btcPK, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
@@ -60,7 +60,7 @@ func GenRandomValidator(r *rand.Rand, t *testing.T) *proto.StoreValidator {
 	err = pop.Verify(babylonPK, bip340PK, &chaincfg.SigNetParams)
 	require.NoError(t, err)
 
-	return &proto.StoreValidator{
+	return &proto.StoreFinalityProvider{
 		KeyName:   GenRandomHexStr(r, 4),
 		BabylonPk: babylonPK.Bytes(),
 		BtcPk:     bip340PK.MustMarshal(),
@@ -122,19 +122,19 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 	return blocks
 }
 
-// GenStoredValidator generates a random validator from the keyring and store it in DB
-func GenStoredValidator(r *rand.Rand, t *testing.T, app *service.ValidatorApp, passphrase, hdPath string) *proto.StoreValidator {
+// GenStoredFinalityProvider generates a random finality-provider from the keyring and store it in DB
+func GenStoredFinalityProvider(r *rand.Rand, t *testing.T, app *service.FinalityProviderApp, passphrase, hdPath string) *proto.StoreFinalityProvider {
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
 	chainID := GenRandomHexStr(r, 4)
 
-	res, err := app.CreateValidator(keyName, chainID, passphrase, hdPath, EmptyDescription(), ZeroCommissionRate())
+	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, EmptyDescription(), ZeroCommissionRate())
 	require.NoError(t, err)
 
-	storedVal, err := app.GetValidatorStore().GetStoreValidator(res.ValPk.MustMarshal())
+	storedFp, err := app.GetFinalityProviderStore().GetStoreFinalityProvider(res.FpPk.MustMarshal())
 	require.NoError(t, err)
 
-	return storedVal
+	return storedFp
 }
 
 func GenDBConfig(r *rand.Rand, t *testing.T) *config.DatabaseConfig {
@@ -154,11 +154,11 @@ func GenEOTSConfig(r *rand.Rand, t *testing.T) *eotscfg.Config {
 	return &eotsCfg
 }
 
-func GenValConfig(r *rand.Rand, t *testing.T, homeDir string) *valcfg.Config {
-	valCfg := valcfg.DefaultConfigWithHome(homeDir)
-	valCfg.DatabaseConfig = GenDBConfig(r, t)
+func GenFpConfig(r *rand.Rand, t *testing.T, homeDir string) *fpcfg.Config {
+	fpCfg := fpcfg.DefaultConfigWithHome(homeDir)
+	fpCfg.DatabaseConfig = GenDBConfig(r, t)
 
-	return &valCfg
+	return &fpCfg
 }
 
 func GenSdkContext(r *rand.Rand, t *testing.T) client.Context {

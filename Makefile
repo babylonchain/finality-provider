@@ -41,7 +41,7 @@ $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
 build-docker:
-	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/btc-validator -f Dockerfile \
+	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/finality-provider -f Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
 .PHONY: build build-docker
@@ -61,7 +61,7 @@ proto-all: proto-gen
 
 proto-gen:
 	make -C eotsmanager proto-gen
-	make -C validator proto-gen
+	make -C finality-provider proto-gen
 
 .PHONY: proto-gen
 

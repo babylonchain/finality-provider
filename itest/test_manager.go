@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"github.com/btcsuite/btcd/btcec/v2"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -25,14 +25,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/covenant"
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/eotsmanager/client"
-	eotsconfig "github.com/babylonchain/btc-validator/eotsmanager/config"
-	"github.com/babylonchain/btc-validator/types"
-	valcfg "github.com/babylonchain/btc-validator/validator/config"
-	"github.com/babylonchain/btc-validator/validator/service"
+	"github.com/babylonchain/finality-provider/clientcontroller"
+	"github.com/babylonchain/finality-provider/covenant"
+	covcfg "github.com/babylonchain/finality-provider/covenant/config"
+	"github.com/babylonchain/finality-provider/eotsmanager/client"
+	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 var (
@@ -40,7 +40,7 @@ var (
 	eventuallyPollTime    = 500 * time.Millisecond
 	btcNetworkParams      = &chaincfg.SimNetParams
 
-	valNamePrefix   = "test-val-"
+	fpNamePrefix    = "test-fp-"
 	monikerPrefix   = "moniker-"
 	covenantKeyName = "covenant-key"
 	chainID         = "chain-test"
@@ -53,10 +53,10 @@ type TestManager struct {
 	BabylonHandler    *BabylonNodeHandler
 	EOTSServerHandler *EOTSServerHandler
 	CovenantEmulator  *covenant.CovenantEmulator
-	ValConfig         *valcfg.Config
+	FpConfig          *fpcfg.Config
 	EOTSConfig        *eotsconfig.Config
 	CovenanConfig     *covcfg.Config
-	Va                *service.ValidatorApp
+	Fpa               *service.FinalityProviderApp
 	EOTSClient        *client.EOTSManagerGRpcClient
 	BabylonClient     *clientcontroller.BabylonController
 	baseDir           string
@@ -71,7 +71,7 @@ type TestDelegationData struct {
 	StakingTx               *wire.MsgTx
 	StakingTxInfo           *btcctypes.TransactionInfo
 	DelegatorSig            *bbntypes.BIP340Signature
-	ValidatorPks            []*btcec.PublicKey
+	FpPks                   []*btcec.PublicKey
 
 	SlashingAddr  string
 	ChangeAddr    string
@@ -80,7 +80,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := tempDirWithName("vale2etest")
+	testDir, err := tempDirWithName("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -96,8 +96,8 @@ func StartManager(t *testing.T) *TestManager {
 	bh := NewBabylonNodeHandler(t, bbntypes.NewBIP340PubKeyFromBTCPK(covKeyPair.PublicKey))
 	err = bh.Start()
 	require.NoError(t, err)
-	valHomeDir := filepath.Join(testDir, "val-home")
-	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), valHomeDir)
+	fpHomeDir := filepath.Join(testDir, "fp-home")
+	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -109,10 +109,10 @@ func StartManager(t *testing.T) *TestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 4. prepare validator
-	valApp, err := service.NewValidatorApp(valHomeDir, cfg, bc, eotsCli, logger)
+	// 4. prepare finality-provider
+	fpApp, err := service.NewFinalityProviderApp(fpHomeDir, cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
-	err = valApp.Start()
+	err = fpApp.Start()
 	require.NoError(t, err)
 
 	// 5. prepare covenant emulator
@@ -124,9 +124,9 @@ func StartManager(t *testing.T) *TestManager {
 	tm := &TestManager{
 		BabylonHandler:    bh,
 		EOTSServerHandler: eh,
-		ValConfig:         cfg,
+		FpConfig:          cfg,
 		EOTSConfig:        eotsCfg,
-		Va:                valApp,
+		Fpa:               fpApp,
 		CovenantEmulator:  ce,
 		CovenanConfig:     covenantConfig,
 		EOTSClient:        eotsCli,
@@ -150,44 +150,44 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithValidator(t *testing.T, n int) (*TestManager, []*service.ValidatorInstance) {
+func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
 	tm := StartManager(t)
-	app := tm.Va
+	app := tm.Fpa
 
 	for i := 0; i < n; i++ {
-		valName := valNamePrefix + strconv.Itoa(i)
+		fpName := fpNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc, err := newDescription(moniker).Marshal()
 		require.NoError(t, err)
-		res, err := app.CreateValidator(valName, chainID, passphrase, hdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
-		_, err = app.RegisterValidator(res.ValPk.MarshalHex())
+		_, err = app.RegisterFinalityProvider(res.FpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingValidator(res.ValPk, passphrase)
+		err = app.StartHandlingFinalityProvider(res.FpPk, passphrase)
 		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(res.ValPk)
+		fpIns, err := app.GetFinalityProviderInstance(res.FpPk)
 		require.NoError(t, err)
-		require.True(t, valIns.IsRunning())
+		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
 
-		// check validators on Babylon side
+		// check finality providers on Babylon side
 		require.Eventually(t, func() bool {
-			vals, err := tm.BabylonClient.QueryValidators()
+			fps, err := tm.BabylonClient.QueryFinalityProviders()
 			if err != nil {
-				t.Logf("failed to query validtors from Babylon %s", err.Error())
+				t.Logf("failed to query finality providers from Babylon %s", err.Error())
 				return false
 			}
 
-			if len(vals) != i+1 {
+			if len(fps) != i+1 {
 				return false
 			}
 
-			for _, v := range vals {
-				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
+			for _, fp := range fps {
+				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
 					return false
 				}
-				if !v.Commission.Equal(sdkmath.LegacyZeroDec()) {
+				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
 					return false
 				}
 			}
@@ -196,16 +196,16 @@ func StartManagerWithValidator(t *testing.T, n int) (*TestManager, []*service.Va
 		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
 
-	valInsList := app.ListValidatorInstances()
-	require.Equal(t, n, len(valInsList))
+	fpInsList := app.ListFinalityProviderInstances()
+	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v validator(s)", len(valInsList))
+	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
 
-	return tm, valInsList
+	return tm, fpInsList
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
-	err := tm.Va.Stop()
+	err := tm.Fpa.Stop()
 	require.NoError(t, err)
 	err = tm.CovenantEmulator.Stop()
 	require.NoError(t, err)
@@ -216,21 +216,21 @@ func (tm *TestManager) Stop(t *testing.T) {
 	tm.EOTSServerHandler.Stop()
 }
 
-func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
 	require.Eventually(t, func() bool {
-		queriedValidators, err := tm.BabylonClient.QueryValidators()
+		queriedFps, err := tm.BabylonClient.QueryFinalityProviders()
 		if err != nil {
 			return false
 		}
-		return len(queriedValidators) == 1 && queriedValidators[0].BabylonPk.Equals(bbnPk)
+		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("the validator is successfully registered")
+	t.Logf("the finality-provider is successfully registered")
 }
 
-func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
+func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		return valIns.GetLastCommittedHeight() > 0
+		return fpIns.GetLastCommittedHeight() > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
@@ -256,14 +256,14 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 	return dels
 }
 
-func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*types.Delegation {
+func (tm *TestManager) WaitForFpNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*types.Delegation {
 	var dels []*types.Delegation
 	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
 	params, err := tm.BabylonClient.QueryStakingParams()
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
+		dels, err = tm.BabylonClient.QueryFinalityProviderDelegations(btcPk, 1000)
 		if err != nil {
 			return false
 		}
@@ -271,7 +271,7 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 			params.CovenantQuorum, bstypes.BTCDelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("the delegation is active, validators should start voting")
+	t.Logf("the delegation is active, finality providers should start voting")
 
 	return dels
 }
@@ -333,11 +333,11 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func (tm *TestManager) WaitForValVoteCast(t *testing.T, valIns *service.ValidatorInstance) uint64 {
+func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
 	var lastVotedHeight uint64
 	require.Eventually(t, func() bool {
-		if valIns.GetLastVotedHeight() > 0 {
-			lastVotedHeight = valIns.GetLastVotedHeight()
+		if fpIns.GetLastVotedHeight() > 0 {
+			lastVotedHeight = fpIns.GetLastVotedHeight()
 			return true
 		} else {
 			return false
@@ -366,10 +366,10 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	return blocks
 }
 
-func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
+func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
 	blockBeforeStop, err := tm.BabylonClient.QueryBestBlock()
 	require.NoError(t, err)
-	err = valIns.Stop()
+	err = fpIns.Stop()
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
@@ -381,20 +381,20 @@ func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, 
 		return headerAfterStop.Height >= uint64(n)+blockBeforeStop.Height
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Log("restarting the validator instance")
+	t.Log("restarting the finality-provider instance")
 
-	tm.ValConfig.PollerConfig.AutoChainScanningMode = true
-	err = valIns.Start()
+	tm.FpConfig.PollerConfig.AutoChainScanningMode = true
+	err = fpIns.Start()
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) GetValPrivKey(t *testing.T, valPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(valPk, passphrase)
+func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey {
+	record, err := tm.EOTSClient.KeyRecord(fpPk, passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64, params *types.StakingParams) *TestDelegationData {
+func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64, params *types.StakingParams) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// delegator BTC key pairs, staking tx and slashing tx
@@ -409,7 +409,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		t,
 		btcNetworkParams,
 		delBtcPrivKey,
-		validatorPks,
+		fpPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
 		stakingTime,
@@ -473,7 +473,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		t,
 		btcNetworkParams,
 		delBtcPrivKey,
-		validatorPks,
+		fpPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
 		wire.NewOutPoint(&stakingTxHash, 0),
@@ -504,7 +504,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 	_, err = tm.BabylonClient.CreateBTCDelegation(
 		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
-		validatorPks,
+		fpPks,
 		pop,
 		uint32(stakingTime),
 		stakingAmount,
@@ -525,7 +525,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		DelegatorKey:            delBtcPubKey,
 		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
 		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		ValidatorPks:            validatorPks,
+		FpPks:                   fpPks,
 		StakingTx:               testStakingInfo.StakingTx,
 		SlashingTx:              testStakingInfo.SlashingTx,
 		StakingTxInfo:           txInfo,
@@ -543,8 +543,8 @@ func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {
 	return p
 }
 
-func defaultValidatorConfig(keyringDir, homeDir string) *valcfg.Config {
-	cfg := valcfg.DefaultConfigWithHome(homeDir)
+func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
+	cfg := fpcfg.DefaultConfigWithHome(homeDir)
 
 	cfg.PollerConfig.AutoChainScanningMode = false
 	// babylon configs for sending transactions

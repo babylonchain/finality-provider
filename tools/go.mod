@@ -1,4 +1,4 @@
-module github.com/babylonchain/btc-validator/tools
+module github.com/babylonchain/finality-provider/tools
 
 go 1.21
 
@@ -212,7 +212,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231212092759-3504554e618b
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231213105136-11792cad8a84
 
 	// Downgraded to stable version see: https://github.com/cosmos/cosmos-sdk/pull/14952
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7

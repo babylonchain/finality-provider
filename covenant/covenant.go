@@ -2,25 +2,25 @@ package covenant
 
 import (
 	"fmt"
+	"github.com/avast/retry-go/v4"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"strings"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/btc-validator/keyring"
+	"github.com/babylonchain/finality-provider/keyring"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon/btcstaking"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 
-	"github.com/babylonchain/btc-validator/clientcontroller"
-	covcfg "github.com/babylonchain/btc-validator/covenant/config"
-	"github.com/babylonchain/btc-validator/types"
+	"github.com/babylonchain/finality-provider/clientcontroller"
+	covcfg "github.com/babylonchain/finality-provider/covenant/config"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 var (
@@ -164,7 +164,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 
 	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
 		btcDel.BtcPk,
-		btcDel.ValBtcPks,
+		btcDel.FpBtcPks,
 		ce.params.CovenantPks,
 		ce.params.CovenantQuorum,
 		uint16(btcDel.BtcUndelegation.UnbondingTime),
@@ -196,7 +196,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 
 	stakingInfo, err := btcstaking.BuildStakingInfo(
 		btcDel.BtcPk,
-		btcDel.ValBtcPks,
+		btcDel.FpBtcPks,
 		ce.params.CovenantPks,
 		ce.params.CovenantQuorum,
 		btcDel.GetStakingTime(),
@@ -212,8 +212,8 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 		return nil, err
 	}
 
-	covSigs := make([][]byte, 0, len(btcDel.ValBtcPks))
-	for _, valPk := range btcDel.ValBtcPks {
+	covSigs := make([][]byte, 0, len(btcDel.FpBtcPks))
+	for _, valPk := range btcDel.FpBtcPks {
 		encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
 		if err != nil {
 			return nil, err
@@ -258,9 +258,9 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*Add
 		return nil, err
 	}
 
-	covSlashingSigs := make([][]byte, 0, len(btcDel.ValBtcPks))
-	for _, valPk := range btcDel.ValBtcPks {
-		encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
+	covSlashingSigs := make([][]byte, 0, len(btcDel.FpBtcPks))
+	for _, fpPk := range btcDel.FpBtcPks {
+		encKey, err := asig.NewEncryptionKeyFromBTCPK(fpPk)
 		if err != nil {
 			return nil, err
 		}

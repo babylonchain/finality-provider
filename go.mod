@@ -1,4 +1,4 @@
-module github.com/babylonchain/btc-validator
+module github.com/babylonchain/finality-provider
 
 go 1.21
 
@@ -238,8 +238,8 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231212092759-3504554e618b
-	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231128092309-ad2ef0696dc1
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231213105136-11792cad8a84
+	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )

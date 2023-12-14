@@ -4,16 +4,16 @@
 package e2etest
 
 import (
+	"github.com/btcsuite/btcd/btcec/v2"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/validator/service"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 var (
@@ -21,110 +21,110 @@ var (
 	stakingAmount = int64(20000)
 )
 
-// TestValidatorLifeCycle tests the whole life cycle of a validator
+// TestFinalityProviderLifeCycle tests the whole life cycle of a finality-provider
 // creation -> registration -> randomness commitment ->
 // activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
-func TestValidatorLifeCycle(t *testing.T) {
-	tm, valInsList := StartManagerWithValidator(t, 1)
+func TestFinalityProviderLifeCycle(t *testing.T) {
+	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
-	valIns := valInsList[0]
+	fpIns := fpInsList[0]
 
 	params := tm.GetParams(t)
 
 	// check the public randomness is committed
-	tm.WaitForValPubRandCommitted(t, valIns)
+	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
 
 	// check the BTC delegation is active
-	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForFpNActiveDels(t, fpIns.GetBtcPkBIP340(), 1)
 
 	// check the last voted block is finalized
-	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
+	lastVotedHeight := tm.WaitForFpVoteCast(t, fpIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 }
 
-// TestDoubleSigning tests the attack scenario where the validator
+// TestDoubleSigning tests the attack scenario where the finality-provider
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
 func TestDoubleSigning(t *testing.T) {
-	tm, valInsList := StartManagerWithValidator(t, 1)
+	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
-	valIns := valInsList[0]
+	fpIns := fpInsList[0]
 
 	params := tm.GetParams(t)
 
 	// check the public randomness is committed
-	tm.WaitForValPubRandCommitted(t, valIns)
+	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
 
 	// check the BTC delegation is active
-	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForFpNActiveDels(t, fpIns.GetBtcPkBIP340(), 1)
 
 	// check the last voted block is finalized
-	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
+	lastVotedHeight := tm.WaitForFpVoteCast(t, fpIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
 	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
 
 	// attack: manually submit a finality vote over a conflicting block
-	// to trigger the extraction of validator's private key
+	// to trigger the extraction of finality-provider's private key
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
 		Height: finalizedBlocks[0].Height,
 		Hash:   datagen.GenRandomAppHash(r),
 	}
-	_, extractedKey, err := valIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
+	_, extractedKey, err := fpIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)
 	require.NotNil(t, extractedKey)
-	localKey := tm.GetValPrivKey(t, valIns.GetBtcPkBIP340().MustMarshal())
+	localKey := tm.GetFpPrivKey(t, fpIns.GetBtcPkBIP340().MustMarshal())
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 
 	t.Logf("the equivocation attack is successful")
 }
 
-// TestMultipleValidators tests starting with multiple validators
-func TestMultipleValidators(t *testing.T) {
+// TestMultipleFinalityProviders tests starting with multiple finality providers
+func TestMultipleFinalityProviders(t *testing.T) {
 	n := 3
-	tm, valInstances := StartManagerWithValidator(t, n)
+	tm, fpInstances := StartManagerWithFinalityProvider(t, n)
 	defer tm.Stop(t)
 
 	params := tm.GetParams(t)
 
-	// submit BTC delegations for each validator
-	for _, valIns := range valInstances {
+	// submit BTC delegations for each finality-provider
+	for _, fpIns := range fpInstances {
 		tm.Wg.Add(1)
-		go func(v *service.ValidatorInstance) {
+		go func(fpi *service.FinalityProviderInstance) {
 			defer tm.Wg.Done()
 			// check the public randomness is committed
-			tm.WaitForValPubRandCommitted(t, v)
+			tm.WaitForFpPubRandCommitted(t, fpi)
 
 			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{v.MustGetBtcPk()}, stakingTime, stakingAmount, params)
-		}(valIns)
+			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+		}(fpIns)
 	}
 	tm.Wg.Wait()
 
-	for _, valIns := range valInstances {
+	for _, fpIns := range fpInstances {
 		tm.Wg.Add(1)
-		go func(v *service.ValidatorInstance) {
+		go func(fpi *service.FinalityProviderInstance) {
 			defer tm.Wg.Done()
-			_ = tm.WaitForValNActiveDels(t, v.GetBtcPkBIP340(), 1)
-		}(valIns)
+			_ = tm.WaitForFpNActiveDels(t, fpi.GetBtcPkBIP340(), 1)
+		}(fpIns)
 	}
 	tm.Wg.Wait()
 
@@ -132,28 +132,28 @@ func TestMultipleValidators(t *testing.T) {
 	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
-// TestFastSync tests the fast sync process where the validator is terminated and restarted with fast sync
+// TestFastSync tests the fast sync process where the finality-provider is terminated and restarted with fast sync
 func TestFastSync(t *testing.T) {
-	tm, valInsList := StartManagerWithValidator(t, 1)
+	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
-	valIns := valInsList[0]
+	fpIns := fpInsList[0]
 
 	params := tm.GetParams(t)
 
 	// check the public randomness is committed
-	tm.WaitForValPubRandCommitted(t, valIns)
+	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{valIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
 
-	_ = tm.WaitForValNActiveDels(t, valIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForFpNActiveDels(t, fpIns.GetBtcPkBIP340(), 1)
 
 	// check the last voted block is finalized
-	lastVotedHeight := tm.WaitForValVoteCast(t, valIns)
+	lastVotedHeight := tm.WaitForFpVoteCast(t, fpIns)
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
@@ -162,9 +162,9 @@ func TestFastSync(t *testing.T) {
 	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, 1)
 
 	n := 3
-	// stop the validator for a few blocks then restart to trigger the fast sync
-	tm.ValConfig.FastSyncGap = uint64(n)
-	tm.StopAndRestartValidatorAfterNBlocks(t, n, valIns)
+	// stop the finality-provider for a few blocks then restart to trigger the fast sync
+	tm.FpConfig.FastSyncGap = uint64(n)
+	tm.StopAndRestartFpAfterNBlocks(t, n, fpIns)
 
 	// check there are n+1 blocks finalized
 	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, n+1)
