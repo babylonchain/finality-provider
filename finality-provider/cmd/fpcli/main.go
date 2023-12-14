@@ -10,7 +10,7 @@ import (
 )
 
 func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "[find] %v\n", err)
+	fmt.Fprintf(os.Stderr, "[fpd] %v\n", err)
 	os.Exit(1)
 }
 
@@ -31,8 +31,8 @@ const (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "fincli"
-	app.Usage = "Control plane for the Finality Provider Daemon (find)."
+	app.Name = "fpcli"
+	app.Usage = "Control plane for the Finality Provider Daemon (fpd)."
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  dbTypeFlag,
