@@ -267,7 +267,8 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 		if err != nil {
 			return false
 		}
-		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
+		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks,
+			params.CovenantQuorum, bstypes.BTCDelegationStatus_ACTIVE)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("the delegation is active, validators should start voting")
@@ -275,10 +276,10 @@ func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP34
 	return dels
 }
 
-func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
+func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, covenantQuorum uint32, status bstypes.BTCDelegationStatus) bool {
 	allChecked := true
 	for _, d := range dels {
-		s := getDelStatus(d, btcHeight, w)
+		s := getDelStatus(d, btcHeight, w, covenantQuorum)
 		if s != status {
 			allChecked = false
 		}
@@ -287,30 +288,27 @@ func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, statu
 	return allChecked
 }
 
-func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64) bstypes.BTCDelegationStatus {
-	if del.BtcUndelegation != nil {
-		if del.BtcUndelegation.CovenantSlashingSigs != nil &&
-			del.BtcUndelegation.CovenantUnbondingSigs != nil {
-			return bstypes.BTCDelegationStatus_UNBONDED
-		}
-		// If we received an undelegation but is still does not have all required signature,
-		// delegation receives UNBONING status.
-		// Voting power from this delegation is removed from the total voting power and now we
-		// are waiting for signatures from validator and covenant for delegation to become expired.
-		// For now we do not have any unbonding time on the consumer chain, only time lock on BTC chain
-		// we may consider adding unbonding time on the consumer chain later to avoid situation where
-		// we can lose to much voting power in to short time.
-		return bstypes.BTCDelegationStatus_UNBONDING
+func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64, covenantQuorum uint32) bstypes.BTCDelegationStatus {
+	if del.BtcUndelegation.DelegatorUnbondingSig != nil {
+		// this means the delegator has signed unbonding signature, and Babylon will consider
+		// this BTC delegation unbonded directly
+		return bstypes.BTCDelegationStatus_UNBONDED
 	}
 
-	if del.StartHeight <= btcHeight && btcHeight+w <= del.EndHeight {
-		if del.CovenantSigs != nil {
-			return bstypes.BTCDelegationStatus_ACTIVE
-		} else {
-			return bstypes.BTCDelegationStatus_PENDING
-		}
+	if btcHeight < del.StartHeight || btcHeight+w > del.EndHeight {
+		// staking tx's timelock has not begun, or is less than w BTC
+		// blocks left, or is expired
+		return bstypes.BTCDelegationStatus_UNBONDED
 	}
-	return bstypes.BTCDelegationStatus_UNBONDED
+
+	// at this point, BTC delegation has an active timelock, and Babylon is not
+	// aware of unbonding tx with delegator's signature
+	if del.HasCovenantQuorum(covenantQuorum) {
+		return bstypes.BTCDelegationStatus_ACTIVE
+	}
+
+	// no covenant quorum yet, pending
+	return bstypes.BTCDelegationStatus_PENDING
 }
 
 func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
@@ -466,6 +464,42 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 	)
 	require.NoError(t, err)
 
+	unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
+	unbondingValue := stakingAmount - 1000
+	stakingTxHash := testStakingInfo.StakingTx.TxHash()
+
+	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKey,
+		validatorPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		wire.NewOutPoint(&stakingTxHash, 0),
+		unbondingTime,
+		unbondingValue,
+		params.SlashingAddress.String(),
+		changeAddress.String(),
+		params.SlashingRate,
+	)
+
+	unbondingTxMsg := testUnbondingInfo.UnbondingTx
+
+	unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+
+	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
+		unbondingTxMsg,
+		0,
+		unbondingSlashingPathInfo.GetPkScriptPath(),
+		delBtcPrivKey,
+	)
+	require.NoError(t, err)
+
+	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
+	require.NoError(t, err)
+
 	// submit the BTC delegation to Babylon
 	_, err = tm.BabylonClient.CreateBTCDelegation(
 		delBabylonPubKey.(*secp256k1.PubKey),
@@ -476,7 +510,12 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		stakingAmount,
 		txInfo,
 		testStakingInfo.SlashingTx,
-		delegatorSig)
+		delegatorSig,
+		serializedUnbondingTx,
+		uint32(unbondingTime),
+		unbondingValue,
+		testUnbondingInfo.SlashingTx,
+		unbondingSig)
 	require.NoError(t, err)
 
 	t.Log("successfully submitted a BTC delegation")
@@ -496,61 +535,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, validatorPks []*btcec.P
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
 	}
-}
-
-func (tm *TestManager) InsertBTCUnbonding(
-	t *testing.T,
-	actualDel *types.Delegation,
-	delSK *btcec.PrivateKey,
-	changeAddress string,
-	params *types.StakingParams,
-) {
-	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(actualDel.StakingTxHex)
-	require.NoError(t, err)
-	stakingTxHash := stakingMsgTx.TxHash()
-
-	unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
-	unbondingValue := int64(actualDel.TotalSat - 1000)
-
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
-		r,
-		t,
-		btcNetworkParams,
-		delSK,
-		actualDel.ValBtcPks,
-		params.CovenantPks,
-		params.CovenantQuorum,
-		wire.NewOutPoint(&stakingTxHash, 0),
-		unbondingTime,
-		unbondingValue,
-		params.SlashingAddress.String(), changeAddress,
-		params.SlashingRate,
-	)
-
-	unbondingTxMsg := testUnbondingInfo.UnbondingTx
-
-	unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
-	require.NoError(t, err)
-
-	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
-		unbondingTxMsg,
-		0,
-		unbondingSlashingPathInfo.GetPkScriptPath(),
-		delSK,
-	)
-	require.NoError(t, err)
-
-	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
-	require.NoError(t, err)
-
-	_, err = tm.BabylonClient.CreateBTCUndelegation(
-		serializedUnbondingTx, uint32(unbondingTime), unbondingValue, testUnbondingInfo.SlashingTx, unbondingSig,
-	)
-	require.NoError(t, err)
-
-	t.Log("successfully submitted a BTC undelegation")
 }
 
 func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {

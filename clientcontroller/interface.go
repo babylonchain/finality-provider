@@ -79,22 +79,11 @@ type CovenantAPIs interface {
 	// SubmitCovenantSigs submits Covenant signatures to the consumer chain, each corresponding to
 	// a validator that the delegation is (re-)staked to
 	// it returns tx hash and error
-	SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string, sigs [][]byte) (*types.TxResponse, error)
-
-	// SubmitCovenantUnbondingSigs submits the Covenant signatures for undelegation to the consumer chain
-	// it returns tx hash and error
-	SubmitCovenantUnbondingSigs(
-		covPk *btcec.PublicKey,
-		stakingTxHash string,
-		unbondingSig *schnorr.Signature,
-		slashUnbondingSigs [][]byte,
-	) (*types.TxResponse, error)
+	SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string,
+		sigs [][]byte, unbondingSig *schnorr.Signature, unbondingSlashingSigs [][]byte) (*types.TxResponse, error)
 
 	// QueryPendingDelegations queries BTC delegations that are in status of pending
 	QueryPendingDelegations(limit uint64) ([]*types.Delegation, error)
-
-	// QueryUnbondingDelegations queries BTC delegations that are in status of unbonding
-	QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error)
 }
 
 func NewClientController(chainName string, bbnConfig *config.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {

@@ -131,7 +131,8 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 		"--chain-id=chain-test",
 		"--additional-sender-account",
 		fmt.Sprintf("--slashing-address=%s", slashingAddr),
-		fmt.Sprintf("--covenant-pk=%s", covenantPk.MarshalHex()),
+		fmt.Sprintf("--covenant-pks=%s", covenantPk.MarshalHex()),
+		"--covenant-quorum=1",
 	)
 
 	var stderr bytes.Buffer

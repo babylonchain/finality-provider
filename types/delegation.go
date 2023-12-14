@@ -1,6 +1,7 @@
 package types
 
 import (
+	bbn "github.com/babylonchain/babylon/types"
 	"math"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -40,7 +41,7 @@ type Delegation struct {
 // HasCovenantQuorum returns whether a delegation has sufficient sigs
 // from Covenant members to make a quorum
 func (d *Delegation) HasCovenantQuorum(quorum uint32) bool {
-	return uint32(len(d.CovenantSigs)) >= quorum
+	return uint32(len(d.CovenantSigs)) >= quorum && d.BtcUndelegation.HasAllSignatures(quorum)
 }
 
 func (d *Delegation) GetStakingTime() uint16 {
@@ -74,6 +75,8 @@ type Undelegation struct {
 	// (i.e., SK corresponding to covenant_pk in params)
 	// It must be provided after processing undelagate message by the consumer chain
 	CovenantUnbondingSigs []*CovenantSchnorrSigInfo
+	// The delegator signature for the unbonding tx
+	DelegatorUnbondingSig *bbn.BIP340Signature
 }
 
 func (ud *Undelegation) HasCovenantQuorumOnSlashing(quorum uint32) bool {

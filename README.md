@@ -83,7 +83,6 @@ $ make build
 ```
 
 The above will lead to a build directory having the following structure:
-
 ```bash
 $ ls build
     ├── eotsd
