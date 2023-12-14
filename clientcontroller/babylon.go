@@ -200,7 +200,7 @@ func (bc *BabylonController) CommitPubRandList(
 		ValBtcPk:    bbntypes.NewBIP340PubKeyFromBTCPK(valPk),
 		StartHeight: startHeight,
 		PubRandList: schnorrPubRandList,
-		Sig:         &bip340Sig,
+		Sig:         bip340Sig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -216,40 +216,19 @@ func (bc *BabylonController) CommitPubRandList(
 func (bc *BabylonController) SubmitCovenantSigs(
 	covPk *btcec.PublicKey,
 	stakingTxHash string,
-	sigs [][]byte,
-) (*types.TxResponse, error) {
-
-	msg := &btcstakingtypes.MsgAddCovenantSig{
-		Signer:        bc.mustGetTxSigner(),
-		Pk:            bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
-		StakingTxHash: stakingTxHash,
-		Sigs:          sigs,
-	}
-
-	res, err := bc.reliablySendMsg(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
-}
-
-// SubmitCovenantUnbondingSigs submits the Covenant signatures via a MsgAddCovenantUnbondingSigs to Babylon if the daemon runs in Covenant mode
-// it returns tx hash and error
-func (bc *BabylonController) SubmitCovenantUnbondingSigs(
-	covPk *btcec.PublicKey,
-	stakingTxHash string,
+	slashingSigs [][]byte,
 	unbondingSig *schnorr.Signature,
-	slashUnbondingSigs [][]byte,
+	unbondingSlashingSigs [][]byte,
 ) (*types.TxResponse, error) {
 	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
 
-	msg := &btcstakingtypes.MsgAddCovenantUnbondingSigs{
+	msg := &btcstakingtypes.MsgAddCovenantSigs{
 		Signer:                  bc.mustGetTxSigner(),
 		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash:           stakingTxHash,
-		UnbondingTxSig:          &bip340UnbondingSig,
-		SlashingUnbondingTxSigs: slashUnbondingSigs,
+		SlashingTxSigs:          slashingSigs,
+		UnbondingTxSig:          bip340UnbondingSig,
+		SlashingUnbondingTxSigs: unbondingSlashingSigs,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -306,10 +285,6 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(valPk *btcec.PublicKey, blo
 
 func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
-}
-
-func (bc *BabylonController) QueryUnbondingDelegations(limit uint64) ([]*types.Delegation, error) {
-	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_UNBONDING, limit)
 }
 
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
@@ -643,6 +618,7 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
 		UnbondingTime:         undel.UnbondingTime,
+		DelegatorUnbondingSig: undel.DelegatorUnbondingSig,
 	}
 }
 
@@ -656,23 +632,33 @@ func (bc *BabylonController) CreateBTCDelegation(
 	stakingValue int64,
 	stakingTxInfo *btcctypes.TransactionInfo,
 	slashingTx *btcstakingtypes.BTCSlashingTx,
-	delSig *bbntypes.BIP340Signature,
+	delSlashingSig *bbntypes.BIP340Signature,
+	unbondingTx []byte,
+	unbondingTime uint32,
+	unbondingValue int64,
+	unbondingSlashingTx *btcstakingtypes.BTCSlashingTx,
+	delUnbondingSlashingSig *bbntypes.BIP340Signature,
 ) (*types.TxResponse, error) {
 	valBtcPks := make([]bbntypes.BIP340PubKey, 0, len(valPks))
 	for _, v := range valPks {
 		valBtcPks = append(valBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
 	}
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:       bc.mustGetTxSigner(),
-		BabylonPk:    delBabylonPk,
-		BtcPk:        delBtcPk,
-		ValBtcPkList: valBtcPks,
-		Pop:          pop,
-		StakingTime:  stakingTime,
-		StakingValue: stakingValue,
-		StakingTx:    stakingTxInfo,
-		SlashingTx:   slashingTx,
-		DelegatorSig: delSig,
+		Signer:                        bc.mustGetTxSigner(),
+		BabylonPk:                     delBabylonPk,
+		Pop:                           pop,
+		BtcPk:                         delBtcPk,
+		ValBtcPkList:                  valBtcPks,
+		StakingTime:                   stakingTime,
+		StakingValue:                  stakingValue,
+		StakingTx:                     stakingTxInfo,
+		SlashingTx:                    slashingTx,
+		DelegatorSlashingSig:          delSlashingSig,
+		UnbondingTx:                   unbondingTx,
+		UnbondingTime:                 unbondingTime,
+		UnbondingValue:                unbondingValue,
+		UnbondingSlashingTx:           unbondingSlashingTx,
+		DelegatorUnbondingSlashingSig: delUnbondingSlashingSig,
 	}
 
 	res, err := bc.reliablySendMsg(msg)
@@ -681,31 +667,6 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash}, nil
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) CreateBTCUndelegation(
-	unbondingTx []byte,
-	unbondingTime uint32,
-	unbondingValue int64,
-	slashingTx *btcstakingtypes.BTCSlashingTx,
-	delSig *bbntypes.BIP340Signature,
-) (*provider.RelayerTxResponse, error) {
-	msg := &btcstakingtypes.MsgBTCUndelegate{
-		Signer:               bc.mustGetTxSigner(),
-		UnbondingTx:          unbondingTx,
-		UnbondingTime:        unbondingTime,
-		UnbondingValue:       unbondingValue,
-		SlashingTx:           slashingTx,
-		DelegatorSlashingSig: delSig,
-	}
-
-	res, err := bc.reliablySendMsg(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
 }
 
 // Insert BTC block header using rpc client

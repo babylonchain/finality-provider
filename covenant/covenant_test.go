@@ -11,7 +11,6 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -94,8 +93,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			StakingOutputIdx: 0,
 			SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),
 		}
-
-		// generate covenant sigs
+		// generate covenant staking sigs
 		slashingSpendInfo, err := testInfo.StakingInfo.SlashingPathSpendInfo()
 		require.NoError(t, err)
 		covSigs := make([][]byte, 0, len(valPks))
@@ -111,18 +109,6 @@ func FuzzAddCovenantSig(f *testing.F) {
 			require.NoError(t, err)
 			covSigs = append(covSigs, covenantSig.MustMarshal())
 		}
-
-		// check the sigs are expected
-		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().SubmitCovenantSigs(
-			covKeyPair.PublicKey,
-			testInfo.StakingTx.TxHash().String(),
-			covSigs,
-		).
-			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err := ce.AddCovenantSignature(btcDel)
-		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
 
 		// generate undelegation
 		unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
@@ -160,6 +146,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		btcDel.BtcUndelegation = undel
 		stakingTxUnbondingPathInfo, err := testInfo.StakingInfo.UnbondingPathSpendInfo()
 		require.NoError(t, err)
+		// generate covenant unbonding sigs
 		unbondingCovSig, err := btcstaking.SignTxWithOneScriptSpendInputStrict(
 			unbondingTxMsg,
 			testInfo.StakingTx,
@@ -168,6 +155,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			covKeyPair.PrivateKey,
 		)
 		require.NoError(t, err)
+		// generate covenant unbonding slashing sigs
 		unbondingCovSlashingSigs := make([][]byte, 0, len(valPks))
 		for _, valPk := range valPks {
 			encKey, err := asig.NewEncryptionKeyFromBTCPK(valPk)
@@ -184,17 +172,16 @@ func FuzzAddCovenantSig(f *testing.F) {
 		}
 
 		// check the sigs are expected
-		expectedTxHash = testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().QueryUnbondingDelegations(gomock.Any()).
-			Return([]*types.Delegation{btcDel}, nil).AnyTimes()
-		mockClientController.EXPECT().SubmitCovenantUnbondingSigs(
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
+		mockClientController.EXPECT().SubmitCovenantSigs(
 			covKeyPair.PublicKey,
 			testInfo.StakingTx.TxHash().String(),
+			covSigs,
 			unbondingCovSig,
 			unbondingCovSlashingSigs,
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err = ce.AddCovenantUnbondingSignatures(btcDel)
+		res, err := ce.AddCovenantSignature(btcDel)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
 	})
