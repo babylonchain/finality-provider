@@ -108,22 +108,22 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	// submit BTC delegations for each finality-provider
 	for _, fpIns := range fpInstances {
 		tm.Wg.Add(1)
-		go func(v *service.FinalityProviderInstance) {
+		go func(fpi *service.FinalityProviderInstance) {
 			defer tm.Wg.Done()
 			// check the public randomness is committed
-			tm.WaitForFpPubRandCommitted(t, v)
+			tm.WaitForFpPubRandCommitted(t, fpi)
 
 			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{v.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.MustGetBtcPk()}, stakingTime, stakingAmount, params)
 		}(fpIns)
 	}
 	tm.Wg.Wait()
 
 	for _, fpIns := range fpInstances {
 		tm.Wg.Add(1)
-		go func(v *service.FinalityProviderInstance) {
+		go func(fpi *service.FinalityProviderInstance) {
 			defer tm.Wg.Done()
-			_ = tm.WaitForFpNActiveDels(t, v.GetBtcPkBIP340(), 1)
+			_ = tm.WaitForFpNActiveDels(t, fpi.GetBtcPkBIP340(), 1)
 		}(fpIns)
 	}
 	tm.Wg.Wait()

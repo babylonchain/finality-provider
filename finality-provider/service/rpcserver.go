@@ -135,7 +135,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		return nil, err
 	}
 
-	v, err := r.app.GetFinalityProviderInstance(fpPk)
+	fpi, err := r.app.GetFinalityProviderInstance(fpPk)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		Hash:   req.AppHash,
 	}
 
-	txRes, privKey, err := v.TestSubmitFinalitySignatureAndExtractPrivKey(b)
+	txRes, privKey, err := fpi.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ import (
 var startCommand = cli.Command{
 	Name:        "start",
 	Usage:       "fpd start",
-	Description: "Start the finality-provider daemon. Note that eotsd should be started beforehand",
+	Description: "Start the finality-provider app. Note that eotsd should be started beforehand",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  passphraseFlag,
@@ -60,10 +60,10 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create finality-provider app: %v", err)
 	}
 
-	// only start the daemon without starting any finality-provider instance
+	// only start the app without starting any finality-provider instance
 	// as there might be no finality-provider registered yet
 	if err := fpApp.Start(); err != nil {
-		return fmt.Errorf("failed to start the finality-provider daemon: %w", err)
+		return fmt.Errorf("failed to start the finality-provider app: %w", err)
 	}
 
 	if fpPkStr != "" {

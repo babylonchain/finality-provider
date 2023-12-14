@@ -63,21 +63,21 @@ func NewFinalityProviderInstance(
 	errChan chan<- *CriticalError,
 	logger *zap.Logger,
 ) (*FinalityProviderInstance, error) {
-	v, err := s.GetStoreFinalityProvider(fpPk.MustMarshal())
+	sfp, err := s.GetStoreFinalityProvider(fpPk.MustMarshal())
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrive the finality-provider %s from DB: %w", v.GetBabylonPkHexString(), err)
+		return nil, fmt.Errorf("failed to retrive the finality-provider %s from DB: %w", sfp.GetBabylonPkHexString(), err)
 	}
 
 	// ensure the finality-provider has been registered
-	if v.Status < proto.FinalityProviderStatus_REGISTERED {
-		return nil, fmt.Errorf("the finality-provider %s has not been registered", v.KeyName)
+	if sfp.Status < proto.FinalityProviderStatus_REGISTERED {
+		return nil, fmt.Errorf("the finality-provider %s has not been registered", sfp.KeyName)
 	}
 
 	return &FinalityProviderInstance{
-		btcPk: v.MustGetBIP340BTCPK(),
-		bbnPk: v.GetBabylonPK(),
+		btcPk: sfp.MustGetBIP340BTCPK(),
+		bbnPk: sfp.GetBabylonPK(),
 		state: &fpState{
-			fp: v,
+			fp: sfp,
 			s:  s,
 		},
 		cfg:             cfg,

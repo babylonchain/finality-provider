@@ -186,7 +186,6 @@ func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(he
 }
 
 func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
-	// TODO ignore pass phrase for now
 	record, err := fp.em.KeyRecord(fp.btcPk.MustMarshal(), fp.passphrase)
 	if err != nil {
 		return nil, err

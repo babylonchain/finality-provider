@@ -48,7 +48,7 @@ func (d *Delegation) GetStakingTime() uint16 {
 	diff := d.EndHeight - d.StartHeight
 
 	if diff > math.MaxUint16 {
-		// Invalid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
+		// In a valid delegation, EndHeight is always greater than StartHeight and it is always uint16 value
 		panic("invalid delegation in database")
 	}
 

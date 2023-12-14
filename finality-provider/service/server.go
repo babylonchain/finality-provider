@@ -29,11 +29,11 @@ type Server struct {
 }
 
 // NewFinalityproviderServer creates a new server with the given config.
-func NewFinalityProviderServer(cfg *fpcfg.Config, l *zap.Logger, v *FinalityProviderApp, sig signal.Interceptor) *Server {
+func NewFinalityProviderServer(cfg *fpcfg.Config, l *zap.Logger, fpa *FinalityProviderApp, sig signal.Interceptor) *Server {
 	return &Server{
 		cfg:         cfg,
 		logger:      l,
-		rpcServer:   newRPCServer(v),
+		rpcServer:   newRPCServer(fpa),
 		interceptor: sig,
 		quit:        make(chan struct{}, 1),
 	}
