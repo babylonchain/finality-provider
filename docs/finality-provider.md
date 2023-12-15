@@ -88,7 +88,22 @@ KeyDirectory = /path/to/fpd/home
 
 To see the complete list of configuration options, check the `fpd.conf` file.
 
-## 3. Starting the Finality Provider Daemon
+## 3. Add key for the consumer chain
+
+Before starting the Finality Provider Daemon, you need to add the key for interacting
+with the consumer chain (currently only BabylonChain). This key will be used to bond
+with the EOTS key of the finality provider you want to create in [step 5](#5-create-and-register-a-finality-provider).
+
+Use the following command to add the key:
+
+```bash
+$ fpd keys add --key-name my-finality-provider --chain-id chain-test
+```
+
+After executing the above command, the key name will be saved in the config file
+created in [step](#2-configuration).
+
+## 4. Starting the Finality Provider Daemon
 
 You can start the finality provider daemon using the following command:
 
@@ -114,7 +129,7 @@ time="2023-11-26T16:37:00-05:00" level=info msg="Finality Provider Daemon is ful
 All the available CLI options can be viewed using the `--help` flag. These options
 can also be set in the configuration file.
 
-## 4. Create and Register a Finality Provider
+## 5. Create and Register a Finality Provider
 
 A finality provider named `my-finality-provider` can be created in the internal
 storage ([bolt db](https://github.com/etcd-io/bbolt))
@@ -122,6 +137,7 @@ through the `fpcli create-finality-provider` command.
 This finality provider is associated with a BTC public key which
 serves as its unique identifier and
 a Babylon account to which staking rewards will be directed.
+The key name must be the same as the key added in [step](#3-add-key-for-the-consumer-chain).
 
 ```bash
 $ fpcli create-finality-provider --key-name my-finality-provider \

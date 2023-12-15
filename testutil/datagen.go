@@ -2,11 +2,14 @@ package testutil
 
 import (
 	"encoding/hex"
-	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -127,6 +130,10 @@ func GenStoredFinalityProvider(r *rand.Rand, t *testing.T, app *service.Finality
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
 	chainID := GenRandomHexStr(r, 4)
+
+	cfg := app.GetConfig()
+	_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, keyName, keyring.BackendTest, passphrase, hdPath)
+	require.NoError(t, err)
 
 	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, EmptyDescription(), ZeroCommissionRate())
 	require.NoError(t, err)

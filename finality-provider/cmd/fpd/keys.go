@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 
@@ -12,12 +11,17 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 )
 
+type KeyOutput struct {
+	Name     string `json:"name" yaml:"name"`
+	Address  string `json:"address" yaml:"address"`
+	Mnemonic string `json:"mnemonic,omitempty" yaml:"mnemonic"`
+}
+
 var keysCommands = []cli.Command{
 	{
-		Name:      "daemon",
-		ShortName: "dn",
-		Usage:     "More advanced commands which require staker daemon to be running.",
-		Category:  "Daemon commands",
+		Name:     "keys",
+		Usage:    "Command sets of managing keys for interacting the consumer chain.",
+		Category: "Daemon commands",
 		Subcommands: []cli.Command{
 			addKeyCmd,
 		},
@@ -88,7 +92,7 @@ func addKey(ctx *cli.Context) error {
 	}
 
 	printRespJSON(
-		keys.KeyOutput{
+		KeyOutput{
 			Name:     keyName,
 			Address:  keyInfo.Address,
 			Mnemonic: keyInfo.Mnemonic,
@@ -97,7 +101,7 @@ func addKey(ctx *cli.Context) error {
 
 	// write the updated config into the config file
 	cfg.BabylonConfig.Key = keyName
-	fileParser := flags.NewParser(&cfg, flags.Default)
+	fileParser := flags.NewParser(cfg, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }
@@ -109,5 +113,5 @@ func printRespJSON(resp interface{}) {
 		return
 	}
 
-	fmt.Printf("New key is created:\n%s\n", jsonBytes)
+	fmt.Printf("New key is created (mnemonic should be kept in a safe place for recovery):\n%s\n", jsonBytes)
 }

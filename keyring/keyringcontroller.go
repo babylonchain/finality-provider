@@ -88,9 +88,6 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 		return nil, err
 	}
 
-	// TODO use a better way to remind the user to keep it
-	fmt.Printf("Generated mnemonic for the finality provider %s is:\n%s\n", kc.fpName, mnemonic)
-
 	// we need to repeat the passphrase to mock the reentry
 	kc.input.Reset(passphrase + "\n" + passphrase)
 	record, err := kc.kr.NewAccount(kc.fpName, mnemonic, passphrase, hdPath, algo)
