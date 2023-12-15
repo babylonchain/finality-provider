@@ -93,7 +93,7 @@ To see the complete list of configuration options, check the `fpd.conf` file.
 You can start the finality provider daemon using the following command:
 
 ```bash
-$ fpd --home /path/to/fpd/home
+$ fpd start --home /path/to/fpd/home
 ```
 
 This will start the RPC server at the address specified in the configuration under
@@ -101,7 +101,7 @@ the `RawRPCListeners` field. A custom address can also be specified using
 the `--rpclisten` flag.
 
 ```bash
-$ fpd --rpclisten 'localhost:8082'
+$ fpd start --rpclisten 'localhost:8082'
 
 time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager at 127.0.0.1:8081"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting Finality Provider App"

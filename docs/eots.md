@@ -87,7 +87,7 @@ To see the complete list of configuration options, check the `eotsd.conf` file.
 You can start the EOTS daemon using the following command:
 
 ```bash
-$ eotsd --home /path/to/eotsd/home
+$ eotsd start --home /path/to/eotsd/home
 ```
 
 This will start the rpc server at the address specified in the configuration under
@@ -95,7 +95,7 @@ the `RpcListener` field. It can also be overridden with custom address using
 the `--rpclistener` flag.
 
 ```bash
-$ eotsd --rpclistener 'localhost:8081'
+$ eotsd start --rpclistener 'localhost:8081'
 
 time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening on 127.0.0.1:8081"
 time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"
