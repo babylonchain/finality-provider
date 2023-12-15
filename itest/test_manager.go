@@ -1,7 +1,6 @@
 package e2etest
 
 import (
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -10,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -159,6 +160,9 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc, err := newDescription(moniker).Marshal()
+		require.NoError(t, err)
+		cfg := app.GetConfig()
+		_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath)
 		require.NoError(t, err)
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
