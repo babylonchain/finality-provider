@@ -59,35 +59,54 @@ $ git checkout <release-tag>
 
 #### Building and installing the binary
 
-```bash
-# cd into the project directory
-$ cd finality-provider
+At the top-level directory of the project
 
-# installs the compiled binaries to your
-# $GOPATH/bin directory allowing access
-# from anywhere on your system
+```bash
 $ make install 
 ```
 
-The above will produce the following binaries:
+The above command will build and install the following binaries to
+`$GOPATH/bin`:
 
 - `eotsd`: The daemon program for the EOTS manager.
 - `fpd`: The daemon program for the finality-provider.
 - `fpcli`: The CLI tool for interacting with the finality-provider daemon.
 
-To build locally,
+If your shell cannot find the installed binaries, make sure `$GOPATH/bin` is in
+the `$PATH` of your shell. Usually these commands will do the job
 
 ```bash
-$ cd finality-provider # cd into the project directory
+export PATH=$HOME/go/bin:$PATH
+echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
+```
+
+To build without installing,
+
+```bash
 $ make build
 ```
 
-The above will lead to a build directory having the following structure:
+The above command will put the built binaries in a build directory with the
+following structure:
 ```bash
 $ ls build
     ├── eotsd
     ├── fpcli
     └── fpd
+```
+
+If Go complains that it cannot retrieve some of the dependencies, one reason
+could be that these repositories are private. Try following the instructions
+[here](https://go.dev/doc/faq#git_https).
+
+Another common issue with compiling is that some of the dependencies have
+components written in C. If a C toolchain is absent, the Go compiler will throw
+errors. (Most likely it will complain about undefined names/types.) Make sure a
+C toolchain (for example, GCC or Clang) is available.  On Ubuntu, this can be
+installed by running
+
+```bash
+sudo apt install build-essential
 ```
 
 ## 3. Setting up a finality provider
