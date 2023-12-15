@@ -17,6 +17,7 @@ func main() {
 	app.Name = "fpd"
 	app.Usage = "Finality Provider Daemon (fpd)."
 	app.Commands = append(app.Commands, startCommand, initCommand)
+	app.Commands = append(app.Commands, keysCommands...)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)

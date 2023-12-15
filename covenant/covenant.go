@@ -2,11 +2,12 @@ package covenant
 
 import (
 	"fmt"
-	"github.com/avast/retry-go/v4"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/avast/retry-go/v4"
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	"go.uber.org/zap"
 
@@ -345,7 +346,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 }
 
-func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyPair, error) {
+func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyInfo, error) {
 	sdkCtx, err := keyring.CreateClientCtx(
 		keyringDir, chainID,
 	)

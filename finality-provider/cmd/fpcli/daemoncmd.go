@@ -17,6 +17,7 @@ import (
 
 const (
 	fpdDaemonAddressFlag = "daemon-address"
+	homeFlag             = "home"
 	keyNameFlag          = "key-name"
 	fpBTCPkFlag          = "btc-pk"
 	blockHeightFlag      = "height"
@@ -86,6 +87,11 @@ var createFpDaemonCmd = cli.Command{
 			Value: defaultFpdDaemonAddress,
 		},
 		cli.StringFlag{
+			Name:  homeFlag,
+			Usage: "The home path of the finality provider daemon (fpd)",
+			Value: fpcfg.DefaultFpdDir,
+		},
+		cli.StringFlag{
 			Name:     keyNameFlag,
 			Usage:    "The unique name of the finality provider key",
 			Required: true,
@@ -144,12 +150,22 @@ func createFpDaemon(ctx *cli.Context) error {
 
 	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid commission rate: %w", err)
 	}
 
 	description, err := getDescriptionFromContext(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid description: %w", err)
+	}
+
+	// we add the following check to ensure that the chain key is created
+	// beforehand
+	cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
+	if err != nil {
+		return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
+	}
+	if cfg.BabylonConfig.Key != ctx.String(keyNameFlag) {
+		return fmt.Errorf("the key name should be consistent with the one in the config")
 	}
 
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)

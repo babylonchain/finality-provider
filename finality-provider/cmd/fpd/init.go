@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/util"
+	"path/filepath"
+
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
-	"path/filepath"
+
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 var initCommand = cli.Command{

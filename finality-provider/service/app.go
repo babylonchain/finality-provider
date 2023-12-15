@@ -3,9 +3,11 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/babylonchain/finality-provider/util"
 	"strings"
 	"sync"
+
+	"github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/util"
 
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -316,38 +318,38 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 }
 
 func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
-	fpPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
-	if err != nil {
-		return nil, err
-	}
-
-	fpPk, err := bbntypes.NewBIP340PubKey(fpPkBytes)
-	if err != nil {
-		return nil, err
-	}
-
+	// 1. check if the chain key exists
 	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
 	if err != nil {
 		return nil, err
 	}
-
-	keyPair, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+	chainSk, err := kr.GetChainPrivKey(req.passPhrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create chain key for the finality-provider: %w", err)
+		return nil, fmt.Errorf("the chain key does not exist, should create the chain key first: %w", err)
 	}
-	pk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
+	chainPk := &secp256k1.PubKey{Key: chainSk.PubKey().Bytes()}
 
+	// 2. create EOTS key
+	fpPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
+	if err != nil {
+		return nil, err
+	}
+	fpPk, err := bbntypes.NewBIP340PubKey(fpPkBytes)
+	if err != nil {
+		return nil, err
+	}
 	fpRecord, err := app.eotsManager.KeyRecord(fpPk.MustMarshal(), req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get finality-provider record: %w", err)
 	}
 
+	// 3. create proof-of-possession
 	pop, err := kr.CreatePop(fpRecord.PrivKey, req.passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proof-of-possession of the finality-provider: %w", err)
 	}
 
-	fp := fpstore.NewStoreFinalityProvider(pk, fpPk, req.keyName, req.chainID, pop, req.description, req.commission)
+	fp := fpstore.NewStoreFinalityProvider(chainPk, fpPk, req.keyName, req.chainID, pop, req.description, req.commission)
 
 	if err := app.fps.SaveFinalityProvider(fp); err != nil {
 		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
@@ -355,6 +357,7 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 
 	app.logger.Info("successfully created a finality-provider",
 		zap.String("btc_pk", fpPk.MarshalHex()),
+		zap.String("chain_pk", chainPk.String()),
 		zap.String("key_name", req.keyName),
 	)
 
@@ -410,6 +413,26 @@ func (app *FinalityProviderApp) eventLoop() {
 			return
 		}
 	}
+}
+
+func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyInfo, error) {
+	sdkCtx, err := fpkr.CreateClientCtx(
+		keyringDir, chainID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	krController, err := fpkr.NewChainKeyringController(
+		sdkCtx,
+		keyName,
+		backend,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return krController.CreateChainKey(passphrase, hdPath)
 }
 
 func (app *FinalityProviderApp) registrationLoop() {
