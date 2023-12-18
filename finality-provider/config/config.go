@@ -46,7 +46,7 @@ const (
 var (
 	//   C:\Users\<username>\AppData\Local\ on Windows
 	//   ~/.fpd on Linux
-	//   ~/Library/Application Support/Fpd on MacOS
+	//   ~/Users/<username>/Library/Application Support/Fpd on MacOS
 	DefaultFpdDir = btcutil.AppDataDir("fpd", false)
 
 	defaultBTCNetParams       = chaincfg.SimNetParams

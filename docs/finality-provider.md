@@ -47,7 +47,7 @@ $ ls /path/to/fpd/home/
 If the `--home` flag is not specified, then the default home directory
 will be used. For different operating systems, those are:
 
-- **MacOS** `~/Library/Application Support/Fpd`
+- **MacOS** `~/Users/<username>/Library/Application Support/Fpd`
 - **Linux** `~/.Fpd`
 - **Windows** `C:\Users\<username>\AppData\Local\Fpd`
 

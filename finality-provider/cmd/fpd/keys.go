@@ -119,5 +119,6 @@ func printRespJSON(resp interface{}) {
 		return
 	}
 
-	fmt.Printf("New key is created (mnemonic should be kept in a safe place for recovery):\n%s\n", jsonBytes)
+	fmt.Printf("New key for the consumer chain is created "+
+		"(mnemonic should be kept in a safe place for recovery):\n%s\n", jsonBytes)
 }
