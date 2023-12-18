@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
 )
 
 type KeyOutput struct {
@@ -80,7 +80,7 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load the config from %s: %w", fpcfg.ConfigFile(homePath), err)
 	}
 
-	keyInfo, err := types.CreateChainKey(
+	keyInfo, err := service.CreateChainKey(
 		homePath,
 		chainID,
 		keyName,
