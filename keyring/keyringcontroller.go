@@ -70,7 +70,7 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.KeyPair, error) {
+func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.ChainKeyInfo, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
@@ -88,9 +88,6 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 		return nil, err
 	}
 
-	// TODO use a better way to remind the user to keep it
-	fmt.Printf("Generated mnemonic for the finality provider %s is:\n%s\n", kc.fpName, mnemonic)
-
 	// we need to repeat the passphrase to mock the reentry
 	kc.input.Reset(passphrase + "\n" + passphrase)
 	record, err := kc.kr.NewAccount(kc.fpName, mnemonic, passphrase, hdPath, algo)
@@ -103,7 +100,12 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 	switch v := privKey.(type) {
 	case *sdksecp256k1.PrivKey:
 		sk, pk := btcec.PrivKeyFromBytes(v.Key)
-		return &types.KeyPair{PublicKey: pk, PrivateKey: sk}, nil
+		return &types.ChainKeyInfo{
+			Name:       kc.fpName,
+			PublicKey:  pk,
+			PrivateKey: sk,
+			Mnemonic:   mnemonic,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}

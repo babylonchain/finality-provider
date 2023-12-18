@@ -17,7 +17,7 @@ import (
 
 const (
 	fpdDaemonAddressFlag = "daemon-address"
-	keyNameFlag          = "key-name"
+	homeFlag             = "home"
 	fpBTCPkFlag          = "btc-pk"
 	blockHeightFlag      = "height"
 	appHashFlag          = "app-hash"
@@ -86,9 +86,9 @@ var createFpDaemonCmd = cli.Command{
 			Value: defaultFpdDaemonAddress,
 		},
 		cli.StringFlag{
-			Name:     keyNameFlag,
-			Usage:    "The unique name of the finality provider key",
-			Required: true,
+			Name:  homeFlag,
+			Usage: "The home path of the finality provider daemon (fpd)",
+			Value: fpcfg.DefaultFpdDir,
 		},
 		cli.StringFlag{
 			Name:     chainIdFlag,
@@ -144,12 +144,23 @@ func createFpDaemon(ctx *cli.Context) error {
 
 	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid commission rate: %w", err)
 	}
 
 	description, err := getDescriptionFromContext(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid description: %w", err)
+	}
+
+	// we add the following check to ensure that the chain key is created
+	// beforehand
+	cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
+	if err != nil {
+		return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
+	}
+	keyName := cfg.BabylonConfig.Key
+	if keyName == "" {
+		return fmt.Errorf("the key in config is empty")
 	}
 
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
@@ -160,7 +171,7 @@ func createFpDaemon(ctx *cli.Context) error {
 
 	info, err := client.CreateFinalityProvider(
 		context.Background(),
-		ctx.String(keyNameFlag),
+		keyName,
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
@@ -268,7 +279,7 @@ var registerFpDaemonCmd = cli.Command{
 	Name:      "register-finality-provider",
 	ShortName: "rfp",
 	Usage:     "Register a created finality provider to Babylon.",
-	UsageText: fmt.Sprintf("register-finality-provider --%s [key-name]", keyNameFlag),
+	UsageText: fmt.Sprintf("register-finality-provider --%s [btc-pk]", fpBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  fpdDaemonAddressFlag,

@@ -1,8 +1,6 @@
 package service_test
 
 import (
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/util"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -10,16 +8,20 @@ import (
 	"testing"
 	"time"
 
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/util"
+
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/keyring"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
-	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/eotsmanager"
@@ -132,9 +134,9 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	btcPk, err := bbntypes.NewBIP340PubKey(btcPkBytes)
 	require.NoError(t, err)
-	keyPair, err := kc.CreateChainKey(passphrase, hdPath)
+	keyInfo, err := kc.CreateChainKey(passphrase, hdPath)
 	require.NoError(t, err)
-	bbnPk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
+	bbnPk := &secp256k1.PubKey{Key: keyInfo.PublicKey.SerializeCompressed()}
 	fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 	require.NoError(t, err)
 	pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)

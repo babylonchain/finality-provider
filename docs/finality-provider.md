@@ -47,17 +47,17 @@ $ ls /path/to/fpd/home/
 If the `--home` flag is not specified, then the default home directory
 will be used. For different operating systems, those are:
 
-- **MacOS** `~/Library/Application Support/Fpd`
+- **MacOS** `~/Users/<username>/Library/Application Support/Fpd`
 - **Linux** `~/.Fpd`
 - **Windows** `C:\Users\<username>\AppData\Local\Fpd`
 
 Below are some important parameters of the `fpd.conf` file.
 
 **Note**:
-The finality provider daemon requires the existence of a keyring that contains
-an account with Babylon token funds to pay for transactions.
-The configuration below requires to point to the path where this keyring is stored
-and specify the account name under the `KeyDirectory` and `Key` config values respectively.
+The configuration below requires to point to the path where this keyring is stored `KeyDirectory`.
+This `Key` field stores the key name used for interacting with the consumer chain
+and will be specified along with the `KeyringBackend` field in the next [step](#3-add-key-for-the-consumer-chain).
+So we can ignore the setting of the two fields in this step.
 
 ```bash
 # Address of the EOTS Daemon
@@ -88,7 +88,23 @@ KeyDirectory = /path/to/fpd/home
 
 To see the complete list of configuration options, check the `fpd.conf` file.
 
-## 3. Starting the Finality Provider Daemon
+## 3. Add key for the consumer chain
+
+The finality provider daemon requires the existence of a keyring that contains
+an account with Babylon token funds to pay for transactions.
+This key will be also used to bond
+with the EOTS key of the finality provider you want to create in [step 5](#5-create-and-register-a-finality-provider).
+
+Use the following command to add the key:
+
+```bash
+$ fpd keys add --key-name my-finality-provider --chain-id chain-test
+```
+
+After executing the above command, the key name will be saved in the config file
+created in [step](#2-configuration).
+
+## 4. Starting the Finality Provider Daemon
 
 You can start the finality provider daemon using the following command:
 
@@ -114,7 +130,7 @@ time="2023-11-26T16:37:00-05:00" level=info msg="Finality Provider Daemon is ful
 All the available CLI options can be viewed using the `--help` flag. These options
 can also be set in the configuration file.
 
-## 4. Create and Register a Finality Provider
+## 5. Create and Register a Finality Provider
 
 A finality provider named `my-finality-provider` can be created in the internal
 storage ([bolt db](https://github.com/etcd-io/bbolt))
@@ -122,6 +138,7 @@ through the `fpcli create-finality-provider` command.
 This finality provider is associated with a BTC public key which
 serves as its unique identifier and
 a Babylon account to which staking rewards will be directed.
+The key name must be the same as the key added in [step](#3-add-key-for-the-consumer-chain).
 
 ```bash
 $ fpcli create-finality-provider --key-name my-finality-provider \

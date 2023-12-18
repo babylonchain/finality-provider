@@ -1,11 +1,12 @@
 package keyring_test
 
 import (
-	"go.uber.org/zap"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"go.uber.org/zap"
 
 	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 
@@ -52,9 +53,9 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		btcPk, err := types.NewBIP340PubKey(btcPkBytes)
 		require.NoError(t, err)
-		keyPair, err := kc.CreateChainKey(passphrase, hdPath)
+		keyInfo, err := kc.CreateChainKey(passphrase, hdPath)
 		require.NoError(t, err)
-		bbnPk := &secp256k1.PubKey{Key: keyPair.PublicKey.SerializeCompressed()}
+		bbnPk := &secp256k1.PubKey{Key: keyInfo.PublicKey.SerializeCompressed()}
 		fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
 		pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
