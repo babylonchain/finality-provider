@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/babylonchain/finality-provider/types"
 	"github.com/babylonchain/finality-provider/util"
 
 	sdkmath "cosmossdk.io/math"
@@ -413,26 +412,6 @@ func (app *FinalityProviderApp) eventLoop() {
 			return
 		}
 	}
-}
-
-func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyInfo, error) {
-	sdkCtx, err := fpkr.CreateClientCtx(
-		keyringDir, chainID,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	krController, err := fpkr.NewChainKeyringController(
-		sdkCtx,
-		keyName,
-		backend,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return krController.CreateChainKey(passphrase, hdPath)
 }
 
 func (app *FinalityProviderApp) registrationLoop() {

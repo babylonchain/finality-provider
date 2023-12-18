@@ -54,10 +54,10 @@ will be used. For different operating systems, those are:
 Below are some important parameters of the `fpd.conf` file.
 
 **Note**:
-The finality provider daemon requires the existence of a keyring that contains
-an account with Babylon token funds to pay for transactions.
-The configuration below requires to point to the path where this keyring is stored
-and specify the account name under the `KeyDirectory` and `Key` config values respectively.
+The configuration below requires to point to the path where this keyring is stored `KeyDirectory`.
+This `Key` field stores the key name used for interacting with the consumer chain
+and will be specified along with the `KeyringBackend` field in the next [step](#3-add-key-for-the-consumer-chain).
+So we can ignore the setting of the two fields in this step.
 
 ```bash
 # Address of the EOTS Daemon
@@ -90,8 +90,9 @@ To see the complete list of configuration options, check the `fpd.conf` file.
 
 ## 3. Add key for the consumer chain
 
-Before starting the Finality Provider Daemon, you need to add the key for interacting
-with the consumer chain (currently only BabylonChain). This key will be used to bond
+The finality provider daemon requires the existence of a keyring that contains
+an account with Babylon token funds to pay for transactions.
+This key will be also used to bond
 with the EOTS key of the finality provider you want to create in [step 5](#5-create-and-register-a-finality-provider).
 
 Use the following command to add the key:

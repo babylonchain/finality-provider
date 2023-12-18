@@ -70,7 +70,7 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.KeyInfo, error) {
+func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.ChainKeyInfo, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
@@ -96,20 +96,15 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*ty
 	}
 
 	privKey := record.GetLocal().PrivKey.GetCachedValue()
-	address, err := record.GetAddress()
-	if err != nil {
-		return nil, err
-	}
 
 	switch v := privKey.(type) {
 	case *sdksecp256k1.PrivKey:
 		sk, pk := btcec.PrivKeyFromBytes(v.Key)
-		return &types.KeyInfo{
+		return &types.ChainKeyInfo{
 			Name:       kc.fpName,
 			PublicKey:  pk,
 			PrivateKey: sk,
 			Mnemonic:   mnemonic,
-			Address:    address.String(),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported key type in keyring")

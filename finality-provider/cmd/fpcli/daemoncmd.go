@@ -18,7 +18,6 @@ import (
 const (
 	fpdDaemonAddressFlag = "daemon-address"
 	homeFlag             = "home"
-	keyNameFlag          = "key-name"
 	fpBTCPkFlag          = "btc-pk"
 	blockHeightFlag      = "height"
 	appHashFlag          = "app-hash"
@@ -92,11 +91,6 @@ var createFpDaemonCmd = cli.Command{
 			Value: fpcfg.DefaultFpdDir,
 		},
 		cli.StringFlag{
-			Name:     keyNameFlag,
-			Usage:    "The unique name of the finality provider key",
-			Required: true,
-		},
-		cli.StringFlag{
 			Name:     chainIdFlag,
 			Usage:    "The identifier of the consumer chain",
 			Required: true,
@@ -164,8 +158,9 @@ func createFpDaemon(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
 	}
-	if cfg.BabylonConfig.Key != ctx.String(keyNameFlag) {
-		return fmt.Errorf("the key name should be consistent with the one in the config")
+	keyName := cfg.BabylonConfig.Key
+	if keyName == "" {
+		return fmt.Errorf("the key in config is empty")
 	}
 
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
@@ -176,7 +171,7 @@ func createFpDaemon(ctx *cli.Context) error {
 
 	info, err := client.CreateFinalityProvider(
 		context.Background(),
-		ctx.String(keyNameFlag),
+		keyName,
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
@@ -284,7 +279,7 @@ var registerFpDaemonCmd = cli.Command{
 	Name:      "register-finality-provider",
 	ShortName: "rfp",
 	Usage:     "Register a created finality provider to Babylon.",
-	UsageText: fmt.Sprintf("register-finality-provider --%s [key-name]", keyNameFlag),
+	UsageText: fmt.Sprintf("register-finality-provider --%s [btc-pk]", fpBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  fpdDaemonAddressFlag,

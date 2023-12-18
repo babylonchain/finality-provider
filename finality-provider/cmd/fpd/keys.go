@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 type KeyOutput struct {
@@ -30,7 +30,7 @@ var keysCommands = []cli.Command{
 
 var addKeyCmd = cli.Command{
 	Name:  "add",
-	Usage: "Add a key to the consumer chain's keyring.",
+	Usage: "Add a key to the consumer chain's keyring. This will change the config file in place",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
@@ -72,6 +72,7 @@ func addKey(ctx *cli.Context) error {
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)
 	hdPath := ctx.String(hdPathFlag)
+	keyBackend := ctx.String(keyringBackendFlag)
 
 	// check the config file exists
 	cfg, err := fpcfg.LoadConfig(homePath)
@@ -79,7 +80,7 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load the config from %s: %w", fpcfg.ConfigFile(homePath), err)
 	}
 
-	keyInfo, err := service.CreateChainKey(
+	keyInfo, err := types.CreateChainKey(
 		homePath,
 		chainID,
 		keyName,
@@ -91,16 +92,21 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create the chain key: %w", err)
 	}
 
+	addr, err := keyInfo.GetValAddress()
+	if err != nil {
+		return err
+	}
 	printRespJSON(
 		KeyOutput{
 			Name:     keyName,
-			Address:  keyInfo.Address,
+			Address:  addr.String(),
 			Mnemonic: keyInfo.Mnemonic,
 		},
 	)
 
 	// write the updated config into the config file
 	cfg.BabylonConfig.Key = keyName
+	cfg.BabylonConfig.KeyringBackend = keyBackend
 	fileParser := flags.NewParser(cfg, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)

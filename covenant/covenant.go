@@ -346,7 +346,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 }
 
-func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.KeyInfo, error) {
+func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.ChainKeyInfo, error) {
 	sdkCtx, err := keyring.CreateClientCtx(
 		keyringDir, chainID,
 	)
