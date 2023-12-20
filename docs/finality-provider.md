@@ -92,8 +92,7 @@ To see the complete list of configuration options, check the `fpd.conf` file.
 
 The finality provider daemon requires the existence of a keyring that contains
 an account with Babylon token funds to pay for transactions.
-This key will be also used to bond
-with the EOTS key of the finality provider you want to create in [step 5](#5-create-and-register-a-finality-provider).
+This key will be also used to pay for fees of transactions to the consumer chain.
 
 Use the following command to add the key:
 
@@ -152,6 +151,8 @@ The finality provider can be registered with Babylon through
 the `register-finality-provider` command.
 The output contains the hash of the Babylon
 finality provider registration transaction.
+Note that if the `key-name` is not specified, the `Key` field of config specified in [step](#3-add-key-for-the-consumer-chain)
+will be used.
 
 ```bash
 $ fpcli register-finality-provider \
