@@ -325,7 +325,12 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	}
 	chainSk, err := kr.GetChainPrivKey(req.passPhrase)
 	if err != nil {
-		return nil, fmt.Errorf("the chain key does not exist, should create the chain key first: %w", err)
+		// the chain key does not exist, should create the chain key first
+		keyInfo, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chain key %s: %w", req.keyName, err)
+		}
+		chainSk = &secp256k1.PrivKey{Key: keyInfo.PrivateKey.Serialize()}
 	}
 	chainPk := &secp256k1.PubKey{Key: chainSk.PubKey().Bytes()}
 

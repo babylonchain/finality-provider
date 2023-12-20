@@ -17,6 +17,7 @@ import (
 
 const (
 	fpdDaemonAddressFlag = "daemon-address"
+	keyNameFlag          = "key-name"
 	homeFlag             = "home"
 	fpBTCPkFlag          = "btc-pk"
 	blockHeightFlag      = "height"
@@ -84,6 +85,10 @@ var createFpDaemonCmd = cli.Command{
 			Name:  fpdDaemonAddressFlag,
 			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
 			Value: defaultFpdDaemonAddress,
+		},
+		cli.StringFlag{
+			Name:  keyNameFlag,
+			Usage: "The unique name of the finality provider key",
 		},
 		cli.StringFlag{
 			Name:  homeFlag,
@@ -158,9 +163,14 @@ func createFpDaemon(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
 	}
-	keyName := cfg.BabylonConfig.Key
+
+	keyName := ctx.String(keyNameFlag)
+	// if key name is not specified, we use the key of the config
 	if keyName == "" {
-		return fmt.Errorf("the key in config is empty")
+		keyName = cfg.BabylonConfig.Key
+		if keyName == "" {
+			return fmt.Errorf("the key in config is empty")
+		}
 	}
 
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
