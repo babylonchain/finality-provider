@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/babylonchain/babylon/types"
-	"github.com/babylonchain/finality-provider/log"
-	"github.com/babylonchain/finality-provider/util"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
-	"path/filepath"
+
+	"github.com/babylonchain/finality-provider/log"
+	"github.com/babylonchain/finality-provider/util"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
@@ -22,6 +24,10 @@ var startCommand = cli.Command{
 			Name:  passphraseFlag,
 			Usage: "The pass phrase used to decrypt the private key",
 			Value: defaultPassphrase,
+		},
+		cli.BoolFlag{
+			Name:  allFlag,
+			Usage: "Start all the managed finality providers",
 		},
 		cli.StringFlag{
 			Name:  homeFlag,
@@ -44,6 +50,7 @@ func start(ctx *cli.Context) error {
 	homePath = util.CleanAndExpandPath(homePath)
 	passphrase := ctx.String(passphraseFlag)
 	fpPkStr := ctx.String(fpPkFlag)
+	all := ctx.Bool(allFlag)
 
 	cfg, err := fpcfg.LoadConfig(homePath)
 	if err != nil {
@@ -66,7 +73,7 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to start the finality-provider app: %w", err)
 	}
 
-	if fpPkStr != "" {
+	if !all && fpPkStr != "" {
 		// start the finality-provider instance with the given public key
 		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
 		if err != nil {
@@ -74,6 +81,10 @@ func start(ctx *cli.Context) error {
 		}
 		if err := fpApp.StartHandlingFinalityProvider(fpPk, passphrase); err != nil {
 			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
+		}
+	} else if all {
+		if err := fpApp.StartHandlingAll(); err != nil {
+			return err
 		}
 	}
 

@@ -217,6 +217,10 @@ func (app *FinalityProviderApp) StartHandlingFinalityProvider(fpPk *bbntypes.BIP
 	return app.fpManager.StartFinalityProvider(fpPk, passphrase)
 }
 
+func (app *FinalityProviderApp) StartHandlingAll() error {
+	return app.fpManager.StartAll()
+}
+
 // NOTE: this is not safe in production, so only used for testing purpose
 func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, error) {
 	record, err := app.eotsManager.KeyRecord(fpPk, "")
