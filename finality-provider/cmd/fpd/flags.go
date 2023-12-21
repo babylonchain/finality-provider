@@ -5,6 +5,7 @@ import "github.com/cosmos/cosmos-sdk/crypto/keyring"
 const (
 	homeFlag           = "home"
 	forceFlag          = "force"
+	allFlag            = "all"
 	passphraseFlag     = "passphrase"
 	fpPkFlag           = "finality-provider-pk"
 	keyNameFlag        = "key-name"

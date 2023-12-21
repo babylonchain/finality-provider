@@ -216,6 +216,32 @@ func (fpm *FinalityProviderManager) StartFinalityProvider(fpPk *bbntypes.BIP340P
 	return nil
 }
 
+func (fpm *FinalityProviderManager) StartAll() error {
+	if !fpm.isStarted.Load() {
+		fpm.isStarted.Store(true)
+
+		fpm.wg.Add(1)
+		go fpm.monitorCriticalErr()
+
+		fpm.wg.Add(1)
+		go fpm.monitorStatusUpdate()
+	}
+
+	registeredFps, err := fpm.fps.ListRegisteredFinalityProviders()
+	if err != nil {
+		return err
+	}
+
+	for _, fp := range registeredFps {
+		// TODO: passphrase is not available for starting all the finality providers
+		if err := fpm.StartFinalityProvider(fp.MustGetBIP340BTCPK(), ""); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (fpm *FinalityProviderManager) Stop() error {
 	if !fpm.isStarted.Swap(false) {
 		return fmt.Errorf("the finality-provider manager has already stopped")
