@@ -102,8 +102,12 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 		return nil, err
 	}
 
+	fpInfo, err := proto.NewFinalityProviderInfo(result.StoreFp)
+	if err != nil {
+		return nil, err
+	}
 	return &proto.CreateFinalityProviderResponse{
-		BtcPk: result.FpPk.MarshalHex(),
+		FinalityProvider: fpInfo,
 	}, nil
 
 }
@@ -189,7 +193,10 @@ func (r *rpcServer) QueryFinalityProvider(ctx context.Context, req *proto.QueryF
 		return nil, err
 	}
 
-	fpInfo := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
+	fpInfo, err := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
+	if err != nil {
+		return nil, err
+	}
 
 	return &proto.QueryFinalityProviderResponse{FinalityProvider: fpInfo}, nil
 }
@@ -202,7 +209,10 @@ func (r *rpcServer) QueryFinalityProviderList(ctx context.Context, req *proto.Qu
 
 	fpsInfo := make([]*proto.FinalityProviderInfo, len(fps))
 	for i, fp := range fps {
-		fpInfo := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
+		fpInfo, err := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
+		if err != nil {
+			return nil, err
+		}
 		fpsInfo[i] = fpInfo
 	}
 

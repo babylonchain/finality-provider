@@ -193,7 +193,7 @@ func createFpDaemon(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJSON(info)
+	printRespJSON(info.FinalityProvider)
 
 	return nil
 }
@@ -280,7 +280,7 @@ func fpInfoDaemon(ctx *cli.Context) error {
 		return err
 	}
 
-	printRespJSON(resp)
+	printRespJSON(resp.FinalityProvider)
 
 	return nil
 }

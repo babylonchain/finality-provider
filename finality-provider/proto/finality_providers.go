@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 func (sfp *StoreFinalityProvider) GetBabylonPK() *secp256k1.PubKey {
@@ -33,13 +34,23 @@ func (sfp *StoreFinalityProvider) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
 	return bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 }
 
-func NewFinalityProviderInfo(sfp *StoreFinalityProvider) *FinalityProviderInfo {
+func NewFinalityProviderInfo(sfp *StoreFinalityProvider) (*FinalityProviderInfo, error) {
+	var des types.Description
+	if err := des.Unmarshal(sfp.Description); err != nil {
+		return nil, err
+	}
 	return &FinalityProviderInfo{
-		BabylonPkHex:        sfp.GetBabylonPkHexString(),
-		BtcPkHex:            sfp.MustGetBIP340BTCPK().MarshalHex(),
-		Description:         sfp.Description,
+		BabylonPkHex: sfp.GetBabylonPkHexString(),
+		BtcPkHex:     sfp.MustGetBIP340BTCPK().MarshalHex(),
+		Description: &Description{
+			Moniker:         des.Moniker,
+			Identity:        des.Identity,
+			Website:         des.Website,
+			SecurityContact: des.SecurityContact,
+			Details:         des.Details,
+		},
 		LastVotedHeight:     sfp.LastVotedHeight,
 		LastCommittedHeight: sfp.LastCommittedHeight,
-		Status:              sfp.Status,
-	}
+		Status:              sfp.Status.String(),
+	}, nil
 }
