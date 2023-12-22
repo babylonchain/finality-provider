@@ -15,7 +15,7 @@ import (
 )
 
 type createFinalityProviderResponse struct {
-	FpPk *bbntypes.BIP340PubKey
+	StoreFp *proto.StoreFinalityProvider
 }
 type createFinalityProviderRequest struct {
 	keyName         string
@@ -53,7 +53,7 @@ type RegisterFinalityProviderResponse struct {
 }
 
 type CreateFinalityProviderResult struct {
-	FpPk *bbntypes.BIP340PubKey
+	StoreFp *proto.StoreFinalityProvider
 }
 
 type fpState struct {

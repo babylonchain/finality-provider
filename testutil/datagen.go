@@ -138,7 +138,8 @@ func GenStoredFinalityProvider(r *rand.Rand, t *testing.T, app *service.Finality
 	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, EmptyDescription(), ZeroCommissionRate())
 	require.NoError(t, err)
 
-	storedFp, err := app.GetFinalityProviderStore().GetStoreFinalityProvider(res.FpPk.MustMarshal())
+	fpPk := res.StoreFp.BtcPk
+	storedFp, err := app.GetFinalityProviderStore().GetStoreFinalityProvider(fpPk)
 	require.NoError(t, err)
 
 	return storedFp

@@ -60,8 +60,7 @@ message CreateFinalityProviderRequest {
 }
 
 message CreateFinalityProviderResponse {
-    // btc_pk is the hex string of BTC secp256k1 public key of the finality provider encoded in BIP-340 spec
-    string btc_pk = 1;
+    FinalityProviderInfo finality_provider = 1;
 }
 
 message RegisterFinalityProviderRequest {
@@ -149,7 +148,7 @@ message FinalityProviderInfo {
     // btc_pk_hex is the hex string of the BTC secp256k1 PK of the finality provider encoded in BIP-340 spec
     string btc_pk_hex = 2;
     // description defines the description terms for the finality provider
-    bytes description = 3;
+    Description description = 3;
     // commission defines the commission rate for the finality provider
     string commission = 4 [
         (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
@@ -161,7 +160,16 @@ message FinalityProviderInfo {
     // to which the finality provider committed a randomness pair
     uint64 last_committed_height = 6;
     // status defines the current finality provider status
-    FinalityProviderStatus status = 7;
+    string status = 7;
+}
+
+// Description defines description fields for a finality provider
+message Description {
+    string moniker = 1;
+    string identity = 2;
+    string website = 3;
+    string security_contact = 4;
+    string details = 5;
 }
 
 // ProofOfPossession is the proof of possession that a Babylon secp256k1

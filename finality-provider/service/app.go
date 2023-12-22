@@ -314,7 +314,7 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 		return nil, err
 	case successResponse := <-req.successResponse:
 		return &CreateFinalityProviderResult{
-			FpPk: successResponse.FpPk,
+			StoreFp: successResponse.StoreFp,
 		}, nil
 	case <-app.quit:
 		return nil, fmt.Errorf("finality-provider app is shutting down")
@@ -371,7 +371,7 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	)
 
 	return &createFinalityProviderResponse{
-		FpPk: fpPk,
+		StoreFp: fp,
 	}, nil
 }
 
@@ -408,7 +408,7 @@ func (app *FinalityProviderApp) eventLoop() {
 				continue
 			}
 
-			req.successResponse <- &createFinalityProviderResponse{FpPk: res.FpPk}
+			req.successResponse <- &createFinalityProviderResponse{StoreFp: res.StoreFp}
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
 			fpStored, err := app.fps.GetStoreFinalityProvider(ev.btcPubKey.MustMarshal())
