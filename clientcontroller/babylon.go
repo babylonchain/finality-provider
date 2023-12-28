@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -127,6 +128,7 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		SlashingAddress:           slashingAddress,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
 		SlashingRate:              stakingParamRes.Params.SlashingRate,
+		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
 	}, nil
 }
 

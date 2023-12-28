@@ -274,6 +274,7 @@ github.com/aws/aws-sdk-go v1.44.224/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonchain/babylon-private v0.0.0-20231213105136-11792cad8a84 h1:fFlLF+rl6Buwb3eYgIoUQ4JkYdNMMTk9ihoznTTw2hk=
 github.com/babylonchain/babylon-private v0.0.0-20231213105136-11792cad8a84/go.mod h1:6wqL7SJBWltXMNXgFsvavB1bR5Fft0yChfRLamBtrAY=
+github.com/babylonchain/babylon-private v0.0.0-20231224153404-79decc6a6866/go.mod h1:qiavPBxKkbMeTXg0vaLpMw97Xw8Nb3kpzZJ0ptiYcss=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
@@ -370,6 +371,7 @@ github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
 github.com/cometbft/cometbft v0.38.0 h1:ogKnpiPX7gxCvqTEF4ly25/wAxUqf181t30P3vqdpdc=
 github.com/cometbft/cometbft v0.38.0/go.mod h1:5Jz0Z8YsHSf0ZaAqGvi/ifioSdVFPtEGrm8Y9T/993k=
+github.com/cometbft/cometbft v0.38.2/go.mod h1:PIi48BpzwlHqtV3mzwPyQgOyOnU94BNBimLS2ebBHOg=
 github.com/cometbft/cometbft-db v0.8.0 h1:vUMDaH3ApkX8m0KZvOFFy9b5DZHBAjsnEuo9AKVZpjo=
 github.com/cometbft/cometbft-db v0.8.0/go.mod h1:6ASCP4pfhmrCBpfk01/9E1SI29nD3HfVHrY4PG8x5c0=
 github.com/containerd/continuity v0.3.0 h1:nisirsYROK15TAMVukJOUyGJjz4BNQJBVsNvAXZJ/eg=

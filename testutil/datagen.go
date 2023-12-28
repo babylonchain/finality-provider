@@ -117,7 +117,7 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 	for i := startHeight; i <= endHeight; i++ {
 		b := &types.BlockInfo{
 			Height: i,
-			Hash:   datagen.GenRandomAppHash(r),
+			Hash:   datagen.GenRandomByteArray(r, 32),
 		}
 		blocks = append(blocks, b)
 	}

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/babylonchain/babylon/x/checkpointing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/urfave/cli"
 
@@ -379,13 +379,13 @@ func addFinalitySig(ctx *cli.Context) error {
 		return err
 	}
 
-	lch, err := types.NewAppHashFromHex(ctx.String(appHashFlag))
+	appHash, err := hex.DecodeString(ctx.String(appHashFlag))
 	if err != nil {
 		return err
 	}
 
 	res, err := rpcClient.AddFinalitySignature(
-		context.Background(), fpPk.MarshalHex(), ctx.Uint64(blockHeightFlag), lch)
+		context.Background(), fpPk.MarshalHex(), ctx.Uint64(blockHeightFlag), appHash)
 	if err != nil {
 		return err
 	}

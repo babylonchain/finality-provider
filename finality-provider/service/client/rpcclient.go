@@ -86,11 +86,11 @@ func (c *FinalityProviderServiceGRpcClient) CreateFinalityProvider(
 	return res, nil
 }
 
-func (c *FinalityProviderServiceGRpcClient) AddFinalitySignature(ctx context.Context, fpPk string, height uint64, lch []byte) (*proto.AddFinalitySignatureResponse, error) {
+func (c *FinalityProviderServiceGRpcClient) AddFinalitySignature(ctx context.Context, fpPk string, height uint64, appHash []byte) (*proto.AddFinalitySignatureResponse, error) {
 	req := &proto.AddFinalitySignatureRequest{
 		BtcPk:   fpPk,
 		Height:  height,
-		AppHash: lch,
+		AppHash: appHash,
 	}
 
 	res, err := c.client.AddFinalitySignature(ctx, req)
