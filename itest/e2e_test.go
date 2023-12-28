@@ -4,10 +4,11 @@
 package e2etest
 
 import (
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/stretchr/testify/require"
@@ -86,7 +87,7 @@ func TestDoubleSigning(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
 		Height: finalizedBlocks[0].Height,
-		Hash:   datagen.GenRandomAppHash(r),
+		Hash:   datagen.GenRandomByteArray(r, 32),
 	}
 	_, extractedKey, err := fpIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
 	require.NoError(t, err)
