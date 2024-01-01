@@ -42,10 +42,6 @@ func FuzzCommitPubRandList(f *testing.F) {
 		res, err := fpIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-
-		// check the last_committed_height
-		numPubRand := app.GetConfig().NumPubRand
-		require.Equal(t, startingBlock.Height+numPubRand, fpIns.GetStoreFinalityProvider().LastCommittedHeight)
 	})
 }
 

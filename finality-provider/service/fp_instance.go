@@ -615,10 +615,6 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
 
-	newLastCommittedHeight := startHeight + uint64(len(pubRandList)-1)
-
-	fp.MustSetLastCommittedHeight(newLastCommittedHeight)
-
 	return res, nil
 }
 

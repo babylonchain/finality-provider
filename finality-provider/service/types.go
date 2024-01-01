@@ -82,13 +82,6 @@ func (fps *fpState) setLastProcessedHeight(height uint64) error {
 	return fps.s.UpdateFinalityProvider(fps.fp)
 }
 
-func (fps *fpState) setLastCommittedHeight(height uint64) error {
-	fps.mu.Lock()
-	fps.fp.LastCommittedHeight = height
-	fps.mu.Unlock()
-	return fps.s.UpdateFinalityProvider(fps.fp)
-}
-
 func (fps *fpState) setLastProcessedAndVotedHeight(height uint64) error {
 	fps.mu.Lock()
 	fps.fp.LastVotedHeight = height
@@ -156,17 +149,6 @@ func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
 	if err := fp.SetLastProcessedHeight(height); err != nil {
 		fp.logger.Fatal("failed to set last processed height",
 			zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("last_processed_height", height))
-	}
-}
-
-func (fp *FinalityProviderInstance) SetLastCommittedHeight(height uint64) error {
-	return fp.state.setLastCommittedHeight(height)
-}
-
-func (fp *FinalityProviderInstance) MustSetLastCommittedHeight(height uint64) {
-	if err := fp.SetLastCommittedHeight(height); err != nil {
-		fp.logger.Fatal("failed to set last committed height",
-			zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("last_committed_height", height))
 	}
 }
 
