@@ -107,7 +107,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	// create finality-provider app with randomized config
 	fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
 	fpCfg := testutil.GenFpConfig(r, t, fpHomeDir)
-	fpCfg.NumPubRand = uint64(25)
+	fpCfg.NumPubRand = testutil.TestPubRandNum
 	fpCfg.PollerConfig.AutoChainScanningMode = false
 	fpCfg.PollerConfig.StaticChainScanningStartHeight = startingHeight
 	app, err := service.NewFinalityProviderApp(fpHomeDir, fpCfg, cc, em, logger)

@@ -1,8 +1,9 @@
 package clientcontroller
 
 import (
-	"cosmossdk.io/math"
 	"fmt"
+
+	"cosmossdk.io/math"
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
@@ -59,6 +60,9 @@ type FinalityProviderAPIs interface {
 
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
+
+	// QueryLastCommittedPublicRand returns the last committed public randomness
+	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error)
 
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)

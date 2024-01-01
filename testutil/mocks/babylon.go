@@ -156,6 +156,21 @@ func (mr *MockClientControllerMockRecorder) QueryFinalityProviderVotingPower(fpP
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryFinalityProviderVotingPower", reflect.TypeOf((*MockClientController)(nil).QueryFinalityProviderVotingPower), fpPk, blockHeight)
 }
 
+// QueryLastCommittedPublicRand mocks base method.
+func (m *MockClientController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryLastCommittedPublicRand", fpPk, count)
+	ret0, _ := ret[0].(map[uint64]*btcec.FieldVal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryLastCommittedPublicRand indicates an expected call of QueryLastCommittedPublicRand.
+func (mr *MockClientControllerMockRecorder) QueryLastCommittedPublicRand(fpPk, count interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLastCommittedPublicRand", reflect.TypeOf((*MockClientController)(nil).QueryLastCommittedPublicRand), fpPk, count)
+}
+
 // QueryLatestFinalizedBlocks mocks base method.
 func (m *MockClientController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
@@ -387,6 +402,21 @@ func (m *MockFinalityProviderAPIs) QueryFinalityProviderVotingPower(fpPk *btcec.
 func (mr *MockFinalityProviderAPIsMockRecorder) QueryFinalityProviderVotingPower(fpPk, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryFinalityProviderVotingPower", reflect.TypeOf((*MockFinalityProviderAPIs)(nil).QueryFinalityProviderVotingPower), fpPk, blockHeight)
+}
+
+// QueryLastCommittedPublicRand mocks base method.
+func (m *MockFinalityProviderAPIs) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryLastCommittedPublicRand", fpPk, count)
+	ret0, _ := ret[0].(map[uint64]*btcec.FieldVal)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryLastCommittedPublicRand indicates an expected call of QueryLastCommittedPublicRand.
+func (mr *MockFinalityProviderAPIsMockRecorder) QueryLastCommittedPublicRand(fpPk, count interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLastCommittedPublicRand", reflect.TypeOf((*MockFinalityProviderAPIs)(nil).QueryLastCommittedPublicRand), fpPk, count)
 }
 
 // QueryLatestFinalizedBlocks mocks base method.

@@ -133,10 +133,6 @@ func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
 	return fp.state.getStoreFinalityProvider().LastProcessedHeight
 }
 
-func (fp *FinalityProviderInstance) GetLastCommittedHeight() uint64 {
-	return fp.state.getStoreFinalityProvider().LastCommittedHeight
-}
-
 func (fp *FinalityProviderInstance) GetChainID() []byte {
 	return []byte(fp.state.getStoreFinalityProvider().ChainId)
 }

@@ -281,7 +281,6 @@ func (fp *FinalityProviderInstance) randomnessCommitmentLoop() {
 				fp.logger.Info(
 					"successfully committed public randomness to the consumer chain",
 					zap.String("pk", fp.GetBtcPkHex()),
-					zap.Uint64("last_committed_height", fp.GetLastCommittedHeight()),
 					zap.String("tx_hash", txRes.TxHash),
 				)
 			}
@@ -338,7 +337,11 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlock *types.BlockInfo) (*
 		return nil, fmt.Errorf("the finality-provider %s is already in sync", fp.GetBtcPkHex())
 	}
 
-	if fp.GetLastCommittedHeight() <= fp.GetLastVotedHeight() {
+	lastCommittedHeight, err := fp.GetLastCommittedHeight()
+	if err != nil {
+		return nil, err
+	}
+	if lastCommittedHeight <= fp.GetLastVotedHeight() {
 		if err := fp.SetLastProcessedHeight(targetBlock.Height); err != nil {
 			return nil, err
 		}
@@ -399,17 +402,6 @@ func (fp *FinalityProviderInstance) shouldSubmitFinalitySignature(b *types.Block
 			zap.String("pk", fp.GetBtcPkHex()),
 			zap.Uint64("block_height", b.Height),
 			zap.Uint64("last_voted_height", fp.GetLastVotedHeight()),
-		)
-		return false, nil
-	}
-
-	// check last committed height
-	if fp.GetLastCommittedHeight() < b.Height {
-		fp.logger.Debug(
-			"public rand is not committed, skip voting",
-			zap.String("pk", fp.GetBtcPkHex()),
-			zap.Uint64("block_height", b.Height),
-			zap.Uint64("last_committed_height", fp.GetLastCommittedHeight()),
 		)
 		return false, nil
 	}
@@ -562,7 +554,10 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 // commits the public randomness for the managed finality providers,
 // and save the randomness pair to DB
 func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxResponse, error) {
-	lastCommittedHeight := fp.GetLastCommittedHeight()
+	lastCommittedHeight, err := fp.GetLastCommittedHeight()
+	if err != nil {
+		return nil, err
+	}
 
 	var startHeight uint64
 	if lastCommittedHeight == uint64(0) {
@@ -577,7 +572,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 			"the finality-provider has sufficient public randomness, skip committing more",
 			zap.String("pk", fp.GetBtcPkHex()),
 			zap.Uint64("block_height", tipBlock.Height),
-			zap.Uint64("last_committed_height", fp.GetLastCommittedHeight()),
+			zap.Uint64("last_committed_height", lastCommittedHeight),
 		)
 		return nil, nil
 	}
@@ -716,9 +711,13 @@ func (fp *FinalityProviderInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.S
 // Note: this should not be used in the submission loop
 func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (*types.TxResponse, *btcec.PrivateKey, error) {
 	// check last committed height
-	if fp.GetLastCommittedHeight() < b.Height {
+	lastCommittedHeight, err := fp.GetLastCommittedHeight()
+	if err != nil {
+		return nil, nil, err
+	}
+	if lastCommittedHeight < b.Height {
 		return nil, nil, fmt.Errorf("the finality-provider's last committed height %v is lower than the current block height %v",
-			fp.GetLastCommittedHeight(), b.Height)
+			lastCommittedHeight, b.Height)
 	}
 
 	eotsSig, err := fp.signEotsSig(b)
@@ -783,6 +782,28 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 		initialBlockToGet = 1
 	}
 	return initialBlockToGet, nil
+}
+
+func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
+	pubRandMap, err := fp.cc.QueryLastCommittedPublicRand(fp.MustGetBtcPk(), 1)
+	if err != nil {
+		return 0, err
+	}
+
+	// no committed randomness yet
+	if pubRandMap == nil {
+		return 0, nil
+	}
+
+	if len(pubRandMap) > 1 {
+		return 0, fmt.Errorf("got more than one last committed public randomness")
+	}
+	heights := make([]uint64, 0, 1)
+	for k, _ := range pubRandMap {
+		heights = append(heights, k)
+	}
+
+	return heights[0], nil
 }
 
 func (fp *FinalityProviderInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*types.BlockInfo, error) {

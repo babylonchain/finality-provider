@@ -236,7 +236,11 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 
 func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		return fpIns.GetLastCommittedHeight() > 0
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
+		if err != nil {
+			return false
+		}
+		return lastCommittedHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
