@@ -781,7 +781,7 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 }
 
 func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
-	pubRandMap, err := fp.cc.QueryLastCommittedPublicRand(fp.MustGetBtcPk(), 1)
+	pubRandMap, err := fp.lastCommittedPublicRandWithRetry(1)
 	if err != nil {
 		return 0, err
 	}
@@ -800,6 +800,28 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 	}
 
 	return heights[0], nil
+}
+
+func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*btcec.FieldVal, error) {
+	var response map[uint64]*btcec.FieldVal
+	if err := retry.Do(func() error {
+		pubRandMap, err := fp.cc.QueryLastCommittedPublicRand(fp.MustGetBtcPk(), count)
+		if err != nil {
+			return err
+		}
+		response = pubRandMap
+		return nil
+	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
+		fp.logger.Debug(
+			"failed to query babylon for the last committed public randomness",
+			zap.Uint("attempt", n+1),
+			zap.Uint("max_attempts", RtyAttNum),
+			zap.Error(err),
+		)
+	})); err != nil {
+		return nil, err
+	}
+	return response, nil
 }
 
 func (fp *FinalityProviderInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*types.BlockInfo, error) {
