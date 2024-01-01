@@ -791,7 +791,7 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 	}
 
 	// no committed randomness yet
-	if pubRandMap == nil || len(pubRandMap) == 0 {
+	if len(pubRandMap) == 0 {
 		return 0, nil
 	}
 
@@ -799,7 +799,7 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 		return 0, fmt.Errorf("got more than one last committed public randomness")
 	}
 	heights := make([]uint64, 0, 1)
-	for k, _ := range pubRandMap {
+	for k := range pubRandMap {
 		heights = append(heights, k)
 	}
 
