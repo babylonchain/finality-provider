@@ -791,7 +791,7 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 	}
 
 	// no committed randomness yet
-	if pubRandMap == nil {
+	if pubRandMap == nil || len(pubRandMap) == 0 {
 		return 0, nil
 	}
 
