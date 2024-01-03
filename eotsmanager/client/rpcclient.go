@@ -26,11 +26,18 @@ func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build gRPC connection to %s: %w", remoteAddr, err)
 	}
+	defer conn.Close()
 
-	return &EOTSManagerGRpcClient{
+	gClient := &EOTSManagerGRpcClient{
 		client: proto.NewEOTSManagerClient(conn),
 		conn:   conn,
-	}, nil
+	}
+
+	if err := gClient.Ping(); err != nil {
+		return nil, fmt.Errorf("the EOTS manager server is not responding: %w", err)
+	}
+
+	return gClient, nil
 }
 
 func (c *EOTSManagerGRpcClient) Ping() error {
