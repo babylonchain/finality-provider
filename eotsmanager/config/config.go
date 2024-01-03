@@ -32,7 +32,7 @@ var (
 	//   ~/Library/Application Support/Eotsd on MacOS
 	DefaultEOTSDir = btcutil.AppDataDir("eotsd", false)
 
-	defaultRpcListener = "127.0.0.1" + strconv.Itoa(DefaultRPCPort)
+	defaultRpcListener = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
 )
 
 type Config struct {
