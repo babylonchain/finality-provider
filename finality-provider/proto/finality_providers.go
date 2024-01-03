@@ -49,8 +49,7 @@ func NewFinalityProviderInfo(sfp *StoreFinalityProvider) (*FinalityProviderInfo,
 			SecurityContact: des.SecurityContact,
 			Details:         des.Details,
 		},
-		LastVotedHeight:     sfp.LastVotedHeight,
-		LastCommittedHeight: sfp.LastCommittedHeight,
-		Status:              sfp.Status.String(),
+		LastVotedHeight: sfp.LastVotedHeight,
+		Status:          sfp.Status.String(),
 	}, nil
 }

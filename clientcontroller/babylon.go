@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -412,6 +413,40 @@ func (bc *BabylonController) QueryFinalityProviderVotingPower(fpPk *btcec.Public
 
 func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+}
+
+// QueryLastCommittedPublicRand returns the last committed public randomness
+// TODO update the implementation when rpc-client supports ListPublicRandomness
+func (bc *BabylonController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error) {
+	pagination := &sdkquery.PageRequest{
+		// NOTE: the count is limited by pagination queries
+		Limit:   count,
+		Reverse: true,
+	}
+
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
+
+	queryClient := finalitytypes.NewQueryClient(clientCtx)
+
+	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
+		Pagination: pagination,
+		FpBtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+	}
+
+	res, err := queryClient.ListPublicRandomness(ctx, queryRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query committed public randomness: %v", err)
+	}
+
+	committedPubRand := make(map[uint64]*btcec.FieldVal, len(res.PubRandMap))
+	for k, v := range res.PubRandMap {
+		committedPubRand[k] = v.ToFieldVal()
+	}
+
+	return committedPubRand, nil
 }
 
 func (bc *BabylonController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {

@@ -28,10 +28,10 @@ func FuzzCommitPubRandList(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), gomock.Any()).
+			Return(uint64(0), nil).AnyTimes()
 		app, storeFp, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(storeFp.MustGetBTCPK(), gomock.Any()).
-			Return(uint64(0), nil).AnyTimes()
 
 		fpIns, err := app.GetFinalityProviderInstance(storeFp.MustGetBIP340BTCPK())
 		require.NoError(t, err)
@@ -42,10 +42,6 @@ func FuzzCommitPubRandList(f *testing.F) {
 		res, err := fpIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-
-		// check the last_committed_height
-		numPubRand := app.GetConfig().NumPubRand
-		require.Equal(t, startingBlock.Height+numPubRand, fpIns.GetStoreFinalityProvider().LastCommittedHeight)
 	})
 }
 
@@ -107,7 +103,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	// create finality-provider app with randomized config
 	fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
 	fpCfg := testutil.GenFpConfig(r, t, fpHomeDir)
-	fpCfg.NumPubRand = uint64(25)
+	fpCfg.NumPubRand = testutil.TestPubRandNum
 	fpCfg.PollerConfig.AutoChainScanningMode = false
 	fpCfg.PollerConfig.StaticChainScanningStartHeight = startingHeight
 	app, err := service.NewFinalityProviderApp(fpHomeDir, fpCfg, cc, em, logger)

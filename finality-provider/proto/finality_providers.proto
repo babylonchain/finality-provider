@@ -131,14 +131,11 @@ message StoreFinalityProvider {
     string chain_id = 7;
     // last_voted_height defines the height of the last voted Babylon block
     uint64 last_voted_height = 8;
-    // last_committed_height defines the height of the last Babylon block
-    // to which the finality provider committed a randomness pair
-    uint64 last_committed_height = 9;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 10;
+    uint64 last_processed_height = 9;
     // status defines the current finality provider status
-    FinalityProviderStatus status = 11;
+    FinalityProviderStatus status = 10;
 }
 
 // FinalityProviderInfo is the basic information of a finality provider mainly for external usage
@@ -156,11 +153,8 @@ message FinalityProviderInfo {
     ];
     // last_voted_height defines the height of the last voted Babylon block
     uint64 last_voted_height = 5;
-    // last_committed_height defines the height of the last Babylon block
-    // to which the finality provider committed a randomness pair
-    uint64 last_committed_height = 6;
     // status defines the current finality provider status
-    string status = 7;
+    string status = 6;
 }
 
 // Description defines description fields for a finality provider

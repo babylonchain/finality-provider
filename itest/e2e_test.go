@@ -4,12 +4,12 @@
 package e2etest
 
 import (
-	"github.com/btcsuite/btcd/btcec/v2"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/finality-provider/finality-provider/service"
