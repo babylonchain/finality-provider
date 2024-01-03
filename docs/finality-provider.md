@@ -60,7 +60,7 @@ and will be specified along with the `KeyringBackend` field in the next [step](#
 So we can ignore the setting of the two fields in this step.
 
 ```bash
-# Address of the EOTS Daemon
+# RPC Address of the EOTS Daemon
 EOTSManagerAddress = 127.0.0.1:15813
 
 # Babylon specific parameters
@@ -113,15 +113,15 @@ $ fpd start --home /path/to/fpd/home
 
 This will start the RPC server at the address specified in the configuration under
 the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
+You can also specify a custom address using the `--rpc-listener` flag.
 
 ```bash
-$ fpd start --rpclisten '127.0.0.1:8082'
+$ fpd start --rpc-listener '127.0.0.1:8088'
 
-time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager at 127.0.0.1:8081"
-time="2023-11-26T16:37:00-05:00" level=info msg="Starting Finality Provider App"
-time="2023-11-26T16:37:00-05:00" level=info msg="Version: 0.2.2-alpha commit=, build=production, logging=default, debuglevel=info"
+time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager	{"address": "127.0.0.1:15813"}"
+time="2023-11-26T16:37:00-05:00" level=info msg="Starting FinalityProviderApp"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting RPC Server"
-time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening on 127.0.0.1:8082"
+time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening	{"address": "127.0.0.1:15812"}"
 time="2023-11-26T16:37:00-05:00" level=info msg="Finality Provider Daemon is fully active!"
 ```
 
@@ -140,9 +140,14 @@ The key name must be the same as the key added in [step](#3-add-key-for-the-cons
 
 ```bash
 $ fpcli create-finality-provider --key-name my-finality-provider \
-                --chain-id chain-test --passphrase mypassphrase
+                --chain-id chain-test --moniker my-name
 {
-    "btc_pk": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786"
+    "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
+    "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
+    "description": {
+        "moniker": "my-name"
+    },
+    "status": "CREATED"
 }
 ```
 
@@ -155,7 +160,7 @@ will be used.
 
 ```bash
 $ fpcli register-finality-provider \
-                 --btc-pk 903fab42070622c551b188c983ce05a31febcab300244daf7d752aba
+                 --btc-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
 {
     "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
 }
@@ -166,24 +171,25 @@ we can check the finality providers that are managed by the daemon and their sta
 These can be listed through the `fpcli list-finality-providers` command.
 The `status` field can receive the following values:
 
-- `1`: The finality provider is active and has received no delegations yet
-- `2`: The finality provider is active and has staked BTC tokens
-- `3`: The finality provider is inactive (i.e. had staked BTC tokens in the past but not
-  anymore OR has been slashed)
+- `CREATED`: The finality provider is created but not registered yet
+- `REGISTERED`: The finality provider is registered but has not received any active delegations yet
+- `ACTIVE`: The finality provider has active delegations and is empowered to send finality signatures
+- `INACTIVE`: The finality provider used to be ACTIVE but the voting power is reduced to zero
+- `SLASHED`: The finality provider is slashed due to malicious behavior 
  
-The `last_committed_height` field is the Babylon height up to which the finality provider
-has committed EOTS randomness
-
 ```bash
 $ fpcli list-finality-providers
 {
     "finality-providers": [
         ...
         {
-            "babylon_pk_hex": "0251259b5c88d6ac79d86615220a8111ebb238047df0689357274f004fba3e5a89",
-            "btc_pk_hex": "903fab42070622c551b188c983ce05a31febcab300244daf7d752aba2173e786",
-            "last_committed_height": 265,
-            "status": 1
+            "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
+            "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
+            "description": {
+                "moniker": "my-name"
+            },
+            "last_vote_height": 1
+            "status": "REGISTERED"
         }
     ]
 }
