@@ -419,6 +419,7 @@ func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.
 // TODO update the implementation when rpc-client supports ListPublicRandomness
 func (bc *BabylonController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error) {
 	pagination := &sdkquery.PageRequest{
+		// NOTE: the count is limited by pagination queries
 		Limit:   count,
 		Reverse: true,
 	}
