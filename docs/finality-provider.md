@@ -69,10 +69,10 @@ EOTSManagerAddress = 127.0.0.1:15813
 ChainID = chain-test
 
 # Babylon node RPC endpoint
-RPCAddr = http://localhost:26657
+RPCAddr = http://127.0.0.1:26657
 
 # Babylon node gRPC endpoint
-GRPCAddr = https://localhost:9090
+GRPCAddr = https://127.0.0.1:9090
 
 # Name of the key in the keyring to use for signing transactions
 Key = <finality-provider-key-name>
@@ -112,11 +112,10 @@ $ fpd start --home /path/to/fpd/home
 ```
 
 This will start the RPC server at the address specified in the configuration under
-the `RawRPCListeners` field. A custom address can also be specified using
-the `--rpclisten` flag.
+the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
 
 ```bash
-$ fpd start --rpclisten 'localhost:8082'
+$ fpd start --rpclisten '127.0.0.1:8082'
 
 time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager at 127.0.0.1:8081"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting Finality Provider App"

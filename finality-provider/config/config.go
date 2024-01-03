@@ -51,7 +51,7 @@ var (
 
 	defaultBTCNetParams       = chaincfg.SimNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
-	defaultRpcListener        = "localhost:" + strconv.Itoa(DefaultRPCPort)
+	DefaultRpcListener        = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
 )
 
 // Config is the main config for the fpd cli command
@@ -83,7 +83,7 @@ type Config struct {
 
 	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
 
-	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., localhost:1234"`
+	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 }
 
 func DefaultConfigWithHome(homePath string) Config {
@@ -112,7 +112,7 @@ func DefaultConfigWithHome(homePath string) Config {
 		BitcoinNetwork:                 defaultBitcoinNetwork,
 		BTCNetParams:                   defaultBTCNetParams,
 		EOTSManagerAddress:             defaultEOTSManagerAddress,
-		RpcListener:                    defaultRpcListener,
+		RpcListener:                    DefaultRpcListener,
 		MaxNumFinalityProviders:        defaultMaxNumFinalityProviders,
 	}
 

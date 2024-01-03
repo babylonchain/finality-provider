@@ -63,7 +63,7 @@ Below are some of the important parameters in the `eotsd.conf` file.
 
 ```bash
 # Default address to listen for RPC connections
-RpcListener = localhost:15813
+RpcListener = 127.0.0.1:15813
 
 # Type of keyring to use,
 # supported backends - (os|file|kwallet|pass|test|memory)
@@ -95,7 +95,7 @@ the `RpcListener` field. It can also be overridden with custom address using
 the `--rpclistener` flag.
 
 ```bash
-$ eotsd start --rpclistener 'localhost:8081'
+$ eotsd start --rpclistener '127.0.0.1:8081'
 
 time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening on 127.0.0.1:8081"
 time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"

@@ -20,8 +20,8 @@ type KeyOutput struct {
 var keysCommands = []cli.Command{
 	{
 		Name:     "keys",
-		Usage:    "Command sets of managing keys for interacting the consumer chain.",
-		Category: "Daemon commands",
+		Usage:    "Command sets of managing keys for interacting with the consumer chain.",
+		Category: "key management",
 		Subcommands: []cli.Command{
 			addKeyCmd,
 		},
@@ -30,7 +30,7 @@ var keysCommands = []cli.Command{
 
 var addKeyCmd = cli.Command{
 	Name:  "add",
-	Usage: "Add a key to the consumer chain's keyring. This will change the config file in place",
+	Usage: "Add a key to the consumer chain's keyring. Note that this will change the config file in place.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,

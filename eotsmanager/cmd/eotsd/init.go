@@ -2,16 +2,18 @@ package main
 
 import (
 	"fmt"
-	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
-	"github.com/babylonchain/finality-provider/util"
+	"path/filepath"
+
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
-	"path/filepath"
+
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 var initCommand = cli.Command{
 	Name:  "init",
-	Usage: "Initialize eotsd home directory.",
+	Usage: "Initialize the eotsd home directory.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
