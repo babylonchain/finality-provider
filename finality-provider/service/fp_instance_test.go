@@ -28,10 +28,10 @@ func FuzzCommitPubRandList(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), gomock.Any()).
+			Return(uint64(0), nil).AnyTimes()
 		app, storeFp, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(storeFp.MustGetBTCPK(), gomock.Any()).
-			Return(uint64(0), nil).AnyTimes()
 
 		fpIns, err := app.GetFinalityProviderInstance(storeFp.MustGetBIP340BTCPK())
 		require.NoError(t, err)
