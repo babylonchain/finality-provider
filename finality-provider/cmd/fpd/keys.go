@@ -21,7 +21,7 @@ var keysCommands = []cli.Command{
 	{
 		Name:     "keys",
 		Usage:    "Command sets of managing keys for interacting with the consumer chain.",
-		Category: "key management",
+		Category: "Key management",
 		Subcommands: []cli.Command{
 			addKeyCmd,
 		},
