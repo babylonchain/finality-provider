@@ -72,7 +72,7 @@ func NewFinalityProviderAppFromConfig(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
 	}
-	// TODO add retry mechanism and ping to ensure the EOTS manager daemon is healthy
+
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
 	return NewFinalityProviderApp(homePath, config, cc, em, logger)

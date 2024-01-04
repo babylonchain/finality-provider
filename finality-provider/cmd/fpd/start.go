@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"path/filepath"
 
 	"github.com/babylonchain/babylon/types"
@@ -17,7 +18,7 @@ import (
 
 var startCommand = cli.Command{
 	Name:        "start",
-	Usage:       "fpd start",
+	Usage:       "Start the finality-provider app",
 	Description: "Start the finality-provider app. Note that eotsd should be started beforehand",
 	Flags: []cli.Flag{
 		cli.StringFlag{
@@ -38,6 +39,10 @@ var startCommand = cli.Command{
 			Name:  fpPkFlag,
 			Usage: "The public key of the finality-provider to start",
 		},
+		cli.StringFlag{
+			Name:  rpcListenerFlag,
+			Usage: "The address that the RPC server listens to",
+		},
 	},
 	Action: start,
 }
@@ -48,13 +53,23 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 	homePath = util.CleanAndExpandPath(homePath)
+
 	passphrase := ctx.String(passphraseFlag)
 	fpPkStr := ctx.String(fpPkFlag)
+	rpcListener := ctx.String(rpcListenerFlag)
 	all := ctx.Bool(allFlag)
 
 	cfg, err := fpcfg.LoadConfig(homePath)
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	if rpcListener != "" {
+		_, err := net.ResolveTCPAddr("tcp", rpcListener)
+		if err != nil {
+			return fmt.Errorf("invalid RPC listener address %s, %w", rpcListener, err)
+		}
+		cfg.RpcListener = rpcListener
 	}
 
 	logger, err := log.NewRootLoggerWithFile(fpcfg.LogFile(homePath), cfg.LogLevel)

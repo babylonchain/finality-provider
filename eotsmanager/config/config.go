@@ -2,14 +2,16 @@ package config
 
 import (
 	"fmt"
-	"github.com/babylonchain/finality-provider/config"
-	"github.com/babylonchain/finality-provider/util"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/jessevdk/go-flags"
 	"net"
 	"path/filepath"
 	"strconv"
+
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"github.com/jessevdk/go-flags"
+
+	"github.com/babylonchain/finality-provider/config"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 const (
@@ -30,7 +32,7 @@ var (
 	//   ~/Library/Application Support/Eotsd on MacOS
 	DefaultEOTSDir = btcutil.AppDataDir("eotsd", false)
 
-	defaultRpcListener = "localhost:" + strconv.Itoa(DefaultRPCPort)
+	defaultRpcListener = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
 )
 
 type Config struct {
@@ -39,7 +41,7 @@ type Config struct {
 
 	DatabaseConfig *config.DatabaseConfig
 
-	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., localhost:1234"`
+	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command

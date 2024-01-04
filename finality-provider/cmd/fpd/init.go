@@ -13,7 +13,7 @@ import (
 
 var initCommand = cli.Command{
 	Name:  "init",
-	Usage: "Initialize a finality-provider home directory",
+	Usage: "Initialize a finality-provider home directory.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,

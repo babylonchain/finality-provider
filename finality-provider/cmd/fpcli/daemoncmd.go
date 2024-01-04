@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -15,50 +14,19 @@ import (
 	dc "github.com/babylonchain/finality-provider/finality-provider/service/client"
 )
 
-const (
-	fpdDaemonAddressFlag = "daemon-address"
-	keyNameFlag          = "key-name"
-	homeFlag             = "home"
-	fpBTCPkFlag          = "btc-pk"
-	blockHeightFlag      = "height"
-	appHashFlag          = "app-hash"
-	passphraseFlag       = "passphrase"
-	hdPathFlag           = "hd-path"
-	chainIdFlag          = "chain-id"
-	defaultPassphrase    = ""
-	defaultHdPath        = ""
-
-	// flags for description
-	monikerFlag          = "moniker"
-	identityFlag         = "identity"
-	websiteFlag          = "website"
-	securityContractFlag = "security-contract"
-	detailsFlag          = "details"
-
-	commissionRateFlag = "commission"
-)
-
 var (
-	defaultFpdDaemonAddress = "127.0.0.1:" + strconv.Itoa(fpcfg.DefaultRPCPort)
-	defaultAppHashStr       = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
+	defaultAppHashStr = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
 )
 
 var getDaemonInfoCmd = cli.Command{
 	Name:      "get-info",
 	ShortName: "gi",
 	Usage:     "Get information of the running daemon.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
-			Value: defaultFpdDaemonAddress,
-		},
-	},
-	Action: getInfo,
+	Action:    getInfo,
 }
 
 func getInfo(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -81,11 +49,6 @@ var createFpDaemonCmd = cli.Command{
 	ShortName: "cfp",
 	Usage:     "Create a finality provider object and save it in database.",
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
-			Value: defaultFpdDaemonAddress,
-		},
 		cli.StringFlag{
 			Name:  keyNameFlag,
 			Usage: "The unique name of the finality provider key",
@@ -145,7 +108,7 @@ var createFpDaemonCmd = cli.Command{
 }
 
 func createFpDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
 
 	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
 	if err != nil {
@@ -215,18 +178,11 @@ var lsFpDaemonCmd = cli.Command{
 	Name:      "list-finality-providers",
 	ShortName: "ls",
 	Usage:     "List finality providers stored in the database.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
-			Value: defaultFpdDaemonAddress,
-		},
-	},
-	Action: lsFpDaemon,
+	Action:    lsFpDaemon,
 }
 
 func lsFpDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -249,11 +205,6 @@ var fpInfoDaemonCmd = cli.Command{
 	Usage:     "Show the information of the finality provider.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
 			Name:     fpBTCPkFlag,
 			Usage:    "The hex string of the BTC public key",
 			Required: true,
@@ -263,7 +214,7 @@ var fpInfoDaemonCmd = cli.Command{
 }
 
 func fpInfoDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -292,11 +243,6 @@ var registerFpDaemonCmd = cli.Command{
 	UsageText: fmt.Sprintf("register-finality-provider --%s [btc-pk]", fpBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
 			Name:     fpBTCPkFlag,
 			Usage:    "The hex string of the finality provider BTC public key",
 			Required: true,
@@ -317,7 +263,7 @@ func registerFp(ctx *cli.Context) error {
 		return fmt.Errorf("invalid BTC public key: %w", err)
 	}
 
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -343,11 +289,6 @@ var addFinalitySigDaemonCmd = cli.Command{
 	UsageText: fmt.Sprintf("add-finality-sig --%s [btc_pk_hex]", fpBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "Full address of the finality provider daemon in format tcp://<host>:<port>",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
 			Name:     fpBTCPkFlag,
 			Usage:    "The hex string of the BTC public key",
 			Required: true,
@@ -367,7 +308,7 @@ var addFinalitySigDaemonCmd = cli.Command{
 }
 
 func addFinalitySig(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err

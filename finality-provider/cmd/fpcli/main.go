@@ -3,10 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/babylonchain/finality-provider/config"
 	"os"
+	"strconv"
+
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 
 	"github.com/urfave/cli"
+)
+
+var (
+	defaultFpdDaemonAddress = "127.0.0.1:" + strconv.Itoa(fpcfg.DefaultRPCPort)
 )
 
 func fatal(err error) {
@@ -24,25 +30,15 @@ func printRespJSON(resp interface{}) {
 	fmt.Printf("%s\n", jsonBytes)
 }
 
-const (
-	dbTypeFlag = "db-type"
-	dbNameFlag = "db-name"
-)
-
 func main() {
 	app := cli.NewApp()
 	app.Name = "fpcli"
 	app.Usage = "Control plane for the Finality Provider Daemon (fpd)."
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  dbTypeFlag,
-			Usage: "The type of the database",
-			Value: config.DefaultBackend,
-		},
-		cli.StringFlag{
-			Name:  dbNameFlag,
-			Usage: "The name of the database bucket",
-			Value: config.DefaultDBName,
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
 		},
 	}
 

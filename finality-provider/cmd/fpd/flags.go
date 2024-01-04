@@ -12,6 +12,7 @@ const (
 	hdPathFlag         = "hd-path"
 	chainIdFlag        = "chain-id"
 	keyringBackendFlag = "keyring-backend"
+	rpcListenerFlag    = "rpc-listener"
 
 	defaultKeyringBackend = keyring.BackendTest
 	defaultHdPath         = ""

@@ -1,6 +1,7 @@
 package main
 
 const (
-	homeFlag  = "home"
-	forceFlag = "force"
+	homeFlag        = "home"
+	forceFlag       = "force"
+	rpcListenerFlag = "rpc-listener"
 )
