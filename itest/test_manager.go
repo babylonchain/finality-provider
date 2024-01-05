@@ -10,14 +10,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	covcc "github.com/babylonchain/covenant-emulator/clientcontroller"
+	covcfg "github.com/babylonchain/covenant-emulator/config"
+	"github.com/babylonchain/covenant-emulator/covenant"
+	covtypes "github.com/babylonchain/covenant-emulator/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -26,9 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
-	"github.com/babylonchain/finality-provider/covenant"
-	covcfg "github.com/babylonchain/finality-provider/covenant/config"
+	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -59,7 +60,8 @@ type TestManager struct {
 	CovenanConfig     *covcfg.Config
 	Fpa               *service.FinalityProviderApp
 	EOTSClient        *client.EOTSManagerGRpcClient
-	BabylonClient     *clientcontroller.BabylonController
+	FPBBNClient       *fpcc.BabylonController
+	CovBBNClient      *covcc.BabylonController
 	baseDir           string
 }
 
@@ -99,7 +101,7 @@ func StartManager(t *testing.T) *TestManager {
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
-	bc, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
 	// 3. prepare EOTS manager
@@ -117,7 +119,10 @@ func StartManager(t *testing.T) *TestManager {
 	require.NoError(t, err)
 
 	// 5. prepare covenant emulator
-	ce, err := covenant.NewCovenantEmulator(covenantConfig, bc, passphrase, logger)
+	bbnCfg := defaultBBNConfigWithKey(cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory)
+	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
+	require.NoError(t, err)
+	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, passphrase, logger)
 	require.NoError(t, err)
 	err = ce.Start()
 	require.NoError(t, err)
@@ -131,7 +136,7 @@ func StartManager(t *testing.T) *TestManager {
 		CovenantEmulator:  ce,
 		CovenanConfig:     covenantConfig,
 		EOTSClient:        eotsCli,
-		BabylonClient:     bc,
+		FPBBNClient:       bc,
 		baseDir:           testDir,
 	}
 
@@ -143,7 +148,7 @@ func StartManager(t *testing.T) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		_, err := tm.BabylonClient.QueryStakingParams()
+		_, err := tm.CovBBNClient.QueryStakingParams()
 
 		return err == nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
@@ -179,7 +184,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 
 		// check finality providers on Babylon side
 		require.Eventually(t, func() bool {
-			fps, err := tm.BabylonClient.QueryFinalityProviders()
+			fps, err := tm.FPBBNClient.QueryFinalityProviders()
 			if err != nil {
 				t.Logf("failed to query finality providers from Babylon %s", err.Error())
 				return false
@@ -224,7 +229,7 @@ func (tm *TestManager) Stop(t *testing.T) {
 
 func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
 	require.Eventually(t, func() bool {
-		queriedFps, err := tm.BabylonClient.QueryFinalityProviders()
+		queriedFps, err := tm.FPBBNClient.QueryFinalityProviders()
 		if err != nil {
 			return false
 		}
@@ -246,13 +251,13 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 	t.Logf("public randomness is successfully committed")
 }
 
-func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegation {
+func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*covtypes.Delegation {
 	var (
-		dels []*types.Delegation
+		dels []*covtypes.Delegation
 		err  error
 	)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryPendingDelegations(
+		dels, err = tm.CovBBNClient.QueryPendingDelegations(
 			tm.CovenanConfig.DelegationLimit,
 		)
 		if err != nil {
@@ -266,14 +271,14 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*types.Delegat
 	return dels
 }
 
-func (tm *TestManager) WaitForFpNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*types.Delegation {
-	var dels []*types.Delegation
-	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+func (tm *TestManager) WaitForFpNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*covtypes.Delegation {
+	var dels []*covtypes.Delegation
+	currentBtcTip, err := tm.FPBBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	params, err := tm.BabylonClient.QueryStakingParams()
+	params, err := tm.CovBBNClient.QueryStakingParams()
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryFinalityProviderDelegations(btcPk, 1000)
+		dels, err = tm.CovBBNClient.QueryFinalityProviderDelegations(btcPk, 1000)
 		if err != nil {
 			return false
 		}
@@ -286,7 +291,7 @@ func (tm *TestManager) WaitForFpNActiveDels(t *testing.T, btcPk *bbntypes.BIP340
 	return dels
 }
 
-func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, covenantQuorum uint32, status bstypes.BTCDelegationStatus) bool {
+func CheckDelsStatus(dels []*covtypes.Delegation, btcHeight uint64, w uint64, covenantQuorum uint32, status bstypes.BTCDelegationStatus) bool {
 	allChecked := true
 	for _, d := range dels {
 		s := getDelStatus(d, btcHeight, w, covenantQuorum)
@@ -298,7 +303,7 @@ func CheckDelsStatus(dels []*types.Delegation, btcHeight uint64, w uint64, coven
 	return allChecked
 }
 
-func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64, covenantQuorum uint32) bstypes.BTCDelegationStatus {
+func getDelStatus(del *covtypes.Delegation, btcHeight uint64, w uint64, covenantQuorum uint32) bstypes.BTCDelegationStatus {
 	if del.BtcUndelegation.DelegatorUnbondingSig != nil {
 		// this means the delegator has signed unbonding signature, and Babylon will consider
 		// this BTC delegation unbonded directly
@@ -324,7 +329,7 @@ func getDelStatus(del *types.Delegation, btcHeight uint64, w uint64, covenantQuo
 func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
 	// we need to ensure votes are collected at the given height
 	require.Eventually(t, func() bool {
-		votes, err := tm.BabylonClient.QueryVotesAtHeight(height)
+		votes, err := tm.FPBBNClient.QueryVotesAtHeight(height)
 		if err != nil {
 			t.Logf("failed to get the votes at height %v: %s", height, err.Error())
 			return false
@@ -334,7 +339,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
-		b, err := tm.BabylonClient.QueryBlock(height)
+		b, err := tm.FPBBNClient.QueryBlock(height)
 		if err != nil {
 			t.Logf("failed to query block at height %v: %s", height, err.Error())
 			return false
@@ -363,7 +368,7 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 		err    error
 	)
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(uint64(n))
+		blocks, err = tm.FPBBNClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
@@ -377,13 +382,13 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 }
 
 func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
-	blockBeforeStop, err := tm.BabylonClient.QueryBestBlock()
+	blockBeforeStop, err := tm.FPBBNClient.QueryBestBlock()
 	require.NoError(t, err)
 	err = fpIns.Stop()
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
-		headerAfterStop, err := tm.BabylonClient.QueryBestBlock()
+		headerAfterStop, err := tm.FPBBNClient.QueryBestBlock()
 		if err != nil {
 			return false
 		}
@@ -404,7 +409,7 @@ func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey
 	return record.PrivKey
 }
 
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64, params *types.StakingParams) *TestDelegationData {
+func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64, params *covtypes.StakingParams) *TestDelegationData {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// delegator BTC key pairs, staking tx and slashing tx
@@ -437,7 +442,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	currentBtcTip, err := tm.FPBBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
 	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
@@ -455,7 +460,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		headers = append(headers, *headerInfo.Header)
 		parentBlockHeaderInfo = headerInfo
 	}
-	_, err = tm.BabylonClient.InsertBtcBlockHeaders(headers)
+	_, err = tm.FPBBNClient.InsertBtcBlockHeaders(headers)
 	require.NoError(t, err)
 	btcHeader := blockWithStakingTx.HeaderBytes
 	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
@@ -511,7 +516,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 
 	// submit the BTC delegation to Babylon
-	_, err = tm.BabylonClient.CreateBTCDelegation(
+	_, err = tm.FPBBNClient.CreateBTCDelegation(
 		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
 		fpPks,
@@ -547,8 +552,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	}
 }
 
-func (tm *TestManager) GetParams(t *testing.T) *types.StakingParams {
-	p, err := tm.BabylonClient.QueryStakingParams()
+func (tm *TestManager) GetParams(t *testing.T) *covtypes.StakingParams {
+	p, err := tm.CovBBNClient.QueryStakingParams()
 	require.NoError(t, err)
 	return p
 }
@@ -567,6 +572,15 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg
+}
+
+func defaultBBNConfigWithKey(key, keydir string) *covcfg.BBNConfig {
+	bbnCfg := covcfg.DefaultBBNConfig()
+	bbnCfg.Key = key
+	bbnCfg.KeyDirectory = keydir
+	bbnCfg.GasAdjustment = 20
+
+	return &bbnCfg
 }
 
 func defaultCovenantConfig(homeDir string) *covcfg.Config {

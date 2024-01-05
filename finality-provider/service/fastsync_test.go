@@ -20,7 +20,7 @@ func FuzzFastSync(f *testing.F) {
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		app, storeFp, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		fpIns, err := app.GetFinalityProviderInstance(storeFp.MustGetBIP340BTCPK())
