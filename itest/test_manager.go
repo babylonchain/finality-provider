@@ -419,6 +419,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	changeAddress, err := datagen.GenRandomBTCAddress(r, btcNetworkParams)
 	require.NoError(t, err)
 
+	slashingLockTime := uint16(101)
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
@@ -429,8 +430,9 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		params.CovenantQuorum,
 		stakingTime,
 		stakingAmount,
-		params.SlashingAddress.String(), changeAddress.String(),
+		params.SlashingAddress.String(),
 		params.SlashingRate,
+		slashingLockTime,
 	)
 
 	// delegator Babylon key pairs
@@ -495,8 +497,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 		unbondingValue,
 		params.SlashingAddress.String(),
-		changeAddress.String(),
 		params.SlashingRate,
+		slashingLockTime,
 	)
 
 	unbondingTxMsg := testUnbondingInfo.UnbondingTx

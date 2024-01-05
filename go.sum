@@ -281,8 +281,8 @@ github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonchain/babylon-private v0.0.0-20240105083612-dd4e4b1c0598 h1:ysEA08WGHlMm2pIoXgTt1O9YAW4QjBQXg3TM0CSn21g=
 github.com/babylonchain/babylon-private v0.0.0-20240105083612-dd4e4b1c0598/go.mod h1:qiavPBxKkbMeTXg0vaLpMw97Xw8Nb3kpzZJ0ptiYcss=
-github.com/babylonchain/covenant-emulator v0.0.0-20240105053811-99c47b73dbe4 h1:ta+Obc9KUsiBifUJID86Xa8P+pOBbUbM/+60+lxF4zs=
-github.com/babylonchain/covenant-emulator v0.0.0-20240105053811-99c47b73dbe4/go.mod h1:nuSuxPYSwpCX9zm/kaltHANKVIOvWZef7ftNm9ahWdg=
+github.com/babylonchain/covenant-emulator v0.0.0-20240105111320-96da1d0c226f h1:67Hh9CtCX6VWIvNoUwg/ZTgmGfFYC59bT0O/ob4crmE=
+github.com/babylonchain/covenant-emulator v0.0.0-20240105111320-96da1d0c226f/go.mod h1:6be7+qVoskKQM9by8KoCNDIFx3qfImoLdGeBj98zCw8=
 github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a h1:IwntCUOlcsczQfl4P72ckqGf09coMdM42LvAG1aM+mg=
 github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a/go.mod h1:dnUVCa5yHq2giiSpBpXx7W3CbJuuMabvQi3hG81AAtM=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
