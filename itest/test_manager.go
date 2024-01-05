@@ -137,6 +137,7 @@ func StartManager(t *testing.T) *TestManager {
 		CovenanConfig:     covenantConfig,
 		EOTSClient:        eotsCli,
 		FPBBNClient:       bc,
+		CovBBNClient:      covbc,
 		baseDir:           testDir,
 	}
 
@@ -149,7 +150,6 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
 		_, err := tm.CovBBNClient.QueryStakingParams()
-
 		return err == nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
