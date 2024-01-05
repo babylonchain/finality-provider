@@ -77,7 +77,7 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20231102162011-844f0582c2eb // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/cometbft/cometbft v0.38.1 // indirect
+	github.com/cometbft/cometbft v0.38.2 // indirect
 	github.com/cometbft/cometbft-db v0.8.0 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
@@ -238,7 +238,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231213105136-11792cad8a84
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20231224153404-79decc6a6866
 	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
