@@ -47,7 +47,6 @@ RUN apk add bash curl jq
 
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpd /bin/fpd
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpcli /bin/fpcli
-COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/covd /bin/covd
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/eotsd /bin/eotsd
 
 WORKDIR /home/finality-provider
