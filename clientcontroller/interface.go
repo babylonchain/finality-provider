@@ -4,11 +4,10 @@ import (
 	"fmt"
 
 	"cosmossdk.io/math"
-	"github.com/btcsuite/btcd/chaincfg"
-	"go.uber.org/zap"
-
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/chaincfg"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
