@@ -62,6 +62,7 @@ type TestManager struct {
 	EOTSClient        *client.EOTSManagerGRpcClient
 	FPBBNClient       *fpcc.BabylonController
 	CovBBNClient      *covcc.BabylonController
+	StakingParams     *covtypes.StakingParams
 	baseDir           string
 }
 
@@ -149,8 +150,12 @@ func StartManager(t *testing.T) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		_, err := tm.CovBBNClient.QueryStakingParams()
-		return err == nil
+		params, err := tm.CovBBNClient.QueryStakingParams()
+		if err != nil {
+			return false
+		}
+		tm.StakingParams = params
+		return true
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("Babylon node is started")
@@ -416,10 +421,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 
-	changeAddress, err := datagen.GenRandomBTCAddress(r, btcNetworkParams)
-	require.NoError(t, err)
-
-	slashingLockTime := uint16(101)
+	unbondingTime := uint16(tm.StakingParams.MinimumUnbondingTime()) + 1
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
@@ -432,7 +434,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		stakingAmount,
 		params.SlashingAddress.String(),
 		params.SlashingRate,
-		slashingLockTime,
+		unbondingTime,
 	)
 
 	// delegator Babylon key pairs
@@ -481,7 +483,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	)
 	require.NoError(t, err)
 
-	unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
 	unbondingValue := stakingAmount - 1000
 	stakingTxHash := testStakingInfo.StakingTx.TxHash()
 
@@ -498,7 +499,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingValue,
 		params.SlashingAddress.String(),
 		params.SlashingRate,
-		slashingLockTime,
+		unbondingTime,
 	)
 
 	unbondingTxMsg := testUnbondingInfo.UnbondingTx
@@ -548,7 +549,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
 		SlashingAddr:            params.SlashingAddress.String(),
-		ChangeAddr:              changeAddress.String(),
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
 	}
