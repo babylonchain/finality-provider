@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec/v2"
-
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
