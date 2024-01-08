@@ -23,10 +23,17 @@ var getDaemonInfoCmd = cli.Command{
 	ShortName: "gi",
 	Usage:     "Get information of the running daemon.",
 	Action:    getInfo,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
+	},
 }
 
 func getInfo(ctx *cli.Context) error {
-	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -49,6 +56,11 @@ var createFpDaemonCmd = cli.Command{
 	ShortName: "cfp",
 	Usage:     "Create a finality provider object and save it in database.",
 	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
 		cli.StringFlag{
 			Name:  keyNameFlag,
 			Usage: "The unique name of the finality provider key",
@@ -108,7 +120,7 @@ var createFpDaemonCmd = cli.Command{
 }
 
 func createFpDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
 
 	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
 	if err != nil {
@@ -179,10 +191,17 @@ var lsFpDaemonCmd = cli.Command{
 	ShortName: "ls",
 	Usage:     "List finality providers stored in the database.",
 	Action:    lsFpDaemon,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
+	},
 }
 
 func lsFpDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -205,6 +224,11 @@ var fpInfoDaemonCmd = cli.Command{
 	Usage:     "Show the information of the finality provider.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
+		cli.StringFlag{
 			Name:     fpBTCPkFlag,
 			Usage:    "The hex string of the BTC public key",
 			Required: true,
@@ -214,7 +238,7 @@ var fpInfoDaemonCmd = cli.Command{
 }
 
 func fpInfoDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -243,6 +267,11 @@ var registerFpDaemonCmd = cli.Command{
 	UsageText: fmt.Sprintf("register-finality-provider --%s [btc-pk]", fpBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
+		cli.StringFlag{
 			Name:     fpBTCPkFlag,
 			Usage:    "The hex string of the finality provider BTC public key",
 			Required: true,
@@ -263,7 +292,7 @@ func registerFp(ctx *cli.Context) error {
 		return fmt.Errorf("invalid BTC public key: %w", err)
 	}
 
-	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -289,6 +318,11 @@ var addFinalitySigDaemonCmd = cli.Command{
 	UsageText: fmt.Sprintf("add-finality-sig --%s [btc_pk_hex]", fpBTCPkFlag),
 	Flags: []cli.Flag{
 		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
+		cli.StringFlag{
 			Name:     fpBTCPkFlag,
 			Usage:    "The hex string of the BTC public key",
 			Required: true,
@@ -308,7 +342,7 @@ var addFinalitySigDaemonCmd = cli.Command{
 }
 
 func addFinalitySig(ctx *cli.Context) error {
-	daemonAddress := ctx.GlobalString(fpdDaemonAddressFlag)
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
 	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
