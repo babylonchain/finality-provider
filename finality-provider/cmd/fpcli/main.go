@@ -34,13 +34,6 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "fpcli"
 	app.Usage = "Control plane for the Finality Provider Daemon (fpd)."
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-	}
 
 	app.Commands = append(app.Commands,
 		getDaemonInfoCmd,
