@@ -9,7 +9,7 @@ require (
 	cosmossdk.io/math v1.2.0
 	github.com/avast/retry-go/v4 v4.5.1
 	github.com/babylonchain/babylon v0.7.2
-	github.com/babylonchain/covenant-emulator v0.0.0-20240105111320-96da1d0c226f
+	github.com/babylonchain/covenant-emulator v0.0.0-20240109011217-2586ba2d2aee
 	github.com/babylonchain/rpc-client v0.7.0
 	github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2

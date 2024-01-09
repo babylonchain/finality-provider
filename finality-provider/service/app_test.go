@@ -45,6 +45,8 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
+			gomock.Any()).Return(uint64(0), nil).AnyTimes()
 
 		// Create randomized config
 		fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
