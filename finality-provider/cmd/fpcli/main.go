@@ -6,9 +6,9 @@ import (
 	"os"
 	"strconv"
 
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-
 	"github.com/urfave/cli"
+
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 )
 
 var (

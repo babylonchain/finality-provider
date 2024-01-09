@@ -7,15 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/babylonchain/finality-provider/util"
-
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/babylonchain/finality-provider/config"
-
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 const (

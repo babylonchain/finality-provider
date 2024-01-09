@@ -9,11 +9,10 @@ import (
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
 
-	"github.com/babylonchain/finality-provider/log"
-	"github.com/babylonchain/finality-provider/util"
-
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/log"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 var startCommand = cli.Command{

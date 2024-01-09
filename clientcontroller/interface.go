@@ -4,11 +4,10 @@ import (
 	"fmt"
 
 	"cosmossdk.io/math"
-	"github.com/btcsuite/btcd/chaincfg"
-	"go.uber.org/zap"
-
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/chaincfg"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
@@ -19,17 +18,7 @@ const (
 )
 
 type ClientController interface {
-	FinalityProviderAPIs
 
-	CovenantAPIs
-
-	QueryStakingParams() (*types.StakingParams, error)
-
-	Close() error
-}
-
-// FinalityProviderAPIs contains interfaces needed when the program is running in the finality provider mode
-type FinalityProviderAPIs interface {
 	// RegisterFinalityProvider registers a finality provider to the consumer chain
 	// it returns tx hash and error
 	RegisterFinalityProvider(
@@ -76,18 +65,8 @@ type FinalityProviderAPIs interface {
 	// QueryActivatedHeight returns the activated height of the consumer chain
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
-}
 
-// CovenantAPIs contains interfaces needed when the program is running in the covenant mode
-type CovenantAPIs interface {
-	// SubmitCovenantSigs submits Covenant signatures to the consumer chain, each corresponding to
-	// a finality provider that the delegation is (re-)staked to
-	// it returns tx hash and error
-	SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string,
-		sigs [][]byte, unbondingSig *schnorr.Signature, unbondingSlashingSigs [][]byte) (*types.TxResponse, error)
-
-	// QueryPendingDelegations queries BTC delegations that are in status of pending
-	QueryPendingDelegations(limit uint64) ([]*types.Delegation, error)
+	Close() error
 }
 
 func NewClientController(chainName string, bbnConfig *config.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {

@@ -20,7 +20,7 @@ func FuzzFastSync(f *testing.F) {
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight, &types.StakingParams{})
+		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		app, storeFp, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 		fpIns, err := app.GetFinalityProviderInstance(storeFp.MustGetBIP340BTCPK())
@@ -31,11 +31,11 @@ func FuzzFastSync(f *testing.F) {
 		mockClientController.EXPECT().
 			CommitPubRandList(fpIns.MustGetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(storeFp.MustGetBTCPK(), gomock.Any()).
+			Return(uint64(1), nil).AnyTimes()
 		res, err := fpIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(storeFp.MustGetBTCPK(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
 
 		// fast sync
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)

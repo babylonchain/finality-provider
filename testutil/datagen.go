@@ -16,7 +16,6 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/stretchr/testify/require"
@@ -83,40 +82,6 @@ func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *proto.StoreFinalityP
 
 func GenValidSlashingRate(r *rand.Rand) sdkmath.LegacyDec {
 	return sdkmath.LegacyNewDecWithPrec(int64(datagen.RandomInt(r, 41)+10), 2)
-}
-
-func GenRandomParams(r *rand.Rand, t *testing.T) *types.StakingParams {
-	covThreshold := datagen.RandomInt(r, 5) + 1
-	covNum := covThreshold * 2
-	covenantPks := make([]*btcec.PublicKey, 0, covNum)
-	for i := 0; i < int(covNum); i++ {
-		_, covPk, err := datagen.GenRandomBTCKeyPair(r)
-		require.NoError(t, err)
-		covenantPks = append(covenantPks, covPk)
-	}
-
-	slashingAddr, err := datagen.GenRandomBTCAddress(r, &chaincfg.SimNetParams)
-	require.NoError(t, err)
-	return &types.StakingParams{
-		ComfirmationTimeBlocks:    10,
-		FinalizationTimeoutBlocks: 100,
-		MinSlashingTxFeeSat:       1,
-		CovenantPks:               covenantPks,
-		SlashingAddress:           slashingAddr,
-		CovenantQuorum:            uint32(covThreshold),
-		SlashingRate:              GenValidSlashingRate(r),
-	}
-}
-
-func GenBtcPublicKeys(r *rand.Rand, t *testing.T, num int) []*btcec.PublicKey {
-	pks := make([]*btcec.PublicKey, 0, num)
-	for i := 0; i < num; i++ {
-		_, covPk, err := datagen.GenRandomBTCKeyPair(r)
-		require.NoError(t, err)
-		pks = append(pks, covPk)
-	}
-
-	return pks
 }
 
 func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {

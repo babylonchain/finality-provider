@@ -6,9 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/babylonchain/finality-provider/types"
-	"github.com/babylonchain/finality-provider/util"
-
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -17,15 +14,15 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"go.uber.org/zap"
 
-	fpkr "github.com/babylonchain/finality-provider/keyring"
-
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-
 	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
+	fpkr "github.com/babylonchain/finality-provider/keyring"
+	"github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 type FinalityProviderApp struct {
