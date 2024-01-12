@@ -95,6 +95,8 @@ func TestDoubleSigning(t *testing.T) {
 	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
 
 	t.Logf("the equivocation attack is successful")
+
+	tm.WaitForFpShutDown(t, fpIns.GetBtcPkBIP340())
 }
 
 // TestMultipleFinalityProviders tests starting with multiple finality providers
