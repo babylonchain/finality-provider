@@ -97,6 +97,12 @@ func TestDoubleSigning(t *testing.T) {
 	t.Logf("the equivocation attack is successful")
 
 	tm.WaitForFpShutDown(t, fpIns.GetBtcPkBIP340())
+
+	// try to start all the finality providers and the slashed one should not be restarted
+	err = tm.Fpa.StartHandlingAll()
+	require.NoError(t, err)
+	fps := tm.Fpa.ListFinalityProviderInstances()
+	require.Equal(t, 0, len(fps))
 }
 
 // TestMultipleFinalityProviders tests starting with multiple finality providers

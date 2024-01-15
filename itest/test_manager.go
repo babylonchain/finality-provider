@@ -389,10 +389,7 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {
 	require.Eventually(t, func() bool {
 		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
-		if err != nil {
-			return true
-		}
-		return false
+		return err != nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
