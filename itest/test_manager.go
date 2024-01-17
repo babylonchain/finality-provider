@@ -386,6 +386,15 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	return blocks
 }
 
+func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {
+	require.Eventually(t, func() bool {
+		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
+		return err != nil
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
+}
+
 func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
 	blockBeforeStop, err := tm.FPBBNClient.QueryBestBlock()
 	require.NoError(t, err)

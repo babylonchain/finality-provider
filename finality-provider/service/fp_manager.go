@@ -84,7 +84,9 @@ func (fpm *FinalityProviderManager) monitorCriticalErr() {
 		case criticalErr = <-fpm.criticalErrChan:
 			fpi, err := fpm.GetFinalityProviderInstance(criticalErr.fpBtcPk)
 			if err != nil {
-				panic(fmt.Errorf("failed to get the finality-provider instance: %w", err))
+				fpm.logger.Debug("the finality-provider instance is already shutdown",
+					zap.String("pk", criticalErr.fpBtcPk.MarshalHex()))
+				continue
 			}
 			if errors.Is(criticalErr.err, btcstakingtypes.ErrFpAlreadySlashed) {
 				fpm.setFinalityProviderSlashed(fpi)
@@ -92,7 +94,7 @@ func (fpm *FinalityProviderManager) monitorCriticalErr() {
 					zap.String("pk", criticalErr.fpBtcPk.MarshalHex()))
 				continue
 			}
-			fpi.logger.Fatal(instanceTerminatingMsg,
+			fpm.logger.Fatal(instanceTerminatingMsg,
 				zap.String("pk", criticalErr.fpBtcPk.MarshalHex()), zap.Error(criticalErr.err))
 		case <-fpm.quit:
 			return
