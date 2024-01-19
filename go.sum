@@ -284,8 +284,8 @@ github.com/babylonchain/babylon-private v0.0.0-20240117063238-ec7d62eb0987 h1:ZN
 github.com/babylonchain/babylon-private v0.0.0-20240117063238-ec7d62eb0987/go.mod h1:/qhtE2riCrEN35zF2Svdxs+nbLOd7DRQnMKBXDIgTCs=
 github.com/babylonchain/covenant-emulator v0.0.0-20240109011217-2586ba2d2aee h1:hTtjwiz6ooQUmjubCqsbGmekzsASfoxoKoxIzVA/YQA=
 github.com/babylonchain/covenant-emulator v0.0.0-20240109011217-2586ba2d2aee/go.mod h1:6be7+qVoskKQM9by8KoCNDIFx3qfImoLdGeBj98zCw8=
-github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119031609-2861159e6abe h1:npvimsCUHyYmJBc4/T+BkvyhqOdS2l8nftP72fGyxPk=
-github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119031609-2861159e6abe/go.mod h1:bdEfcPa2N3cBtfzgsLGRhpiaET9loB/wHlUPmLRqohA=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119033927-3f5ec9a92169 h1:wb/7f20NCiWT8IDJWhHKIxex30FvAvBJS6SGcv108kA=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119033927-3f5ec9a92169/go.mod h1:bdEfcPa2N3cBtfzgsLGRhpiaET9loB/wHlUPmLRqohA=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
