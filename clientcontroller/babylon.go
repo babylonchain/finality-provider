@@ -16,7 +16,6 @@ import (
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg"
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
@@ -218,16 +217,8 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, bloc
 }
 
 func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
-
-	queryRequest := &btcstakingtypes.QueryFinalityProviderRequest{FpBtcPkHex: fpPubKey.MarshalHex()}
-
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-	res, err := queryClient.FinalityProvider(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.FinalityProvider(fpPubKey.MarshalHex())
 	if err != nil {
 		return false, fmt.Errorf("failed to query the finality provider %s: %v", fpPubKey.MarshalHex(), err)
 	}
@@ -257,31 +248,24 @@ func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.
 // QueryLastCommittedPublicRand returns the last committed public randomness
 // TODO update the implementation when rpc-client supports ListPublicRandomness
 func (bc *BabylonController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error) {
+	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+
 	pagination := &sdkquery.PageRequest{
 		// NOTE: the count is limited by pagination queries
 		Limit:   count,
 		Reverse: true,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	queryRequest := &finalitytypes.QueryListPublicRandomnessRequest{
-		Pagination: pagination,
-		FpBtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
-	}
-
-	res, err := queryClient.ListPublicRandomness(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.ListPublicRandomness(fpBtcPk.MarshalHex(), pagination)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query committed public randomness: %v", err)
+		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
 	}
 
 	committedPubRand := make(map[uint64]*btcec.FieldVal, len(res.PubRandMap))
 	for k, v := range res.PubRandMap {
+		if v == nil {
+			return nil, fmt.Errorf("invalid committed public randomness")
+		}
 		committedPubRand[k] = v.ToFieldVal()
 	}
 
@@ -329,18 +313,7 @@ func getContextWithCancel(timeout time.Duration) (context.Context, context.Cance
 }
 
 func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	// query the indexed block at the given height
-	queryRequest := &finalitytypes.QueryBlockRequest{
-		Height: height,
-	}
-	res, err := queryClient.Block(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.Block(height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
 	}
@@ -353,16 +326,7 @@ func (bc *BabylonController) QueryBlock(height uint64) (*types.BlockInfo, error)
 }
 
 func (bc *BabylonController) QueryActivatedHeight() (uint64, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
-	// query the indexed block at the given height
-	queryRequest := &btcstakingtypes.QueryActivatedHeightRequest{}
-	res, err := queryClient.ActivatedHeight(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.ActivatedHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to query activated height: %w", err)
 	}
@@ -467,18 +431,8 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 		Limit: 100,
 	}
 
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
-
 	for {
-		queryRequest := &btcstakingtypes.QueryFinalityProvidersRequest{
-			Pagination: pagination,
-		}
-		res, err := queryClient.FinalityProviders(ctx, queryRequest)
+		res, err := bc.bbnClient.QueryClient.FinalityProviders(pagination)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query finality providers: %v", err)
 		}
@@ -495,15 +449,7 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := btclctypes.NewQueryClient(clientCtx)
-
-	queryRequest := &btclctypes.QueryTipRequest{}
-	res, err := queryClient.Tip(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.BTCHeaderChainTip()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC tip: %v", err)
 	}
@@ -513,18 +459,7 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	// query all the unsigned delegations
-	queryRequest := &finalitytypes.QueryVotesAtHeightRequest{
-		Height: height,
-	}
-	res, err := queryClient.VotesAtHeight(ctx, queryRequest)
+	res, err := bc.bbnClient.QueryClient.VotesAtHeight(height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
 	}

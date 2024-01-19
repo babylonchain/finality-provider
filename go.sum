@@ -235,6 +235,7 @@ github.com/CosmWasm/wasmd v0.50.0 h1:NVaGqCSTRfb9UTDHJwT6nQIWcb6VjlQl88iI+u1+qjE
 github.com/CosmWasm/wasmd v0.50.0/go.mod h1:UjmShW4l9YxaMytwJZ7IB7MWzHiynSZP3DdWrG0FRtk=
 github.com/CosmWasm/wasmvm v1.5.1 h1:2MHN9uFyHP6pxfvpBJ0JW6ujvAIBk9kQk283zyri0Ro=
 github.com/CosmWasm/wasmvm v1.5.1/go.mod h1:fXB+m2gyh4v9839zlIXdMZGeLAxqUdYdFQqYsTha2hc=
+github.com/DataDog/datadog-go v3.2.0+incompatible h1:qSG2N4FghB1He/r2mFrWKCaL7dXCilEuNEeAn20fdD4=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/DataDog/zstd v1.5.5 h1:oWf5W7GtOLgp6bciQYDmhHHjdhYkALu6S/5Ni9ZgSvQ=
 github.com/DataDog/zstd v1.5.5/go.mod h1:g4AWEaM3yOg3HYfnJ3YIawPnVdXJh9QME85blwSAmyw=
@@ -283,8 +284,8 @@ github.com/babylonchain/babylon-private v0.0.0-20240117063238-ec7d62eb0987 h1:ZN
 github.com/babylonchain/babylon-private v0.0.0-20240117063238-ec7d62eb0987/go.mod h1:/qhtE2riCrEN35zF2Svdxs+nbLOd7DRQnMKBXDIgTCs=
 github.com/babylonchain/covenant-emulator v0.0.0-20240109011217-2586ba2d2aee h1:hTtjwiz6ooQUmjubCqsbGmekzsASfoxoKoxIzVA/YQA=
 github.com/babylonchain/covenant-emulator v0.0.0-20240109011217-2586ba2d2aee/go.mod h1:6be7+qVoskKQM9by8KoCNDIFx3qfImoLdGeBj98zCw8=
-github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a h1:IwntCUOlcsczQfl4P72ckqGf09coMdM42LvAG1aM+mg=
-github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20231214053715-9de58555773a/go.mod h1:dnUVCa5yHq2giiSpBpXx7W3CbJuuMabvQi3hG81AAtM=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119031609-2861159e6abe h1:npvimsCUHyYmJBc4/T+BkvyhqOdS2l8nftP72fGyxPk=
+github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119031609-2861159e6abe/go.mod h1:bdEfcPa2N3cBtfzgsLGRhpiaET9loB/wHlUPmLRqohA=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
@@ -403,8 +404,8 @@ github.com/cosmos/cosmos-db v1.0.0 h1:EVcQZ+qYag7W6uorBKFPvX6gRjw6Uq2hIh4hCWjuQ0
 github.com/cosmos/cosmos-db v1.0.0/go.mod h1:iBvi1TtqaedwLdcrZVYRSSCb6eSy61NLj4UNmdIgs0U=
 github.com/cosmos/cosmos-proto v1.0.0-beta.3 h1:VitvZ1lPORTVxkmF2fAp3IiA61xVwArQYKXTdEcpW6o=
 github.com/cosmos/cosmos-proto v1.0.0-beta.3/go.mod h1:t8IASdLaAq+bbHbjq4p960BvcTqtwuAxid3b/2rOD6I=
-github.com/cosmos/cosmos-sdk v0.50.1 h1:2SYwAYqd7ZwtrWxu/J8PwbQV/cDcu90bCr/a78g3lVw=
-github.com/cosmos/cosmos-sdk v0.50.1/go.mod h1:fsLSPGstCwn6MMsFDMAQWGJj8E4sYsN9Gnu1bGE5imA=
+github.com/cosmos/cosmos-sdk v0.50.2 h1:u52xPZXLfeuR1HbGPCyOsMQvAbCtvoJbpfH5diBPVuc=
+github.com/cosmos/cosmos-sdk v0.50.2/go.mod h1:n/WQqDh73qdtBmY9Op3sYgiBgTujSfGSd6CNh6GfqvQ=
 github.com/cosmos/go-bip39 v1.0.0 h1:pcomnQdrdH22njcAatO0yWojsUnCO3y2tNoV1cb6hHY=
 github.com/cosmos/go-bip39 v1.0.0/go.mod h1:RNJv0H/pOIVgxw6KS7QeX2a0Uo0aKUlfhZ4xuwvCdJw=
 github.com/cosmos/gogogateway v1.2.0 h1:Ae/OivNhp8DqBi/sh2A8a1D0y638GpL3tkmLQAiKxTE=
@@ -422,8 +423,8 @@ github.com/cosmos/ics23/go v0.10.0 h1:iXqLLgp2Lp+EdpIuwXTYIQU+AiHj9mOC2X9ab++bZD
 github.com/cosmos/ics23/go v0.10.0/go.mod h1:ZfJSmng/TBNTBkFemHHHj5YY7VAU/MBU980F4VU1NG0=
 github.com/cosmos/ledger-cosmos-go v0.13.3 h1:7ehuBGuyIytsXbd4MP43mLeoN2LTOEnk5nvue4rK+yM=
 github.com/cosmos/ledger-cosmos-go v0.13.3/go.mod h1:HENcEP+VtahZFw38HZ3+LS3Iv5XV6svsnkk9vdJtLr8=
-github.com/cosmos/relayer/v2 v2.4.3-0.20231121194223-be8ebe0a83db h1:F5dlvwH3zQpTDnZySmH9OoMKKdx2OUKrP8CEQTWsAuY=
-github.com/cosmos/relayer/v2 v2.4.3-0.20231121194223-be8ebe0a83db/go.mod h1:z5EtRGgbdFhqiemIu09cwwNbNu+UNH/qkhk696JFv48=
+github.com/cosmos/relayer/v2 v2.4.3-0.20231227002143-820caf5ab483 h1:l8Elru92qhdzwJdOYDEKcDfFPEdPPFH5jTRL7OZWGMA=
+github.com/cosmos/relayer/v2 v2.4.3-0.20231227002143-820caf5ab483/go.mod h1:eBKSRbCx2zhqpvzZG4+HcDacWz4BywqgcLBkiyzuGYI=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
