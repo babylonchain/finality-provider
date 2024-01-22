@@ -213,7 +213,7 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20240117063238-ec7d62eb0987
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon v0.7.2-0.20240121090242-60e5612f9acb
 
 	// Downgraded to stable version see: https://github.com/cosmos/cosmos-sdk/pull/14952
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7

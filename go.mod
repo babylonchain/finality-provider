@@ -9,7 +9,7 @@ require (
 	cosmossdk.io/math v1.2.0
 	github.com/avast/retry-go/v4 v4.5.1
 	github.com/babylonchain/babylon v0.7.2
-	github.com/babylonchain/covenant-emulator v0.0.0-20240109011217-2586ba2d2aee
+	github.com/babylonchain/covenant-emulator v0.0.0-20240122024446-0a07851716e7
 	github.com/babylonchain/rpc-client v0.7.0
 	github.com/btcsuite/btcd v0.23.5-0.20230711222809-7faa9b266231
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
@@ -240,8 +240,8 @@ require (
 )
 
 replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.0.0-20240117063238-ec7d62eb0987
-	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client-private v0.7.0-rc0.0.20240119033927-3f5ec9a92169
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon v0.7.2-0.20240121090242-60e5612f9acb
+	github.com/babylonchain/rpc-client => github.com/babylonchain/rpc-client v0.7.0-rc0.0.20240121104942-d8a42431b1c2
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
