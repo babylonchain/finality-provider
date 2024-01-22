@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -465,4 +466,71 @@ func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP34
 	}
 
 	return res.BtcPks, nil
+}
+
+func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
+}
+
+func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
+}
+
+// queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
+// with the given status (either pending or unbonding)
+// it is only used when the program is running in Covenant mode
+func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	pagination := &sdkquery.PageRequest{
+		Limit: limit,
+	}
+
+	res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+	}
+
+	dels := make([]*btcstakingtypes.BTCDelegation, 0, len(res.BtcDelegations))
+	for _, d := range res.BtcDelegations {
+		dels = append(dels, d)
+	}
+
+	return dels, nil
+}
+
+func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
+	// query btc checkpoint params
+	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
+	}
+
+	// query btc staking params
+	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query staking params: %v", err)
+	}
+
+	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
+	for _, pk := range stakingParamRes.Params.CovenantPks {
+		covPk, err := pk.ToBTCPK()
+		if err != nil {
+			return nil, fmt.Errorf("invalid covenant public key")
+		}
+		covenantPks = append(covenantPks, covPk)
+	}
+	slashingAddress, err := btcutil.DecodeAddress(stakingParamRes.Params.SlashingAddress, bc.btcParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.StakingParams{
+		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
+		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
+		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
+		CovenantPks:               covenantPks,
+		SlashingAddress:           slashingAddress,
+		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
+		SlashingRate:              stakingParamRes.Params.SlashingRate,
+		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
+	}, nil
 }
