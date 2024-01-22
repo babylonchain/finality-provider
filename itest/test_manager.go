@@ -397,7 +397,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 
 	stakingInfo, err := btcstaking.BuildStakingInfo(
 		btcDel.BtcPk.MustToBTCPK(),
-		// TODO: Handle multplie providers
+		// TODO: Handle multiple providers
 		[]*btcec.PublicKey{btcDel.FpBtcPkList[0].MustToBTCPK()},
 		params.CovenantPks,
 		params.CovenantQuorum,
