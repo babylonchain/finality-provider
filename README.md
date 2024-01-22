@@ -95,10 +95,6 @@ $ ls build
     └── fpd
 ```
 
-If Go complains that it cannot retrieve some of the dependencies, one reason
-could be that these repositories are private. Try following the instructions
-[here](https://go.dev/doc/faq#git_https).
-
 Another common issue with compiling is that some of the dependencies have
 components written in C. If a C toolchain is absent, the Go compiler will throw
 errors. (Most likely it will complain about undefined names/types.) Make sure a
