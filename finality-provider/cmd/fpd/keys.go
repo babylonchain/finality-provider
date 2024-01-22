@@ -92,14 +92,10 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create the chain key: %w", err)
 	}
 
-	addr, err := keyInfo.GetValAddress()
-	if err != nil {
-		return err
-	}
 	printRespJSON(
 		KeyOutput{
 			Name:     keyName,
-			Address:  addr.String(),
+			Address:  keyInfo.AccAddress.String(),
 			Mnemonic: keyInfo.Mnemonic,
 		},
 	)

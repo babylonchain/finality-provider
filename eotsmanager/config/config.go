@@ -22,7 +22,7 @@ const (
 	defaultDBPath         = "bbolt-eots.db"
 	defaultConfigFileName = "eotsd.conf"
 	DefaultRPCPort        = 15813
-	defaultKeyringBackend = keyring.BackendFile
+	defaultKeyringBackend = keyring.BackendTest
 )
 
 var (
