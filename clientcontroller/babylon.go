@@ -361,7 +361,10 @@ func (bc *BabylonController) Close() error {
 	return bc.bbnClient.Stop()
 }
 
-// Currently this is only used for e2e tests, probably does not need to add it into the interface
+/*
+	Implementations for e2e tests only
+*/
+
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
@@ -408,8 +411,6 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// Insert BTC block header using rpc client
-// Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	msg := &btclctypes.MsgInsertHeaders{
 		Signer:  bc.mustGetTxSigner(),
@@ -424,8 +425,6 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 	return res, nil
 }
 
-// QueryFinalityProvider queries finality providers
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProvider, error) {
 	var fps []*btcstakingtypes.FinalityProvider
 	pagination := &sdkquery.PageRequest{
@@ -448,7 +447,6 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 	return fps, nil
 }
 
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
 	res, err := bc.bbnClient.QueryClient.BTCHeaderChainTip()
 	if err != nil {
@@ -458,7 +456,6 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	return res.Header, nil
 }
 
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
 	res, err := bc.bbnClient.QueryClient.VotesAtHeight(height)
 	if err != nil {
@@ -489,12 +486,7 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
 	}
 
-	dels := make([]*btcstakingtypes.BTCDelegation, 0, len(res.BtcDelegations))
-	for _, d := range res.BtcDelegations {
-		dels = append(dels, d)
-	}
-
-	return dels, nil
+	return res.BtcDelegations, nil
 }
 
 func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {

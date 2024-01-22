@@ -405,6 +405,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		btcutil.Amount(btcDel.TotalSat),
 		simnetParams,
 	)
+	require.NoError(t, err)
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
 	require.NoError(t, err)
 
@@ -439,6 +440,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		tm.CovenantPrivKeys[0],
 		valEncKey,
 	)
+	require.NoError(t, err)
 	covenantUnbondingSig1, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
 		unbondingMsgTx,
 		stakingInfo.StakingOutput,
@@ -476,6 +478,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		tm.CovenantPrivKeys[1],
 		valEncKey,
 	)
+	require.NoError(t, err)
 	covenantUnbondingSig2, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
 		unbondingMsgTx,
 		stakingInfo.StakingOutput,
@@ -493,7 +496,6 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		tm.CovenantPrivKeys[1],
 		valEncKey,
 	)
-	require.NoError(t, err)
 
 	require.NoError(t, err)
 	_, err = tm.BBNClient.SubmitCovenantSigs(
