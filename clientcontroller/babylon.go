@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -360,7 +361,10 @@ func (bc *BabylonController) Close() error {
 	return bc.bbnClient.Stop()
 }
 
-// Currently this is only used for e2e tests, probably does not need to add it into the interface
+/*
+	Implementations for e2e tests only
+*/
+
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
@@ -407,8 +411,6 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// Insert BTC block header using rpc client
-// Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	msg := &btclctypes.MsgInsertHeaders{
 		Signer:  bc.mustGetTxSigner(),
@@ -423,8 +425,6 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 	return res, nil
 }
 
-// QueryFinalityProvider queries finality providers
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProvider, error) {
 	var fps []*btcstakingtypes.FinalityProvider
 	pagination := &sdkquery.PageRequest{
@@ -447,7 +447,6 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 	return fps, nil
 }
 
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
 	res, err := bc.bbnClient.QueryClient.BTCHeaderChainTip()
 	if err != nil {
@@ -457,7 +456,6 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	return res.Header, nil
 }
 
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
 func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
 	res, err := bc.bbnClient.QueryClient.VotesAtHeight(height)
 	if err != nil {
@@ -465,4 +463,92 @@ func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP34
 	}
 
 	return res.BtcPks, nil
+}
+
+func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
+}
+
+func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
+}
+
+// queryDelegationsWithStatus queries BTC delegations
+// with the given status (either pending or unbonding)
+// it is only used when the program is running in Covenant mode
+func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+	pagination := &sdkquery.PageRequest{
+		Limit: limit,
+	}
+
+	res, err := bc.bbnClient.QueryClient.BTCDelegations(status, pagination)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BTC delegations: %v", err)
+	}
+
+	return res.BtcDelegations, nil
+}
+
+func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
+	// query btc checkpoint params
+	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query params of the btccheckpoint module: %v", err)
+	}
+
+	// query btc staking params
+	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query staking params: %v", err)
+	}
+
+	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
+	for _, pk := range stakingParamRes.Params.CovenantPks {
+		covPk, err := pk.ToBTCPK()
+		if err != nil {
+			return nil, fmt.Errorf("invalid covenant public key")
+		}
+		covenantPks = append(covenantPks, covPk)
+	}
+	slashingAddress, err := btcutil.DecodeAddress(stakingParamRes.Params.SlashingAddress, bc.btcParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.StakingParams{
+		ComfirmationTimeBlocks:    ckptParamRes.Params.BtcConfirmationDepth,
+		FinalizationTimeoutBlocks: ckptParamRes.Params.CheckpointFinalizationTimeout,
+		MinSlashingTxFeeSat:       btcutil.Amount(stakingParamRes.Params.MinSlashingTxFeeSat),
+		CovenantPks:               covenantPks,
+		SlashingAddress:           slashingAddress,
+		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
+		SlashingRate:              stakingParamRes.Params.SlashingRate,
+		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
+	}, nil
+}
+
+func (bc *BabylonController) SubmitCovenantSigs(
+	covPk *btcec.PublicKey,
+	stakingTxHash string,
+	slashingSigs [][]byte,
+	unbondingSig *schnorr.Signature,
+	unbondingSlashingSigs [][]byte,
+) (*types.TxResponse, error) {
+	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
+
+	msg := &btcstakingtypes.MsgAddCovenantSigs{
+		Signer:                  bc.mustGetTxSigner(),
+		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
+		StakingTxHash:           stakingTxHash,
+		SlashingTxSigs:          slashingSigs,
+		UnbondingTxSig:          bip340UnbondingSig,
+		SlashingUnbondingTxSigs: unbondingSlashingSigs,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }

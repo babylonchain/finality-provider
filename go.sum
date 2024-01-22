@@ -280,8 +280,6 @@ github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonchain/babylon v0.8.0-rc.0 h1:zl2pyCpdvj+9tVuQ23qg/JqoywIbThwaxkdJcL5dGcM=
 github.com/babylonchain/babylon v0.8.0-rc.0/go.mod h1:UJMehldQROFooqS5rXMd6avJSjwIsc0jpL+uKoOsTls=
-github.com/babylonchain/covenant-emulator v0.0.0-20240122065420-24422ab54cb6 h1:NMgDiBBuA0xfcS8LTaP2Lpca9j6qWJnMfbQ2u1HYj2k=
-github.com/babylonchain/covenant-emulator v0.0.0-20240122065420-24422ab54cb6/go.mod h1:Rz51BAn7ym3Nf53FZ0R+pJXMj5GPwD0alVqDR+f+Rjw=
 github.com/babylonchain/rpc-client v0.7.0-rc0.0.20240121104942-d8a42431b1c2 h1:FWsneAs2tSact+VKJuwVtX6xjj10OtthA1np4AG2CQ4=
 github.com/babylonchain/rpc-client v0.7.0-rc0.0.20240121104942-d8a42431b1c2/go.mod h1:3WkXcOZX2m0VvM4K6KshfiSQeTz3sSCjVw+NQ6Ayx2U=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

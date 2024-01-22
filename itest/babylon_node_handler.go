@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/babylonchain/babylon/types"
@@ -15,21 +16,15 @@ import (
 )
 
 type babylonNode struct {
-	cmd          *exec.Cmd
-	pidFile      string
-	dataDir      string
-	chainID      string
-	slashingAddr string
-	covenantPk   *types.BIP340PubKey
+	cmd     *exec.Cmd
+	pidFile string
+	dataDir string
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd, chainID string, slashingAddr string, covenantPk *types.BIP340PubKey) *babylonNode {
+func newBabylonNode(dataDir string, cmd *exec.Cmd) *babylonNode {
 	return &babylonNode{
-		dataDir:      dataDir,
-		cmd:          cmd,
-		chainID:      chainID,
-		slashingAddr: slashingAddr,
-		covenantPk:   covenantPk,
+		dataDir: dataDir,
+		cmd:     cmd,
 	}
 }
 
@@ -107,7 +102,7 @@ type BabylonNodeHandler struct {
 	babylonNode *babylonNode
 }
 
-func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *BabylonNodeHandler {
+func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*types.BIP340PubKey) *BabylonNodeHandler {
 	testDir, err := baseDir("zBabylonTest")
 	require.NoError(t, err)
 	defer func() {
@@ -121,6 +116,11 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 
+	var covenantPksStr []string
+	for _, pk := range covenantPks {
+		covenantPksStr = append(covenantPksStr, pk.MarshalHex())
+	}
+
 	initTestnetCmd := exec.Command(
 		"babylond",
 		"testnet",
@@ -131,8 +131,8 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 		"--chain-id=chain-test",
 		"--additional-sender-account",
 		fmt.Sprintf("--slashing-address=%s", slashingAddr),
-		fmt.Sprintf("--covenant-pks=%s", covenantPk.MarshalHex()),
-		"--covenant-quorum=1",
+		fmt.Sprintf("--covenant-quorum=%d", covenantQuorum),
+		fmt.Sprintf("--covenant-pks=%s", strings.Join(covenantPksStr, ",")),
 	)
 
 	var stderr bytes.Buffer
@@ -157,7 +157,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantPk *types.BIP340PubKey) *Babylo
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd, chainID, slashingAddr, covenantPk),
+		babylonNode: newBabylonNode(testDir, startCmd),
 	}
 }
 
@@ -181,8 +181,4 @@ func (w *BabylonNodeHandler) Stop() error {
 func (w *BabylonNodeHandler) GetNodeDataDir() string {
 	dir := filepath.Join(w.babylonNode.dataDir, "node0", "babylond")
 	return dir
-}
-
-func (w *BabylonNodeHandler) GetCovenantPk() *types.BIP340PubKey {
-	return w.babylonNode.covenantPk
 }
