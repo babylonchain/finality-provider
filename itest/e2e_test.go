@@ -31,19 +31,20 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 
 	fpIns := fpInsList[0]
 
-	params := tm.GetParams(t)
-
 	// check the public randomness is committed
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	_ = tm.WaitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
+
+	// send covenant sigs
+	tm.InsertCovenantSigForDelegation(t, dels[0])
 
 	// check the BTC delegation is active
-	_ = tm.WaitForFpNActiveDels(t, fpIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForNActiveDels(t, 1)
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForFpVoteCast(t, fpIns)
@@ -60,19 +61,20 @@ func TestDoubleSigning(t *testing.T) {
 
 	fpIns := fpInsList[0]
 
-	params := tm.GetParams(t)
-
 	// check the public randomness is committed
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	_ = tm.WaitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
+
+	// send covenant sigs
+	tm.InsertCovenantSigForDelegation(t, dels[0])
 
 	// check the BTC delegation is active
-	_ = tm.WaitForFpNActiveDels(t, fpIns.GetBtcPkBIP340(), 1)
+	_ = tm.WaitForNActiveDels(t, 1)
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForFpVoteCast(t, fpIns)
@@ -111,8 +113,6 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	tm, fpInstances := StartManagerWithFinalityProvider(t, n)
 	defer tm.Stop(t)
 
-	params := tm.GetParams(t)
-
 	// submit BTC delegations for each finality-provider
 	for _, fpIns := range fpInstances {
 		tm.Wg.Add(1)
@@ -120,21 +120,24 @@ func TestMultipleFinalityProviders(t *testing.T) {
 			defer tm.Wg.Done()
 			// check the public randomness is committed
 			tm.WaitForFpPubRandCommitted(t, fpi)
-
 			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.MustGetBtcPk()}, stakingTime, stakingAmount)
 		}(fpIns)
 	}
 	tm.Wg.Wait()
 
-	for _, fpIns := range fpInstances {
-		tm.Wg.Add(1)
-		go func(fpi *service.FinalityProviderInstance) {
-			defer tm.Wg.Done()
-			_ = tm.WaitForFpNActiveDels(t, fpi.GetBtcPkBIP340(), 1)
-		}(fpIns)
+	// check the BTC delegations are pending
+	dels := tm.WaitForNPendingDels(t, n)
+	require.Equal(t, n, len(dels))
+
+	// send covenant sigs to each of the delegations
+	for _, d := range dels {
+		// send covenant sigs
+		tm.InsertCovenantSigForDelegation(t, d)
 	}
-	tm.Wg.Wait()
+
+	// check the BTC delegations are active
+	_ = tm.WaitForNActiveDels(t, n)
 
 	// check there's a block finalized
 	_ = tm.WaitForNFinalizedBlocks(t, 1)
@@ -147,18 +150,20 @@ func TestFastSync(t *testing.T) {
 
 	fpIns := fpInsList[0]
 
-	params := tm.GetParams(t)
-
 	// check the public randomness is committed
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount, params)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	_ = tm.WaitForNPendingDels(t, 1)
 
-	_ = tm.WaitForFpNActiveDels(t, fpIns.GetBtcPkBIP340(), 1)
+	// send covenant sigs
+	tm.InsertCovenantSigForDelegation(t, dels[0])
+
+	// check the BTC delegation is active
+	_ = tm.WaitForNActiveDels(t, 1)
 
 	// check the last voted block is finalized
 	lastVotedHeight := tm.WaitForFpVoteCast(t, fpIns)

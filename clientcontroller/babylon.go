@@ -534,3 +534,29 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
 	}, nil
 }
+
+func (bc *BabylonController) SubmitCovenantSigs(
+	covPk *btcec.PublicKey,
+	stakingTxHash string,
+	slashingSigs [][]byte,
+	unbondingSig *schnorr.Signature,
+	unbondingSlashingSigs [][]byte,
+) (*types.TxResponse, error) {
+	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
+
+	msg := &btcstakingtypes.MsgAddCovenantSigs{
+		Signer:                  bc.mustGetTxSigner(),
+		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
+		StakingTxHash:           stakingTxHash,
+		SlashingTxSigs:          slashingSigs,
+		UnbondingTxSig:          bip340UnbondingSig,
+		SlashingUnbondingTxSigs: unbondingSlashingSigs,
+	}
+
+	res, err := bc.reliablySendMsg(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+}
