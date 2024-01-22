@@ -41,13 +41,13 @@ manager. This directory is created in the default home location or in a location
 specified by the `--home` flag.
 
 ```bash
-$ eotsd init --home /path/to/eotsd/home/
+eotsd init --home /path/to/eotsd/home/
 ```
 
 After initialization, the home directory will have the following structure
 
 ```bash
-$ ls /path/to/eotsd/home/
+ls /path/to/eotsd/home/
   ├── eotsd.conf # Eotsd-specific configuration file.
   ├── logs       # Eotsd logs
 ```
@@ -59,7 +59,7 @@ be used. For different operating systems, those are:
 - **Linux** `~/.Eotsd`
 - **Windows** `C:\Users\<username>\AppData\Local\Eotsd`
 
-Below are some of the important parameters in the `eotsd.conf` file.
+Below are the `eotsd.conf` file contents:
 
 ```bash
 # Default address to listen for RPC connections
@@ -68,7 +68,7 @@ RpcListener = 127.0.0.1:15813
 # Type of keyring to use,
 # supported backends - (os|file|kwallet|pass|test|memory)
 # ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
-KeyringBackend = test
+KeyringBackend = file
 
 # Possible database to choose as backend
 Backend = bbolt
@@ -80,14 +80,12 @@ Path = bbolt-eots.db
 Name = default
 ```
 
-To see the complete list of configuration options, check the `eotsd.conf` file.
-
 ## 3. Starting the EOTS Daemon
 
 You can start the EOTS daemon using the following command:
 
 ```bash
-$ eotsd start --home /path/to/eotsd/home
+eotsd start --home /path/to/eotsd/home
 ```
 
 This will start the rpc server at the address specified in the configuration under
@@ -95,7 +93,7 @@ the `RpcListener` field, which has a default value of `127.0.0.1:15813`.
 You can also specify a custom address using the `--rpc-listener` flag.
 
 ```bash
-$ eotsd start
+eotsd start
 
 time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening	{"address": "127.0.0.1:15813"}"
 time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"
