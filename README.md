@@ -46,15 +46,15 @@ the [official Go installation guide](https://golang.org/doc/install).
 To get started, clone the repository to your local machine from Github:
 
 ```bash
-$ git clone git@github.com:babylonchain/finality-provider.git
+git clone git@github.com:babylonchain/finality-provider.git
 ```
 
 You can choose a specific version from
 the [official releases page](https://github.com/babylonchain/finality-provider/releases)
 
 ```bash
-$ cd finality-provider # cd into the project directory
-$ git checkout <release-tag>
+cd finality-provider # cd into the project directory
+git checkout <release-tag>
 ```
 
 #### Building and installing the binary
@@ -62,7 +62,7 @@ $ git checkout <release-tag>
 At the top-level directory of the project
 
 ```bash
-$ make install 
+make install
 ```
 
 The above command will build and install the following binaries to
@@ -83,13 +83,13 @@ echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 To build without installing,
 
 ```bash
-$ make build
+make build
 ```
 
 The above command will put the built binaries in a build directory with the
 following structure:
 ```bash
-$ ls build
+ls build
     ├── eotsd
     ├── fpcli
     └── fpd

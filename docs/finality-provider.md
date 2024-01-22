@@ -33,13 +33,13 @@ This directory is created in the default home location or in a
 location specified by the `--home` flag.
 
 ```bash
-$ fpd init --home /path/to/fpd/home/
+fpd init --home /path/to/fpd/home/
 ```
 
 After initialization, the home directory will have the following structure
 
 ```bash
-$ ls /path/to/fpd/home/
+ls /path/to/fpd/home/
   ├── fpd.conf # Fpd-specific configuration file.
   ├── logs     # Fpd logs
 ```
@@ -88,6 +88,28 @@ KeyDirectory = /path/to/fpd/home
 
 To see the complete list of configuration options, check the `fpd.conf` file.
 
+**Additional Notes:**
+
+1. We strongly recommend that EOTS randomness commitments are limited to 500
+   blocks (default value: 100 blocks)
+
+   ```bash
+   ; The number of Schnorr public randomness for each commitment
+   NumPubRand = 100
+
+   ; The upper bound of the number of Schnorr public randomness for each commitment
+   NumPubRandMax = 100
+   ```
+
+2. If you encounter any gas-related errors while performing staking operations,
+   consider adjusting the `GasAdjustment` and `GasPrices` parameters. For example,
+   you can set:
+
+   ```bash
+   GasAdjustment = 1.5
+   GasPrices = 0.01ubbn
+   ```
+
 ## 3. Add key for the consumer chain
 
 The finality provider daemon requires the existence of a keyring that contains
@@ -97,7 +119,7 @@ This key will be also used to pay for fees of transactions to the consumer chain
 Use the following command to add the key:
 
 ```bash
-$ fpd keys add --key-name my-finality-provider --chain-id chain-test
+fpd keys add --key-name my-finality-provider --chain-id chain-test
 ```
 
 After executing the above command, the key name will be saved in the config file
@@ -108,7 +130,7 @@ created in [step](#2-configuration).
 You can start the finality provider daemon using the following command:
 
 ```bash
-$ fpd start --home /path/to/fpd/home
+fpd start --home /path/to/fpd/home
 ```
 
 This will start the RPC server at the address specified in the configuration under
@@ -116,7 +138,7 @@ the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
 You can also specify a custom address using the `--rpc-listener` flag.
 
 ```bash
-$ fpd start --rpc-listener '127.0.0.1:8088'
+fpd start --rpc-listener '127.0.0.1:8088'
 
 time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager	{"address": "127.0.0.1:15813"}"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting FinalityProviderApp"
@@ -139,7 +161,7 @@ a Babylon account to which staking rewards will be directed.
 The key name must be the same as the key added in [step](#3-add-key-for-the-consumer-chain).
 
 ```bash
-$ fpcli create-finality-provider --key-name my-finality-provider \
+fpcli create-finality-provider --key-name my-finality-provider \
                 --chain-id chain-test --moniker my-name
 {
     "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
@@ -159,7 +181,7 @@ Note that if the `key-name` is not specified, the `Key` field of config specifie
 will be used.
 
 ```bash
-$ fpcli register-finality-provider \
+fpcli register-finality-provider \
                  --btc-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
 {
     "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
@@ -175,10 +197,10 @@ The `status` field can receive the following values:
 - `REGISTERED`: The finality provider is registered but has not received any active delegations yet
 - `ACTIVE`: The finality provider has active delegations and is empowered to send finality signatures
 - `INACTIVE`: The finality provider used to be ACTIVE but the voting power is reduced to zero
-- `SLASHED`: The finality provider is slashed due to malicious behavior 
+- `SLASHED`: The finality provider is slashed due to malicious behavior
  
 ```bash
-$ fpcli list-finality-providers
+fpcli list-finality-providers
 {
     "finality-providers": [
         ...
