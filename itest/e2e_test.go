@@ -157,7 +157,7 @@ func TestFastSync(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	_ = tm.WaitForNPendingDels(t, 1)
+	dels := tm.WaitForNPendingDels(t, 1)
 
 	// send covenant sigs
 	tm.InsertCovenantSigForDelegation(t, dels[0])
