@@ -65,10 +65,8 @@ Below are the `eotsd.conf` file contents:
 # Default address to listen for RPC connections
 RpcListener = 127.0.0.1:15813
 
-# Type of keyring to use,
-# supported backends - (os|file|kwallet|pass|test|memory)
-# ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
-KeyringBackend = file
+# Type of keyring to use
+KeyringBackend = test
 
 # Possible database to choose as backend
 Backend = bbolt
