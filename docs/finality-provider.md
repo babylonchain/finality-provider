@@ -54,9 +54,10 @@ will be used. For different operating systems, those are:
 Below are some important parameters of the `fpd.conf` file.
 
 **Note**:
-The configuration below requires to point to the path where this keyring is stored `KeyDirectory`.
-This `Key` field stores the key name used for interacting with the consumer chain
-and will be specified along with the `KeyringBackend` field in the next [step](#3-add-key-for-the-consumer-chain).
+The configuration below requires to point to the path where this keyring is
+stored `KeyDirectory`. This `Key` field stores the key name used for
+interacting with the consumer chain and will be specified along with the
+`KeyringBackend` field in the next [step](#3-add-key-for-the-consumer-chain).
 So we can ignore the setting of the two fields in this step.
 
 ```bash
@@ -131,9 +132,15 @@ You can start the finality provider daemon using the following command:
 fpd start --home /path/to/fpd/home
 ```
 
-This will start the RPC server at the address specified in the configuration under
-the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
+This will start the RPC server at the address specified in the configuration
+under the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
 You can also specify a custom address using the `--rpc-listener` flag.
+
+This will also start all the registered finality provider instances except for
+slashed ones added in [step](#5-create-and-register-a-finality-provider).
+To start the daemon with a specific finality provider instance, use the
+`--btc-pk` flag followed by the hex string of the BTC public key of the
+finality provider (`btc_pk_hex`) obtained in [step](#5-create-and-register-a-finality-provider).
 
 ```bash
 fpd start --rpc-listener '127.0.0.1:8088'
@@ -145,18 +152,18 @@ time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening	{"address"
 time="2023-11-26T16:37:00-05:00" level=info msg="Finality Provider Daemon is fully active!"
 ```
 
-All the available CLI options can be viewed using the `--help` flag. These options
-can also be set in the configuration file.
+All the available CLI options can be viewed using the `--help` flag.
+These options can also be set in the configuration file.
 
 ## 5. Create and Register a Finality Provider
 
-A finality provider named `my-finality-provider` can be created in the internal
-storage ([bolt db](https://github.com/etcd-io/bbolt))
-through the `fpcli create-finality-provider` command.
-This finality provider is associated with a BTC public key which
+We create a finality provider instance through the
+`fpcli create-finality-provider` or `fpcli cfp` command.
+The created instance is associated with a BTC public key which
 serves as its unique identifier and
 a Babylon account to which staking rewards will be directed.
-The key name must be the same as the key added in [step](#3-add-key-for-the-consumer-chain).
+Note that if the `--key-name` flag is not specified, the `Key` field of
+config specified in [step](#3-add-key-for-the-consumer-chain) will be used.
 
 ```bash
 fpcli create-finality-provider --key-name my-finality-provider \
@@ -171,30 +178,33 @@ fpcli create-finality-provider --key-name my-finality-provider \
 }
 ```
 
-The finality provider can be registered with Babylon through
-the `register-finality-provider` command.
-The output contains the hash of the Babylon
-finality provider registration transaction.
-Note that if the `key-name` is not specified, the `Key` field of config specified in [step](#3-add-key-for-the-consumer-chain)
-will be used.
+We register a created finality provider in Babylon through
+the `fpcli register-finality-provider` or `fpcli rfp` command.
+The output contains the hash of the Babylon finality provider registration
+transaction.
 
 ```bash
 fpcli register-finality-provider \
-                 --btc-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
+      --btc-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
 {
     "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
 }
 ```
 
-To verify that your finality provider has been created,
-we can check the finality providers that are managed by the daemon and their status.
-These can be listed through the `fpcli list-finality-providers` command.
+A finality provider instance will be initiated and start running right after
+the finality provider is successfully registered in Babylon.
+
+We can view the status of all the running finality providers through
+the `fpcli list-finality-providers` or `fpcli ls` command.
 The `status` field can receive the following values:
 
 - `CREATED`: The finality provider is created but not registered yet
-- `REGISTERED`: The finality provider is registered but has not received any active delegations yet
-- `ACTIVE`: The finality provider has active delegations and is empowered to send finality signatures
-- `INACTIVE`: The finality provider used to be ACTIVE but the voting power is reduced to zero
+- `REGISTERED`: The finality provider is registered but has not received any
+   active delegations yet
+- `ACTIVE`: The finality provider has active delegations and is empowered to 
+   send finality signatures
+- `INACTIVE`: The finality provider used to be ACTIVE but the voting power is
+   reduced to zero
 - `SLASHED`: The finality provider is slashed due to malicious behavior
  
 ```bash

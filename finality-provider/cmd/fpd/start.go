@@ -25,10 +25,6 @@ var startCommand = cli.Command{
 			Usage: "The pass phrase used to decrypt the private key",
 			Value: defaultPassphrase,
 		},
-		cli.BoolFlag{
-			Name:  allFlag,
-			Usage: "Start all the managed finality providers",
-		},
 		cli.StringFlag{
 			Name:  homeFlag,
 			Usage: "The path to the finality-provider home directory",
@@ -56,7 +52,6 @@ func start(ctx *cli.Context) error {
 	passphrase := ctx.String(passphraseFlag)
 	fpPkStr := ctx.String(fpPkFlag)
 	rpcListener := ctx.String(rpcListenerFlag)
-	all := ctx.Bool(allFlag)
 
 	cfg, err := fpcfg.LoadConfig(homePath)
 	if err != nil {
@@ -87,7 +82,7 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to start the finality-provider app: %w", err)
 	}
 
-	if !all && fpPkStr != "" {
+	if fpPkStr != "" {
 		// start the finality-provider instance with the given public key
 		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
 		if err != nil {
@@ -96,7 +91,7 @@ func start(ctx *cli.Context) error {
 		if err := fpApp.StartHandlingFinalityProvider(fpPk, passphrase); err != nil {
 			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
 		}
-	} else if all {
+	} else {
 		if err := fpApp.StartHandlingAll(); err != nil {
 			return err
 		}
