@@ -6,7 +6,7 @@ const (
 	homeFlag           = "home"
 	forceFlag          = "force"
 	passphraseFlag     = "passphrase"
-	fpPkFlag           = "fp-btc-pk"
+	fpPkFlag           = "btc-pk"
 	keyNameFlag        = "key-name"
 	hdPathFlag         = "hd-path"
 	chainIdFlag        = "chain-id"
