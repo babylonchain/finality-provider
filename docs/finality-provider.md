@@ -135,6 +135,11 @@ This will start the RPC server at the address specified in the configuration und
 the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
 You can also specify a custom address using the `--rpc-listener` flag.
 
+This will also start all the registered finality provider instances added in [step](#5-create-and-register-a-finality-provider).
+To start the daemon with a specific finality provider instance, use the `--fp-btc-pk`
+flag followed by the hex string of the BTC public key of the finality provider (`btc_pk_hex`)
+obtained in [step](#5-create-and-register-a-finality-provider).
+
 ```bash
 fpd start --rpc-listener '127.0.0.1:8088'
 
@@ -150,13 +155,12 @@ can also be set in the configuration file.
 
 ## 5. Create and Register a Finality Provider
 
-A finality provider named `my-finality-provider` can be created in the internal
-storage ([bolt db](https://github.com/etcd-io/bbolt))
-through the `fpcli create-finality-provider` command.
-This finality provider is associated with a BTC public key which
+We create a finality provider instance through the `fpcli create-finality-provider` or `fpcli cfp` command.
+The created instance is associated with a BTC public key which
 serves as its unique identifier and
 a Babylon account to which staking rewards will be directed.
-The key name must be the same as the key added in [step](#3-add-key-for-the-consumer-chain).
+Note that if the `--key-name` flag is not specified, the `Key` field of config specified in [step](#3-add-key-for-the-consumer-chain)
+will be used.
 
 ```bash
 fpcli create-finality-provider --key-name my-finality-provider \
@@ -171,12 +175,9 @@ fpcli create-finality-provider --key-name my-finality-provider \
 }
 ```
 
-The finality provider can be registered with Babylon through
-the `register-finality-provider` command.
-The output contains the hash of the Babylon
-finality provider registration transaction.
-Note that if the `key-name` is not specified, the `Key` field of config specified in [step](#3-add-key-for-the-consumer-chain)
-will be used.
+We register a created finality provider in Babylon through
+the `fpcli register-finality-provider` or `fpcli rfp` command.
+The output contains the hash of the Babylon finality provider registration transaction.
 
 ```bash
 fpcli register-finality-provider \
@@ -186,9 +187,11 @@ fpcli register-finality-provider \
 }
 ```
 
-To verify that your finality provider has been created,
-we can check the finality providers that are managed by the daemon and their status.
-These can be listed through the `fpcli list-finality-providers` command.
+A finality provider instance will be initiated and start running right after
+the finality provider is successfully registered in Babylon.
+
+We can view the status of all the running finality providers through
+the `fpcli list-finality-providers` or `fpcli ls` command.
 The `status` field can receive the following values:
 
 - `CREATED`: The finality provider is created but not registered yet
