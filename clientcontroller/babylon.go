@@ -97,12 +97,23 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxRe
 }
 
 func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
-	return bc.bbnClient.ReliablySendMsgs(
+	res, err := bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrors,
 		unrecoverableErrors,
 	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if res == nil {
+		// this can happen when the error is expected during retrying
+		return &provider.RelayerTxResponse{}, nil
+	}
+
+	return res, nil
 }
 
 // RegisterFinalityProvider registers a finality provider via a MsgCreateFinalityProvider to Babylon
