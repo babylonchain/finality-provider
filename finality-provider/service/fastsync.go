@@ -86,11 +86,9 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 		)
 	}
 
-	fp.MustSetLastProcessedHeight(endHeight)
-
 	return &FastSyncResult{
 		Responses:           responses,
 		SyncedHeight:        syncedHeight,
-		LastProcessedHeight: endHeight,
+		LastProcessedHeight: fp.GetLastProcessedHeight(),
 	}, nil
 }
