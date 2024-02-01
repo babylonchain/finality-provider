@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	sdkErr "cosmossdk.io/errors"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 
@@ -29,6 +30,8 @@ import (
 )
 
 var _ ClientController = &BabylonController{}
+
+var emptyErrs = []*sdkErr.Error{}
 
 type BabylonController struct {
 	bbnClient *bbnclient.Client
@@ -92,25 +95,20 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (bc *BabylonController) reliablySendMsg(msg sdk.Msg) (*provider.RelayerTxResponse, error) {
-	return bc.reliablySendMsgs([]sdk.Msg{msg})
+func (bc *BabylonController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	return bc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
-func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	res, err := bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
-		expectedErrors,
-		unrecoverableErrors,
+		expectedErrs,
+		unrecoverableErrs,
 	)
 
 	if err != nil {
 		return nil, err
-	}
-
-	if res == nil {
-		// this can happen when the error is expected during retrying
-		return &provider.RelayerTxResponse{}, nil
 	}
 
 	return res, nil
@@ -144,7 +142,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Description: &sdkDescription,
 	}
 
-	res, err := bc.reliablySendMsg(msg)
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +174,14 @@ func (bc *BabylonController) CommitPubRandList(
 		Sig:         bip340Sig,
 	}
 
-	res, err := bc.reliablySendMsg(msg)
+	unrecoverableErrs := []*sdkErr.Error{
+		finalitytypes.ErrInvalidPubRand,
+		finalitytypes.ErrTooFewPubRand,
+		finalitytypes.ErrNoPubRandYet,
+		btcstakingtypes.ErrFpNotFound,
+	}
+
+	res, err := bc.reliablySendMsg(msg, emptyErrs, unrecoverableErrs)
 	if err != nil {
 		return nil, err
 	}
@@ -194,9 +199,24 @@ func (bc *BabylonController) SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeigh
 		FinalitySig:  bbntypes.NewSchnorrEOTSSigFromModNScalar(sig),
 	}
 
-	res, err := bc.reliablySendMsg(msg)
+	expectedErrs := []*sdkErr.Error{
+		finalitytypes.ErrDuplicatedFinalitySig,
+	}
+
+	unrecoverableErrs := []*sdkErr.Error{
+		finalitytypes.ErrInvalidFinalitySig,
+		finalitytypes.ErrPubRandNotFound,
+		btcstakingtypes.ErrFpAlreadySlashed,
+	}
+
+	res, err := bc.reliablySendMsg(msg, expectedErrs, unrecoverableErrs)
 	if err != nil {
 		return nil, err
+	}
+	if res == nil {
+		// NOTE: this can happen when encountering ErrDuplicatedFinalitySig
+		// during retrying
+		return &types.TxResponse{}, nil
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
@@ -220,9 +240,24 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, bloc
 		msgs = append(msgs, msg)
 	}
 
-	res, err := bc.reliablySendMsgs(msgs)
+	expectedErrs := []*sdkErr.Error{
+		finalitytypes.ErrDuplicatedFinalitySig,
+	}
+
+	unrecoverableErrs := []*sdkErr.Error{
+		finalitytypes.ErrInvalidFinalitySig,
+		finalitytypes.ErrPubRandNotFound,
+		btcstakingtypes.ErrFpAlreadySlashed,
+	}
+
+	res, err := bc.reliablySendMsgs(msgs, expectedErrs, unrecoverableErrs)
 	if err != nil {
 		return nil, err
+	}
+	if res == nil {
+		// NOTE: this can happen when encountering ErrDuplicatedFinalitySig
+		// during retrying
+		return &types.TxResponse{}, nil
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
@@ -414,7 +449,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		DelegatorUnbondingSlashingSig: delUnbondingSlashingSig,
 	}
 
-	res, err := bc.reliablySendMsg(msg)
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +463,7 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 		Headers: headers,
 	}
 
-	res, err := bc.reliablySendMsg(msg)
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
 		return nil, err
 	}
@@ -556,7 +591,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 		SlashingUnbondingTxSigs: unbondingSlashingSigs,
 	}
 
-	res, err := bc.reliablySendMsg(msg)
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
 		return nil, err
 	}
