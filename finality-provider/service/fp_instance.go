@@ -467,7 +467,7 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 				return fmt.Errorf("reached max failed cycles with err: %w", err)
 			}
 		} else if hasRand {
-			// the signature has been successfully submitted
+			// the randomness has been successfully committed
 			return nil
 		}
 		select {
@@ -483,6 +483,8 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 					zap.String("pk", fp.GetBtcPkHex()),
 					zap.Uint64("target_height", targetBlock.Height),
 				)
+				// TODO: returning nil here is to safely break the loop
+				//  the error still exists
 				return nil
 			}
 
@@ -536,6 +538,8 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 					zap.String("pk", fp.GetBtcPkHex()),
 					zap.Uint64("target_height", targetBlock.Height),
 				)
+				// TODO: returning nil here is to safely break the loop
+				//  the error still exists
 				return nil, nil
 			}
 
@@ -598,6 +602,8 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 					zap.String("pk", fp.GetBtcPkHex()),
 					zap.Uint64("target_height", targetBlock.Height),
 				)
+				// TODO: returning nil here is to safely break the loop
+				//  the error still exists
 				return nil, nil
 			}
 
