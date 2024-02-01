@@ -204,13 +204,9 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			// check whether the randomness has been committed
 			// we should stall here until we have randomness committed at this
 			// height, otherwise, we might miss blocks
-			canProceed, err := fp.retryCheckRandomnessUntilBlockFinalized(b)
-			if err != nil {
+			if err := fp.retryCheckRandomnessUntilBlockFinalized(b); err != nil {
 				fp.reportCriticalErr(err)
 				break
-			}
-			if !canProceed {
-				fp.reportCriticalErr(err)
 			}
 
 			// use the copy of the block to avoid the impact to other receivers
@@ -449,7 +445,7 @@ func (fp *FinalityProviderInstance) checkLagging(currentBlock *types.BlockInfo) 
 // finalized
 // error will be returned if maximum retries have been reached or the query to
 // the consumer chain fails
-func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targetBlock *types.BlockInfo) (bool, error) {
+func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targetBlock *types.BlockInfo) error {
 	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the randomness is successfully committed
@@ -468,18 +464,18 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 
 			failedCycles += 1
 			if failedCycles > uint32(fp.cfg.MaxSubmissionRetries) {
-				return false, fmt.Errorf("reached max failed cycles with err: %w", err)
+				return fmt.Errorf("reached max failed cycles with err: %w", err)
 			}
 		} else if hasRand {
 			// the signature has been successfully submitted
-			return true, nil
+			return nil
 		}
 		select {
 		case <-time.After(fp.cfg.SubmissionRetryInterval):
 			// periodically query the index block to be later checked whether it is Finalized
 			finalized, err := fp.checkBlockFinalization(targetBlock.Height)
 			if err != nil {
-				return false, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
+				return fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}
 			if finalized {
 				fp.logger.Debug(
@@ -487,12 +483,12 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 					zap.String("pk", fp.GetBtcPkHex()),
 					zap.Uint64("target_height", targetBlock.Height),
 				)
-				return true, nil
+				return nil
 			}
 
 		case <-fp.quit:
 			fp.logger.Debug("the finality-provider instance is closing", zap.String("pk", fp.GetBtcPkHex()))
-			return true, nil
+			return nil
 		}
 	}
 }
