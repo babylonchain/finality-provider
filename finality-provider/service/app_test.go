@@ -94,6 +94,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, txHash, res.TxHash)
 
+		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
 		err = app.StartHandlingFinalityProvider(fp.MustGetBIP340BTCPK(), passphrase)
 		require.NoError(t, err)
 

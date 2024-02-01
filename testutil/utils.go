@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/finality-provider/testutil/mocks"
@@ -43,12 +42,6 @@ func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, curr
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
 	mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
 	mockClientController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
-	o1 := mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
-	lastCommittedHeight := startHeight + TestPubRandNum
-	lastCommittedPubRandMap := make(map[uint64]*btcec.FieldVal)
-	lastCommittedPubRandMap[lastCommittedHeight] = GenPublicRand(r, t).ToFieldVal()
-	o2 := mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
-	gomock.InOrder(o1, o2)
 
 	return mockClientController
 }

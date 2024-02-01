@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -27,18 +28,16 @@ func FuzzCommitPubRandList(f *testing.F) {
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
-		app, storeFp, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 
-		fpIns, err := app.GetFinalityProviderInstance(storeFp.MustGetBIP340BTCPK())
-		require.NoError(t, err)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			CommitPubRandList(fpIns.MustGetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
 		res, err := fpIns.CommitPubRand(startingBlock)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
@@ -55,22 +54,16 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		app, storeFp, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(storeFp.MustGetBTCPK(), gomock.Any()).
-			Return(uint64(0), nil).AnyTimes()
-		fpIns, err := app.GetFinalityProviderInstance(storeFp.MustGetBIP340BTCPK())
-		require.NoError(t, err)
 
-		// commit public randomness
-		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().
-			CommitPubRandList(fpIns.MustGetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err := fpIns.CommitPubRand(startingBlock)
-		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(storeFp.MustGetBTCPK(), gomock.Any()).
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.MustGetBtcPk(), gomock.Any()).
+			Return(uint64(1), nil).AnyTimes()
+		lastCommittedHeight := randomStartingHeight + 25
+		lastCommittedPubRandMap := make(map[uint64]*btcec.FieldVal)
+		lastCommittedPubRandMap[lastCommittedHeight] = testutil.GenPublicRand(r, t).ToFieldVal()
+		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.MustGetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
@@ -78,7 +71,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			Height: startingBlock.Height + 1,
 			Hash:   testutil.GenRandomByteArray(r, 32),
 		}
-		expectedTxHash = testutil.GenRandomHexStr(r, 32)
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			SubmitFinalitySig(fpIns.MustGetBtcPk(), nextBlock.Height, nextBlock.Hash, gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
@@ -92,7 +85,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.FinalityProviderApp, *proto.StoreFinalityProvider, func()) {
+func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.FinalityProviderApp, *service.FinalityProviderInstance, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
@@ -110,12 +103,14 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	require.NoError(t, err)
 	err = app.Start()
 	require.NoError(t, err)
+	err = app.StartHandlingAll()
+	require.NoError(t, err)
 
 	// create registered finality-provider
 	fp := testutil.GenStoredFinalityProvider(r, t, app, passphrase, hdPath)
 	err = app.GetFinalityProviderStore().SetFinalityProviderStatus(fp, proto.FinalityProviderStatus_REGISTERED)
 	require.NoError(t, err)
-	err = app.StartHandlingFinalityProvider(fp.MustGetBIP340BTCPK(), passphrase)
+	fpIns, err := service.NewFinalityProviderInstance(fp.MustGetBIP340BTCPK(), fpCfg, app.GetFinalityProviderStore(), cc, em, passphrase, make(chan *service.CriticalError), logger)
 	require.NoError(t, err)
 
 	cleanUp := func() {
@@ -127,5 +122,5 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 		require.NoError(t, err)
 	}
 
-	return app, fp, cleanUp
+	return app, fpIns, cleanUp
 }
