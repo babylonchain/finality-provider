@@ -451,7 +451,11 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 	// we break the for loop if the block is finalized or the randomness is successfully committed
 	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
 	for {
-		// error will be returned if max retries have been reached
+		fp.logger.Debug(
+			"checking randomness",
+			zap.String("pk", fp.GetBtcPkHex()),
+			zap.Uint64("target_block_height", targetBlock.Height),
+		)
 		hasRand, err := fp.hasRandomness(targetBlock)
 		if err != nil {
 			fp.logger.Debug(
