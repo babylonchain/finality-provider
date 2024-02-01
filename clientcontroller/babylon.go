@@ -216,7 +216,7 @@ func (bc *BabylonController) SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeigh
 	if res == nil {
 		// NOTE: this can happen when encountering expected errors
 		// during retrying
-		return nil, fmt.Errorf("encountered expected err: %w", Expected(err))
+		return nil, Expected(fmt.Errorf("expected error"))
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
@@ -257,7 +257,7 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, bloc
 	if res == nil {
 		// NOTE: this can happen when encountering expected errors
 		// during retrying
-		return nil, fmt.Errorf("encountered expected err: %w", Expected(err))
+		return nil, Expected(fmt.Errorf("expected error"))
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
