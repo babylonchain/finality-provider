@@ -49,19 +49,27 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 		// have gaps during sync
 		catchUpBlocks := make([]*types.BlockInfo, 0, len(blocks))
 		for _, b := range blocks {
-			should, err := fp.shouldSubmitFinalitySignature(b)
-			if err != nil {
-				// stop catch-up when critical errors occur
-				return nil, err
-			}
-			if !should {
-				// two cases could lead to here:
-				// 1. insufficient committed randomness
-				// 2. no voting power
-				// thus we should continue here in case the two conditions
-				// will not happen in the rest of the blocks
+			// check whether the block has been processed before
+			if fp.hasProcessed(b) {
 				continue
 			}
+			// check whether the finality provider has voting power
+			hasVp, err := fp.hasVotingPower(b)
+			if err != nil {
+				return nil, err
+			}
+			if !hasVp {
+				continue
+			}
+			// check whether the randomness has been committed
+			hasRand, err := fp.hasRandomness(b)
+			if err != nil {
+				return nil, err
+			}
+			if !hasRand {
+				continue
+			}
+			// all good, add the block for catching up
 			catchUpBlocks = append(catchUpBlocks, b)
 		}
 
@@ -85,6 +93,9 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 			zap.Uint64("synced_height", syncedHeight),
 		)
 	}
+
+	// update the processed height
+	fp.MustSetLastProcessedHeight(syncedHeight)
 
 	return &FastSyncResult{
 		Responses:           responses,

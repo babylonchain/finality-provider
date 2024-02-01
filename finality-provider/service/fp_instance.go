@@ -184,24 +184,36 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				zap.String("pk", fp.GetBtcPkHex()),
 				zap.Uint64("height", b.Height),
 			)
-			// use the copy of the block to avoid the impact to other receivers
-			nextBlock := *b
-			should, err := fp.shouldSubmitFinalitySignature(&nextBlock)
 
+			// check whether the block has been processed before
+			if fp.hasProcessed(b) {
+				continue
+			}
+			// check whether the randomness has been committed
+			hasRand, err := fp.hasRandomness(b)
 			if err != nil {
 				fp.reportCriticalErr(err)
 				continue
 			}
-
-			if !should {
-				fp.logger.Debug(
-					"the finality-provider should not vote for the block",
-					zap.String("pk", fp.GetBtcPkHex()),
-					zap.Uint64("height", b.Height),
-				)
+			if !hasRand {
+				continue
+			}
+			// check whether the finality provider has voting power
+			hasVp, err := fp.hasVotingPower(b)
+			if err != nil {
+				fp.reportCriticalErr(err)
+				continue
+			}
+			if !hasVp {
+				// the randomness is already committed but
+				// the finality provider does not have voting power
+				// we can safely set lastProcessHeight now
+				fp.MustSetLastProcessedHeight(b.Height)
 				continue
 			}
 
+			// use the copy of the block to avoid the impact to other receivers
+			nextBlock := *b
 			res, err := fp.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
 				fp.reportCriticalErr(err)
@@ -367,6 +379,56 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlock *types.BlockInfo) (*
 	fp.logger.Debug("the finality-provider is entering fast sync")
 
 	return fp.FastSync(startHeight, targetBlock.Height)
+}
+
+func (fp *FinalityProviderInstance) hasProcessed(b *types.BlockInfo) bool {
+	if b.Height <= fp.GetLastProcessedHeight() {
+		fp.logger.Debug(
+			"the block has been processed before, skip processing",
+			zap.String("pk", fp.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+			zap.Uint64("last_processed_height", fp.GetLastProcessedHeight()),
+		)
+		return true
+	}
+
+	return false
+}
+
+func (fp *FinalityProviderInstance) hasVotingPower(b *types.BlockInfo) (bool, error) {
+	power, err := fp.GetVotingPowerWithRetry(b.Height)
+	if err != nil {
+		return false, err
+	}
+	if power == 0 {
+		fp.logger.Debug(
+			"the finality-provider does not have voting power, skip voting",
+			zap.String("pk", fp.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+		)
+
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (fp *FinalityProviderInstance) hasRandomness(b *types.BlockInfo) (bool, error) {
+	lastCommittedHeight, err := fp.GetLastCommittedHeight()
+	if err != nil {
+		return false, err
+	}
+	if b.Height > lastCommittedHeight {
+		fp.logger.Debug(
+			"the finality provider has not committed public randomness for the height",
+			zap.String("pk", fp.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+			zap.Uint64("last_committed_height", lastCommittedHeight),
+		)
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // shouldSubmitFinalitySignature checks all the conditions that a finality
