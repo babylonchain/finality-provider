@@ -202,13 +202,15 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				continue
 			}
 			// check whether the randomness has been committed
-			hasRand, err := fp.hasRandomness(b)
+			// we should stall here until we have randomness committed at this
+			// height, otherwise, we might miss blocks
+			canProceed, err := fp.retryCheckRandomnessUntilBlockFinalized(b)
 			if err != nil {
 				fp.reportCriticalErr(err)
-				continue
+				break
 			}
-			if !hasRand {
-				continue
+			if !canProceed {
+				fp.reportCriticalErr(err)
 			}
 
 			// use the copy of the block to avoid the impact to other receivers
@@ -440,6 +442,59 @@ func (fp *FinalityProviderInstance) reportCriticalErr(err error) {
 // checkLagging returns true if the lasted voted height is behind by a configured gap
 func (fp *FinalityProviderInstance) checkLagging(currentBlock *types.BlockInfo) bool {
 	return currentBlock.Height >= fp.GetLastProcessedHeight()+fp.cfg.FastSyncGap
+}
+
+// retryQueryingRandomnessUntilBlockFinalized periodically checks whether
+// the randomness has been committed to the target block until the block is
+// finalized
+// error will be returned if maximum retries have been reached or the query to
+// the consumer chain fails
+func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targetBlock *types.BlockInfo) (bool, error) {
+	var failedCycles uint32
+
+	// we break the for loop if the block is finalized or the randomness is successfully committed
+	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
+	for {
+		// error will be returned if max retries have been reached
+		hasRand, err := fp.hasRandomness(targetBlock)
+		if err != nil {
+			fp.logger.Debug(
+				"failed to check last committed randomness",
+				zap.String("pk", fp.GetBtcPkHex()),
+				zap.Uint32("current_failures", failedCycles),
+				zap.Uint64("target_block_height", targetBlock.Height),
+				zap.Error(err),
+			)
+
+			failedCycles += 1
+			if failedCycles > uint32(fp.cfg.MaxSubmissionRetries) {
+				return false, fmt.Errorf("reached max failed cycles with err: %w", err)
+			}
+		} else if hasRand {
+			// the signature has been successfully submitted
+			return true, nil
+		}
+		select {
+		case <-time.After(fp.cfg.SubmissionRetryInterval):
+			// periodically query the index block to be later checked whether it is Finalized
+			finalized, err := fp.checkBlockFinalization(targetBlock.Height)
+			if err != nil {
+				return false, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
+			}
+			if finalized {
+				fp.logger.Debug(
+					"the block is already finalized, skip checking randomness",
+					zap.String("pk", fp.GetBtcPkHex()),
+					zap.Uint64("target_height", targetBlock.Height),
+				)
+				return true, nil
+			}
+
+		case <-fp.quit:
+			fp.logger.Debug("the finality-provider instance is closing", zap.String("pk", fp.GetBtcPkHex()))
+			return true, nil
+		}
+	}
 }
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
