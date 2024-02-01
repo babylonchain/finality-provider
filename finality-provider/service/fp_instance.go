@@ -510,13 +510,6 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 		// error will be returned if max retries have been reached
 		res, err := fp.SubmitFinalitySignature(targetBlock)
 		if err != nil {
-			if clientcontroller.IsUnrecoverable(err) {
-				return nil, err
-			}
-
-			if clientcontroller.IsExpected(err) {
-				return nil, nil
-			}
 
 			fp.logger.Debug(
 				"failed to submit finality signature to the consumer chain",
@@ -525,6 +518,14 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 				zap.Uint64("target_block_height", targetBlock.Height),
 				zap.Error(err),
 			)
+
+			if clientcontroller.IsUnrecoverable(err) {
+				return nil, err
+			}
+
+			if clientcontroller.IsExpected(err) {
+				return nil, nil
+			}
 
 			failedCycles += 1
 			if failedCycles > uint32(fp.cfg.MaxSubmissionRetries) {
