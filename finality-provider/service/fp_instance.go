@@ -189,15 +189,6 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			if fp.hasProcessed(b) {
 				continue
 			}
-			// check whether the randomness has been committed
-			hasRand, err := fp.hasRandomness(b)
-			if err != nil {
-				fp.reportCriticalErr(err)
-				continue
-			}
-			if !hasRand {
-				continue
-			}
 			// check whether the finality provider has voting power
 			hasVp, err := fp.hasVotingPower(b)
 			if err != nil {
@@ -205,10 +196,18 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				continue
 			}
 			if !hasVp {
-				// the randomness is already committed but
 				// the finality provider does not have voting power
-				// we can safely set lastProcessHeight now
+				// and it will never will at this block
 				fp.MustSetLastProcessedHeight(b.Height)
+				continue
+			}
+			// check whether the randomness has been committed
+			hasRand, err := fp.hasRandomness(b)
+			if err != nil {
+				fp.reportCriticalErr(err)
+				continue
+			}
+			if !hasRand {
 				continue
 			}
 
@@ -402,7 +401,7 @@ func (fp *FinalityProviderInstance) hasVotingPower(b *types.BlockInfo) (bool, er
 	}
 	if power == 0 {
 		fp.logger.Debug(
-			"the finality-provider does not have voting power, skip voting",
+			"the finality-provider does not have voting power",
 			zap.String("pk", fp.GetBtcPkHex()),
 			zap.Uint64("block_height", b.Height),
 		)

@@ -67,7 +67,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 				return nil, err
 			}
 			if !hasRand {
-				continue
+				break
 			}
 			// all good, add the block for catching up
 			catchUpBlocks = append(catchUpBlocks, b)
