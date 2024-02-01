@@ -376,6 +376,16 @@ func (bc *BabylonController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (bc *BabylonController) QueryBestBlock() (*types.BlockInfo, error) {
+	blocks, err := bc.queryLatestBlocks(nil, 1, finalitytypes.QueriedBlockStatus_ANY, true)
+	if err != nil || len(blocks) != 1 {
+		// try query comet block if the index block query is not available
+		return bc.queryCometBestBlock()
+	}
+
+	return blocks[0], nil
+}
+
+func (bc *BabylonController) queryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := bc.bbnClient.RPCClient.BlockchainInfo(ctx, 0, 0)
