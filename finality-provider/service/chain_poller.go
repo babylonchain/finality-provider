@@ -270,11 +270,14 @@ func (cp *ChainPoller) SetNextHeight(height uint64) {
 
 func (cp *ChainPoller) SetNextHeightAndClearBuffer(height uint64) {
 	cp.SetNextHeight(height)
-	cp.clearChanBuffer()
+	cp.clearChanBufferUpToHeight(height)
 }
 
-func (cp *ChainPoller) clearChanBuffer() {
+func (cp *ChainPoller) clearChanBufferUpToHeight(upToHeight uint64) {
 	for len(cp.blockInfoChan) > 0 {
-		<-cp.blockInfoChan
+		block := <-cp.blockInfoChan
+		if block.Height+1 >= upToHeight {
+			break
+		}
 	}
 }
