@@ -29,3 +29,17 @@ func IsUnrecoverable(err error) bool {
 
 	return false
 }
+
+type ExpectedError struct {
+	error
+}
+
+// Expected wraps an error in ExpectedError struct
+func Expected(err error) error {
+	return ExpectedError{err}
+}
+
+// IsExpected checks if error is an instance of ExpectedError
+func IsExpected(err error) bool {
+	return errors.Is(err, ExpectedError{})
+}

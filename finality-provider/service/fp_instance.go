@@ -513,6 +513,11 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			if clientcontroller.IsUnrecoverable(err) {
 				return nil, err
 			}
+
+			if clientcontroller.IsExpected(err) {
+				return nil, nil
+			}
+
 			fp.logger.Debug(
 				"failed to submit finality signature to the consumer chain",
 				zap.String("pk", fp.GetBtcPkHex()),
