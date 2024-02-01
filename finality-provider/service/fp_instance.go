@@ -137,7 +137,7 @@ func (fp *FinalityProviderInstance) bootstrap() (uint64, error) {
 
 	if fp.checkLagging(latestBlock) {
 		_, err := fp.tryFastSync(latestBlock)
-		if err != nil {
+		if err != nil && !clientcontroller.IsExpected(err) {
 			return 0, err
 		}
 	}
