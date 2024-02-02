@@ -62,7 +62,7 @@ So we can ignore the setting of the two fields in this step.
 
 ```bash
 # RPC Address of the EOTS Daemon
-EOTSManagerAddress = 127.0.0.1:15813
+EOTSManagerAddress = 127.0.0.1:12582
 
 # Babylon specific parameters
 
@@ -133,7 +133,7 @@ fpd start --home /path/to/fpd/home
 ```
 
 This will start the RPC server at the address specified in the configuration
-under the `RpcListener` field, which has a default value of `127.0.0.1:15812`.
+under the `RpcListener` field, which has a default value of `127.0.0.1:12581`.
 You can also specify a custom address using the `--rpc-listener` flag.
 
 This will also start all the registered finality provider instances except for
@@ -145,10 +145,10 @@ finality provider (`btc_pk_hex`) obtained in [step](#5-create-and-register-a-fin
 ```bash
 fpd start --rpc-listener '127.0.0.1:8088'
 
-time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager	{"address": "127.0.0.1:15813"}"
+time="2023-11-26T16:37:00-05:00" level=info msg="successfully connected to a remote EOTS manager	{"address": "127.0.0.1:12582"}"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting FinalityProviderApp"
 time="2023-11-26T16:37:00-05:00" level=info msg="Starting RPC Server"
-time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening	{"address": "127.0.0.1:15812"}"
+time="2023-11-26T16:37:00-05:00" level=info msg="RPC server listening	{"address": "127.0.0.1:12581"}"
 time="2023-11-26T16:37:00-05:00" level=info msg="Finality Provider Daemon is fully active!"
 ```
 

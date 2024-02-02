@@ -22,7 +22,7 @@ const (
 	defaultLogDirname                     = "logs"
 	defaultLogFilename                    = "fpd.log"
 	defaultFinalityProviderKeyName        = "finality-provider"
-	DefaultRPCPort                        = 15812
+	DefaultRPCPort                        = 12581
 	defaultConfigFileName                 = "fpd.conf"
 	defaultNumPubRand                     = 100
 	defaultNumPubRandMax                  = 100
