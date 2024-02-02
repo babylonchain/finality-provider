@@ -13,8 +13,6 @@ import (
 var unrecoverableErrors = []*sdkErr.Error{
 	finalitytypes.ErrBlockNotFound,
 	finalitytypes.ErrInvalidFinalitySig,
-	finalitytypes.ErrHeightTooHigh,
-	finalitytypes.ErrInvalidPubRand,
 	finalitytypes.ErrNoPubRandYet,
 	finalitytypes.ErrPubRandNotFound,
 	finalitytypes.ErrTooFewPubRand,
@@ -32,19 +30,33 @@ func IsUnrecoverable(err error) bool {
 	return false
 }
 
-var expectedErrors = []*sdkErr.Error{
-	// if due to some low-level reason (e.g., network), we submit duplicated finality sig,
-	// we should just ignore the error
-	finalitytypes.ErrDuplicatedFinalitySig,
+type ExpectedError struct {
+	error
 }
 
-// IsExpected returns true when the error is in the expectedErrors list
-func IsExpected(err error) bool {
-	for _, e := range expectedErrors {
-		if errors.Is(err, e) {
-			return true
-		}
+func (e ExpectedError) Error() string {
+	if e.error == nil {
+		return "expected error"
 	}
+	return e.error.Error()
+}
 
-	return false
+func (e ExpectedError) Unwrap() error {
+	return e.error
+}
+
+// Is adds support for errors.Is usage on isExpected
+func (ExpectedError) Is(err error) bool {
+	_, isExpected := err.(ExpectedError)
+	return isExpected
+}
+
+// Expected wraps an error in ExpectedError struct
+func Expected(err error) error {
+	return ExpectedError{err}
+}
+
+// IsExpected checks if error is an instance of ExpectedError
+func IsExpected(err error) bool {
+	return errors.Is(err, ExpectedError{})
 }
