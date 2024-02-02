@@ -63,7 +63,7 @@ Below are the `eotsd.conf` file contents:
 
 ```bash
 # Default address to listen for RPC connections
-RpcListener = 127.0.0.1:15813
+RpcListener = 127.0.0.1:12582
 
 # Type of keyring to use
 KeyringBackend = test
@@ -87,13 +87,13 @@ eotsd start --home /path/to/eotsd/home
 ```
 
 This will start the rpc server at the address specified in the configuration under
-the `RpcListener` field, which has a default value of `127.0.0.1:15813`.
+the `RpcListener` field, which has a default value of `127.0.0.1:12582`.
 You can also specify a custom address using the `--rpc-listener` flag.
 
 ```bash
 eotsd start
 
-time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening	{"address": "127.0.0.1:15813"}"
+time="2023-11-26T16:35:04-05:00" level=info msg="RPC server listening	{"address": "127.0.0.1:12582"}"
 time="2023-11-26T16:35:04-05:00" level=info msg="EOTS Manager Daemon is fully active!"
 ```
 
