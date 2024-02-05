@@ -254,7 +254,13 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				)
 
 				// set the poller to fetch blocks that have not been processed
-				fp.poller.SetNextHeightAndClearBuffer(fp.GetLastProcessedHeight() + 1)
+				err := fp.poller.SkipToHeight(fp.GetLastProcessedHeight() + 1)
+				if err != nil {
+					fp.logger.Debug(
+						"failed to skip heights from the poller",
+						zap.Error(err),
+					)
+				}
 			}
 		case <-fp.quit:
 			fp.logger.Info("the finality signature submission loop is closing")

@@ -26,18 +26,27 @@ const (
 	maxFailedCycles = 20
 )
 
+type skipHeightRequest struct {
+	height uint64
+	resp   chan *skipHeightResponse
+}
+
+type skipHeightResponse struct {
+	err error
+}
+
 type ChainPoller struct {
 	startOnce sync.Once
 	stopOnce  sync.Once
 	wg        sync.WaitGroup
-	mu        sync.Mutex
 	quit      chan struct{}
 
-	cc            clientcontroller.ClientController
-	cfg           *cfg.ChainPollerConfig
-	blockInfoChan chan *types.BlockInfo
-	nextHeight    uint64
-	logger        *zap.Logger
+	cc             clientcontroller.ClientController
+	cfg            *cfg.ChainPollerConfig
+	blockInfoChan  chan *types.BlockInfo
+	skipHeightChan chan *skipHeightRequest
+	nextHeight     uint64
+	logger         *zap.Logger
 }
 
 func NewChainPoller(
@@ -46,11 +55,12 @@ func NewChainPoller(
 	cc clientcontroller.ClientController,
 ) *ChainPoller {
 	return &ChainPoller{
-		logger:        logger,
-		cfg:           cfg,
-		cc:            cc,
-		blockInfoChan: make(chan *types.BlockInfo, cfg.BufferSize),
-		quit:          make(chan struct{}),
+		logger:         logger,
+		cfg:            cfg,
+		cc:             cc,
+		blockInfoChan:  make(chan *types.BlockInfo, cfg.BufferSize),
+		skipHeightChan: make(chan *skipHeightRequest, 1),
+		quit:           make(chan struct{}),
 	}
 }
 
@@ -184,8 +194,8 @@ func (cp *ChainPoller) waitForActivation() {
 		if err != nil {
 			cp.logger.Debug("failed to query the consumer chain for the activated height", zap.Error(err))
 		} else {
-			if cp.GetNextHeight() < activatedHeight {
-				cp.SetNextHeight(activatedHeight)
+			if cp.nextHeight < activatedHeight {
+				cp.nextHeight = activatedHeight
 			}
 			return
 		}
@@ -210,7 +220,7 @@ func (cp *ChainPoller) pollChain() {
 	for {
 		// TODO: Handlig of request cancellation, as otherwise shutdown will be blocked
 		// until request is finished
-		blockToRetrieve := cp.GetNextHeight()
+		blockToRetrieve := cp.nextHeight
 		block, err := cp.blockWithRetry(blockToRetrieve)
 		if err != nil {
 			failedCycles++
@@ -223,7 +233,7 @@ func (cp *ChainPoller) pollChain() {
 		} else {
 			// no error and we got the header we wanted to get, bump the state and push
 			// notification about data
-			cp.SetNextHeight(blockToRetrieve + 1)
+			cp.nextHeight = blockToRetrieve + 1
 			failedCycles = 0
 
 			cp.logger.Info("the poller retrieved the block from the consumer chain",
@@ -242,37 +252,45 @@ func (cp *ChainPoller) pollChain() {
 		select {
 		case <-time.After(cp.cfg.PollInterval):
 
+		case req := <-cp.skipHeightChan:
+			// no need to skip heights if the target height is not higher
+			// than the next height to retrieve
+			targetHeight := req.height
+			if targetHeight <= cp.nextHeight {
+				resp := &skipHeightResponse{
+					err: fmt.Errorf(
+						"the target height %d is not higher than the next height %d to retrieve",
+						targetHeight, cp.nextHeight)}
+				req.resp <- resp
+				continue
+			}
+
+			// drain blocks that can be skipped from blockInfoChan
+			cp.clearChanBufferUpToHeight(targetHeight)
+
+			// set the next height to the skip height
+			cp.nextHeight = targetHeight
+
+			cp.logger.Debug("the poller has skipped height(s)",
+				zap.Uint64("next_height", req.height))
+
+			req.resp <- &skipHeightResponse{}
+
 		case <-cp.quit:
 			return
 		}
 	}
 }
 
-func (cp *ChainPoller) GetNextHeight() uint64 {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
-	return cp.getNextHeight()
+func (cp *ChainPoller) SkipToHeight(height uint64) error {
+	respChan := make(chan *skipHeightResponse, 1)
+	cp.skipHeightChan <- &skipHeightRequest{height: height, resp: respChan}
+	resp := <-respChan
+	return resp.err
 }
 
-func (cp *ChainPoller) getNextHeight() uint64 {
+func (cp *ChainPoller) NextHeight() uint64 {
 	return cp.nextHeight
-}
-
-func (cp *ChainPoller) setNextHeight(height uint64) {
-	cp.nextHeight = height
-}
-
-func (cp *ChainPoller) SetNextHeight(height uint64) {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
-	if cp.nextHeight < height {
-		cp.setNextHeight(height)
-	}
-}
-
-func (cp *ChainPoller) SetNextHeightAndClearBuffer(height uint64) {
-	cp.SetNextHeight(height)
-	cp.clearChanBufferUpToHeight(height)
 }
 
 func (cp *ChainPoller) clearChanBufferUpToHeight(upToHeight uint64) {
