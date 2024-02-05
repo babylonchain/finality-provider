@@ -193,24 +193,15 @@ func (bc *BabylonController) SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeigh
 		FinalitySig:  bbntypes.NewSchnorrEOTSSigFromModNScalar(sig),
 	}
 
-	expectedErrs := []*sdkErr.Error{
-		finalitytypes.ErrDuplicatedFinalitySig,
-	}
-
 	unrecoverableErrs := []*sdkErr.Error{
 		finalitytypes.ErrInvalidFinalitySig,
 		finalitytypes.ErrPubRandNotFound,
 		btcstakingtypes.ErrFpAlreadySlashed,
 	}
 
-	res, err := bc.reliablySendMsg(msg, expectedErrs, unrecoverableErrs)
+	res, err := bc.reliablySendMsg(msg, emptyErrs, unrecoverableErrs)
 	if err != nil {
 		return nil, err
-	}
-	if res == nil {
-		// NOTE: this can happen when encountering expected errors
-		// during retrying
-		return nil, Expected(fmt.Errorf("expected error: %w", finalitytypes.ErrDuplicatedFinalitySig))
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
@@ -234,24 +225,15 @@ func (bc *BabylonController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, bloc
 		msgs = append(msgs, msg)
 	}
 
-	expectedErrs := []*sdkErr.Error{
-		finalitytypes.ErrDuplicatedFinalitySig,
-	}
-
 	unrecoverableErrs := []*sdkErr.Error{
 		finalitytypes.ErrInvalidFinalitySig,
 		finalitytypes.ErrPubRandNotFound,
 		btcstakingtypes.ErrFpAlreadySlashed,
 	}
 
-	res, err := bc.reliablySendMsgs(msgs, expectedErrs, unrecoverableErrs)
+	res, err := bc.reliablySendMsgs(msgs, emptyErrs, unrecoverableErrs)
 	if err != nil {
 		return nil, err
-	}
-	if res == nil {
-		// NOTE: this can happen when encountering expected errors
-		// during retrying
-		return nil, Expected(fmt.Errorf("expected error: %w", finalitytypes.ErrDuplicatedFinalitySig))
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
