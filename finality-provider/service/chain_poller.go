@@ -261,7 +261,9 @@ func (cp *ChainPoller) getNextHeight() uint64 {
 func (cp *ChainPoller) setNextHeight(height uint64) {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
-	cp.nextHeight = height
+	if cp.nextHeight < height {
+		cp.nextHeight = height
+	}
 }
 
 func (cp *ChainPoller) SetNextHeight(height uint64) {
