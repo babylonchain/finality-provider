@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,8 +24,7 @@ func FuzzChainPoller_Start(f *testing.F) {
 
 		currentHeight := uint64(r.Int63n(100) + 1)
 		startHeight := currentHeight + 1
-		ranHeights := uint64(r.Int63n(10) + 1)
-		endHeight := startHeight + ranHeights
+		endHeight := startHeight + uint64(r.Int63n(10)+1)
 
 		ctl := gomock.NewController(t)
 		mockClientController := mocks.NewMockClientController(ctl)
@@ -61,5 +61,75 @@ func FuzzChainPoller_Start(f *testing.F) {
 				t.Fatalf("Failed to get block info")
 			}
 		}
+	})
+}
+
+func FuzzChainPoller_SkipHeight(f *testing.F) {
+	testutil.AddRandomSeedsToFuzzer(f, 10)
+	f.Fuzz(func(t *testing.T, seed int64) {
+		r := rand.New(rand.NewSource(seed))
+
+		currentHeight := uint64(r.Int63n(100) + 1)
+		startHeight := currentHeight + 1
+		endHeight := startHeight + uint64(r.Int63n(10)+1)
+		skipHeight := endHeight + uint64(r.Int63n(10)+1)
+
+		ctl := gomock.NewController(t)
+		mockClientController := mocks.NewMockClientController(ctl)
+		mockClientController.EXPECT().Close().Return(nil).AnyTimes()
+		mockClientController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
+
+		currentBlockRes := &types.BlockInfo{
+			Height: currentHeight,
+		}
+		mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
+
+		for i := startHeight; i <= skipHeight; i++ {
+			resBlock := &types.BlockInfo{
+				Height: i,
+			}
+			mockClientController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
+		}
+
+		pollerCfg := fpcfg.DefaultChainPollerConfig()
+		pollerCfg.PollInterval = 1 * time.Second
+		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController)
+		err := poller.Start(startHeight)
+		require.NoError(t, err)
+		defer func() {
+			err := poller.Stop()
+			require.NoError(t, err)
+		}()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			wg.Done()
+			err = poller.SkipToHeight(currentHeight - 1)
+			require.Error(t, err)
+			err = poller.SkipToHeight(skipHeight)
+			require.NoError(t, err)
+		}()
+
+		skipped := false
+		for i := startHeight; i <= endHeight; i++ {
+			if skipped {
+				break
+			}
+			select {
+			case info := <-poller.GetBlockInfoChan():
+				if info.Height == skipHeight {
+					skipped = true
+				} else {
+					require.Equal(t, i, info.Height)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatalf("Failed to get block info")
+			}
+		}
+
+		wg.Wait()
+
+		require.Equal(t, skipHeight+1, poller.NextHeight())
 	})
 }
