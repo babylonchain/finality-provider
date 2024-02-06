@@ -17,6 +17,8 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 )
 
+// FuzzChainPoller_Start tests the poller polling blocks
+// in sequence
 func FuzzChainPoller_Start(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
@@ -64,6 +66,7 @@ func FuzzChainPoller_Start(f *testing.F) {
 	})
 }
 
+// FuzzChainPoller_SkipHeight tests the functionality of SkipHeight
 func FuzzChainPoller_SkipHeight(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
@@ -105,8 +108,12 @@ func FuzzChainPoller_SkipHeight(f *testing.F) {
 		wg.Add(1)
 		go func() {
 			wg.Done()
-			err = poller.SkipToHeight(currentHeight - 1)
+			// insert a skipToHeight request with height lower than the next
+			// height to retrieve, expecting an error
+			err = poller.SkipToHeight(poller.NextHeight() - 1)
 			require.Error(t, err)
+			// insert a skipToHeight request with a height higher than the
+			// next height to retrieve
 			err = poller.SkipToHeight(skipHeight)
 			require.NoError(t, err)
 		}()

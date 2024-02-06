@@ -253,7 +253,8 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 					zap.Uint64("last_processed_height", res.LastProcessedHeight),
 				)
 
-				// set the poller to fetch blocks that have not been processed
+				// inform the poller to skip to the next block of the last
+				// processed one
 				err := fp.poller.SkipToHeight(fp.GetLastProcessedHeight() + 1)
 				if err != nil {
 					fp.logger.Debug(
