@@ -74,7 +74,7 @@ func FuzzChainPoller_SkipHeight(f *testing.F) {
 
 		currentHeight := uint64(r.Int63n(100) + 1)
 		startHeight := currentHeight + 1
-		endHeight := startHeight + uint64(r.Int63n(10)+1)
+		endHeight := startHeight + uint64(r.Int63n(10)+2)
 		skipHeight := endHeight + uint64(r.Int63n(10)+1)
 
 		ctl := gomock.NewController(t)
@@ -97,11 +97,17 @@ func FuzzChainPoller_SkipHeight(f *testing.F) {
 		pollerCfg := fpcfg.DefaultChainPollerConfig()
 		pollerCfg.PollInterval = 1 * time.Second
 		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController)
-		err := poller.Start(startHeight)
+		// should expect error if the poller is not started
+		err := poller.SkipToHeight(skipHeight)
+		require.Error(t, err)
+		err = poller.Start(startHeight)
 		require.NoError(t, err)
 		defer func() {
 			err := poller.Stop()
 			require.NoError(t, err)
+			// should expect error if the poller is stopped
+			err = poller.SkipToHeight(skipHeight)
+			require.Error(t, err)
 		}()
 
 		var wg sync.WaitGroup

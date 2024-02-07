@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/clientcontroller"
@@ -36,8 +37,7 @@ type skipHeightResponse struct {
 }
 
 type ChainPoller struct {
-	startOnce sync.Once
-	stopOnce  sync.Once
+	isStarted *atomic.Bool
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
@@ -55,49 +55,59 @@ func NewChainPoller(
 	cc clientcontroller.ClientController,
 ) *ChainPoller {
 	return &ChainPoller{
+		isStarted:      atomic.NewBool(false),
 		logger:         logger,
 		cfg:            cfg,
 		cc:             cc,
 		blockInfoChan:  make(chan *types.BlockInfo, cfg.BufferSize),
-		skipHeightChan: make(chan *skipHeightRequest, 1),
+		skipHeightChan: make(chan *skipHeightRequest),
 		quit:           make(chan struct{}),
 	}
 }
 
 func (cp *ChainPoller) Start(startHeight uint64) error {
-	var startErr error
-	cp.startOnce.Do(func() {
-		cp.logger.Info("Starting the chain poller")
+	if cp.isStarted.Swap(true) {
+		return fmt.Errorf("the poller is already started")
+	}
 
-		err := cp.validateStartHeight(startHeight)
-		if err != nil {
-			startErr = err
-			return
-		}
+	cp.logger.Info("starting the chain poller")
 
-		cp.nextHeight = startHeight
+	err := cp.validateStartHeight(startHeight)
+	if err != nil {
+		return fmt.Errorf("invalid starting height %d: %w", startHeight, err)
+	}
 
-		cp.wg.Add(1)
+	cp.nextHeight = startHeight
 
-		go cp.pollChain()
-	})
-	return startErr
+	cp.wg.Add(1)
+
+	go cp.pollChain()
+
+	cp.logger.Info("the chain poller is successfully started")
+
+	return nil
 }
 
 func (cp *ChainPoller) Stop() error {
-	var stopError error
-	cp.stopOnce.Do(func() {
-		cp.logger.Info("Stopping the chain poller")
-		err := cp.cc.Close()
-		if err != nil {
-			stopError = err
-			return
-		}
-		close(cp.quit)
-		cp.wg.Wait()
-	})
+	if !cp.isStarted.Swap(false) {
+		return fmt.Errorf("the chain poller has already stopped")
+	}
 
-	return stopError
+	cp.logger.Info("stopping the chain poller")
+	err := cp.cc.Close()
+	if err != nil {
+		return err
+	}
+	close(cp.quit)
+	cp.wg.Wait()
+
+	cp.logger.Info("the chain poller is successfully stopped")
+
+	return nil
+}
+
+func (cp *ChainPoller) IsRunning() bool {
+	return cp.isStarted.Load()
 }
 
 // Return read only channel for incoming blocks
@@ -283,10 +293,28 @@ func (cp *ChainPoller) pollChain() {
 }
 
 func (cp *ChainPoller) SkipToHeight(height uint64) error {
+	if !cp.IsRunning() {
+		return fmt.Errorf("the chain poller is stopped")
+	}
+
 	respChan := make(chan *skipHeightResponse, 1)
-	cp.skipHeightChan <- &skipHeightRequest{height: height, resp: respChan}
-	resp := <-respChan
-	return resp.err
+
+	// this handles the case when the poller is stopped before the
+	// skip height request is sent
+	select {
+	case <-cp.quit:
+		return fmt.Errorf("the chain poller is stopped")
+	case cp.skipHeightChan <- &skipHeightRequest{height: height, resp: respChan}:
+	}
+
+	// this handles the case when the poller is stopped before
+	// the skip height request is returned
+	select {
+	case <-cp.quit:
+		return fmt.Errorf("the chain poller is stopped")
+	case resp := <-respChan:
+		return resp.err
+	}
 }
 
 func (cp *ChainPoller) NextHeight() uint64 {
