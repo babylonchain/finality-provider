@@ -33,8 +33,8 @@ func DefaultBBNConfig() BBNConfig {
 		GRPCAddr:       dc.GRPCAddr,
 		AccountPrefix:  dc.AccountPrefix,
 		KeyringBackend: dc.KeyringBackend,
-		GasAdjustment:  dc.GasAdjustment,
-		GasPrices:      dc.GasPrices,
+		GasAdjustment:  1.5,
+		GasPrices:      "0.002ubbn",
 		Debug:          dc.Debug,
 		Timeout:        dc.Timeout,
 		// Setting this to relatively low value, out currnet babylon client (lens) will

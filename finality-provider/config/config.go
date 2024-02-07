@@ -24,21 +24,21 @@ const (
 	defaultFinalityProviderKeyName        = "finality-provider"
 	DefaultRPCPort                        = 12581
 	defaultConfigFileName                 = "fpd.conf"
-	defaultNumPubRand                     = 100
-	defaultNumPubRandMax                  = 100
-	defaultMinRandHeightGap               = 10
-	defaultStatusUpdateInterval           = 5 * time.Second
-	defaultRandomInterval                 = 5 * time.Second
-	defautlUnbondingSigSubmissionInterval = 20 * time.Second
+	defaultNumPubRand                     = 150
+	defaultNumPubRandMax                  = 200
+	defaultMinRandHeightGap               = 50
+	defaultStatusUpdateInterval           = 20 * time.Second
+	defaultRandomInterval                 = 30 * time.Second
+	defautlUnbondingSigSubmissionInterval = 30 * time.Second
 	defaultSubmitRetryInterval            = 1 * time.Second
-	defaultFastSyncInterval               = 20 * time.Second
+	defaultFastSyncInterval               = 10 * time.Second
 	defaultFastSyncLimit                  = 10
-	defaultFastSyncGap                    = 6
+	defaultFastSyncGap                    = 3
 	defaultMaxSubmissionRetries           = 20
 	defaultBitcoinNetwork                 = "simnet"
 	defaultDataDirname                    = "data"
 	defaultDBPath                         = "bbolt-fpd.db"
-	defaultMaxNumFinalityProviders        = 3
+	defaultMaxNumFinalityProviders        = 10
 )
 
 var (
@@ -47,9 +47,9 @@ var (
 	//   ~/Users/<username>/Library/Application Support/Fpd on MacOS
 	DefaultFpdDir = btcutil.AppDataDir("fpd", false)
 
-	defaultBTCNetParams       = chaincfg.SimNetParams
+	defaultBTCNetParams       = chaincfg.RegressionNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
-	DefaultRpcListener        = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
+	DefaultRpcListener        = "0.0.0.0:" + strconv.Itoa(DefaultRPCPort)
 )
 
 // Config is the main config for the fpd cli command
