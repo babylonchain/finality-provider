@@ -66,7 +66,7 @@ func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *proto.StoreFinalityP
 	// generate and verify PoP, correct case
 	pop, err := bstypes.NewPoP(babylonSK, btcSK)
 	require.NoError(t, err)
-	err = pop.Verify(babylonPK, bip340PK, &chaincfg.SigNetParams)
+	err = pop.Verify(babylonPK, bip340PK, &chaincfg.SimNetParams)
 	require.NoError(t, err)
 
 	return &proto.StoreFinalityProvider{

@@ -39,14 +39,14 @@ import (
 var (
 	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
-	btcNetworkParams      = &chaincfg.SigNetParams
+	btcNetworkParams      = &chaincfg.SimNetParams
 
 	fpNamePrefix  = "test-fp-"
 	monikerPrefix = "moniker-"
 	chainID       = "chain-test"
 	passphrase    = "testpass"
 	hdPath        = ""
-	signetParams  = &chaincfg.SigNetParams
+	simnetParams  = &chaincfg.SimNetParams
 )
 
 type TestManager struct {
@@ -403,7 +403,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		btcDel.GetStakingTime(),
 		btcutil.Amount(btcDel.TotalSat),
-		signetParams,
+		simnetParams,
 	)
 	require.NoError(t, err)
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
@@ -428,7 +428,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		uint16(btcDel.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
-		signetParams,
+		simnetParams,
 	)
 	require.NoError(t, err)
 
