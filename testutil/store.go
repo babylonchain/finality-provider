@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	kvstore "github.com/babylonchain/btc-validator/store"
+	kvstore "github.com/babylonchain/finality-provider/store"
 )
 
 func CreateStore(r *rand.Rand, t *testing.T) (kvstore.Store, string) {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	kvstore "github.com/babylonchain/btc-validator/store"
-	"github.com/babylonchain/btc-validator/testutil"
+	kvstore "github.com/babylonchain/finality-provider/store"
+	"github.com/babylonchain/finality-provider/testutil"
 )
 
 // FuzzBboltStore tests store interfaces works properly.

@@ -1,7 +1,6 @@
 BUILDDIR ?= $(CURDIR)/build
 TOOLS_DIR := tools
 
-BTCD_PKG := github.com/btcsuite/btcd
 BABYLON_PKG := github.com/babylonchain/babylon/cmd/babylond
 
 GO_BIN := ${GOPATH}/bin
@@ -35,26 +34,23 @@ all: build install
 
 build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
 
-clean: 
-	rm -rf $(BUILDDIR)
-
 $(BUILD_TARGETS): go.sum $(BUILDDIR)/
-	go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
+	CGO_CFLAGS="-O -D__BLST_PORTABLE__" go $@ -mod=readonly $(BUILD_FLAGS) $(BUILD_ARGS) ./...
 
 $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
 build-docker:
-	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/btc-validator -f Dockerfile \
+	$(DOCKER) build --tag babylonchain/finality-provider -f Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
-.PHONY: build build-docker clean
+.PHONY: build build-docker
 
 test:
 	go test ./...
 
 test-e2e:
-	go install -trimpath $(BABYLON_PKG)
+	cd $(TOOLS_DIR); go install -trimpath $(BABYLON_PKG)
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
 
 ###############################################################################
@@ -64,7 +60,8 @@ test-e2e:
 proto-all: proto-gen
 
 proto-gen:
-	./proto/scripts/protocgen.sh
+	make -C eotsmanager proto-gen
+	make -C finality-provider proto-gen
 
 .PHONY: proto-gen
 

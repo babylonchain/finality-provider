@@ -4,51 +4,44 @@ import (
 	"math/rand"
 	"testing"
 
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	cometbfttypes "github.com/cometbft/cometbft/types"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	sdkmath "cosmossdk.io/math"
 	"github.com/golang/mock/gomock"
 
-	"github.com/babylonchain/btc-validator/testutil/mocks"
+	"github.com/babylonchain/finality-provider/testutil/mocks"
+	"github.com/babylonchain/finality-provider/types"
 )
 
-func EmptyDescription() *stakingtypes.Description {
-	return &stakingtypes.Description{}
+const TestPubRandNum = 25
+
+func EmptyDescription() []byte {
+	return []byte("empty description")
 }
 
-func ZeroCommissionRate() *sdktypes.Dec {
-	zeroCom := sdktypes.ZeroDec()
+func ZeroCommissionRate() *sdkmath.LegacyDec {
+	zeroCom := sdkmath.LegacyZeroDec()
 	return &zeroCom
 }
 
 func PrepareMockedClientController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
 	mockClientController := mocks.NewMockClientController(ctl)
-	status := &coretypes.ResultStatus{
-		SyncInfo: coretypes.SyncInfo{LatestBlockHeight: int64(currentHeight)},
-	}
 
 	for i := startHeight + 1; i <= currentHeight; i++ {
-		resHeader := &coretypes.ResultHeader{
-			Header: &cometbfttypes.Header{
-				Height:         int64(currentHeight),
-				LastCommitHash: GenRandomByteArray(r, 32),
-			},
+		resBlock := &types.BlockInfo{
+			Height: currentHeight,
+			Hash:   GenRandomByteArray(r, 32),
 		}
-		mockClientController.EXPECT().QueryHeader(int64(i)).Return(resHeader, nil).AnyTimes()
+		mockClientController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
 	}
 
-	currentHeaderRes := &coretypes.ResultHeader{
-		Header: &cometbfttypes.Header{
-			Height:         int64(currentHeight),
-			LastCommitHash: GenRandomByteArray(r, 32),
-		},
+	currentBlockRes := &types.BlockInfo{
+		Height: currentHeight,
+		Hash:   GenRandomByteArray(r, 32),
 	}
 
-	mockClientController.EXPECT().QueryNodeStatus().Return(status, nil).AnyTimes()
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
-	mockClientController.EXPECT().QueryBestHeader().Return(currentHeaderRes, nil).AnyTimes()
+	mockClientController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
+	mockClientController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
 
 	return mockClientController
 }

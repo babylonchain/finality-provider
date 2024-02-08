@@ -2,32 +2,21 @@ package clientcontroller
 
 import (
 	"errors"
-	"time"
 
-	"github.com/avast/retry-go/v4"
-
-	"github.com/babylonchain/btc-validator/types"
-)
-
-// Variables used for retries
-var (
-	rtyAttNum = uint(5)
-	rtyAtt    = retry.Attempts(rtyAttNum)
-	rtyDel    = retry.Delay(time.Millisecond * 400)
-	rtyErr    = retry.LastErrorOnly(true)
+	sdkErr "cosmossdk.io/errors"
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 )
 
 // these errors are considered unrecoverable because these indicate
-// something critical in the validator program or the consumer chain
-var unrecoverableErrors = []error{
-	types.ErrBlockNotFound,
-	types.ErrInvalidFinalitySig,
-	types.ErrHeightTooHigh,
-	types.ErrInvalidPubRand,
-	types.ErrNoPubRandYet,
-	types.ErrPubRandNotFound,
-	types.ErrTooFewPubRand,
-	types.ErrValidatorSlashed,
+// something critical in the finality provider program or the consumer chain
+var unrecoverableErrors = []*sdkErr.Error{
+	finalitytypes.ErrBlockNotFound,
+	finalitytypes.ErrInvalidFinalitySig,
+	finalitytypes.ErrNoPubRandYet,
+	finalitytypes.ErrPubRandNotFound,
+	finalitytypes.ErrTooFewPubRand,
+	btcstakingtypes.ErrFpAlreadySlashed,
 }
 
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list
@@ -41,19 +30,33 @@ func IsUnrecoverable(err error) bool {
 	return false
 }
 
-var expectedErrors = []error{
-	// if due to some low-level reason (e.g., network), we submit duplicated finality sig,
-	// we should just ignore the error
-	types.ErrDuplicatedFinalitySig,
+type ExpectedError struct {
+	error
 }
 
-// IsExpected returns true when the error is in the expectedErrors list
-func IsExpected(err error) bool {
-	for _, e := range expectedErrors {
-		if errors.Is(err, e) {
-			return true
-		}
+func (e ExpectedError) Error() string {
+	if e.error == nil {
+		return "expected error"
 	}
+	return e.error.Error()
+}
 
-	return false
+func (e ExpectedError) Unwrap() error {
+	return e.error
+}
+
+// Is adds support for errors.Is usage on isExpected
+func (ExpectedError) Is(err error) bool {
+	_, isExpected := err.(ExpectedError)
+	return isExpected
+}
+
+// Expected wraps an error in ExpectedError struct
+func Expected(err error) error {
+	return ExpectedError{err}
+}
+
+// IsExpected checks if error is an instance of ExpectedError
+func IsExpected(err error) bool {
+	return errors.Is(err, ExpectedError{})
 }

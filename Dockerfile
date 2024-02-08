@@ -1,4 +1,4 @@
-FROM golang:1.20.5-alpine as builder
+FROM golang:1.21.4-alpine as builder
 
 # Version to build. Default is the Git HEAD.
 ARG VERSION="HEAD"
@@ -12,17 +12,13 @@ RUN apk add --no-cache --update openssh git make build-base linux-headers libc-d
                                 libzmq-static libsodium-static gcc
 
 
-RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts
-RUN git config --global url."git@github.com:".insteadOf "https://github.com/"
-ENV GOPRIVATE=github.com/babylonchain/babylon-private
-
 # Build
-WORKDIR /go/src/github.com/babylonchain/btc-validator
+WORKDIR /go/src/github.com/babylonchain/finality-provider
 # Cache dependencies
-COPY go.mod go.sum /go/src/github.com/babylonchain/btc-validator/
-RUN --mount=type=secret,id=sshKey,target=/root/.ssh/id_rsa go mod download
+COPY go.mod go.sum /go/src/github.com/babylonchain/finality-provider/
+RUN go mod download
 # Copy the rest of the files
-COPY ./ /go/src/github.com/babylonchain/btc-validator/
+COPY ./ /go/src/github.com/babylonchain/finality-provider/
 
 # Cosmwasm - Download correct libwasmvm version
 RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) && \
@@ -41,17 +37,14 @@ RUN CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" \
 # FINAL IMAGE
 FROM alpine:3.16 AS run
 
-RUN addgroup --gid 1138 -S btcvalidator && adduser --uid 1138 -S btcvalidator -G btcvalidator
+RUN addgroup --gid 1138 -S finality-provider && adduser --uid 1138 -S finality-provider -G finality-provider
 
 RUN apk add bash curl jq
 
-COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/vald /bin/vald
-COPY --from=builder /go/src/github.com/babylonchain/btc-validator/build/valcli /bin/valcli
+COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpd /bin/fpd
+COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpcli /bin/fpcli
+COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/eotsd /bin/eotsd
 
-WORKDIR /home/btcvalidator
-RUN chown -R btcvalidator /home/btcvalidator
-USER btcvalidator
-
-ENTRYPOINT ["/bin/vald"]
-CMD []
-STOPSIGNAL SIGTERM
+WORKDIR /home/finality-provider
+RUN chown -R finality-provider /home/finality-provider
+USER finality-provider

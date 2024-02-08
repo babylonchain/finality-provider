@@ -1,6 +1,7 @@
 package types
 
 type BlockInfo struct {
-	Height         uint64
-	LastCommitHash []byte
+	Height    uint64
+	Hash      []byte
+	Finalized bool
 }

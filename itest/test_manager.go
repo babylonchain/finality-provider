@@ -10,42 +10,57 @@ import (
 	"testing"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
+	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/cosmos/relayer/v2/relayer/provider"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
-	"github.com/babylonchain/btc-validator/clientcontroller"
-	"github.com/babylonchain/btc-validator/service"
-	"github.com/babylonchain/btc-validator/types"
-	"github.com/babylonchain/btc-validator/valcfg"
+	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	"github.com/babylonchain/finality-provider/eotsmanager/client"
+	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 var (
 	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
+	btcNetworkParams      = &chaincfg.SimNetParams
+
+	fpNamePrefix  = "test-fp-"
+	monikerPrefix = "moniker-"
+	chainID       = "chain-test"
+	passphrase    = "testpass"
+	hdPath        = ""
+	simnetParams  = &chaincfg.SimNetParams
 )
 
-var btcNetworkParams = &chaincfg.SimNetParams
-
 type TestManager struct {
-	Wg             sync.WaitGroup
-	BabylonHandler *BabylonNodeHandler
-	Config         *valcfg.Config
-	Va             *service.ValidatorApp
-	BabylonClient  *clientcontroller.BabylonController
+	Wg                sync.WaitGroup
+	BabylonHandler    *BabylonNodeHandler
+	EOTSServerHandler *EOTSServerHandler
+	FpConfig          *fpcfg.Config
+	EOTSConfig        *eotsconfig.Config
+	Fpa               *service.FinalityProviderApp
+	EOTSClient        *client.EOTSManagerGRpcClient
+	BBNClient         *fpcc.BabylonController
+	StakingParams     *types.StakingParams
+	CovenantPrivKeys  []*btcec.PrivateKey
+	baseDir           string
 }
 
 type TestDelegationData struct {
@@ -53,105 +68,126 @@ type TestDelegationData struct {
 	DelegatorKey            *btcec.PublicKey
 	DelegatorBabylonPrivKey *secp256k1.PrivKey
 	DelegatorBabylonKey     *secp256k1.PubKey
-	StakingTx               *bstypes.BabylonBTCTaprootTx
 	SlashingTx              *bstypes.BTCSlashingTx
+	StakingTx               *wire.MsgTx
 	StakingTxInfo           *btcctypes.TransactionInfo
 	DelegatorSig            *bbntypes.BIP340Signature
+	FpPks                   []*btcec.PublicKey
 
 	SlashingAddr  string
+	ChangeAddr    string
 	StakingTime   uint16
 	StakingAmount int64
 }
 
-func StartManager(t *testing.T, isJury bool) *TestManager {
-	bh := NewBabylonNodeHandler(t)
-
-	err := bh.Start()
+func StartManager(t *testing.T) *TestManager {
+	testDir, err := tempDirWithName("fpe2etest")
 	require.NoError(t, err)
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
-	logger.Out = os.Stdout
+	logger := zap.NewNop()
 
-	// setup validator config
-	testDir, err := tempDirWithName("vale2etest")
+	// 1. generate covenant committee
+	covenantQuorum := 2
+	numCovenants := 3
+	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+
+	// 2. prepare Babylon node
+	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
+	err = bh.Start()
+	require.NoError(t, err)
+	fpHomeDir := filepath.Join(testDir, "fp-home")
+	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	cfg := defaultValidatorConfig(bh.GetNodeDataDir(), testDir, isJury)
-
-	bc, err := clientcontroller.NewBabylonController(bh.GetNodeDataDir(), cfg.BabylonConfig, logger)
-	// making sure the fee is sufficient
-	cfg.BabylonConfig.GasAdjustment = 1.5
-	cfg.BabylonConfig.GasPrices = "0.1ubbn"
+	// 3. prepare EOTS manager
+	eotsHomeDir := filepath.Join(testDir, "eots-home")
+	eotsCfg := defaultEOTSConfig()
+	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh.Start()
+	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	valApp, err := service.NewValidatorAppFromConfig(cfg, logger, bc)
+	// 4. prepare finality-provider
+	fpApp, err := service.NewFinalityProviderApp(fpHomeDir, cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
-
-	err = valApp.Start()
+	err = fpApp.Start()
 	require.NoError(t, err)
 
 	tm := &TestManager{
-		BabylonHandler: bh,
-		Config:         cfg,
-		Va:             valApp,
-		BabylonClient:  bc,
+		BabylonHandler:    bh,
+		EOTSServerHandler: eh,
+		FpConfig:          cfg,
+		EOTSConfig:        eotsCfg,
+		Fpa:               fpApp,
+		EOTSClient:        eotsCli,
+		BBNClient:         bc,
+		CovenantPrivKeys:  covenantPrivKeys,
+		baseDir:           testDir,
 	}
 
-	tm.WaitForNodeStart(t)
+	tm.WaitForServicesStart(t)
 
 	return tm
 }
 
-func (tm *TestManager) WaitForNodeStart(t *testing.T) {
-
+func (tm *TestManager) WaitForServicesStart(t *testing.T) {
+	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		_, err := tm.BabylonClient.GetStakingParams()
-
-		return err == nil
+		params, err := tm.BBNClient.QueryStakingParams()
+		if err != nil {
+			return false
+		}
+		tm.StakingParams = params
+		return true
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
-	tm := StartManager(t, isJury)
-	app := tm.Va
+func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
+	tm := StartManager(t)
+	app := tm.Fpa
 
-	var (
-		valNamePrefix = "test-val-"
-		monikerPrefix = "moniker-"
-	)
 	for i := 0; i < n; i++ {
-		valName := valNamePrefix + strconv.Itoa(i)
+		fpName := fpNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
-		commission := sdktypes.OneDec()
-		_, err := app.CreateValidator(valName, newDescription(moniker), &commission)
+		commission := sdkmath.LegacyZeroDec()
+		desc, err := newDescription(moniker).Marshal()
 		require.NoError(t, err)
-		_, bbnPk, err := app.RegisterValidator(valName)
+		cfg := app.GetConfig()
+		_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath)
 		require.NoError(t, err)
-		err = app.StartHandlingValidator(bbnPk)
+		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
-		valIns, err := app.GetValidatorInstance(bbnPk)
+		fpPk, err := bbntypes.NewBIP340PubKey(res.StoreFp.BtcPk)
 		require.NoError(t, err)
-		require.True(t, valIns.IsRunning())
+		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		require.NoError(t, err)
+		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+		require.NoError(t, err)
+		fpIns, err := app.GetFinalityProviderInstance(fpPk)
+		require.NoError(t, err)
+		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
 
-		// check validators on Babylon side
+		// check finality providers on Babylon side
 		require.Eventually(t, func() bool {
-			vals, err := tm.BabylonClient.QueryValidators()
+			fps, err := tm.BBNClient.QueryFinalityProviders()
 			if err != nil {
-				t.Logf("failed to query validtors from Babylon %s", err.Error())
+				t.Logf("failed to query finality providers from Babylon %s", err.Error())
 				return false
 			}
 
-			if len(vals) != i+1 {
+			if len(fps) != i+1 {
 				return false
 			}
 
-			for _, v := range vals {
-				if !strings.Contains(v.Description.Moniker, monikerPrefix) {
+			for _, fp := range fps {
+				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
 					return false
 				}
-				if !v.Commission.Equal(sdktypes.OneDec()) {
+				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
 					return false
 				}
 			}
@@ -160,43 +196,43 @@ func StartManagerWithValidator(t *testing.T, n int, isJury bool) *TestManager {
 		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
 
-	require.Equal(t, n, len(app.ListValidatorInstances()))
+	fpInsList := app.ListFinalityProviderInstances()
+	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v validators", n)
+	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
 
-	return tm
+	return tm, fpInsList
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
-	err := tm.Va.Stop()
+	err := tm.Fpa.Stop()
 	require.NoError(t, err)
 	err = tm.BabylonHandler.Stop()
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.Config.DatabaseConfig.Path)
+	err = os.RemoveAll(tm.baseDir)
 	require.NoError(t, err)
-	err = os.RemoveAll(tm.Config.BabylonConfig.KeyDirectory)
-	require.NoError(t, err)
+	tm.EOTSServerHandler.Stop()
 }
 
-func (tm *TestManager) WaitForValRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
 	require.Eventually(t, func() bool {
-		queriedValidators, err := tm.BabylonClient.QueryValidators()
+		queriedFps, err := tm.BBNClient.QueryFinalityProviders()
 		if err != nil {
 			return false
 		}
-		return len(queriedValidators) == 1 && queriedValidators[0].BabylonPk.Equals(bbnPk)
+		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("the validator is successfully registered")
+	t.Logf("the finality-provider is successfully registered")
 }
 
-func (tm *TestManager) WaitForValPubRandCommitted(t *testing.T, valIns *service.ValidatorInstance) {
+func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		randPairs, err := valIns.GetCommittedPubRandPairList()
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
 		if err != nil {
 			return false
 		}
-		return int(tm.Config.NumPubRand) == len(randPairs)
+		return lastCommittedHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
@@ -208,7 +244,9 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 		err  error
 	)
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryPendingBTCDelegations()
+		dels, err = tm.BBNClient.QueryPendingDelegations(
+			100,
+		)
 		if err != nil {
 			return false
 		}
@@ -220,56 +258,77 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	return dels
 }
 
-func (tm *TestManager) WaitForValNActiveDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
-	var dels []*bstypes.BTCDelegation
-	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
-	require.NoError(t, err)
-	params, err := tm.BabylonClient.GetStakingParams()
-	require.NoError(t, err)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
-		if err != nil {
-			return false
-		}
-		return len(dels) == n && CheckDelsStatus(dels, currentBtcTip.Height, params.FinalizationTimeoutBlocks, bstypes.BTCDelegationStatus_ACTIVE)
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	t.Logf("the delegation is active, validators should start voting")
-
-	return dels
-}
-
-func (tm *TestManager) WaitForValNUnbondingDels(t *testing.T, btcPk *bbntypes.BIP340PubKey, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegation {
 	var (
 		dels []*bstypes.BTCDelegation
 		err  error
 	)
-	// wait for our validator to:
-	// - detect new unbonding
-	// - send signature
 	require.Eventually(t, func() bool {
-		dels, err = tm.BabylonClient.QueryBTCValidatorDelegations(btcPk, 1000)
+		dels, err = tm.BBNClient.QueryActiveDelegations(
+			100,
+		)
 		if err != nil {
 			return false
 		}
+		return len(dels) == n
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-		return len(dels) == 1 && dels[0].BtcUndelegation != nil && dels[0].BtcUndelegation.ValidatorUnbondingSig != nil
-
-	}, 1*time.Minute, eventuallyPollTime)
+	t.Logf("delegations are active")
 
 	return dels
 }
 
-func CheckDelsStatus(dels []*bstypes.BTCDelegation, btcHeight uint64, w uint64, status bstypes.BTCDelegationStatus) bool {
-	allChecked := true
-	for _, d := range dels {
-		s := d.GetStatus(btcHeight, w)
-		if s != status {
-			allChecked = false
-		}
+func generateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
+	var (
+		covenantPrivKeys []*btcec.PrivateKey
+		covenantPubKeys  []*bbntypes.BIP340PubKey
+	)
+
+	for i := 0; i < numCovenants; i++ {
+		privKey, err := btcec.NewPrivateKey()
+		require.NoError(t, err)
+		covenantPrivKeys = append(covenantPrivKeys, privKey)
+		pubKey := bbntypes.NewBIP340PubKeyFromBTCPK(privKey.PubKey())
+		covenantPubKeys = append(covenantPubKeys, pubKey)
 	}
 
-	return allChecked
+	return covenantPrivKeys, covenantPubKeys
+}
+
+func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
+	// we need to ensure votes are collected at the given height
+	require.Eventually(t, func() bool {
+		votes, err := tm.BBNClient.QueryVotesAtHeight(height)
+		if err != nil {
+			t.Logf("failed to get the votes at height %v: %s", height, err.Error())
+			return false
+		}
+		return len(votes) == num
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// as the votes have been collected, the block should be finalized
+	require.Eventually(t, func() bool {
+		b, err := tm.BBNClient.QueryBlock(height)
+		if err != nil {
+			t.Logf("failed to query block at height %v: %s", height, err.Error())
+			return false
+		}
+		return b.Finalized
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+}
+
+func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
+	var lastVotedHeight uint64
+	require.Eventually(t, func() bool {
+		if fpIns.GetLastVotedHeight() > 0 {
+			lastVotedHeight = fpIns.GetLastVotedHeight()
+			return true
+		} else {
+			return false
+		}
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	return lastVotedHeight
 }
 
 func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
@@ -278,7 +337,7 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 		err    error
 	)
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BabylonClient.QueryLatestFinalizedBlocks(uint64(n))
+		blocks, err = tm.BBNClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
@@ -291,123 +350,187 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 	return blocks
 }
 
-func (tm *TestManager) WaitForValStopped(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {
 	require.Eventually(t, func() bool {
-		_, err := tm.Va.GetValidatorInstance(bbnPk)
+		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
 		return err != nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
 
-func (tm *TestManager) StopAndRestartValidatorAfterNBlocks(t *testing.T, n int, valIns *service.ValidatorInstance) {
-	headerBeforeStop, err := tm.BabylonClient.QueryBestHeader()
+func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
+	blockBeforeStop, err := tm.BBNClient.QueryBestBlock()
 	require.NoError(t, err)
-	err = valIns.Stop()
+	err = fpIns.Stop()
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
-		headerAfterStop, err := tm.BabylonClient.QueryBestHeader()
+		headerAfterStop, err := tm.BBNClient.QueryBestBlock()
 		if err != nil {
 			return false
 		}
 
-		return headerAfterStop.Header.Height >= int64(n)+headerBeforeStop.Header.Height
+		return headerAfterStop.Height >= uint64(n)+blockBeforeStop.Height
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Log("restarting the validator instance")
+	t.Log("restarting the finality-provider instance")
 
-	tm.Config.ValidatorModeConfig.AutoChainScanningMode = true
-	err = valIns.Start()
+	tm.FpConfig.PollerConfig.AutoChainScanningMode = true
+	err = fpIns.Start()
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) AddJurySignature(t *testing.T, btcDel *bstypes.BTCDelegation) *provider.RelayerTxResponse {
+func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey {
+	record, err := tm.EOTSClient.KeyRecord(fpPk, passphrase)
+	require.NoError(t, err)
+	return record.PrivKey
+}
+
+func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bstypes.BTCDelegation) {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
-	stakingMsgTx, err := stakingTx.ToMsgTx()
+	stakingMsgTx, err := bbntypes.NewBTCTxFromBytes(stakingTx)
 	require.NoError(t, err)
 
-	// get Jury private key from the keyring
-	juryPrivKey := tm.GetJuryPrivKey(t)
+	params := tm.StakingParams
 
-	jurySig, err := slashingTx.Sign(
+	stakingInfo, err := btcstaking.BuildStakingInfo(
+		btcDel.BtcPk.MustToBTCPK(),
+		// TODO: Handle multiple providers
+		[]*btcec.PublicKey{btcDel.FpBtcPkList[0].MustToBTCPK()},
+		params.CovenantPks,
+		params.CovenantQuorum,
+		btcDel.GetStakingTime(),
+		btcutil.Amount(btcDel.TotalSat),
+		simnetParams,
+	)
+	require.NoError(t, err)
+	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
+	require.NoError(t, err)
+
+	idx, err := bbntypes.GetOutputIdxInBTCTx(stakingMsgTx, stakingInfo.StakingOutput)
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+	slashingPathInfo, err := stakingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+	// get covenant private key from the keyring
+	valEncKey, err := asig.NewEncryptionKeyFromBTCPK(btcDel.FpBtcPkList[0].MustToBTCPK())
+	require.NoError(t, err)
+
+	unbondingMsgTx, err := bbntypes.NewBTCTxFromBytes(btcDel.BtcUndelegation.UnbondingTx)
+	require.NoError(t, err)
+	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
+		btcDel.BtcPk.MustToBTCPK(),
+		[]*btcec.PublicKey{btcDel.FpBtcPkList[0].MustToBTCPK()},
+		params.CovenantPks,
+		params.CovenantQuorum,
+		uint16(btcDel.UnbondingTime),
+		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
+		simnetParams,
+	)
+	require.NoError(t, err)
+
+	// Covenant 0 signatures
+	covenantAdaptorStakingSlashing1, err := slashingTx.EncSign(
 		stakingMsgTx,
-		stakingTx.Script,
-		juryPrivKey,
-		&tm.Config.ActiveNetParams,
+		idx,
+		slashingPathInfo.RevealedLeaf.Script,
+		tm.CovenantPrivKeys[0],
+		valEncKey,
+	)
+	require.NoError(t, err)
+	covenantUnbondingSig1, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
+		unbondingMsgTx,
+		stakingInfo.StakingOutput,
+		tm.CovenantPrivKeys[0],
+		stakingTxUnbondingPathInfo.RevealedLeaf,
 	)
 	require.NoError(t, err)
 
-	res, err := tm.BabylonClient.SubmitJurySig(btcDel.ValBtcPk, btcDel.BtcPk, stakingMsgTx.TxHash().String(), jurySig)
+	// slashing unbonding tx sig
+	unbondingTxSlashingPathInfo, err := unbondingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
+	covenantAdaptorUnbondingSlashing1, err := btcDel.BtcUndelegation.SlashingTx.EncSign(
+		unbondingMsgTx,
+		0,
+		unbondingTxSlashingPathInfo.RevealedLeaf.Script,
+		tm.CovenantPrivKeys[0],
+		valEncKey,
+	)
 	require.NoError(t, err)
 
-	return res
-}
-
-// delegation must containt undelgation object
-func (tm *TestManager) AddValidatorUnbondingSignature(
-	t *testing.T,
-	btcDel *bstypes.BTCDelegation,
-	validatorSk *btcec.PrivateKey,
-) {
-	stakingTx := btcDel.StakingTx
-	stakingMsgTx, err := stakingTx.ToMsgTx()
+	_, err = tm.BBNClient.SubmitCovenantSigs(
+		tm.CovenantPrivKeys[0].PubKey(),
+		stakingMsgTx.TxHash().String(),
+		[][]byte{covenantAdaptorStakingSlashing1.MustMarshal()},
+		covenantUnbondingSig1,
+		[][]byte{covenantAdaptorUnbondingSlashing1.MustMarshal()},
+	)
 	require.NoError(t, err)
 
-	unbondingTx := btcDel.BtcUndelegation.UnbondingTx
-
-	valSig, err := unbondingTx.Sign(
+	// Covenant 1 signatures
+	covenantAdaptorStakingSlashing2, err := slashingTx.EncSign(
 		stakingMsgTx,
-		stakingTx.Script,
-		validatorSk,
-		btcNetworkParams,
+		idx,
+		slashingPathInfo.RevealedLeaf.Script,
+		tm.CovenantPrivKeys[1],
+		valEncKey,
+	)
+	require.NoError(t, err)
+	covenantUnbondingSig2, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
+		unbondingMsgTx,
+		stakingInfo.StakingOutput,
+		tm.CovenantPrivKeys[1],
+		stakingTxUnbondingPathInfo.RevealedLeaf,
 	)
 	require.NoError(t, err)
 
-	stakingTxHash := stakingMsgTx.TxHash().String()
+	// slashing unbonding tx sig
 
-	_, err = tm.BabylonClient.SubmitValidatorUnbondingSig(
-		btcDel.ValBtcPk,
-		btcDel.BtcPk,
-		stakingTxHash,
-		valSig,
+	covenantAdaptorUnbondingSlashing2, err := btcDel.BtcUndelegation.SlashingTx.EncSign(
+		unbondingMsgTx,
+		0,
+		unbondingTxSlashingPathInfo.RevealedLeaf.Script,
+		tm.CovenantPrivKeys[1],
+		valEncKey,
+	)
+
+	require.NoError(t, err)
+	_, err = tm.BBNClient.SubmitCovenantSigs(
+		tm.CovenantPrivKeys[1].PubKey(),
+		stakingMsgTx.TxHash().String(),
+		[][]byte{covenantAdaptorStakingSlashing2.MustMarshal()},
+		covenantUnbondingSig2,
+		[][]byte{covenantAdaptorUnbondingSlashing2.MustMarshal()},
 	)
 	require.NoError(t, err)
 }
 
-func (tm *TestManager) GetJuryPrivKey(t *testing.T) *btcec.PrivateKey {
-	kr := tm.Va.GetKeyring()
-	juryKeyName := tm.BabylonHandler.GetJuryKeyName()
-	k, err := kr.Key(juryKeyName)
-	require.NoError(t, err)
-	localKey := k.GetLocal().PrivKey.GetCachedValue()
-	require.IsType(t, &secp256k1.PrivKey{}, localKey)
-	juryPrivKey, _ := btcec.PrivKeyFromBytes(localKey.(*secp256k1.PrivKey).Key)
-	return juryPrivKey
-}
-
-func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+	params := tm.StakingParams
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	// examine staking params
-	params, err := tm.BabylonClient.GetStakingParams()
-	slashingAddr := params.SlashingAddress
-	require.NoError(t, err)
-	require.Equal(t, tm.BabylonHandler.GetSlashingAddress(), slashingAddr)
-	require.Greater(t, stakingTime, uint16(params.ComfirmationTimeBlocks))
-	juryPk, err := tm.Va.GetJuryPk()
-	require.NoError(t, err)
-	require.Equal(t, params.JuryPk.SerializeCompressed()[1:], juryPk.SerializeCompressed()[1:])
 
 	// delegator BTC key pairs, staking tx and slashing tx
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	stakingTx, slashingTx, err := datagen.GenBTCStakingSlashingTx(
-		r, btcNetworkParams, delBtcPrivKey, valBtcPk, juryPk, stakingTime, stakingAmount, tm.BabylonHandler.GetSlashingAddress())
-	require.NoError(t, err)
 
-	// get msgTx
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	require.NoError(t, err)
+	unbondingTime := uint16(tm.StakingParams.MinimumUnbondingTime()) + 1
+	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKey,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		stakingTime,
+		stakingAmount,
+		params.SlashingAddress.String(),
+		params.SlashingRate,
+		unbondingTime,
+	)
 
 	// delegator Babylon key pairs
 	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
@@ -418,9 +541,9 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTip, err := tm.BabylonClient.QueryBtcLightClientTip()
+	currentBtcTip, err := tm.BBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), stakingMsgTx)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
 	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
@@ -429,116 +552,123 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, valBtcPk *btcec.PublicK
 		Height: currentBtcTip.Height + 1,
 		Work:   &accumulatedWork,
 	}
-	headers := make([]*bbntypes.BTCHeaderBytes, 0)
-	headers = append(headers, &blockWithStakingTx.HeaderBytes)
+	headers := make([]bbntypes.BTCHeaderBytes, 0)
+	headers = append(headers, blockWithStakingTx.HeaderBytes)
 	for i := 0; i < int(params.ComfirmationTimeBlocks); i++ {
 		headerInfo := datagen.GenRandomValidBTCHeaderInfoWithParent(r, *parentBlockHeaderInfo)
-		headers = append(headers, headerInfo.Header)
+		headers = append(headers, *headerInfo.Header)
 		parentBlockHeaderInfo = headerInfo
 	}
-	_, err = tm.BabylonClient.InsertBtcBlockHeaders(headers)
+	_, err = tm.BBNClient.InsertBtcBlockHeaders(headers)
 	require.NoError(t, err)
 	btcHeader := blockWithStakingTx.HeaderBytes
-	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, stakingTx.Tx, blockWithStakingTx.SpvProof.MerkleNodes)
+	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
+	require.NoError(t, err)
+	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
+
+	slashignSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
+	require.NoError(t, err)
 
 	// delegator sig
-	delegatorSig, err := slashingTx.Sign(
-		stakingMsgTx,
-		stakingTx.Script,
+	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
+		testStakingInfo.StakingTx,
+		0,
+		slashignSpendInfo.GetPkScriptPath(),
 		delBtcPrivKey,
-		btcNetworkParams,
 	)
 	require.NoError(t, err)
 
-	// submit the BTC delegation to Babylon
-	_, err = tm.BabylonClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey), pop, stakingTx, txInfo, slashingTx, delegatorSig)
+	unbondingValue := stakingAmount - 1000
+	stakingTxHash := testStakingInfo.StakingTx.TxHash()
+
+	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
+		r,
+		t,
+		btcNetworkParams,
+		delBtcPrivKey,
+		fpPks,
+		params.CovenantPks,
+		params.CovenantQuorum,
+		wire.NewOutPoint(&stakingTxHash, 0),
+		unbondingTime,
+		unbondingValue,
+		params.SlashingAddress.String(),
+		params.SlashingRate,
+		unbondingTime,
+	)
+
+	unbondingTxMsg := testUnbondingInfo.UnbondingTx
+
+	unbondingSlashingPathInfo, err := testUnbondingInfo.UnbondingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
+
+	unbondingSig, err := testUnbondingInfo.SlashingTx.Sign(
+		unbondingTxMsg,
+		0,
+		unbondingSlashingPathInfo.GetPkScriptPath(),
+		delBtcPrivKey,
+	)
+	require.NoError(t, err)
+
+	serializedUnbondingTx, err := bbntypes.SerializeBTCTx(testUnbondingInfo.UnbondingTx)
+	require.NoError(t, err)
+
+	// submit the BTC delegation to Babylon
+	_, err = tm.BBNClient.CreateBTCDelegation(
+		delBabylonPubKey.(*secp256k1.PubKey),
+		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
+		fpPks,
+		pop,
+		uint32(stakingTime),
+		stakingAmount,
+		txInfo,
+		testStakingInfo.SlashingTx,
+		delegatorSig,
+		serializedUnbondingTx,
+		uint32(unbondingTime),
+		unbondingValue,
+		testUnbondingInfo.SlashingTx,
+		unbondingSig)
+	require.NoError(t, err)
+
+	t.Log("successfully submitted a BTC delegation")
 
 	return &TestDelegationData{
 		DelegatorPrivKey:        delBtcPrivKey,
 		DelegatorKey:            delBtcPubKey,
 		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
 		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		StakingTx:               stakingTx,
-		SlashingTx:              slashingTx,
+		FpPks:                   fpPks,
+		StakingTx:               testStakingInfo.StakingTx,
+		SlashingTx:              testStakingInfo.SlashingTx,
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
-		SlashingAddr:            tm.BabylonHandler.GetSlashingAddress(),
+		SlashingAddr:            params.SlashingAddress.String(),
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
 	}
 }
 
-func (tm *TestManager) InsertBTCUnbonding(
-	t *testing.T,
-	stakingTx *bstypes.BabylonBTCTaprootTx,
-	stakerPrivKey *btcec.PrivateKey,
-	validatorPk *btcec.PublicKey,
-) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	params, err := tm.BabylonClient.GetStakingParams()
-	require.NoError(t, err)
-	slashingAddr := params.SlashingAddress
-	stakingMsgTx, err := stakingTx.ToMsgTx()
-	require.NoError(t, err)
-	stakingTxHash := stakingTx.MustGetTxHash()
-	stakingTxChainHash, err := chainhash.NewHashFromStr(stakingTxHash)
-	require.NoError(t, err)
+func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
+	cfg := fpcfg.DefaultConfigWithHome(homeDir)
 
-	stakingOutputIdx, err := btcstaking.GetIdxOutputCommitingToScript(
-		stakingMsgTx, stakingTx.Script, btcNetworkParams,
-	)
-	require.NoError(t, err)
+	cfg.BitcoinNetwork = "simnet"
+	cfg.BTCNetParams = chaincfg.SimNetParams
 
-	stakingValue := stakingMsgTx.TxOut[stakingOutputIdx].Value
-	fee := int64(1000)
-
-	unbondingTx, slashUnbondingTx, err := datagen.GenBTCUnbondingSlashingTx(
-		r,
-		btcNetworkParams,
-		stakerPrivKey,
-		validatorPk,
-		params.JuryPk,
-		wire.NewOutPoint(stakingTxChainHash, uint32(stakingOutputIdx)),
-		uint16(params.FinalizationTimeoutBlocks)+1,
-		stakingValue-fee,
-		slashingAddr,
-	)
-	require.NoError(t, err)
-
-	unbondingTxMsg, err := unbondingTx.ToMsgTx()
-	require.NoError(t, err)
-
-	slashingTxSig, err := slashUnbondingTx.Sign(
-		unbondingTxMsg,
-		unbondingTx.Script,
-		stakerPrivKey,
-		btcNetworkParams,
-	)
-	require.NoError(t, err)
-
-	_, err = tm.BabylonClient.CreateBTCUndelegation(
-		unbondingTx, slashUnbondingTx, slashingTxSig,
-	)
-	require.NoError(t, err)
-}
-
-func defaultValidatorConfig(keyringDir, testDir string, isJury bool) *valcfg.Config {
-	cfg := valcfg.DefaultConfig()
-
-	cfg.ValidatorModeConfig.AutoChainScanningMode = false
+	cfg.PollerConfig.AutoChainScanningMode = false
 	// babylon configs for sending transactions
 	cfg.BabylonConfig.KeyDirectory = keyringDir
 	// need to use this one to send otherwise we will have account sequence mismatch
 	// errors
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
-	cfg.BabylonConfig.GasAdjustment = 5
-	cfg.DatabaseConfig.Path = filepath.Join(testDir, "db")
-	cfg.JuryMode = isJury
-	cfg.JuryModeConfig.QueryInterval = 7 * time.Second
-	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
+	cfg.BabylonConfig.GasAdjustment = 20
+
+	return &cfg
+}
+
+func defaultEOTSConfig() *eotsconfig.Config {
+	cfg := eotsconfig.DefaultConfig()
 
 	return &cfg
 }
