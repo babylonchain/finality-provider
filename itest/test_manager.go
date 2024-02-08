@@ -660,7 +660,6 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
 	cfg.BabylonConfig.GasAdjustment = 20
-	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg
 }
