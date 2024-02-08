@@ -65,7 +65,7 @@ func FuzzCreatePoP(f *testing.F) {
 		btcSig := new(types.BIP340Signature)
 		err = btcSig.Unmarshal(fp.Pop.BtcSig)
 		require.NoError(t, err)
-		err = pop.Verify(bbnPk, btcPk, &chaincfg.SimNetParams)
+		err = pop.Verify(bbnPk, btcPk, &chaincfg.SigNetParams)
 		require.NoError(t, err)
 	})
 }

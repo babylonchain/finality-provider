@@ -34,7 +34,7 @@ const (
 	defaultFastSyncLimit           = 10
 	defaultFastSyncGap             = 3
 	defaultMaxSubmissionRetries    = 20
-	defaultBitcoinNetwork          = "simnet"
+	defaultBitcoinNetwork          = "signet"
 	defaultDataDirname             = "data"
 	defaultDBPath                  = "bbolt-fpd.db"
 	defaultMaxNumFinalityProviders = 3
@@ -46,7 +46,7 @@ var (
 	//   ~/Users/<username>/Library/Application Support/Fpd on MacOS
 	DefaultFpdDir = btcutil.AppDataDir("fpd", false)
 
-	defaultBTCNetParams       = chaincfg.RegressionNetParams
+	defaultBTCNetParams       = chaincfg.SigNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
 	DefaultRpcListener        = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
 )

@@ -39,14 +39,14 @@ import (
 var (
 	eventuallyWaitTimeOut = 1 * time.Minute
 	eventuallyPollTime    = 500 * time.Millisecond
-	btcNetworkParams      = &chaincfg.SimNetParams
+	btcNetworkParams      = &chaincfg.SigNetParams
 
 	fpNamePrefix  = "test-fp-"
 	monikerPrefix = "moniker-"
 	chainID       = "chain-test"
 	passphrase    = "testpass"
 	hdPath        = ""
-	simnetParams  = &chaincfg.SimNetParams
+	simnetParams  = &chaincfg.SigNetParams
 )
 
 type TestManager struct {
