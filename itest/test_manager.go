@@ -652,6 +652,9 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg := fpcfg.DefaultConfigWithHome(homeDir)
 
+	cfg.BitcoinNetwork = "simnet"
+	cfg.BTCNetParams = chaincfg.SimNetParams
+
 	cfg.PollerConfig.AutoChainScanningMode = false
 	// babylon configs for sending transactions
 	cfg.BabylonConfig.KeyDirectory = keyringDir
@@ -660,7 +663,6 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
 	cfg.BabylonConfig.GasAdjustment = 20
-	cfg.UnbondingSigSubmissionInterval = 3 * time.Second
 
 	return &cfg
 }

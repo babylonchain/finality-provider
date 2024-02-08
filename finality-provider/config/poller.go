@@ -4,7 +4,7 @@ import "time"
 
 var (
 	defaultBufferSize        = uint32(1000)
-	defaultPollingInterval   = 5 * time.Second
+	defaultPollingInterval   = 20 * time.Second
 	defaultStaticStartHeight = uint64(1)
 )
 

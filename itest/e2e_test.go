@@ -250,6 +250,8 @@ func TestFastSync_DuplicateVotes(t *testing.T) {
 	require.NoError(t, err)
 	err = fpIns3.Start()
 	require.NoError(t, err)
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
-	require.GreaterOrEqual(t, finalizedBlocks[0].Height, lastVotedHeight)
+	require.Eventually(t, func() bool {
+		finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
+		return finalizedBlocks[0].Height > lastVotedHeight
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
