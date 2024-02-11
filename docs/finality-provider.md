@@ -15,7 +15,7 @@ providers:
    EOTS public randomness for every Babylon block each finality provider intends to
    vote for. The commit intervals can be specified in the configuration. The EOTS
    public randomness is retrieved through the finality provider daemon's connection
-   with the [EOTS daemon](./eots-manager.md).
+   with the [EOTS daemon](eots.md).
 3. **Finality Votes Submission**: The daemon monitors the Babylon chain and produces
    finality votes for each block each maintained finality provider has committed to
    vote for.
@@ -87,25 +87,13 @@ To see the complete list of configuration options, check the `fpd.conf` file.
 
 **Additional Notes:**
 
-1. We strongly recommend that EOTS randomness commitments are limited to 500 blocks (
-   default value: 100 blocks)
+If you encounter any gas-related errors while performing staking operations, consider
+adjusting the `GasAdjustment` and `GasPrices` parameters. For example, you can set:
 
-   ```bash
-   # The number of Schnorr public randomness for each commitment
-   NumPubRand = 100
-
-   # The upper bound of the number of Schnorr public randomness for each commitment
-   NumPubRandMax = 200
-   ```
-
-2. If you encounter any gas-related errors while performing staking operations,
-   consider adjusting the `GasAdjustment` and `GasPrices` parameters. For example,
-   you can set:
-
-   ```bash
-   GasAdjustment = 1.5
-   GasPrices = 0.002ubbn
-   ```
+```bash
+GasAdjustment = 1.5
+GasPrices = 0.002ubbn
+```
 
 ## 3. Add key for the consumer chain
 
