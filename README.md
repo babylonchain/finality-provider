@@ -29,7 +29,7 @@ It consists of the following programs:
 
 The following graphic demonstrates the interconnections between the above programs:
 
-![Finality Provider Interconnections](images/finality-toolset.png)
+![Finality Provider Interconnections](./docs/finality-toolset.png)
 
 
 ## 2. Installation
@@ -103,7 +103,7 @@ the operator can set up and run the
 Extractable One Time Signature (EOTS) manager daemon.
 A complete overview of the EOTS manager, its operation, and
 its configuration options can be found in the
-[EOTS Manager page](./eots-manager.md)
+[EOTS Manager page](docs/eots.md)
 
 ### 3.3. Setting up a Finality Provider
 
@@ -111,7 +111,7 @@ The last step is to set up and run
 the finality daemon.
 A complete overview of the finality daemon, its operation, and
 its configuration options can be found in the
-[Finality page](./finality-provider.md).
+[Finality page](docs/finality-provider.md).
 
 ## 4. Delegations & Rewards
 
