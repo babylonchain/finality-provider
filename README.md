@@ -29,24 +29,24 @@ It consists of the following programs:
 
 The following graphic demonstrates the interconnections between the above programs:
 
-![Finality Provider Interconnections](./docs/finality-toolset.png)
+![Finality Provider Interconnections](images/finality-toolset.png)
 
 
 ## 2. Installation
 
-#### Prerequisites
+### Prerequisites
 
 This project requires Go version 1.21 or later.
 
 Install Go by following the instructions on
 the [official Go installation guide](https://golang.org/doc/install).
 
-#### Downloading the code
+### Downloading the code
 
 To get started, clone the repository to your local machine from Github:
 
 ```bash
-git clone git@github.com:babylonchain/finality-provider.git
+git clone https://github.com/babylonchain/finality-provider.git
 ```
 
 You can choose a specific version from
@@ -57,7 +57,7 @@ cd finality-provider # cd into the project directory
 git checkout <release-tag>
 ```
 
-#### Building and installing the binary
+### Building and installing the binary
 
 At the top-level directory of the project
 
@@ -80,40 +80,15 @@ export PATH=$HOME/go/bin:$PATH
 echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ```
 
-To build without installing,
-
-```bash
-make build
-```
-
-The above command will put the built binaries in a build directory with the
-following structure:
-```bash
-ls build
-    ├── eotsd
-    ├── fpcli
-    └── fpd
-```
-
-Another common issue with compiling is that some of the dependencies have
-components written in C. If a C toolchain is absent, the Go compiler will throw
-errors. (Most likely it will complain about undefined names/types.) Make sure a
-C toolchain (for example, GCC or Clang) is available.  On Ubuntu, this can be
-installed by running
-
-```bash
-sudo apt install build-essential
-```
-
 ## 3. Setting up a finality provider
 
-#### 3.1. Setting up a Babylon Full Node
+### 3.1. Setting up a Babylon Full Node
 
 Before setting up the finality provider toolset,
 an operator must ensure a working connection with a Babylon full node.
 It is highly recommended that operators run their own node to avoid
 trusting third parties. Instructions on how to set up a full Babylon node
-can be found in 
+can be found in
 [the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/setup-node).
 
 The finality provider requires a Babylon keyring with loaded funds to be attached to it
@@ -121,22 +96,22 @@ in order to be able to send transactions to Babylon.
 To setup such a keyring, follow the instructions in
 [the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/getting-funds).
 
-#### 3.2. Setting up the EOTS Manager
+### 3.2. Setting up the EOTS Manager
 
 After a node and a keyring have been set up,
 the operator can set up and run the
 Extractable One Time Signature (EOTS) manager daemon.
 A complete overview of the EOTS manager, its operation, and
 its configuration options can be found in the
-[EOTS Manager page](docs/eots.md)
+[EOTS Manager page](./eots-manager.md)
 
-#### 3.3. Setting up a Finality Provider 
+### 3.3. Setting up a Finality Provider
 
 The last step is to set up and run
 the finality daemon.
 A complete overview of the finality daemon, its operation, and
 its configuration options can be found in the
-[Finality page](docs/finality-provider.md).
+[Finality page](./finality-provider.md).
 
 ## 4. Delegations & Rewards
 
