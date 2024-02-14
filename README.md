@@ -91,7 +91,7 @@ trusting third parties. Instructions on how to set up a full Babylon node
 can be found in
 [the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/setup-node).
 
-#### 3.2. Setting up the EOTS Manager
+### 3.2. Setting up the EOTS Manager
 
 After a node and a keyring have been set up,
 the operator can set up and run the
