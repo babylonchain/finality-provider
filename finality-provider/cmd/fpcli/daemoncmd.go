@@ -106,7 +106,7 @@ var createFpDaemonCmd = cli.Command{
 			Value: "",
 		},
 		cli.StringFlag{
-			Name:  securityContractFlag,
+			Name:  securityContactFlag,
 			Usage: "An optional email for security contact",
 			Value: "",
 		},
@@ -178,10 +178,10 @@ func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, erro
 	monikerStr := ctx.String(monikerFlag)
 	identityStr := ctx.String(identityFlag)
 	websiteStr := ctx.String(websiteFlag)
-	securityContractStr := ctx.String(securityContractFlag)
+	securityContactStr := ctx.String(securityContactFlag)
 	detailsStr := ctx.String(detailsFlag)
 
-	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContractStr, detailsStr)
+	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContactStr, detailsStr)
 
 	return description.EnsureLength()
 }
