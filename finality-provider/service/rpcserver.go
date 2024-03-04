@@ -188,33 +188,22 @@ func (r *rpcServer) QueryFinalityProvider(ctx context.Context, req *proto.QueryF
 	if err != nil {
 		return nil, err
 	}
-	fp, err := r.app.GetFinalityProviderInstance(fpPk)
+	fp, err := r.app.GetFinalityProviderInfo(fpPk)
 	if err != nil {
 		return nil, err
 	}
 
-	fpInfo, err := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
-	if err != nil {
-		return nil, err
-	}
-
-	return &proto.QueryFinalityProviderResponse{FinalityProvider: fpInfo}, nil
+	return &proto.QueryFinalityProviderResponse{FinalityProvider: fp}, nil
 }
 
 // QueryFinalityProviderList queries the information of a list of finality providers
 func (r *rpcServer) QueryFinalityProviderList(ctx context.Context, req *proto.QueryFinalityProviderListRequest) (
 	*proto.QueryFinalityProviderListResponse, error) {
 
-	fps := r.app.ListFinalityProviderInstances()
-
-	fpsInfo := make([]*proto.FinalityProviderInfo, len(fps))
-	for i, fp := range fps {
-		fpInfo, err := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
-		if err != nil {
-			return nil, err
-		}
-		fpsInfo[i] = fpInfo
+	fps, err := r.app.ListAllFinalityProvidersInfo()
+	if err != nil {
+		return nil, err
 	}
 
-	return &proto.QueryFinalityProviderListResponse{FinalityProviders: fpsInfo}, nil
+	return &proto.QueryFinalityProviderListResponse{FinalityProviders: fps}, nil
 }
