@@ -89,7 +89,7 @@ an operator must ensure a working connection with a Babylon full node.
 It is highly recommended that operators run their own node to avoid
 trusting third parties. Instructions on how to set up a full Babylon node
 can be found in
-[the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-timestamping-testnet/setup-node).
+[the Babylon documentation](https://docs.babylonchain.io/docs/user-guides/btc-staking-testnet/setup-node).
 
 ### 3.2. Setting up the EOTS Manager
 

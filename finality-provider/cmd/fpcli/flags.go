@@ -17,7 +17,7 @@ const (
 	monikerFlag          = "moniker"
 	identityFlag         = "identity"
 	websiteFlag          = "website"
-	securityContractFlag = "security-contract"
+	securityContactFlag  = "security-contact"
 	detailsFlag          = "details"
 	commissionRateFlag   = "commission"
 )

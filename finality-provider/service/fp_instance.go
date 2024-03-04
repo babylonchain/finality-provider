@@ -104,7 +104,7 @@ func (fp *FinalityProviderInstance) Start() error {
 		return fmt.Errorf("failed to bootstrap the finality-provider %s: %w", fp.GetBtcPkHex(), err)
 	}
 
-	fp.logger.Info("the finality-provider %s has been bootstrapped",
+	fp.logger.Info("the finality-provider has been bootstrapped",
 		zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", startHeight))
 
 	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc)
