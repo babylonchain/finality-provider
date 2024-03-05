@@ -16,7 +16,8 @@ const TestPubRandNum = 25
 
 func EmptyDescription() []byte {
 	des := stakingtypes.NewDescription("empty desc", "", "", "", "")
-	return []byte(des.String())
+	desBytes, _ := des.Marshal()
+	return desBytes
 }
 
 func ZeroCommissionRate() *sdkmath.LegacyDec {
