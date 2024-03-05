@@ -155,6 +155,8 @@ message FinalityProviderInfo {
     uint64 last_voted_height = 5;
     // status defines the current finality provider status
     string status = 6;
+    // is_running shows whether the finality provider is running within the daemon
+    bool is_running = 7;
 }
 
 // Description defines description fields for a finality provider

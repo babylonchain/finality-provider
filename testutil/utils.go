@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/golang/mock/gomock"
 
 	"github.com/babylonchain/finality-provider/testutil/mocks"
@@ -14,7 +15,9 @@ import (
 const TestPubRandNum = 25
 
 func EmptyDescription() []byte {
-	return []byte("empty description")
+	des := stakingtypes.NewDescription("empty desc", "", "", "", "")
+	desBytes, _ := des.Marshal()
+	return desBytes
 }
 
 func ZeroCommissionRate() *sdkmath.LegacyDec {
