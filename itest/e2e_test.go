@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
 )
@@ -103,8 +104,10 @@ func TestDoubleSigning(t *testing.T) {
 	// try to start all the finality providers and the slashed one should not be restarted
 	err = tm.Fpa.StartHandlingAll()
 	require.NoError(t, err)
-	fps := tm.Fpa.ListFinalityProviderInstances()
-	require.Equal(t, 0, len(fps))
+	fps := tm.Fpa.ListAllFinalityProvidersInfo()
+	require.Equal(t, 1, len(fps))
+	require.Equal(t, proto.FinalityProviderStatus_name[4], fps[0].Status)
+	require.Equal(t, false, fps[0].IsRunning)
 }
 
 // TestMultipleFinalityProviders tests starting with multiple finality providers

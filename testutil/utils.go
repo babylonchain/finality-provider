@@ -15,7 +15,7 @@ import (
 const TestPubRandNum = 25
 
 func EmptyDescription() []byte {
-	des := stakingtypes.NewDescription("", "", "", "", "")
+	des := stakingtypes.NewDescription("empty desc", "", "", "", "")
 	return []byte(des.String())
 }
 
