@@ -279,6 +279,55 @@ func (fpm *FinalityProviderManager) ListFinalityProviderInstances() []*FinalityP
 	return fpisList
 }
 
+func (fpm *FinalityProviderManager) AllFinalityProviders() ([]*proto.FinalityProviderInfo, error) {
+	storedFps, err := fpm.fps.ListFinalityProviders()
+	if err != nil {
+		return nil, err
+	}
+
+	fpsInfo := make([]*proto.FinalityProviderInfo, 0, len(storedFps))
+	for _, fp := range storedFps {
+		fpInfo, err := proto.NewFinalityProviderInfo(fp)
+		if err != nil {
+			return nil, err
+		}
+
+		if fpm.IsFinalityProviderRunning(fp.MustGetBIP340BTCPK()) {
+			fpInfo.IsRunning = true
+		}
+
+		fpsInfo = append(fpsInfo, fpInfo)
+	}
+
+	return fpsInfo, nil
+}
+
+func (fpm *FinalityProviderManager) FinalityProviderInfo(fpPk *bbntypes.BIP340PubKey) (*proto.FinalityProviderInfo, error) {
+	storedFp, err := fpm.fps.GetStoreFinalityProvider(fpPk.MustMarshal())
+	if err != nil {
+		return nil, err
+	}
+
+	fpInfo, err := proto.NewFinalityProviderInfo(storedFp)
+	if err != nil {
+		return nil, err
+	}
+
+	if fpm.IsFinalityProviderRunning(fpPk) {
+		fpInfo.IsRunning = true
+	}
+
+	return fpInfo, nil
+}
+
+func (fpm *FinalityProviderManager) IsFinalityProviderRunning(fpPk *bbntypes.BIP340PubKey) bool {
+	fpm.mu.Lock()
+	defer fpm.mu.Unlock()
+
+	_, exists := fpm.fpis[fpPk.MarshalHex()]
+	return exists
+}
+
 func (fpm *FinalityProviderManager) GetFinalityProviderInstance(fpPk *bbntypes.BIP340PubKey) (*FinalityProviderInstance, error) {
 	fpm.mu.Lock()
 	defer fpm.mu.Unlock()

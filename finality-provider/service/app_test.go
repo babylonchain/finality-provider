@@ -79,6 +79,13 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		}
 		popBytes, err := pop.Marshal()
 		require.NoError(t, err)
+		fpInfo, err := app.GetFinalityProviderInfo(fp.MustGetBIP340BTCPK())
+		require.NoError(t, err)
+		require.Equal(t, proto.FinalityProviderStatus_name[0], fpInfo.Status)
+		require.Equal(t, false, fpInfo.IsRunning)
+		fpListInfo, err := app.ListAllFinalityProvidersInfo()
+		require.NoError(t, err)
+		require.Equal(t, fpInfo.BtcPkHex, fpListInfo[0].BtcPkHex)
 
 		txHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
@@ -87,7 +94,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 				fp.MustGetBIP340BTCPK().MustToBTCPK(),
 				popBytes,
 				testutil.ZeroCommissionRate(),
-				testutil.EmptyDescription(),
+				gomock.Any(),
 			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, err := app.RegisterFinalityProvider(fp.MustGetBIP340BTCPK().MarshalHex())
@@ -100,6 +107,11 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 
 		fpAfterReg, err := app.GetFinalityProviderInstance(fp.MustGetBIP340BTCPK())
 		require.NoError(t, err)
-		require.Equal(t, fpAfterReg.GetStoreFinalityProvider().Status, proto.FinalityProviderStatus_REGISTERED)
+		require.Equal(t, proto.FinalityProviderStatus_REGISTERED, fpAfterReg.GetStoreFinalityProvider().Status)
+
+		fpInfo, err = app.GetFinalityProviderInfo(fp.MustGetBIP340BTCPK())
+		require.NoError(t, err)
+		require.Equal(t, proto.FinalityProviderStatus_name[1], fpInfo.Status)
+		require.Equal(t, true, fpInfo.IsRunning)
 	})
 }

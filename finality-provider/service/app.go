@@ -150,6 +150,14 @@ func (app *FinalityProviderApp) ListFinalityProviderInstances() []*FinalityProvi
 	return app.fpManager.ListFinalityProviderInstances()
 }
 
+func (app *FinalityProviderApp) ListAllFinalityProvidersInfo() ([]*proto.FinalityProviderInfo, error) {
+	return app.fpManager.AllFinalityProviders()
+}
+
+func (app *FinalityProviderApp) GetFinalityProviderInfo(fpPk *bbntypes.BIP340PubKey) (*proto.FinalityProviderInfo, error) {
+	return app.fpManager.FinalityProviderInfo(fpPk)
+}
+
 // GetFinalityProviderInstance returns the finality-provider instance with the given Babylon public key
 func (app *FinalityProviderApp) GetFinalityProviderInstance(fpPk *bbntypes.BIP340PubKey) (*FinalityProviderInstance, error) {
 	return app.fpManager.GetFinalityProviderInstance(fpPk)
