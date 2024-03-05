@@ -281,11 +281,20 @@ var registerFpDaemonCmd = cli.Command{
 			Usage: "The pass phrase used to encrypt the keys",
 			Value: defaultPassphrase,
 		},
+		cli.StringFlag{
+			Name:  "force",
+			Usage: "Attempt to forcefully register the finality provider",
+			Value: "false",
+		},
 	},
 	Action: registerFp,
 }
 
 func registerFp(ctx *cli.Context) error {
+	if ctx.Bool("force") {
+		return forceRegisterFp(ctx)
+	}
+
 	fpPkStr := ctx.String(fpBTCPkFlag)
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(fpPkStr)
 	if err != nil {
@@ -300,6 +309,33 @@ func registerFp(ctx *cli.Context) error {
 	defer cleanUp()
 
 	res, err := rpcClient.RegisterFinalityProvider(context.Background(), fpPk, ctx.String(passphraseFlag))
+	if err != nil {
+		return err
+	}
+
+	printRespJSON(res)
+
+	return nil
+}
+
+// forceRegisterFp attempts to forcefully register the finality provider.
+// It will update the fp status CREATE to REGISTERED in the fpd database,
+// if the fp appears to be registered in the Babylon chain.
+func forceRegisterFp(ctx *cli.Context) error {
+	fpPkStr := ctx.String(fpBTCPkFlag)
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(fpPkStr)
+	if err != nil {
+		return fmt.Errorf("invalid BTC public key: %w", err)
+	}
+
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
+	if err != nil {
+		return err
+	}
+	defer cleanUp()
+
+	res, err := rpcClient.ForceRegisterFinalityProvider(context.Background(), fpPk)
 	if err != nil {
 		return err
 	}

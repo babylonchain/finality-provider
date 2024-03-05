@@ -57,6 +57,16 @@ func (c *FinalityProviderServiceGRpcClient) RegisterFinalityProvider(
 	return res, nil
 }
 
+func (c *FinalityProviderServiceGRpcClient) ForceRegisterFinalityProvider(
+	ctx context.Context,
+	fpPk *bbntypes.BIP340PubKey,
+) (*proto.RegisterFinalityProviderResponse, error) {
+
+	res := &proto.RegisterFinalityProviderResponse{}
+
+	return res, nil
+}
+
 func (c *FinalityProviderServiceGRpcClient) CreateFinalityProvider(
 	ctx context.Context,
 	keyName, chainID, passphrase, hdPath string,
