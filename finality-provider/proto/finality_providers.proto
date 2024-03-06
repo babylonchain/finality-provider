@@ -83,6 +83,8 @@ message RegisterFinalityProviderResponse {
 message ForceRegisterFinalityProviderRequest {
     // btc_pk is hex string of the BTC secp256k1 public key of the finality provider encoded in BIP-340 spec
     string btc_pk = 1;
+	// passphrase is used to encrypt the keys
+    string passphrase = 2;
 }
 
 message ForceRegisterFinalityProviderResponse {
