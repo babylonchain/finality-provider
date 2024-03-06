@@ -21,6 +21,11 @@ service FinalityProviders {
     rpc RegisterFinalityProvider (RegisterFinalityProviderRequest)
         returns (RegisterFinalityProviderResponse);
 
+	// ForceRegisterFinalityProvider updates the fp status CREATE to REGISTERED in the fpd
+	// if the fp appears to be registered in the Babylon chain
+	rpc ForceRegisterFinalityProvider (ForceRegisterFinalityProviderRequest)
+        returns (ForceRegisterFinalityProviderResponse);
+
     // AddFinalitySignature sends a transactions to Babylon to add a Finality
     // signature for a block
     rpc AddFinalitySignature(AddFinalitySignatureRequest)
@@ -73,6 +78,15 @@ message RegisterFinalityProviderRequest {
 message RegisterFinalityProviderResponse {
     // hash of the successful Babylon registration transaction
     string tx_hash = 1;
+}
+
+message ForceRegisterFinalityProviderRequest {
+    // btc_pk is hex string of the BTC secp256k1 public key of the finality provider encoded in BIP-340 spec
+    string btc_pk = 1;
+}
+
+message ForceRegisterFinalityProviderResponse {
+    FinalityProviderInfo finality_provider = 1;
 }
 
 message AddFinalitySignatureRequest {

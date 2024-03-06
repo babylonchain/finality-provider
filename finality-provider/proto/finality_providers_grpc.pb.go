@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	FinalityProviders_GetInfo_FullMethodName                   = "/proto.FinalityProviders/GetInfo"
-	FinalityProviders_CreateFinalityProvider_FullMethodName    = "/proto.FinalityProviders/CreateFinalityProvider"
-	FinalityProviders_RegisterFinalityProvider_FullMethodName  = "/proto.FinalityProviders/RegisterFinalityProvider"
-	FinalityProviders_AddFinalitySignature_FullMethodName      = "/proto.FinalityProviders/AddFinalitySignature"
-	FinalityProviders_QueryFinalityProvider_FullMethodName     = "/proto.FinalityProviders/QueryFinalityProvider"
-	FinalityProviders_QueryFinalityProviderList_FullMethodName = "/proto.FinalityProviders/QueryFinalityProviderList"
+	FinalityProviders_GetInfo_FullMethodName                       = "/proto.FinalityProviders/GetInfo"
+	FinalityProviders_CreateFinalityProvider_FullMethodName        = "/proto.FinalityProviders/CreateFinalityProvider"
+	FinalityProviders_RegisterFinalityProvider_FullMethodName      = "/proto.FinalityProviders/RegisterFinalityProvider"
+	FinalityProviders_ForceRegisterFinalityProvider_FullMethodName = "/proto.FinalityProviders/ForceRegisterFinalityProvider"
+	FinalityProviders_AddFinalitySignature_FullMethodName          = "/proto.FinalityProviders/AddFinalitySignature"
+	FinalityProviders_QueryFinalityProvider_FullMethodName         = "/proto.FinalityProviders/QueryFinalityProvider"
+	FinalityProviders_QueryFinalityProviderList_FullMethodName     = "/proto.FinalityProviders/QueryFinalityProviderList"
 )
 
 // FinalityProvidersClient is the client API for FinalityProviders service.
@@ -38,6 +39,9 @@ type FinalityProvidersClient interface {
 	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
 	// finality provider
 	RegisterFinalityProvider(ctx context.Context, in *RegisterFinalityProviderRequest, opts ...grpc.CallOption) (*RegisterFinalityProviderResponse, error)
+	// ForceRegisterFinalityProvider updates the fp status CREATE to REGISTERED in the fpd
+	// if the fp appears to be registered in the Babylon chain
+	ForceRegisterFinalityProvider(ctx context.Context, in *ForceRegisterFinalityProviderRequest, opts ...grpc.CallOption) (*ForceRegisterFinalityProviderResponse, error)
 	// AddFinalitySignature sends a transactions to Babylon to add a Finality
 	// signature for a block
 	AddFinalitySignature(ctx context.Context, in *AddFinalitySignatureRequest, opts ...grpc.CallOption) (*AddFinalitySignatureResponse, error)
@@ -82,6 +86,15 @@ func (c *finalityProvidersClient) RegisterFinalityProvider(ctx context.Context, 
 	return out, nil
 }
 
+func (c *finalityProvidersClient) ForceRegisterFinalityProvider(ctx context.Context, in *ForceRegisterFinalityProviderRequest, opts ...grpc.CallOption) (*ForceRegisterFinalityProviderResponse, error) {
+	out := new(ForceRegisterFinalityProviderResponse)
+	err := c.cc.Invoke(ctx, FinalityProviders_ForceRegisterFinalityProvider_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *finalityProvidersClient) AddFinalitySignature(ctx context.Context, in *AddFinalitySignatureRequest, opts ...grpc.CallOption) (*AddFinalitySignatureResponse, error) {
 	out := new(AddFinalitySignatureResponse)
 	err := c.cc.Invoke(ctx, FinalityProviders_AddFinalitySignature_FullMethodName, in, out, opts...)
@@ -120,6 +133,9 @@ type FinalityProvidersServer interface {
 	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
 	// finality provider
 	RegisterFinalityProvider(context.Context, *RegisterFinalityProviderRequest) (*RegisterFinalityProviderResponse, error)
+	// ForceRegisterFinalityProvider updates the fp status CREATE to REGISTERED in the fpd
+	// if the fp appears to be registered in the Babylon chain
+	ForceRegisterFinalityProvider(context.Context, *ForceRegisterFinalityProviderRequest) (*ForceRegisterFinalityProviderResponse, error)
 	// AddFinalitySignature sends a transactions to Babylon to add a Finality
 	// signature for a block
 	AddFinalitySignature(context.Context, *AddFinalitySignatureRequest) (*AddFinalitySignatureResponse, error)
@@ -142,6 +158,9 @@ func (UnimplementedFinalityProvidersServer) CreateFinalityProvider(context.Conte
 }
 func (UnimplementedFinalityProvidersServer) RegisterFinalityProvider(context.Context, *RegisterFinalityProviderRequest) (*RegisterFinalityProviderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterFinalityProvider not implemented")
+}
+func (UnimplementedFinalityProvidersServer) ForceRegisterFinalityProvider(context.Context, *ForceRegisterFinalityProviderRequest) (*ForceRegisterFinalityProviderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ForceRegisterFinalityProvider not implemented")
 }
 func (UnimplementedFinalityProvidersServer) AddFinalitySignature(context.Context, *AddFinalitySignatureRequest) (*AddFinalitySignatureResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddFinalitySignature not implemented")
@@ -219,6 +238,24 @@ func _FinalityProviders_RegisterFinalityProvider_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FinalityProviders_ForceRegisterFinalityProvider_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ForceRegisterFinalityProviderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FinalityProvidersServer).ForceRegisterFinalityProvider(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FinalityProviders_ForceRegisterFinalityProvider_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FinalityProvidersServer).ForceRegisterFinalityProvider(ctx, req.(*ForceRegisterFinalityProviderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FinalityProviders_AddFinalitySignature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddFinalitySignatureRequest)
 	if err := dec(in); err != nil {
@@ -291,6 +328,10 @@ var FinalityProviders_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterFinalityProvider",
 			Handler:    _FinalityProviders_RegisterFinalityProvider_Handler,
+		},
+		{
+			MethodName: "ForceRegisterFinalityProvider",
+			Handler:    _FinalityProviders_ForceRegisterFinalityProvider_Handler,
 		},
 		{
 			MethodName: "AddFinalitySignature",
