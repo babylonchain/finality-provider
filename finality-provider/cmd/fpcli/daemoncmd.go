@@ -335,7 +335,7 @@ func forceRegisterFp(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.ForceRegisterFinalityProvider(context.Background(), fpPk)
+	res, err := rpcClient.ForceRegisterFinalityProvider(context.Background(), fpPk, ctx.String(passphraseFlag))
 	if err != nil {
 		return err
 	}

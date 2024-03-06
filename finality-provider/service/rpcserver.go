@@ -9,6 +9,7 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
@@ -127,6 +128,53 @@ func (r *rpcServer) RegisterFinalityProvider(ctx context.Context, req *proto.Reg
 	}
 
 	return &proto.RegisterFinalityProviderResponse{TxHash: txRes.TxHash}, nil
+}
+
+// forceRegisterFp attempts to forcefully register the finality provider.
+// It will update the fp status CREATE to REGISTERED in the fpd database,
+// if the fp appears to be registered in the Babylon chain.
+func (r *rpcServer) ForceRegisterFinalityProvider(ctx context.Context, req *proto.ForceRegisterFinalityProviderRequest) (
+	*proto.ForceRegisterFinalityProviderResponse, error) {
+	
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(req.BtcPk)
+	if err != nil {
+		return nil, err
+	}
+
+	// QueryFinalityprovider will not occur any error,
+	// if fp is registered in the Babylon chain.
+	_, err = r.app.cc.QueryFinalityProvider(fpPk.MustToBTCPK())
+	if err != nil {
+		return nil, err
+	}
+
+	fp, err := r.app.fps.GetStoreFinalityProvider(fpPk.MustMarshal())
+	if err != nil {
+		return nil, err
+	}
+	err = r.app.fps.SetFinalityProviderStatus(fp, proto.FinalityProviderStatus_REGISTERED)
+	if err != nil {
+		return nil, err
+	}
+
+	fpi, err := proto.NewFinalityProviderInfo(fp)
+	if err != nil {
+		return nil, err
+	}
+	r.app.fpManager.logger.Info(
+		"successfully changed Finality Provider's status from CREATE to REGISTERED forcefully",
+		zap.String("pk", req.BtcPk),
+	)
+
+	// the finality-provider instance should be started right after registration
+	if err := r.app.StartHandlingFinalityProvider(fpPk, req.Passphrase); err != nil {
+		return nil, fmt.Errorf("failed to start the registered finality-provider %s: %w", req.BtcPk, err)
+	}
+
+	frfpRes := &proto.ForceRegisterFinalityProviderResponse{
+		FinalityProvider: fpi,
+	}
+	return frfpRes, nil
 }
 
 // AddFinalitySignature adds a manually constructed finality signature to Babylon

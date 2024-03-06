@@ -60,9 +60,14 @@ func (c *FinalityProviderServiceGRpcClient) RegisterFinalityProvider(
 func (c *FinalityProviderServiceGRpcClient) ForceRegisterFinalityProvider(
 	ctx context.Context,
 	fpPk *bbntypes.BIP340PubKey,
-) (*proto.RegisterFinalityProviderResponse, error) {
+	passphrase string,
+) (*proto.ForceRegisterFinalityProviderResponse, error) {
 
-	res := &proto.RegisterFinalityProviderResponse{}
+	req := &proto.ForceRegisterFinalityProviderRequest{BtcPk: fpPk.MarshalHex(), Passphrase: passphrase}
+	res, err := c.client.ForceRegisterFinalityProvider(ctx, req)
+	if err != nil {
+		return nil, err
+	}
 
 	return res, nil
 }

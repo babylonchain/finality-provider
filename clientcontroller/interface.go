@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
+	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/babylonchain/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 )
@@ -49,6 +50,9 @@ type ClientController interface {
 
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
+
+	// QueryFinalityProvider returns the finality provider info
+	QueryFinalityProvider(fpPk *btcec.PublicKey) (*btcstakingtypes.FinalityProvider, error)
 
 	// QueryLastCommittedPublicRand returns the last committed public randomness
 	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error)
