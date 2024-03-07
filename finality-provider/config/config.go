@@ -1,4 +1,4 @@
-package fpcfg
+package config
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
 
-	"github.com/babylonchain/finality-provider/config"
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/util"
 )
@@ -36,7 +35,6 @@ const (
 	defaultMaxSubmissionRetries    = 20
 	defaultBitcoinNetwork          = "signet"
 	defaultDataDirname             = "data"
-	defaultDBPath                  = "bbolt-fpd.db"
 	defaultMaxNumFinalityProviders = 3
 )
 
@@ -49,6 +47,7 @@ var (
 	defaultBTCNetParams       = chaincfg.SigNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
 	DefaultRpcListener        = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
+	DefaultDataDir            = DataDir(DefaultFpdDir)
 )
 
 // Config is the main config for the fpd cli command
@@ -75,18 +74,18 @@ type Config struct {
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
-	DatabaseConfig *config.DatabaseConfig `group:"databaseconfig" namespace:"databaseconfig"`
+	DatabaseConfig *DBConfig `group:"dbconfig" namespace:"dbconfig"`
 
-	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
+	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 }
 
 func DefaultConfigWithHome(homePath string) Config {
-	bbnCfg := config.DefaultBBNConfig()
+	bbnCfg := DefaultBBNConfig()
 	bbnCfg.Key = defaultFinalityProviderKeyName
 	bbnCfg.KeyDirectory = homePath
-	dbCfg := config.DefaultDatabaseConfig()
+	dbCfg := DefaultDBConfigWithHomePath(homePath)
 	pollerCfg := DefaultChainPollerConfig()
 	cfg := Config{
 		ChainName:                defaultChainName,
@@ -136,10 +135,6 @@ func LogFile(homePath string) string {
 
 func DataDir(homePath string) string {
 	return filepath.Join(homePath, defaultDataDirname)
-}
-
-func DBPath(homePath string) string {
-	return filepath.Join(DataDir(homePath), defaultDBPath)
 }
 
 // LoadConfig initializes and parses the config using a config file and command

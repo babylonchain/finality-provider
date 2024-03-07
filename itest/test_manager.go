@@ -102,14 +102,14 @@ func StartManager(t *testing.T) *TestManager {
 
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
-	eotsCfg := defaultEOTSConfig()
-	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
+	eh := NewEOTSServerHandler(t, &eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
 	// 4. prepare finality-provider
-	fpApp, err := service.NewFinalityProviderApp(fpHomeDir, cfg, bc, eotsCli, logger)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, eotsCli, logger)
 	require.NoError(t, err)
 	err = fpApp.Start()
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func StartManager(t *testing.T) *TestManager {
 		BabylonHandler:    bh,
 		EOTSServerHandler: eh,
 		FpConfig:          cfg,
-		EOTSConfig:        eotsCfg,
+		EOTSConfig:        &eotsCfg,
 		Fpa:               fpApp,
 		EOTSClient:        eotsCli,
 		BBNClient:         bc,
@@ -153,14 +153,13 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		fpName := fpNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc, err := newDescription(moniker).Marshal()
-		require.NoError(t, err)
+		desc := newDescription(moniker)
 		cfg := app.GetConfig()
-		_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath)
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath)
 		require.NoError(t, err)
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
-		fpPk, err := bbntypes.NewBIP340PubKey(res.StoreFp.BtcPk)
+		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
@@ -663,12 +662,6 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.BabylonConfig.Key = "test-spending-key"
 	// Big adjustment to make sure we have enough gas in our transactions
 	cfg.BabylonConfig.GasAdjustment = 20
-
-	return &cfg
-}
-
-func defaultEOTSConfig() *eotsconfig.Config {
-	cfg := eotsconfig.DefaultConfig()
 
 	return &cfg
 }

@@ -79,7 +79,7 @@ RPCAddr = http://127.0.0.1:26657
 # GRPC Address of Babylon node
 GRPCAddr = https://127.0.0.1:9090
 
-# Directory to store keys in
+# Directory to dbcfg keys in
 KeyDirectory = /path/to/fpd/home
 ```
 

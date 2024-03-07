@@ -25,7 +25,7 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -35,18 +35,18 @@ var emptyErrs = []*sdkErr.Error{}
 
 type BabylonController struct {
 	bbnClient *bbnclient.Client
-	cfg       *config.BBNConfig
+	cfg       *fpcfg.BBNConfig
 	btcParams *chaincfg.Params
 	logger    *zap.Logger
 }
 
 func NewBabylonController(
-	cfg *config.BBNConfig,
+	cfg *fpcfg.BBNConfig,
 	btcParams *chaincfg.Params,
 	logger *zap.Logger,
 ) (*BabylonController, error) {
 
-	bbnConfig := config.BBNConfigToBabylonConfig(cfg)
+	bbnConfig := fpcfg.BBNConfigToBabylonConfig(cfg)
 
 	if err := bbnConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/util"
 
@@ -99,13 +100,13 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	logger := zap.NewNop()
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
-	eotsCfg := testutil.GenEOTSConfig(r, t)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
+	eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, &eotsCfg, logger)
 	require.NoError(t, err)
 
 	// create finality-provider app with randomized config
 	fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
-	fpCfg := testutil.GenFpConfig(r, t, fpHomeDir)
+	fpCfg := fpcfg.DefaultConfigWithHome(fpHomeDir)
 	fpCfg.StatusUpdateInterval = 10 * time.Millisecond
 	input := strings.NewReader("")
 	kr, err := keyring.CreateKeyring(
@@ -117,14 +118,10 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	err = util.MakeDirectory(fpcfg.DataDir(fpHomeDir))
 	require.NoError(t, err)
-	fpStore, err := fpstore.NewFinalityProviderStore(
-		fpcfg.DBPath(fpHomeDir),
-		fpCfg.DatabaseConfig.Name,
-		fpCfg.DatabaseConfig.Backend,
-	)
+	fpStore, err := fpstore.NewFinalityProviderStore(fpCfg.DatabaseConfig)
 	require.NoError(t, err)
 
-	vm, err := service.NewFinalityProviderManager(fpStore, fpCfg, cc, em, logger)
+	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, em, logger)
 	require.NoError(t, err)
 
 	// create registered finality-provider
@@ -144,9 +141,18 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
 	require.NoError(t, err)
 
-	storedFp := fpstore.NewStoreFinalityProvider(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
-	storedFp.Status = proto.FinalityProviderStatus_REGISTERED
-	err = fpStore.SaveFinalityProvider(storedFp)
+	err = fpStore.CreateFinalityProvider(
+		bbnPk,
+		btcPk.MustToBTCPK(),
+		testutil.RandomDescription(r),
+		testutil.ZeroCommissionRate(),
+		keyName,
+		chainID,
+		pop.BabylonSig,
+		pop.BtcSig,
+	)
+	require.NoError(t, err)
+	err = fpStore.SetFpStatus(btcPk.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
 	require.NoError(t, err)
 
 	cleanUp := func() {

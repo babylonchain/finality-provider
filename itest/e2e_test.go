@@ -36,7 +36,7 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
@@ -66,7 +66,7 @@ func TestDoubleSigning(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
@@ -125,7 +125,7 @@ func TestMultipleFinalityProviders(t *testing.T) {
 			// check the public randomness is committed
 			tm.WaitForFpPubRandCommitted(t, fpi)
 			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.MustGetBtcPk()}, stakingTime, stakingAmount)
+			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, stakingTime, stakingAmount)
 		}(fpIns)
 	}
 	tm.Wg.Wait()
@@ -158,7 +158,7 @@ func TestFastSync(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.MustGetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
 	dels := tm.WaitForNPendingDels(t, 1)
@@ -219,9 +219,9 @@ func TestFastSync_DuplicateVotes(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns3)
 
 	// send 3 BTC delegations to empower the three finality providers
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns1.MustGetBtcPk()}, stakingTime, stakingAmount)
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns2.MustGetBtcPk()}, stakingTime, stakingAmount)
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns3.MustGetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns1.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns2.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns3.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegations are pending
 	dels := tm.WaitForNPendingDels(t, 3)

@@ -9,6 +9,7 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
@@ -89,12 +90,17 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 		return nil, err
 	}
 
+	var description stakingtypes.Description
+	if err := description.Unmarshal(req.Description); err != nil {
+		return nil, err
+	}
+
 	result, err := r.app.CreateFinalityProvider(
 		req.KeyName,
 		req.ChainId,
 		req.Passphrase,
 		req.HdPath,
-		req.Description,
+		&description,
 		&commissionRate,
 	)
 
@@ -102,12 +108,8 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 		return nil, err
 	}
 
-	fpInfo, err := proto.NewFinalityProviderInfo(result.StoreFp)
-	if err != nil {
-		return nil, err
-	}
 	return &proto.CreateFinalityProviderResponse{
-		FinalityProvider: fpInfo,
+		FinalityProvider: result.FpInfo,
 	}, nil
 
 }

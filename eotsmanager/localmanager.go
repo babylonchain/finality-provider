@@ -2,7 +2,6 @@ package eotsmanager
 
 import (
 	"fmt"
-	"github.com/babylonchain/finality-provider/util"
 	"strings"
 
 	"github.com/babylonchain/babylon/crypto/eots"
@@ -17,6 +16,7 @@ import (
 	"github.com/babylonchain/finality-provider/codec"
 	"github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/eotsmanager/randgenerator"
+	"github.com/babylonchain/finality-provider/eotsmanager/store"
 	eotstypes "github.com/babylonchain/finality-provider/eotsmanager/types"
 )
 
@@ -29,7 +29,7 @@ var _ EOTSManager = &LocalEOTSManager{}
 
 type LocalEOTSManager struct {
 	kr     keyring.Keyring
-	es     *EOTSStore
+	es     *store.EOTSStore
 	logger *zap.Logger
 	// input is to send passphrase to kr
 	input *strings.Reader
@@ -38,9 +38,9 @@ type LocalEOTSManager struct {
 func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
 
-	store, err := initEotsStore(homeDir, eotsCfg)
+	store, err := initEotsStore(eotsCfg.DatabaseConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize store: %w", err)
+		return nil, fmt.Errorf("failed to initialize dbcfg: %w", err)
 	}
 
 	kr, err := initKeyring(homeDir, eotsCfg, inputReader)
@@ -56,13 +56,13 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, logger *zap.Log
 	}, nil
 }
 
-func initEotsStore(homeDir string, eotsCfg *config.Config) (*EOTSStore, error) {
-	// Create the directory that will store the data
-	if err := util.MakeDirectory(config.DataDir(homeDir)); err != nil {
+func initEotsStore(cfg *config.DBConfig) (*store.EOTSStore, error) {
+	dbBackend, err := config.GetDbBackend(cfg)
+	if err != nil {
 		return nil, err
 	}
 
-	return NewEOTSStore(config.DBPath(homeDir), eotsCfg.DatabaseConfig.Name, eotsCfg.DatabaseConfig.Backend)
+	return store.NewEOTSStore(dbBackend)
 }
 
 func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Reader) (keyring.Keyring, error) {
@@ -123,7 +123,7 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 
-	if err := lm.es.saveFinalityProviderKey(eotsPk.MustMarshal(), name); err != nil {
+	if err := lm.es.AddEOTSKeyName(eotsPk.MustToBTCPK(), name); err != nil {
 		return nil, err
 	}
 
@@ -195,7 +195,7 @@ func (lm *LocalEOTSManager) getRandomnessPair(fpPk []byte, chainID []byte, heigh
 
 // TODO: we ignore passPhrase in local implementation for now
 func (lm *LocalEOTSManager) KeyRecord(fpPk []byte, passphrase string) (*eotstypes.KeyRecord, error) {
-	name, err := lm.es.getFinalityProviderKeyName(fpPk)
+	name, err := lm.es.GetEOTSKeyName(fpPk)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (lm *LocalEOTSManager) KeyRecord(fpPk []byte, passphrase string) (*eotstype
 }
 
 func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btcec.PrivateKey, error) {
-	keyName, err := lm.es.getFinalityProviderKeyName(fpPk)
+	keyName, err := lm.es.GetEOTSKeyName(fpPk)
 	if err != nil {
 		return nil, err
 	}

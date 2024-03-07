@@ -35,10 +35,10 @@ type FinalityProvidersClient interface {
 	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error)
 	// CreateFinalityProvider generates and saves a finality provider object
 	CreateFinalityProvider(ctx context.Context, in *CreateFinalityProviderRequest, opts ...grpc.CallOption) (*CreateFinalityProviderResponse, error)
-	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
+	// RegisterFinalityProvider sends a transactions to the consumer chain to register a BTC
 	// finality provider
 	RegisterFinalityProvider(ctx context.Context, in *RegisterFinalityProviderRequest, opts ...grpc.CallOption) (*RegisterFinalityProviderResponse, error)
-	// AddFinalitySignature sends a transactions to Babylon to add a Finality
+	// AddFinalitySignature sends a transactions to the consumer chain to add a Finality
 	// signature for a block
 	AddFinalitySignature(ctx context.Context, in *AddFinalitySignatureRequest, opts ...grpc.CallOption) (*AddFinalitySignatureResponse, error)
 	// QueryFinalityProvider queries the finality provider
@@ -117,10 +117,10 @@ type FinalityProvidersServer interface {
 	GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error)
 	// CreateFinalityProvider generates and saves a finality provider object
 	CreateFinalityProvider(context.Context, *CreateFinalityProviderRequest) (*CreateFinalityProviderResponse, error)
-	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
+	// RegisterFinalityProvider sends a transactions to the consumer chain to register a BTC
 	// finality provider
 	RegisterFinalityProvider(context.Context, *RegisterFinalityProviderRequest) (*RegisterFinalityProviderResponse, error)
-	// AddFinalitySignature sends a transactions to Babylon to add a Finality
+	// AddFinalitySignature sends a transactions to the consumer chain to add a Finality
 	// signature for a block
 	AddFinalitySignature(context.Context, *AddFinalitySignatureRequest) (*AddFinalitySignatureResponse, error)
 	// QueryFinalityProvider queries the finality provider

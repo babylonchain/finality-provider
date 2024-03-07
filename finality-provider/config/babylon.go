@@ -15,7 +15,7 @@ type BBNConfig struct {
 	KeyringBackend string        `long:"keyring-type" description:"type of keyring to use"`
 	GasAdjustment  float64       `long:"gas-adjustment" description:"adjustment factor when using gas estimation"`
 	GasPrices      string        `long:"gas-prices" description:"comma separated minimum gas prices to accept for transactions"`
-	KeyDirectory   string        `long:"key-dir" description:"directory to store keys in"`
+	KeyDirectory   string        `long:"key-dir" description:"directory to dbcfg keys in"`
 	Debug          bool          `long:"debug" description:"flag to print debug output"`
 	Timeout        time.Duration `long:"timeout" description:"client timeout when doing queries"`
 	BlockTimeout   time.Duration `long:"block-timeout" description:"block timeout when waiting for block events"`

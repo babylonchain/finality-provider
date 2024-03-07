@@ -68,10 +68,10 @@ func start(ctx *cli.Context) error {
 
 	logger, err := log.NewRootLoggerWithFile(fpcfg.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
-		return fmt.Errorf("failed to initialize the logger")
+		return fmt.Errorf("failed to initialize the logger: %w", err)
 	}
 
-	fpApp, err := service.NewFinalityProviderAppFromConfig(homePath, cfg, logger)
+	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider app: %v", err)
 	}

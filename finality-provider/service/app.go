@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/clientcontroller"
@@ -19,10 +20,9 @@ import (
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/finality-provider/store"
 	fpkr "github.com/babylonchain/finality-provider/keyring"
 	"github.com/babylonchain/finality-provider/types"
-	"github.com/babylonchain/finality-provider/util"
 )
 
 type FinalityProviderApp struct {
@@ -40,7 +40,7 @@ type FinalityProviderApp struct {
 
 	cc     clientcontroller.ClientController
 	kr     keyring.Keyring
-	fps    *fpstore.FinalityProviderStore
+	fps    *store.FinalityProviderStore
 	config *fpcfg.Config
 	logger *zap.Logger
 	input  *strings.Reader
@@ -54,7 +54,6 @@ type FinalityProviderApp struct {
 }
 
 func NewFinalityProviderAppFromConfig(
-	homePath string,
 	config *fpcfg.Config,
 	logger *zap.Logger,
 ) (*FinalityProviderApp, error) {
@@ -72,19 +71,18 @@ func NewFinalityProviderAppFromConfig(
 
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
-	return NewFinalityProviderApp(homePath, config, cc, em, logger)
+	return NewFinalityProviderApp(config, cc, em, logger)
 }
 
 func NewFinalityProviderApp(
-	homePath string,
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	logger *zap.Logger,
 ) (*FinalityProviderApp, error) {
-	fpStore, err := initStore(homePath, config)
+	fpStore, err := store.NewFinalityProviderStore(config.DatabaseConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load store: %w", err)
+		return nil, fmt.Errorf("failed to initiate finality provider store: %w", err)
 	}
 
 	input := strings.NewReader("")
@@ -121,20 +119,11 @@ func NewFinalityProviderApp(
 	}, nil
 }
 
-func initStore(homePath string, cfg *fpcfg.Config) (*fpstore.FinalityProviderStore, error) {
-	// Create the directory that will store the data
-	if err := util.MakeDirectory(fpcfg.DataDir(homePath)); err != nil {
-		return nil, err
-	}
-
-	return fpstore.NewFinalityProviderStore(fpcfg.DBPath(homePath), cfg.DatabaseConfig.Name, cfg.DatabaseConfig.Backend)
-}
-
 func (app *FinalityProviderApp) GetConfig() *fpcfg.Config {
 	return app.config
 }
 
-func (app *FinalityProviderApp) GetFinalityProviderStore() *fpstore.FinalityProviderStore {
+func (app *FinalityProviderApp) GetFinalityProviderStore() *store.FinalityProviderStore {
 	return app.fps
 }
 
@@ -169,7 +158,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 		return nil, err
 	}
 
-	fp, err := app.fps.GetStoreFinalityProvider(fpPk.MustMarshal())
+	fp, err := app.fps.GetFinalityProvider(fpPk.MustToBTCPK())
 	if err != nil {
 		return nil, err
 	}
@@ -184,22 +173,17 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 	}
 
 	pop := &bstypes.ProofOfPossession{
-		BabylonSig: fp.Pop.BabylonSig,
+		BabylonSig: fp.Pop.ChainSig,
 		BtcSig:     btcSig.MustMarshal(),
 		BtcSigType: bstypes.BTCSigType_BIP340,
 	}
 
-	commissionRate, err := sdkmath.LegacyNewDecFromStr(fp.Commission)
-	if err != nil {
-		return nil, err
-	}
-
 	request := &registerFinalityProviderRequest{
-		bbnPubKey:       fp.GetBabylonPK(),
-		btcPubKey:       fp.MustGetBIP340BTCPK(),
+		bbnPubKey:       fp.ChainPk,
+		btcPubKey:       bbntypes.NewBIP340PubKeyFromBTCPK(fp.BtcPk),
 		pop:             pop,
 		description:     fp.Description,
-		commission:      &commissionRate,
+		commission:      fp.Commission,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *RegisterFinalityProviderResponse, 1),
 	}
@@ -277,7 +261,7 @@ func (app *FinalityProviderApp) Stop() error {
 		app.eventWg.Wait()
 
 		// Closing db as last to avoid anybody to write do db
-		app.logger.Debug("Stopping data store")
+		app.logger.Debug("Stopping data dbcfg")
 		if err := app.fps.Close(); err != nil {
 			stopErr = err
 			return
@@ -297,7 +281,7 @@ func (app *FinalityProviderApp) Stop() error {
 
 func (app *FinalityProviderApp) CreateFinalityProvider(
 	keyName, chainID, passPhrase, hdPath string,
-	description []byte,
+	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
 ) (*CreateFinalityProviderResult, error) {
 
@@ -319,7 +303,7 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 		return nil, err
 	case successResponse := <-req.successResponse:
 		return &CreateFinalityProviderResult{
-			StoreFp: successResponse.StoreFp,
+			FpInfo: successResponse.FpInfo,
 		}, nil
 	case <-app.quit:
 		return nil, fmt.Errorf("finality-provider app is shutting down")
@@ -363,9 +347,7 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 		return nil, fmt.Errorf("failed to create proof-of-possession of the finality-provider: %w", err)
 	}
 
-	fp := fpstore.NewStoreFinalityProvider(chainPk, fpPk, req.keyName, req.chainID, pop, req.description, req.commission)
-
-	if err := app.fps.SaveFinalityProvider(fp); err != nil {
+	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
 		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
 	}
 
@@ -375,8 +357,13 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 		zap.String("key_name", req.keyName),
 	)
 
+	storedFp, err := app.fps.GetFinalityProvider(fpPk.MustToBTCPK())
+	if err != nil {
+		return nil, err
+	}
+
 	return &createFinalityProviderResponse{
-		StoreFp: fp,
+		FpInfo: storedFp.ToFinalityProviderInfo(),
 	}, nil
 }
 
@@ -413,21 +400,11 @@ func (app *FinalityProviderApp) eventLoop() {
 				continue
 			}
 
-			req.successResponse <- &createFinalityProviderResponse{StoreFp: res.StoreFp}
+			req.successResponse <- &createFinalityProviderResponse{FpInfo: res.FpInfo}
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
-			fpStored, err := app.fps.GetStoreFinalityProvider(ev.btcPubKey.MustMarshal())
-			if err != nil {
-				// we always check if the finality-provider is in the DB before sending the registration request
-				app.logger.Fatal(
-					"registered finality-provider not found in DB",
-					zap.String("pk", ev.btcPubKey.MarshalHex()),
-					zap.Error(err),
-				)
-			}
-
 			// change the status of the finality-provider to registered
-			err = app.fps.SetFinalityProviderStatus(fpStored, proto.FinalityProviderStatus_REGISTERED)
+			err := app.fps.SetFpStatus(ev.btcPubKey.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
 			if err != nil {
 				app.logger.Fatal("failed to set finality-provider status to REGISTERED",
 					zap.String("pk", ev.btcPubKey.MarshalHex()),
@@ -437,8 +414,8 @@ func (app *FinalityProviderApp) eventLoop() {
 
 			// return to the caller
 			ev.successResponse <- &RegisterFinalityProviderResponse{
-				bbnPubKey: fpStored.GetBabylonPK(),
-				btcPubKey: fpStored.MustGetBIP340BTCPK(),
+				bbnPubKey: ev.bbnPubKey,
+				btcPubKey: ev.btcPubKey,
 				TxHash:    ev.txHash,
 			}
 
@@ -463,12 +440,17 @@ func (app *FinalityProviderApp) registrationLoop() {
 				continue
 			}
 
+			desBytes, err := req.description.Marshal()
+			if err != nil {
+				req.errResponse <- err
+				continue
+			}
 			res, err := app.cc.RegisterFinalityProvider(
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
 				req.commission,
-				req.description,
+				desBytes,
 			)
 
 			if err != nil {

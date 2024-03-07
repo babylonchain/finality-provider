@@ -8,13 +8,13 @@ import (
 
 	"go.uber.org/zap"
 
-	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
-
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/stretchr/testify/require"
+
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
 
 	fpkr "github.com/babylonchain/finality-provider/keyring"
 
@@ -36,13 +36,12 @@ func FuzzCreatePoP(f *testing.F) {
 		keyName := testutil.GenRandomHexStr(r, 4)
 		sdkCtx := testutil.GenSdkContext(r, t)
 
-		chainID := testutil.GenRandomHexStr(r, 4)
 		kc, err := fpkr.NewChainKeyringController(sdkCtx, keyName, keyring.BackendTest)
 		require.NoError(t, err)
 
 		eotsHome := filepath.Join(t.TempDir(), "eots-home")
-		cfg := testutil.GenEOTSConfig(r, t)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, cfg, zap.NewNop())
+		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHome)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, &eotsCfg, zap.NewNop())
 		defer func() {
 			err := os.RemoveAll(eotsHome)
 			require.NoError(t, err)
@@ -59,11 +58,6 @@ func FuzzCreatePoP(f *testing.F) {
 		fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
 		pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
-		require.NoError(t, err)
-		fp := fpstore.NewStoreFinalityProvider(bbnPk, btcPk, keyName, chainID, pop, testutil.EmptyDescription(), testutil.ZeroCommissionRate())
-
-		btcSig := new(types.BIP340Signature)
-		err = btcSig.Unmarshal(fp.Pop.BtcSig)
 		require.NoError(t, err)
 		err = pop.Verify(bbnPk, btcPk, &chaincfg.SimNetParams)
 		require.NoError(t, err)

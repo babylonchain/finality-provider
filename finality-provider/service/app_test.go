@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/eotsmanager"
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/testutil"
@@ -32,8 +34,8 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		logger := zap.NewNop()
 		// create an EOTS manager
 		eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
-		eotsCfg := testutil.GenEOTSConfig(r, t)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
+		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, &eotsCfg, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(eotsHomeDir)
@@ -50,10 +52,10 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 
 		// Create randomized config
 		fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
-		fpCfg := testutil.GenFpConfig(r, t, fpHomeDir)
+		fpCfg := config.DefaultConfigWithHome(fpHomeDir)
 		fpCfg.PollerConfig.AutoChainScanningMode = false
 		fpCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
-		app, err := service.NewFinalityProviderApp(fpHomeDir, fpCfg, mockClientController, em, logger)
+		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, em, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(fpHomeDir)
@@ -73,13 +75,13 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		err = btcSig.Unmarshal(fp.Pop.BtcSig)
 		require.NoError(t, err)
 		pop := &bstypes.ProofOfPossession{
-			BabylonSig: fp.Pop.BabylonSig,
+			BabylonSig: fp.Pop.ChainSig,
 			BtcSig:     btcSig.MustMarshal(),
 			BtcSigType: bstypes.BTCSigType_BIP340,
 		}
 		popBytes, err := pop.Marshal()
 		require.NoError(t, err)
-		fpInfo, err := app.GetFinalityProviderInfo(fp.MustGetBIP340BTCPK())
+		fpInfo, err := app.GetFinalityProviderInfo(fp.GetBIP340BTCPK())
 		require.NoError(t, err)
 		require.Equal(t, proto.FinalityProviderStatus_name[0], fpInfo.Status)
 		require.Equal(t, false, fpInfo.IsRunning)
@@ -90,26 +92,26 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		txHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			RegisterFinalityProvider(
-				fp.GetBabylonPK().Key,
-				fp.MustGetBIP340BTCPK().MustToBTCPK(),
+				fp.ChainPk,
+				fp.BtcPk,
 				popBytes,
 				testutil.ZeroCommissionRate(),
 				gomock.Any(),
 			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
-		res, err := app.RegisterFinalityProvider(fp.MustGetBIP340BTCPK().MarshalHex())
+		res, err := app.RegisterFinalityProvider(fp.GetBIP340BTCPK().MarshalHex())
 		require.NoError(t, err)
 		require.Equal(t, txHash, res.TxHash)
 
 		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
-		err = app.StartHandlingFinalityProvider(fp.MustGetBIP340BTCPK(), passphrase)
+		err = app.StartHandlingFinalityProvider(fp.GetBIP340BTCPK(), passphrase)
 		require.NoError(t, err)
 
-		fpAfterReg, err := app.GetFinalityProviderInstance(fp.MustGetBIP340BTCPK())
+		fpAfterReg, err := app.GetFinalityProviderInstance(fp.GetBIP340BTCPK())
 		require.NoError(t, err)
 		require.Equal(t, proto.FinalityProviderStatus_REGISTERED, fpAfterReg.GetStoreFinalityProvider().Status)
 
-		fpInfo, err = app.GetFinalityProviderInfo(fp.MustGetBIP340BTCPK())
+		fpInfo, err = app.GetFinalityProviderInfo(fp.GetBIP340BTCPK())
 		require.NoError(t, err)
 		require.Equal(t, proto.FinalityProviderStatus_name[1], fpInfo.Status)
 		require.Equal(t, true, fpInfo.IsRunning)
