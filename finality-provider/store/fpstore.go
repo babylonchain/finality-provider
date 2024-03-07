@@ -127,17 +127,13 @@ func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto
 // only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
 func (s *FinalityProviderStore) SetFpLastVotedHeight(btcPk *btcec.PublicKey, lastVotedHeight uint64) error {
 	setFpLastVotedHeight := func(fp *proto.FinalityProvider) error {
-		if fp.LastVotedHeight >= lastVotedHeight {
-			return fmt.Errorf("the last voted height %d should be larger than the stored one %d",
-				lastVotedHeight, fp.LastVotedHeight)
+		if fp.LastVotedHeight < lastVotedHeight {
+			fp.LastVotedHeight = lastVotedHeight
 		}
-		if fp.LastProcessedHeight >= lastVotedHeight {
-			return fmt.Errorf("the last voted height %d should be larger than the stored last processed height %d",
-				lastVotedHeight, fp.LastProcessedHeight)
+		if fp.LastProcessedHeight < lastVotedHeight {
+			fp.LastProcessedHeight = lastVotedHeight
 		}
 
-		fp.LastVotedHeight = lastVotedHeight
-		fp.LastProcessedHeight = lastVotedHeight
 		return nil
 	}
 
@@ -148,12 +144,10 @@ func (s *FinalityProviderStore) SetFpLastVotedHeight(btcPk *btcec.PublicKey, las
 // only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
 func (s *FinalityProviderStore) SetFpLastProcessedHeight(btcPk *btcec.PublicKey, lastProcessedHeight uint64) error {
 	setFpLastProcessedHeight := func(fp *proto.FinalityProvider) error {
-		if fp.LastProcessedHeight >= lastProcessedHeight {
-			return fmt.Errorf("the last processed height %d should be larger than the stored one %d",
-				lastProcessedHeight, fp.LastProcessedHeight)
+		if fp.LastProcessedHeight < lastProcessedHeight {
+			fp.LastProcessedHeight = lastProcessedHeight
 		}
 
-		fp.LastProcessedHeight = lastProcessedHeight
 		return nil
 	}
 

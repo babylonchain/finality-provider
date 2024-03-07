@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -119,11 +118,9 @@ func GenStoredFinalityProvider(r *rand.Rand, t *testing.T, app *service.Finality
 	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, RandomDescription(r), ZeroCommissionRate())
 	require.NoError(t, err)
 
-	pkBytes, err := hex.DecodeString(res.FpInfo.BtcPkHex)
+	btcPk, err := bbn.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 	require.NoError(t, err)
-	fpPk, err := btcec.ParsePubKey(pkBytes)
-	require.NoError(t, err)
-	storedFp, err := app.GetFinalityProviderStore().GetFinalityProvider(fpPk)
+	storedFp, err := app.GetFinalityProviderStore().GetFinalityProvider(btcPk.MustToBTCPK())
 	require.NoError(t, err)
 
 	return storedFp
