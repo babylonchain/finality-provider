@@ -131,7 +131,7 @@ func (r *rpcServer) RegisterFinalityProvider(ctx context.Context, req *proto.Reg
 }
 
 // forceRegisterFp attempts to forcefully register the finality provider.
-// It will update the fp status CREATE to REGISTERED in the fpd database,
+// It will update the fp status CREATED to REGISTERED in the fpd database,
 // if the fp appears to be registered in the Babylon chain.
 func (r *rpcServer) ForceRegisterFinalityProvider(ctx context.Context, req *proto.ForceRegisterFinalityProviderRequest) (
 	*proto.ForceRegisterFinalityProviderResponse, error) {
@@ -162,7 +162,7 @@ func (r *rpcServer) ForceRegisterFinalityProvider(ctx context.Context, req *prot
 		return nil, err
 	}
 	r.app.fpManager.logger.Info(
-		"successfully changed Finality Provider's status from CREATE to REGISTERED forcefully",
+		"successfully changed Finality Provider's status from CREATED to REGISTERED forcefully",
 		zap.String("pk", req.BtcPk),
 	)
 

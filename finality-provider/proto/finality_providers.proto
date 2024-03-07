@@ -21,7 +21,7 @@ service FinalityProviders {
     rpc RegisterFinalityProvider (RegisterFinalityProviderRequest)
         returns (RegisterFinalityProviderResponse);
 
-	// ForceRegisterFinalityProvider updates the fp status CREATE to REGISTERED in the fpd
+	// ForceRegisterFinalityProvider updates the fp status CREATED to REGISTERED in the fpd
 	// if the fp appears to be registered in the Babylon chain
 	rpc ForceRegisterFinalityProvider (ForceRegisterFinalityProviderRequest)
         returns (ForceRegisterFinalityProviderResponse);

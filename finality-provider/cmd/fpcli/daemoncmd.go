@@ -319,7 +319,7 @@ func registerFp(ctx *cli.Context) error {
 }
 
 // forceRegisterFp attempts to forcefully register the finality provider.
-// It will update the fp status CREATE to REGISTERED in the fpd database,
+// It will update the fp status CREATED to REGISTERED in the fpd database,
 // if the fp appears to be registered in the Babylon chain.
 func forceRegisterFp(ctx *cli.Context) error {
 	fpPkStr := ctx.String(fpBTCPkFlag)

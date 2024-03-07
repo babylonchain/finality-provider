@@ -39,7 +39,7 @@ type FinalityProvidersClient interface {
 	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
 	// finality provider
 	RegisterFinalityProvider(ctx context.Context, in *RegisterFinalityProviderRequest, opts ...grpc.CallOption) (*RegisterFinalityProviderResponse, error)
-	// ForceRegisterFinalityProvider updates the fp status CREATE to REGISTERED in the fpd
+	// ForceRegisterFinalityProvider updates the fp status CREATED to REGISTERED in the fpd
 	// if the fp appears to be registered in the Babylon chain
 	ForceRegisterFinalityProvider(ctx context.Context, in *ForceRegisterFinalityProviderRequest, opts ...grpc.CallOption) (*ForceRegisterFinalityProviderResponse, error)
 	// AddFinalitySignature sends a transactions to Babylon to add a Finality
@@ -133,7 +133,7 @@ type FinalityProvidersServer interface {
 	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
 	// finality provider
 	RegisterFinalityProvider(context.Context, *RegisterFinalityProviderRequest) (*RegisterFinalityProviderResponse, error)
-	// ForceRegisterFinalityProvider updates the fp status CREATE to REGISTERED in the fpd
+	// ForceRegisterFinalityProvider updates the fp status CREATED to REGISTERED in the fpd
 	// if the fp appears to be registered in the Babylon chain
 	ForceRegisterFinalityProvider(context.Context, *ForceRegisterFinalityProviderRequest) (*ForceRegisterFinalityProviderResponse, error)
 	// AddFinalitySignature sends a transactions to Babylon to add a Finality
