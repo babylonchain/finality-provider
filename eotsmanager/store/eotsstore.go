@@ -7,6 +7,8 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/kvdb"
+
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
 )
 
 var (
@@ -17,8 +19,12 @@ type EOTSStore struct {
 	db kvdb.Backend
 }
 
-func NewEOTSStore(db kvdb.Backend) (*EOTSStore, error) {
-	s := &EOTSStore{db}
+func NewEOTSStore(cfg *eotscfg.DBConfig) (*EOTSStore, error) {
+	dbBackend, err := eotscfg.GetDbBackend(cfg)
+	if err != nil {
+		return nil, err
+	}
+	s := &EOTSStore{dbBackend}
 	if err := s.initBuckets(); err != nil {
 		return nil, err
 	}

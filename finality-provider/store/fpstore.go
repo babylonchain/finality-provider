@@ -25,7 +25,7 @@ type FinalityProviderStore struct {
 	db kvdb.Backend
 }
 
-// NewFinalityProviderStore returns a new dbcfg backed by db
+// NewFinalityProviderStore returns a new store backed by db
 func NewFinalityProviderStore(cfg *config.DBConfig) (*FinalityProviderStore, error) {
 	dbBackend, err := config.GetDbBackend(cfg)
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *FinalityProviderStore) GetFinalityProvider(btcPk *btcec.PublicKey) (*St
 
 // GetAllStoredFinalityProviders fetches all the stored finality providers from db
 // pagination is probably not needed as the expected number of finality providers
-// in the dbcfg is small
+// in the store is small
 func (s *FinalityProviderStore) GetAllStoredFinalityProviders() ([]*StoredFinalityProvider, error) {
 	var storedFps []*StoredFinalityProvider
 

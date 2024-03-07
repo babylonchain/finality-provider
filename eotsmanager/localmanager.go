@@ -38,9 +38,9 @@ type LocalEOTSManager struct {
 func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
 
-	store, err := initEotsStore(eotsCfg.DatabaseConfig)
+	es, err := store.NewEOTSStore(eotsCfg.DatabaseConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize dbcfg: %w", err)
+		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
 	kr, err := initKeyring(homeDir, eotsCfg, inputReader)
@@ -50,19 +50,10 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, logger *zap.Log
 
 	return &LocalEOTSManager{
 		kr:     kr,
-		es:     store,
+		es:     es,
 		logger: logger,
 		input:  inputReader,
 	}, nil
-}
-
-func initEotsStore(cfg *config.DBConfig) (*store.EOTSStore, error) {
-	dbBackend, err := config.GetDbBackend(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return store.NewEOTSStore(dbBackend)
 }
 
 func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Reader) (keyring.Keyring, error) {

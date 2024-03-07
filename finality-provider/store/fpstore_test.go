@@ -30,6 +30,7 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		}()
 
 		fp := testutil.GenRandomFinalityProvider(r, t)
+		// create the fp for the first time
 		err = vs.CreateFinalityProvider(
 			fp.ChainPk,
 			fp.BtcPk,
@@ -42,6 +43,20 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		)
 		require.NoError(t, err)
 
+		// create same finality provider again
+		// and expect duplicate error
+		err = vs.CreateFinalityProvider(
+			fp.ChainPk,
+			fp.BtcPk,
+			fp.Description,
+			fp.Commission,
+			fp.KeyName,
+			fp.ChainID,
+			fp.Pop.ChainSig,
+			fp.Pop.BtcSig,
+		)
+		require.ErrorIs(t, err, fpstore.ErrDuplicateFinalityProvider)
+
 		fpList, err := vs.GetAllStoredFinalityProviders()
 		require.NoError(t, err)
 		require.True(t, fp.BtcPk.IsEqual(fpList[0].BtcPk))
@@ -49,5 +64,8 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		actualFp, err := vs.GetFinalityProvider(fp.BtcPk)
 		require.NoError(t, err)
 		require.Equal(t, fp.BtcPk, actualFp.BtcPk)
+
+		_, err = vs.GetFinalityProvider(testutil.GenRandomBtcPubKey(r, t))
+		require.ErrorIs(t, err, fpstore.ErrFinalityProviderNotFound)
 	})
 }

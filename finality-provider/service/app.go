@@ -261,7 +261,7 @@ func (app *FinalityProviderApp) Stop() error {
 		app.eventWg.Wait()
 
 		// Closing db as last to avoid anybody to write do db
-		app.logger.Debug("Stopping data dbcfg")
+		app.logger.Debug("Stopping data store")
 		if err := app.fps.Close(); err != nil {
 			stopErr = err
 			return

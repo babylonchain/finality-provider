@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.uber.org/zap"
-
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
