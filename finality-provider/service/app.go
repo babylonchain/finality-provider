@@ -13,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/lightningnetwork/lnd/kvdb"
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/clientcontroller"
@@ -71,16 +72,21 @@ func NewFinalityProviderAppFromConfig(
 
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
-	return NewFinalityProviderApp(config, cc, em, logger)
+	dbBackend, err := config.DatabaseConfig.GetDbBackend()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create db backend: %w", err)
+	}
+	return NewFinalityProviderApp(config, cc, em, dbBackend, logger)
 }
 
 func NewFinalityProviderApp(
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
+	db kvdb.Backend,
 	logger *zap.Logger,
 ) (*FinalityProviderApp, error) {
-	fpStore, err := store.NewFinalityProviderStore(config.DatabaseConfig)
+	fpStore, err := store.NewFinalityProviderStore(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initiate finality provider store: %w", err)
 	}

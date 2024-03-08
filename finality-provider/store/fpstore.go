@@ -12,7 +12,6 @@ import (
 	"github.com/lightningnetwork/lnd/kvdb"
 	pm "google.golang.org/protobuf/proto"
 
-	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 )
 
@@ -26,13 +25,8 @@ type FinalityProviderStore struct {
 }
 
 // NewFinalityProviderStore returns a new store backed by db
-func NewFinalityProviderStore(cfg *config.DBConfig) (*FinalityProviderStore, error) {
-	dbBackend, err := cfg.GetDbBackend()
-	if err != nil {
-		return nil, err
-	}
-
-	store := &FinalityProviderStore{dbBackend}
+func NewFinalityProviderStore(db kvdb.Backend) (*FinalityProviderStore, error) {
+	store := &FinalityProviderStore{db}
 	if err := store.initBuckets(); err != nil {
 		return nil, err
 	}

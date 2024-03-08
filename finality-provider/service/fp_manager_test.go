@@ -97,7 +97,9 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
 	eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
+	dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, dbBackend, logger)
 	require.NoError(t, err)
 
 	// create finality-provider app with randomized config
@@ -114,7 +116,9 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	err = util.MakeDirectory(fpcfg.DataDir(fpHomeDir))
 	require.NoError(t, err)
-	fpStore, err := fpstore.NewFinalityProviderStore(fpCfg.DatabaseConfig)
+	fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+	fpStore, err := fpstore.NewFinalityProviderStore(fpdb)
 	require.NoError(t, err)
 
 	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, em, logger)

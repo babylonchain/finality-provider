@@ -109,7 +109,9 @@ func StartManager(t *testing.T) *TestManager {
 	require.NoError(t, err)
 
 	// 4. prepare finality-provider
-	fpApp, err := service.NewFinalityProviderApp(cfg, bc, eotsCli, logger)
+	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, eotsCli, fpdb, logger)
 	require.NoError(t, err)
 	err = fpApp.Start()
 	require.NoError(t, err)

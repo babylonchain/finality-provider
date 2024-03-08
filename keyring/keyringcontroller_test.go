@@ -41,7 +41,9 @@ func FuzzCreatePoP(f *testing.F) {
 
 		eotsHome := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHome)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, eotsCfg, zap.NewNop())
+		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
+		require.NoError(t, err)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, eotsCfg, dbBackend, zap.NewNop())
 		defer func() {
 			err := os.RemoveAll(eotsHome)
 			require.NoError(t, err)

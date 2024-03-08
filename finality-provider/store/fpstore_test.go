@@ -22,7 +22,9 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		homePath := t.TempDir()
 		cfg := config.DefaultDBConfigWithHomePath(homePath)
 
-		vs, err := fpstore.NewFinalityProviderStore(cfg)
+		fpdb, err := cfg.GetDbBackend()
+		require.NoError(t, err)
+		vs, err := fpstore.NewFinalityProviderStore(fpdb)
 		require.NoError(t, err)
 
 		defer func() {

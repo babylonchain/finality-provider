@@ -35,7 +35,9 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		// create an EOTS manager
 		eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
+		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
+		require.NoError(t, err)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, dbBackend, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(eotsHomeDir)
@@ -55,7 +57,9 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		fpCfg := config.DefaultConfigWithHome(fpHomeDir)
 		fpCfg.PollerConfig.AutoChainScanningMode = false
 		fpCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
-		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, em, logger)
+		fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
+		require.NoError(t, err)
+		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, em, fpdb, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(fpHomeDir)

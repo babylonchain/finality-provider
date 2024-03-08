@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/go-bip39"
+	"github.com/lightningnetwork/lnd/kvdb"
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/codec"
@@ -35,10 +36,10 @@ type LocalEOTSManager struct {
 	input *strings.Reader
 }
 
-func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, logger *zap.Logger) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.Backend, logger *zap.Logger) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
 
-	es, err := store.NewEOTSStore(eotsCfg.DatabaseConfig)
+	es, err := store.NewEOTSStore(dbbackend)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}

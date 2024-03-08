@@ -23,7 +23,10 @@ func FuzzEOTSStore(f *testing.F) {
 		homePath := t.TempDir()
 		cfg := config.DefaultDBConfigWithHomePath(homePath)
 
-		vs, err := store.NewEOTSStore(cfg)
+		dbBackend, err := cfg.GetDbBackend()
+		require.NoError(t, err)
+
+		vs, err := store.NewEOTSStore(dbBackend)
 		require.NoError(t, err)
 
 		defer func() {
