@@ -27,7 +27,7 @@ type FinalityProviderStore struct {
 
 // NewFinalityProviderStore returns a new store backed by db
 func NewFinalityProviderStore(cfg *config.DBConfig) (*FinalityProviderStore, error) {
-	dbBackend, err := config.GetDbBackend(cfg)
+	dbBackend, err := cfg.GetDbBackend()
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +43,7 @@ func NewFinalityProviderStore(cfg *config.DBConfig) (*FinalityProviderStore, err
 func (s *FinalityProviderStore) initBuckets() error {
 	return kvdb.Batch(s.db, func(tx kvdb.RwTx) error {
 		_, err := tx.CreateTopLevelBucket(finalityProviderBucketName)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	})
 }
 

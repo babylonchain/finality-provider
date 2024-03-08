@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/finality-provider/finality-provider/config"
@@ -21,7 +22,7 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		homePath := t.TempDir()
 		cfg := config.DefaultDBConfigWithHomePath(homePath)
 
-		vs, err := fpstore.NewFinalityProviderStore(&cfg)
+		vs, err := fpstore.NewFinalityProviderStore(cfg)
 		require.NoError(t, err)
 
 		defer func() {
@@ -65,7 +66,9 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, fp.BtcPk, actualFp.BtcPk)
 
-		_, err = vs.GetFinalityProvider(testutil.GenRandomBtcPubKey(r, t))
+		_, randomBtcPk, err := datagen.GenRandomBTCKeyPair(r)
+		require.NoError(t, err)
+		_, err = vs.GetFinalityProvider(randomBtcPk)
 		require.ErrorIs(t, err, fpstore.ErrFinalityProviderNotFound)
 	})
 }

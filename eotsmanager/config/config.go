@@ -107,26 +107,15 @@ func DataDir(homePath string) string {
 	return filepath.Join(homePath, defaultDataDirname)
 }
 
-func DefaultConfig() Config {
-	dbCfg := DefaultDBConfig()
-	cfg := Config{
-		LogLevel:       defaultLogLevel,
-		KeyringBackend: defaultKeyringBackend,
-		DatabaseConfig: &dbCfg,
-		RpcListener:    defaultRpcListener,
-	}
-	if err := cfg.Validate(); err != nil {
-		panic(err)
-	}
-	return cfg
+func DefaultConfig() *Config {
+	return DefaultConfigWithHomePath(DefaultEOTSDir)
 }
 
-func DefaultConfigWithHomePath(homePath string) Config {
-	dbCfg := DefaultDBConfigWithHomePath(homePath)
-	cfg := Config{
+func DefaultConfigWithHomePath(homePath string) *Config {
+	cfg := &Config{
 		LogLevel:       defaultLogLevel,
 		KeyringBackend: defaultKeyringBackend,
-		DatabaseConfig: &dbCfg,
+		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
 		RpcListener:    defaultRpcListener,
 	}
 	if err := cfg.Validate(); err != nil {

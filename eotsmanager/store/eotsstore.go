@@ -20,7 +20,7 @@ type EOTSStore struct {
 }
 
 func NewEOTSStore(cfg *eotscfg.DBConfig) (*EOTSStore, error) {
-	dbBackend, err := eotscfg.GetDbBackend(cfg)
+	dbBackend, err := cfg.GetDbBackend()
 	if err != nil {
 		return nil, err
 	}

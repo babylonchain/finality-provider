@@ -35,7 +35,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		// create an EOTS manager
 		eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, &eotsCfg, logger)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = os.RemoveAll(eotsHomeDir)

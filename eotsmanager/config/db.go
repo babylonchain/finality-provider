@@ -40,12 +40,12 @@ type DBConfig struct {
 	DBTimeout time.Duration `long:"dbtimeout" description:"Specifies the timeout value to use when opening the wallet database."`
 }
 
-func DefaultDBConfig() DBConfig {
+func DefaultDBConfig() *DBConfig {
 	return DefaultDBConfigWithHomePath(DefaultEOTSDir)
 }
 
-func DefaultDBConfigWithHomePath(homePath string) DBConfig {
-	return DBConfig{
+func DefaultDBConfigWithHomePath(homePath string) *DBConfig {
+	return &DBConfig{
 		DBPath:            DataDir(homePath),
 		DBFileName:        defaultDbName,
 		NoFreelistSync:    true,
@@ -53,11 +53,10 @@ func DefaultDBConfigWithHomePath(homePath string) DBConfig {
 		AutoCompactMinAge: kvdb.DefaultBoltAutoCompactMinAge,
 		DBTimeout:         kvdb.DefaultDBTimeout,
 	}
-
 }
 
-func DBConfigToBoltBackendConfig(db *DBConfig) kvdb.BoltBackendConfig {
-	return kvdb.BoltBackendConfig{
+func (db *DBConfig) DBConfigToBoltBackendConfig() *kvdb.BoltBackendConfig {
+	return &kvdb.BoltBackendConfig{
 		DBPath:            db.DBPath,
 		DBFileName:        db.DBFileName,
 		NoFreelistSync:    db.NoFreelistSync,
@@ -67,7 +66,6 @@ func DBConfigToBoltBackendConfig(db *DBConfig) kvdb.BoltBackendConfig {
 	}
 }
 
-func GetDbBackend(cfg *DBConfig) (kvdb.Backend, error) {
-	boltConfig := DBConfigToBoltBackendConfig(cfg)
-	return kvdb.GetBoltBackend(&boltConfig)
+func (db *DBConfig) GetDbBackend() (kvdb.Backend, error) {
+	return kvdb.GetBoltBackend(db.DBConfigToBoltBackendConfig())
 }

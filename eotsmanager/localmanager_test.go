@@ -35,7 +35,7 @@ func FuzzCreateKey(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, &eotsCfg, zap.NewNop())
+		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
 		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
@@ -67,7 +67,7 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, &eotsCfg, zap.NewNop())
+		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
 		require.NoError(t, err)
 
 		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)

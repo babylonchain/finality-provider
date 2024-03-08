@@ -103,7 +103,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
-	eh := NewEOTSServerHandler(t, &eotsCfg, eotsHomeDir)
+	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func StartManager(t *testing.T) *TestManager {
 		BabylonHandler:    bh,
 		EOTSServerHandler: eh,
 		FpConfig:          cfg,
-		EOTSConfig:        &eotsCfg,
+		EOTSConfig:        eotsCfg,
 		Fpa:               fpApp,
 		EOTSClient:        eotsCli,
 		BBNClient:         bc,

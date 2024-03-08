@@ -85,12 +85,11 @@ func DefaultConfigWithHome(homePath string) Config {
 	bbnCfg := DefaultBBNConfig()
 	bbnCfg.Key = defaultFinalityProviderKeyName
 	bbnCfg.KeyDirectory = homePath
-	dbCfg := DefaultDBConfigWithHomePath(homePath)
 	pollerCfg := DefaultChainPollerConfig()
 	cfg := Config{
 		ChainName:                defaultChainName,
 		LogLevel:                 defaultLogLevel,
-		DatabaseConfig:           &dbCfg,
+		DatabaseConfig:           DefaultDBConfigWithHomePath(homePath),
 		BabylonConfig:            &bbnCfg,
 		PollerConfig:             &pollerCfg,
 		NumPubRand:               defaultNumPubRand,

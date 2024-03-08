@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/stretchr/testify/require"
 
@@ -22,7 +23,7 @@ func FuzzEOTSStore(f *testing.F) {
 		homePath := t.TempDir()
 		cfg := config.DefaultDBConfigWithHomePath(homePath)
 
-		vs, err := store.NewEOTSStore(&cfg)
+		vs, err := store.NewEOTSStore(cfg)
 		require.NoError(t, err)
 
 		defer func() {
@@ -31,7 +32,8 @@ func FuzzEOTSStore(f *testing.F) {
 		}()
 
 		expectedKeyName := testutil.GenRandomHexStr(r, 10)
-		btcPk := testutil.GenRandomBtcPubKey(r, t)
+		_, btcPk, err := datagen.GenRandomBTCKeyPair(r)
+		require.NoError(t, err)
 
 		// add key name for the first time
 		err = vs.AddEOTSKeyName(
@@ -51,7 +53,9 @@ func FuzzEOTSStore(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, expectedKeyName, keyNameFromDb)
 
-		_, err = vs.GetEOTSKeyName(schnorr.SerializePubKey(testutil.GenRandomBtcPubKey(r, t)))
+		_, randomBtcPk, err := datagen.GenRandomBTCKeyPair(r)
+		require.NoError(t, err)
+		_, err = vs.GetEOTSKeyName(schnorr.SerializePubKey(randomBtcPk))
 		require.ErrorIs(t, err, store.ErrEOTSKeyNameNotFound)
 	})
 }

@@ -8,29 +8,25 @@ import (
 	"testing"
 	"time"
 
-	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/util"
-
-	"go.uber.org/zap"
-
-	"github.com/babylonchain/finality-provider/keyring"
-
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-
-	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/eotsmanager"
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/keyring"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/testutil/mocks"
 	"github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/util"
 )
 
 var (
@@ -101,7 +97,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
 	eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, &eotsCfg, logger)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, logger)
 	require.NoError(t, err)
 
 	// create finality-provider app with randomized config

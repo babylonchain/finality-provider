@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/crypto/eots"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -32,12 +31,6 @@ func GenRandomByteArray(r *rand.Rand, length uint64) []byte {
 	newHeaderBytes := make([]byte, length)
 	r.Read(newHeaderBytes)
 	return newHeaderBytes
-}
-
-func GenRandomBtcPubKey(r *rand.Rand, t *testing.T) *btcec.PublicKey {
-	pk, err := datagen.GenRandomBIP340PubKey(r)
-	require.NoError(t, err)
-	return pk.MustToBTCPK()
 }
 
 func GenRandomHexStr(r *rand.Rand, length uint64) string {
