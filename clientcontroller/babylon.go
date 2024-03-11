@@ -6,9 +6,6 @@ import (
 	"time"
 
 	sdkErr "cosmossdk.io/errors"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
-
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -16,8 +13,11 @@ import (
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
@@ -253,12 +253,19 @@ func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey)
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (bc *BabylonController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	res, err := bc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
-		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
-		blockHeight,
-	)
+	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
+	defer cancel()
+
+	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
+	queryClient := btcstakingtypes.NewQueryClient(clientCtx)
+
+	queryRequest := &btcstakingtypes.QueryFinalityProviderCurrentPowerRequest{
+		FpBtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+	}
+
+	res, err := queryClient.FinalityProviderCurrentPower(ctx, queryRequest)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query BTC delegations: %w", err)
+		return 0, err
 	}
 
 	return res.VotingPower, nil
