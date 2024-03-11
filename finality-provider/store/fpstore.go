@@ -243,7 +243,3 @@ func (s *FinalityProviderStore) GetAllStoredFinalityProviders() ([]*StoredFinali
 
 	return storedFps, nil
 }
-
-func (s *FinalityProviderStore) Close() error {
-	return s.db.Close()
-}

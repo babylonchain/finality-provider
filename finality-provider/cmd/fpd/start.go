@@ -71,7 +71,12 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to initialize the logger: %w", err)
 	}
 
-	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, logger)
+	dbBackend, err := cfg.DatabaseConfig.GetDbBackend()
+	if err != nil {
+		return fmt.Errorf("failed to create db backend: %w", err)
+	}
+
+	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider app: %v", err)
 	}
@@ -103,7 +108,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	fpServer := service.NewFinalityProviderServer(cfg, logger, fpApp, shutdownInterceptor)
+	fpServer := service.NewFinalityProviderServer(cfg, logger, fpApp, dbBackend, shutdownInterceptor)
 
 	return fpServer.RunUntilShutdown()
 }

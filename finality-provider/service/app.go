@@ -56,6 +56,7 @@ type FinalityProviderApp struct {
 
 func NewFinalityProviderAppFromConfig(
 	config *fpcfg.Config,
+	db kvdb.Backend,
 	logger *zap.Logger,
 ) (*FinalityProviderApp, error) {
 	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.BTCNetParams, logger)
@@ -72,11 +73,7 @@ func NewFinalityProviderAppFromConfig(
 
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
-	dbBackend, err := config.DatabaseConfig.GetDbBackend()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create db backend: %w", err)
-	}
-	return NewFinalityProviderApp(config, cc, em, dbBackend, logger)
+	return NewFinalityProviderApp(config, cc, em, db, logger)
 }
 
 func NewFinalityProviderApp(
@@ -265,13 +262,6 @@ func (app *FinalityProviderApp) Stop() error {
 		app.logger.Debug("Stopping main eventLoop")
 		close(app.eventQuit)
 		app.eventWg.Wait()
-
-		// Closing db as last to avoid anybody to write do db
-		app.logger.Debug("Stopping data store")
-		if err := app.fps.Close(); err != nil {
-			stopErr = err
-			return
-		}
 
 		app.logger.Debug("Stopping EOTS manager")
 		if err := app.eotsManager.Close(); err != nil {

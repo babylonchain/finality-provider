@@ -40,6 +40,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, dbBackend, logger)
 		require.NoError(t, err)
 		defer func() {
+			dbBackend.Close()
 			err = os.RemoveAll(eotsHomeDir)
 			require.NoError(t, err)
 		}()
@@ -62,6 +63,8 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, em, fpdb, logger)
 		require.NoError(t, err)
 		defer func() {
+			err = fpdb.Close()
+			require.NoError(t, err)
 			err = os.RemoveAll(fpHomeDir)
 			require.NoError(t, err)
 		}()

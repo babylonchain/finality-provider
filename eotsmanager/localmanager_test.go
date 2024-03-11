@@ -30,13 +30,14 @@ func FuzzCreateKey(f *testing.F) {
 		fpName := testutil.GenRandomHexStr(r, 4)
 		homeDir := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(homeDir)
+		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
+		require.NoError(t, err)
 		defer func() {
+			dbBackend.Close()
 			err := os.RemoveAll(homeDir)
 			require.NoError(t, err)
 		}()
 
-		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
-		require.NoError(t, err)
 		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, dbBackend, zap.NewNop())
 		require.NoError(t, err)
 
@@ -64,12 +65,12 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 		fpName := testutil.GenRandomHexStr(r, 4)
 		homeDir := filepath.Join(t.TempDir(), "eots-home")
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(homeDir)
+		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
 		defer func() {
+			dbBackend.Close()
 			err := os.RemoveAll(homeDir)
 			require.NoError(t, err)
 		}()
-
-		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
 		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, dbBackend, zap.NewNop())
 		require.NoError(t, err)

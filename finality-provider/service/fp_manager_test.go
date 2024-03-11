@@ -97,9 +97,9 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
 	eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
-	dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
+	eotsdb, err := eotsCfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, dbBackend, logger)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, eotsdb, logger)
 	require.NoError(t, err)
 
 	// create finality-provider app with randomized config
@@ -157,6 +157,10 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 
 	cleanUp := func() {
 		err = vm.Stop()
+		require.NoError(t, err)
+		err = eotsdb.Close()
+		require.NoError(t, err)
+		err = fpdb.Close()
 		require.NoError(t, err)
 		err = os.RemoveAll(eotsHomeDir)
 		require.NoError(t, err)

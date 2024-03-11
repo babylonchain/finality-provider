@@ -75,7 +75,7 @@ func startFn(ctx *cli.Context) error {
 		return err
 	}
 
-	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, shutdownInterceptor)
+	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
 
 	return eotsServer.RunUntilShutdown()
 }

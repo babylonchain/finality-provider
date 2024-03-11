@@ -30,6 +30,7 @@ func FuzzEOTSStore(f *testing.F) {
 		require.NoError(t, err)
 
 		defer func() {
+			dbBackend.Close()
 			err := os.RemoveAll(homePath)
 			require.NoError(t, err)
 		}()

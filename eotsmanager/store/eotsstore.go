@@ -37,14 +37,6 @@ func (s *EOTSStore) initBuckets() error {
 	})
 }
 
-func (s *EOTSStore) Close() error {
-	if err := s.db.Close(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s *EOTSStore) AddEOTSKeyName(
 	btcPk *btcec.PublicKey,
 	keyName string,

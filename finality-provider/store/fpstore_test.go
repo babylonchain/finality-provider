@@ -28,7 +28,9 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		require.NoError(t, err)
 
 		defer func() {
-			err := os.RemoveAll(homePath)
+			err := fpdb.Close()
+			require.NoError(t, err)
+			err = os.RemoveAll(homePath)
 			require.NoError(t, err)
 		}()
 
