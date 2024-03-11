@@ -16,7 +16,7 @@ import (
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -41,7 +41,7 @@ type FinalityProviderManager struct {
 	fpis map[string]*FinalityProviderInstance
 
 	// needed for initiating finality-provider instances
-	fps    *fpstore.FinalityProviderStore
+	fps    *store.FinalityProviderStore
 	config *fpcfg.Config
 	cc     clientcontroller.ClientController
 	em     eotsmanager.EOTSManager
@@ -52,7 +52,8 @@ type FinalityProviderManager struct {
 	quit chan struct{}
 }
 
-func NewFinalityProviderManager(fps *fpstore.FinalityProviderStore,
+func NewFinalityProviderManager(
+	fps *store.FinalityProviderStore,
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
@@ -229,14 +230,19 @@ func (fpm *FinalityProviderManager) StartAll() error {
 		go fpm.monitorStatusUpdate()
 	}
 
-	registeredFps, err := fpm.fps.ListRegisteredFinalityProviders()
+	storedFps, err := fpm.fps.GetAllStoredFinalityProviders()
 	if err != nil {
 		return err
 	}
 
-	for _, fp := range registeredFps {
-		// TODO: passphrase is not available for starting all the finality providers
-		if err := fpm.StartFinalityProvider(fp.MustGetBIP340BTCPK(), ""); err != nil {
+	for _, fp := range storedFps {
+		if fp.Status == proto.FinalityProviderStatus_CREATED || fp.Status == proto.FinalityProviderStatus_SLASHED {
+			fpm.logger.Info("the finality provider cannot be started with status",
+				zap.String("btc-pk", fp.GetBIP340BTCPK().MarshalHex()),
+				zap.String("status", fp.Status.String()))
+			continue
+		}
+		if err := fpm.StartFinalityProvider(fp.GetBIP340BTCPK(), ""); err != nil {
 			return err
 		}
 	}
@@ -280,19 +286,16 @@ func (fpm *FinalityProviderManager) ListFinalityProviderInstances() []*FinalityP
 }
 
 func (fpm *FinalityProviderManager) AllFinalityProviders() ([]*proto.FinalityProviderInfo, error) {
-	storedFps, err := fpm.fps.ListFinalityProviders()
+	storedFps, err := fpm.fps.GetAllStoredFinalityProviders()
 	if err != nil {
 		return nil, err
 	}
 
 	fpsInfo := make([]*proto.FinalityProviderInfo, 0, len(storedFps))
 	for _, fp := range storedFps {
-		fpInfo, err := proto.NewFinalityProviderInfo(fp)
-		if err != nil {
-			return nil, err
-		}
+		fpInfo := fp.ToFinalityProviderInfo()
 
-		if fpm.IsFinalityProviderRunning(fp.MustGetBIP340BTCPK()) {
+		if fpm.IsFinalityProviderRunning(fp.GetBIP340BTCPK()) {
 			fpInfo.IsRunning = true
 		}
 
@@ -303,15 +306,12 @@ func (fpm *FinalityProviderManager) AllFinalityProviders() ([]*proto.FinalityPro
 }
 
 func (fpm *FinalityProviderManager) FinalityProviderInfo(fpPk *bbntypes.BIP340PubKey) (*proto.FinalityProviderInfo, error) {
-	storedFp, err := fpm.fps.GetStoreFinalityProvider(fpPk.MustMarshal())
+	storedFp, err := fpm.fps.GetFinalityProvider(fpPk.MustToBTCPK())
 	if err != nil {
 		return nil, err
 	}
 
-	fpInfo, err := proto.NewFinalityProviderInfo(storedFp)
-	if err != nil {
-		return nil, err
-	}
+	fpInfo := storedFp.ToFinalityProviderInfo()
 
 	if fpm.IsFinalityProviderRunning(fpPk) {
 		fpInfo.IsRunning = true

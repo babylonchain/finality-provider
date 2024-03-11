@@ -10,7 +10,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/jessevdk/go-flags"
 
-	"github.com/babylonchain/finality-provider/config"
 	"github.com/babylonchain/finality-provider/util"
 )
 
@@ -19,7 +18,6 @@ const (
 	defaultDataDirname    = "data"
 	defaultLogDirname     = "logs"
 	defaultLogFilename    = "eotsd.log"
-	defaultDBPath         = "bbolt-eots.db"
 	defaultConfigFileName = "eotsd.conf"
 	DefaultRPCPort        = 12582
 	defaultKeyringBackend = keyring.BackendTest
@@ -39,7 +37,7 @@ type Config struct {
 	LogLevel       string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
 	KeyringBackend string `long:"keyring-type" description:"Type of keyring to use"`
 
-	DatabaseConfig *config.DatabaseConfig
+	DatabaseConfig *DBConfig
 
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 }
@@ -109,16 +107,15 @@ func DataDir(homePath string) string {
 	return filepath.Join(homePath, defaultDataDirname)
 }
 
-func DBPath(homePath string) string {
-	return filepath.Join(DataDir(homePath), defaultDBPath)
+func DefaultConfig() *Config {
+	return DefaultConfigWithHomePath(DefaultEOTSDir)
 }
 
-func DefaultConfig() Config {
-	dbCfg := config.DefaultDatabaseConfig()
-	cfg := Config{
+func DefaultConfigWithHomePath(homePath string) *Config {
+	cfg := &Config{
 		LogLevel:       defaultLogLevel,
 		KeyringBackend: defaultKeyringBackend,
-		DatabaseConfig: &dbCfg,
+		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
 		RpcListener:    defaultRpcListener,
 	}
 	if err := cfg.Validate(); err != nil {

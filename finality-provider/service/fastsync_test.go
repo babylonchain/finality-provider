@@ -29,7 +29,7 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.MustGetBtcPk(), gomock.Any()).
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
@@ -44,7 +44,7 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockClientController.EXPECT().SubmitBatchFinalitySigs(fpIns.MustGetBtcPk(), catchUpBlocks, gomock.Any()).
+		mockClientController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks, gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.MustGetBtcPk(), gomock.Any()).
+		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 		// the last committed height is set in [finalizedHeight+1, currentHeight]
 		lastCommittedHeight := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
@@ -86,7 +86,7 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockClientController.EXPECT().SubmitBatchFinalitySigs(fpIns.MustGetBtcPk(), catchUpBlocks[:lastCommittedHeight-finalizedHeight], gomock.Any()).
+		mockClientController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks[:lastCommittedHeight-finalizedHeight], gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)

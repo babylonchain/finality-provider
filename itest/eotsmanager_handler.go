@@ -22,11 +22,13 @@ func NewEOTSServerHandler(t *testing.T, cfg *config.Config, eotsHomeDir string) 
 	shutdownInterceptor, err := signal.Intercept()
 	require.NoError(t, err)
 
+	dbBackend, err := cfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
 	logger := zap.NewNop()
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, cfg, logger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, cfg, dbBackend, logger)
 	require.NoError(t, err)
 
-	eotsServer := service.NewEOTSManagerServer(cfg, logger, eotsManager, shutdownInterceptor)
+	eotsServer := service.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
 
 	return &EOTSServerHandler{
 		t:           t,

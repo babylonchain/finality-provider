@@ -21,13 +21,13 @@ import (
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/types"
 )
 
 type FinalityProviderInstance struct {
-	bbnPk *secp256k1.PubKey
-	btcPk *bbntypes.BIP340PubKey
+	chainPk *secp256k1.PubKey
+	btcPk   *bbntypes.BIP340PubKey
 
 	state *fpState
 	cfg   *fpcfg.Config
@@ -56,16 +56,16 @@ type FinalityProviderInstance struct {
 func NewFinalityProviderInstance(
 	fpPk *bbntypes.BIP340PubKey,
 	cfg *fpcfg.Config,
-	s *fpstore.FinalityProviderStore,
+	s *store.FinalityProviderStore,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	passphrase string,
 	errChan chan<- *CriticalError,
 	logger *zap.Logger,
 ) (*FinalityProviderInstance, error) {
-	sfp, err := s.GetStoreFinalityProvider(fpPk.MustMarshal())
+	sfp, err := s.GetFinalityProvider(fpPk.MustToBTCPK())
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrive the finality-provider %s from DB: %w", sfp.GetBabylonPkHexString(), err)
+		return nil, fmt.Errorf("failed to retrive the finality-provider %s from DB: %w", fpPk.MarshalHex(), err)
 	}
 
 	// ensure the finality-provider has been registered
@@ -74,8 +74,8 @@ func NewFinalityProviderInstance(
 	}
 
 	return &FinalityProviderInstance{
-		btcPk: sfp.MustGetBIP340BTCPK(),
-		bbnPk: sfp.GetBabylonPK(),
+		btcPk:   bbntypes.NewBIP340PubKeyFromBTCPK(sfp.BtcPk),
+		chainPk: sfp.ChainPk,
 		state: &fpState{
 			fp: sfp,
 			s:  s,
@@ -690,7 +690,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	for _, r := range pubRandList {
 		pubRandByteList = append(pubRandByteList, r.ToFieldVal())
 	}
-	res, err := fp.cc.CommitPubRandList(fp.MustGetBtcPk(), startHeight, pubRandByteList, schnorrSig)
+	res, err := fp.cc.CommitPubRandList(fp.GetBtcPk(), startHeight, pubRandByteList, schnorrSig)
 	if err != nil {
 		// TODO Add retry. check issue: https://github.com/babylonchain/finality-provider/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
@@ -727,7 +727,7 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.MustGetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -755,7 +755,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitBatchFinalitySigs(fp.MustGetBtcPk(), blocks, sigs)
+	res, err := fp.cc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, sigs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
 	}
@@ -803,7 +803,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.MustGetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -886,7 +886,7 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*btcec.FieldVal, error) {
 	var response map[uint64]*btcec.FieldVal
 	if err := retry.Do(func() error {
-		pubRandMap, err := fp.cc.QueryLastCommittedPublicRand(fp.MustGetBtcPk(), count)
+		pubRandMap, err := fp.cc.QueryLastCommittedPublicRand(fp.GetBtcPk(), count)
 		if err != nil {
 			return err
 		}
@@ -960,7 +960,7 @@ func (fp *FinalityProviderInstance) GetVotingPowerWithRetry(height uint64) (uint
 	)
 
 	if err := retry.Do(func() error {
-		power, err = fp.cc.QueryFinalityProviderVotingPower(fp.MustGetBtcPk(), height)
+		power, err = fp.cc.QueryFinalityProviderVotingPower(fp.GetBtcPk(), height)
 		if err != nil {
 			return err
 		}
@@ -986,7 +986,7 @@ func (fp *FinalityProviderInstance) GetFinalityProviderSlashedWithRetry() (bool,
 	)
 
 	if err := retry.Do(func() error {
-		slashed, err = fp.cc.QueryFinalityProviderSlashed(fp.MustGetBtcPk())
+		slashed, err = fp.cc.QueryFinalityProviderSlashed(fp.GetBtcPk())
 		if err != nil {
 			return err
 		}

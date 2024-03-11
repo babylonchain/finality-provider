@@ -2,209 +2,244 @@ package store
 
 import (
 	"fmt"
-	"math"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	gproto "google.golang.org/protobuf/proto"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/lightningnetwork/lnd/kvdb"
+	pm "google.golang.org/protobuf/proto"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-	"github.com/babylonchain/finality-provider/store"
 )
 
-const (
-	fpPrefix = "finality-provider"
+var (
+	// mapping pk -> proto.FinalityProvider
+	finalityProviderBucketName = []byte("finalityProviders")
 )
-
-func NewStoreFinalityProvider(babylonPk *secp256k1.PubKey, btcPk *types.BIP340PubKey, keyName, chainID string, pop *bstypes.ProofOfPossession, des []byte, com *sdkmath.LegacyDec) *proto.StoreFinalityProvider {
-	return &proto.StoreFinalityProvider{
-		KeyName:   keyName,
-		BabylonPk: babylonPk.Bytes(),
-		BtcPk:     btcPk.MustMarshal(),
-		Pop: &proto.ProofOfPossession{
-			BabylonSig: pop.BabylonSig,
-			BtcSig:     pop.BtcSig,
-		},
-		ChainId:     chainID,
-		Status:      proto.FinalityProviderStatus_CREATED,
-		Description: des,
-		Commission:  com.String(),
-	}
-}
 
 type FinalityProviderStore struct {
-	s store.Store
+	db kvdb.Backend
 }
 
-func NewFinalityProviderStore(dbPath string, dbName string, dbBackend string) (*FinalityProviderStore, error) {
-	s, err := openStore(dbPath, dbName, dbBackend)
-	if err != nil {
+// NewFinalityProviderStore returns a new store backed by db
+func NewFinalityProviderStore(db kvdb.Backend) (*FinalityProviderStore, error) {
+	store := &FinalityProviderStore{db}
+	if err := store.initBuckets(); err != nil {
 		return nil, err
 	}
 
-	return &FinalityProviderStore{s: s}, nil
+	return store, nil
 }
 
-func getFinalityProviderKey(pk []byte) []byte {
-	return append([]byte(fpPrefix), pk...)
+func (s *FinalityProviderStore) initBuckets() error {
+	return kvdb.Batch(s.db, func(tx kvdb.RwTx) error {
+		_, err := tx.CreateTopLevelBucket(finalityProviderBucketName)
+		return err
+	})
 }
 
-func (vs *FinalityProviderStore) getFinalityProviderListKey() []byte {
-	return []byte(fpPrefix)
-}
-
-func (vs *FinalityProviderStore) SaveFinalityProvider(fp *proto.StoreFinalityProvider) error {
-	k := getFinalityProviderKey(fp.BtcPk)
-	v, err := gproto.Marshal(fp)
+func (s *FinalityProviderStore) CreateFinalityProvider(
+	chainPk *secp256k1.PubKey,
+	btcPk *btcec.PublicKey,
+	description *stakingtypes.Description,
+	commission *sdkmath.LegacyDec,
+	keyName, chainId string,
+	chainSig, btcSig []byte,
+) error {
+	desBytes, err := description.Marshal()
 	if err != nil {
-		return fmt.Errorf("failed to marshal the created finality-provider object: %w", err)
+		return fmt.Errorf("invalid description: %w", err)
+	}
+	fp := &proto.FinalityProvider{
+		ChainPk:     chainPk.Key,
+		BtcPk:       schnorr.SerializePubKey(btcPk),
+		Description: desBytes,
+		Commission:  commission.String(),
+		Pop: &proto.ProofOfPossession{
+			ChainSig: chainSig,
+			BtcSig:   btcSig,
+		},
+		KeyName: keyName,
+		ChainId: chainId,
+		Status:  proto.FinalityProviderStatus_CREATED,
 	}
 
-	if err := vs.s.Put(k, v); err != nil {
-		return fmt.Errorf("failed to save the created finality-provider object: %w", err)
-	}
-
-	return nil
+	return s.createFinalityProviderInternal(fp)
 }
 
-func (vs *FinalityProviderStore) UpdateFinalityProvider(fp *proto.StoreFinalityProvider) error {
-	k := getFinalityProviderKey(fp.BtcPk)
-	exists, err := vs.s.Exists(k)
+func (s *FinalityProviderStore) createFinalityProviderInternal(
+	fp *proto.FinalityProvider,
+) error {
+	return kvdb.Batch(s.db, func(tx kvdb.RwTx) error {
+		fpBucket := tx.ReadWriteBucket(finalityProviderBucketName)
+		if fpBucket == nil {
+			return ErrCorruptedFinalityProviderDb
+		}
+
+		// check btc pk first to avoid duplicates
+		if fpBucket.Get(fp.BtcPk) != nil {
+			return ErrDuplicateFinalityProvider
+		}
+
+		return saveFinalityProvider(fpBucket, fp)
+	})
+}
+
+func saveFinalityProvider(
+	fpBucket walletdb.ReadWriteBucket,
+	fp *proto.FinalityProvider,
+) error {
+	if fp == nil {
+		return fmt.Errorf("cannot save nil finality provider")
+	}
+
+	marshalled, err := pm.Marshal(fp)
 	if err != nil {
 		return err
 	}
-	if !exists {
-		return fmt.Errorf("the finality-provider does not exist")
-	}
 
-	v, err := gproto.Marshal(fp)
-	if err != nil {
-		return err
-	}
-
-	if err := vs.s.Put(k, v); err != nil {
-		return err
-	}
-
-	return nil
+	return fpBucket.Put(fp.BtcPk, marshalled)
 }
 
-func (vs *FinalityProviderStore) SetFinalityProviderStatus(fp *proto.StoreFinalityProvider, status proto.FinalityProviderStatus) error {
-	fp.Status = status
-	return vs.UpdateFinalityProvider(fp)
+func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto.FinalityProviderStatus) error {
+	setFpStatus := func(fp *proto.FinalityProvider) error {
+		fp.Status = status
+		return nil
+	}
+
+	return s.setFinalityProviderState(btcPk, setFpStatus)
 }
 
-func (vs *FinalityProviderStore) GetStoreFinalityProvider(pk []byte) (*proto.StoreFinalityProvider, error) {
-	k := getFinalityProviderKey(pk)
-	fpBytes, err := vs.s.Get(k)
-	if err != nil {
-		return nil, err
+// SetFpLastVotedHeight sets the last voted height to the stored last voted height and last processed height
+// only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
+func (s *FinalityProviderStore) SetFpLastVotedHeight(btcPk *btcec.PublicKey, lastVotedHeight uint64) error {
+	setFpLastVotedHeight := func(fp *proto.FinalityProvider) error {
+		if fp.LastVotedHeight < lastVotedHeight {
+			fp.LastVotedHeight = lastVotedHeight
+		}
+		if fp.LastProcessedHeight < lastVotedHeight {
+			fp.LastProcessedHeight = lastVotedHeight
+		}
+
+		return nil
 	}
 
-	fp := new(proto.StoreFinalityProvider)
-	err = gproto.Unmarshal(fpBytes, fp)
-	if err != nil {
-		panic(fmt.Errorf("unable to unmarshal finality-provider object: %w", err))
-	}
-
-	return fp, nil
+	return s.setFinalityProviderState(btcPk, setFpLastVotedHeight)
 }
 
-func (vs *FinalityProviderStore) ListFinalityProviders() ([]*proto.StoreFinalityProvider, error) {
-	k := vs.getFinalityProviderListKey()
-	fpsBytes, err := vs.s.List(k)
-	if err != nil {
-		return nil, err
+// SetFpLastProcessedHeight sets the last processed height to the stored last processed height
+// only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
+func (s *FinalityProviderStore) SetFpLastProcessedHeight(btcPk *btcec.PublicKey, lastProcessedHeight uint64) error {
+	setFpLastProcessedHeight := func(fp *proto.FinalityProvider) error {
+		if fp.LastProcessedHeight < lastProcessedHeight {
+			fp.LastProcessedHeight = lastProcessedHeight
+		}
+
+		return nil
 	}
 
-	fpsList := make([]*proto.StoreFinalityProvider, len(fpsBytes))
-	for i := 0; i < len(fpsBytes); i++ {
-		fp := new(proto.StoreFinalityProvider)
-		err := gproto.Unmarshal(fpsBytes[i].Value, fp)
+	return s.setFinalityProviderState(btcPk, setFpLastProcessedHeight)
+}
+
+func (s *FinalityProviderStore) setFinalityProviderState(
+	btcPk *btcec.PublicKey,
+	stateTransitionFn func(provider *proto.FinalityProvider) error,
+) error {
+	pkBytes := schnorr.SerializePubKey(btcPk)
+	return kvdb.Batch(s.db, func(tx kvdb.RwTx) error {
+		fpBucket := tx.ReadWriteBucket(finalityProviderBucketName)
+		if fpBucket == nil {
+			return ErrCorruptedFinalityProviderDb
+		}
+
+		fpFromDb := fpBucket.Get(pkBytes)
+		if fpFromDb == nil {
+			return ErrFinalityProviderNotFound
+		}
+
+		var storedFp proto.FinalityProvider
+		if err := pm.Unmarshal(fpFromDb, &storedFp); err != nil {
+			return ErrCorruptedFinalityProviderDb
+		}
+
+		if err := stateTransitionFn(&storedFp); err != nil {
+			return err
+		}
+
+		return saveFinalityProvider(fpBucket, &storedFp)
+	})
+}
+
+func (s *FinalityProviderStore) GetFinalityProvider(btcPk *btcec.PublicKey) (*StoredFinalityProvider, error) {
+	var storedFp *StoredFinalityProvider
+	pkBytes := schnorr.SerializePubKey(btcPk)
+
+	err := s.db.View(func(tx kvdb.RTx) error {
+		fpBucket := tx.ReadBucket(finalityProviderBucketName)
+		if fpBucket == nil {
+			return ErrCorruptedFinalityProviderDb
+		}
+
+		fpBytes := fpBucket.Get(pkBytes)
+		if fpBytes == nil {
+			return ErrFinalityProviderNotFound
+		}
+
+		var fpProto proto.FinalityProvider
+		if err := pm.Unmarshal(fpBytes, &fpProto); err != nil {
+			return ErrCorruptedFinalityProviderDb
+		}
+
+		fpFromDb, err := protoFpToStoredFinalityProvider(&fpProto)
 		if err != nil {
-			panic(fmt.Errorf("failed to unmarshal finality-provider from the database: %w", err))
+			return err
 		}
-		fpsList[i] = fp
-	}
 
-	return fpsList, nil
-}
+		storedFp = fpFromDb
+		return nil
+	}, func() {})
 
-// ListRegisteredFinalityProviders returns a list of finality providers whose status is more than CREATED
-// but less than SLASHED
-func (vs *FinalityProviderStore) ListRegisteredFinalityProviders() ([]*proto.StoreFinalityProvider, error) {
-	k := vs.getFinalityProviderListKey()
-	fpsBytes, err := vs.s.List(k)
 	if err != nil {
 		return nil, err
 	}
 
-	fpsList := make([]*proto.StoreFinalityProvider, 0)
-	for i := 0; i < len(fpsBytes); i++ {
-		fp := new(proto.StoreFinalityProvider)
-		err := gproto.Unmarshal(fpsBytes[i].Value, fp)
-		if err != nil {
-			panic(fmt.Errorf("failed to unmarshal finality-provider from the database: %w", err))
-		}
-		if fp.Status > proto.FinalityProviderStatus_CREATED && fp.Status < proto.FinalityProviderStatus_SLASHED {
-			fpsList = append(fpsList, fp)
-		}
-	}
-
-	return fpsList, nil
+	return storedFp, nil
 }
 
-func (vs *FinalityProviderStore) GetEarliestActiveFinalityProviderVotedHeight() (uint64, error) {
-	registeredFps, err := vs.ListRegisteredFinalityProviders()
+// GetAllStoredFinalityProviders fetches all the stored finality providers from db
+// pagination is probably not needed as the expected number of finality providers
+// in the store is small
+func (s *FinalityProviderStore) GetAllStoredFinalityProviders() ([]*StoredFinalityProvider, error) {
+	var storedFps []*StoredFinalityProvider
+
+	err := s.db.View(func(tx kvdb.RTx) error {
+		fpBucket := tx.ReadBucket(finalityProviderBucketName)
+		if fpBucket == nil {
+			return ErrCorruptedFinalityProviderDb
+		}
+
+		return fpBucket.ForEach(func(k, v []byte) error {
+			var fpProto proto.FinalityProvider
+			if err := pm.Unmarshal(v, &fpProto); err != nil {
+				return ErrCorruptedFinalityProviderDb
+			}
+
+			fpFromDb, err := protoFpToStoredFinalityProvider(&fpProto)
+			if err != nil {
+				return err
+			}
+			storedFps = append(storedFps, fpFromDb)
+
+			return nil
+		})
+	}, func() {})
+
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	if len(registeredFps) == 0 {
-		return 0, nil
-	}
-
-	earliestHeight := uint64(math.MaxUint64)
-	activeFpsCnt := 0
-	for _, fp := range registeredFps {
-		// Note there might be a delay between the finality-provider being active on Babylon
-		// and this program capturing that. However, given that we only care
-		// about the `LastVotedHeight` of the finality-provider, other parts of the program
-		// ensure that when this value is set, the finality-provider is stored as ACTIVE.
-		// TODO: Another option would be to query here for the
-		// active status of each finality-provider although this might prove inefficient.
-		if fp.Status != proto.FinalityProviderStatus_ACTIVE {
-			continue
-		}
-		activeFpsCnt += 1
-		if earliestHeight > fp.LastVotedHeight {
-			earliestHeight = fp.LastVotedHeight
-		}
-	}
-	// If there are no active finality providers, return 0
-	if activeFpsCnt == 0 {
-		return 0, nil
-	}
-	return earliestHeight, nil
-}
-
-func (vs *FinalityProviderStore) Close() error {
-	if err := vs.s.Close(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// openStore returns a Store instance with the given db type, path and name
-// currently, we only support bbolt
-func openStore(dbPath string, dbName string, dbBackend string) (store.Store, error) {
-	switch dbBackend {
-	case "bbolt":
-		return store.NewBboltStore(dbPath, dbName)
-	default:
-		return nil, fmt.Errorf("unsupported database type")
-	}
+	return storedFps, nil
 }
