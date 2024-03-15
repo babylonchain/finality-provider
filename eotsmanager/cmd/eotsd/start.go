@@ -59,7 +59,12 @@ func startFn(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load the logger")
 	}
 
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg, logger)
+	dbBackend, err := cfg.DatabaseConfig.GetDbBackend()
+	if err != nil {
+		return fmt.Errorf("failed to create db backend: %w", err)
+	}
+
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
@@ -70,7 +75,7 @@ func startFn(ctx *cli.Context) error {
 		return err
 	}
 
-	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, shutdownInterceptor)
+	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
 
 	return eotsServer.RunUntilShutdown()
 }

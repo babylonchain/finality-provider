@@ -1,4 +1,4 @@
-package fpcfg
+package config
 
 import "time"
 
