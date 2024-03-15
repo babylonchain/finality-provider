@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/babylonchain/finality-provider/metrics"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -79,6 +80,8 @@ type Config struct {
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
+
+	Metrics *metrics.Config `group:"metrics" namespace:"metrics"`
 }
 
 func DefaultConfigWithHome(homePath string) Config {
@@ -107,6 +110,7 @@ func DefaultConfigWithHome(homePath string) Config {
 		EOTSManagerAddress:       defaultEOTSManagerAddress,
 		RpcListener:              DefaultRpcListener,
 		MaxNumFinalityProviders:  defaultMaxNumFinalityProviders,
+		Metrics:                  metrics.DefaultConfig(),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -197,6 +201,14 @@ func (cfg *Config) Validate() error {
 	_, err := net.ResolveTCPAddr("tcp", cfg.RpcListener)
 	if err != nil {
 		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
+	}
+
+	if cfg.Metrics == nil {
+		return fmt.Errorf("empty metrics config")
+	}
+
+	if err := cfg.Metrics.Validate(); err != nil {
+		return fmt.Errorf("invalid metrics config")
 	}
 
 	// All good, return the sanitized result.

@@ -23,6 +23,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 	fpkr "github.com/babylonchain/finality-provider/keyring"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -48,6 +49,8 @@ type FinalityProviderApp struct {
 
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
+
+	metrics *metrics.Metrics
 
 	createFinalityProviderRequestChan   chan *createFinalityProviderRequest
 	registerFinalityProviderRequestChan chan *registerFinalityProviderRequest
@@ -104,6 +107,8 @@ func NewFinalityProviderApp(
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
 
+	fpMetrics := metrics.RegisterMetrics()
+
 	return &FinalityProviderApp{
 		cc:                                  cc,
 		fps:                                 fpStore,
@@ -113,6 +118,7 @@ func NewFinalityProviderApp(
 		input:                               input,
 		fpManager:                           fpm,
 		eotsManager:                         em,
+		metrics:                             fpMetrics,
 		quit:                                make(chan struct{}),
 		sentQuit:                            make(chan struct{}),
 		eventQuit:                           make(chan struct{}),
