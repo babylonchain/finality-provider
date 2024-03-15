@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"github.com/babylonchain/finality-provider/metrics"
 	"net"
 	"path/filepath"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 	"github.com/jessevdk/go-flags"
 
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/util"
 )
 
