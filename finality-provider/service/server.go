@@ -60,7 +60,7 @@ func (s *Server) RunUntilShutdown() error {
 	}()
 
 	listenAddr := s.cfg.RpcListener
-	// we create listeners from the RPCListeners defined
+	// we create listeners from the RPCListeners definedaa
 	// in the config.
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
