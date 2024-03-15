@@ -2,17 +2,19 @@ package metrics
 
 import (
 	"context"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog/log"
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 )
 
 // Server represents the metrics server.
 type Server struct {
 	httpServer *http.Server
+	logger     *zap.Logger
 }
 
-func Start(addr string) *Server {
+func Start(addr string, logger *zap.Logger) *Server {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 
@@ -22,22 +24,29 @@ func Start(addr string) *Server {
 		Handler: mux,
 	}
 
+	// Store the logger in the server struct
+	s := &Server{
+		httpServer: server,
+		logger:     logger,
+	}
+
 	// Start the metrics server in a goroutine.
 	go func() {
-		log.Info().Str("addr", addr).Msg("Metrics server is starting")
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("Metrics server failed to start")
+		s.logger.Info("Metrics server is starting", zap.String("addr", addr))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Fatal("Metrics server failed to start", zap.Error(err))
 		}
 	}()
 
-	return &Server{httpServer: server}
+	return s
 }
 
+// Stop gracefully shuts down the metrics server.
 func (s *Server) Stop(ctx context.Context) {
-	log.Info().Msg("Stopping metrics server")
+	s.logger.Info("Stopping metrics server")
 	if err := s.httpServer.Shutdown(ctx); err != nil {
-		log.Error().Err(err).Msg("Metrics server shutdown failed")
+		s.logger.Error("Metrics server shutdown failed", zap.Error(err))
 	} else {
-		log.Info().Msg("Metrics server stopped gracefully")
+		s.logger.Info("Metrics server stopped gracefully")
 	}
 }
