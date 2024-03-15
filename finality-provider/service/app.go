@@ -223,6 +223,35 @@ func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, er
 	return record.PrivKey, nil
 }
 
+// Sync the finality-provider status
+// It will update the fp status CREATED to REGISTERED in the fpd database,
+// if the fp appears to be registered in the Babylon chain.
+func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
+	fps, err := app.fps.GetAllStoredFinalityProviders()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(fps)
+
+	for _, fp := range fps {
+		// QueryFinalityProviderSlashed will not occur any error,
+		// if fp is registered in the Babylon chain.
+		_, err = app.cc.QueryFinalityProviderSlashed(fp.BtcPk)
+		if err != nil {
+			// if error occured then the finality-provider is not registered in the Babylon chain
+			continue
+		}
+
+		err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Start starts only the finality-provider daemon without any finality-provider instances
 func (app *FinalityProviderApp) Start() error {
 	var startErr error
