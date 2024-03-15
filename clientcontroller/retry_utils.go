@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"errors"
+	"strings"
 
 	sdkErr "cosmossdk.io/errors"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -22,7 +23,7 @@ var unrecoverableErrors = []*sdkErr.Error{
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list
 func IsUnrecoverable(err error) bool {
 	for _, e := range unrecoverableErrors {
-		if errors.Is(err, e) {
+		if strings.Contains(err.Error(), e.Error()) {
 			return true
 		}
 	}
