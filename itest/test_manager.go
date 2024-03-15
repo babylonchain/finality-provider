@@ -239,9 +239,9 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 	t.Logf("public randomness is successfully committed")
 }
 
-func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
 	var (
-		dels []*bstypes.BTCDelegation
+		dels []*bstypes.BTCDelegationResponse
 		err  error
 	)
 	require.Eventually(t, func() bool {
@@ -259,9 +259,9 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	return dels
 }
 
-func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
 	var (
-		dels []*bstypes.BTCDelegation
+		dels []*bstypes.BTCDelegationResponse
 		err  error
 	)
 	require.Eventually(t, func() bool {
@@ -542,15 +542,17 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTip, err := tm.BBNClient.QueryBtcLightClientTip()
+	btcTipHeaderResp, err := tm.BBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(btcTipHeaderResp.HeaderHex)
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
-	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, btcTipHeaderResp.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
 		Header: &blockWithStakingTx.HeaderBytes,
 		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
-		Height: currentBtcTip.Height + 1,
+		Height: btcTipHeaderResp.Height + 1,
 		Work:   &accumulatedWork,
 	}
 	headers := make([]bbntypes.BTCHeaderBytes, 0)

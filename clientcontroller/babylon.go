@@ -457,8 +457,8 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 	return res, nil
 }
 
-func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProvider, error) {
-	var fps []*btcstakingtypes.FinalityProvider
+func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProviderResponse, error) {
+	var fps []*btcstakingtypes.FinalityProviderResponse
 	pagination := &sdkquery.PageRequest{
 		Limit: 100,
 	}
@@ -479,7 +479,7 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 	return fps, nil
 }
 
-func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
+func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfoResponse, error) {
 	res, err := bc.bbnClient.QueryClient.BTCHeaderChainTip()
 	if err != nil {
 		return nil, fmt.Errorf("failed to query BTC tip: %v", err)
@@ -497,18 +497,18 @@ func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP34
 	return res.BtcPks, nil
 }
 
-func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegationResponse, error) {
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
 }
 
-func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*btcstakingtypes.BTCDelegationResponse, error) {
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
 }
 
 // queryDelegationsWithStatus queries BTC delegations
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
-func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegation, error) {
+func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.BTCDelegationStatus, limit uint64) ([]*btcstakingtypes.BTCDelegationResponse, error) {
 	pagination := &sdkquery.PageRequest{
 		Limit: limit,
 	}
