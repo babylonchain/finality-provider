@@ -23,6 +23,8 @@ var unrecoverableErrors = []*sdkErr.Error{
 // IsUnrecoverable returns true when the error is in the unrecoverableErrors list
 func IsUnrecoverable(err error) bool {
 	for _, e := range unrecoverableErrors {
+		// cannot use error.Is because the unwrapped error
+		// is not the expected error type
 		if strings.Contains(err.Error(), e.Error()) {
 			return true
 		}
