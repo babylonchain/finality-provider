@@ -40,7 +40,7 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := parseRespBTCDelToBTCDel(delsResp[0])
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs
@@ -72,7 +72,7 @@ func TestDoubleSigning(t *testing.T) {
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := parseRespBTCDelToBTCDel(delsResp[0])
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs
@@ -140,7 +140,7 @@ func TestMultipleFinalityProviders(t *testing.T) {
 
 	// send covenant sigs to each of the delegations
 	for _, delResp := range delsResp {
-		d, err := parseRespBTCDelToBTCDel(delResp)
+		d, err := ParseRespBTCDelToBTCDel(delResp)
 		require.NoError(t, err)
 		// send covenant sigs
 		tm.InsertCovenantSigForDelegation(t, d)
@@ -168,7 +168,7 @@ func TestFastSync(t *testing.T) {
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := parseRespBTCDelToBTCDel(delsResp[0])
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs
