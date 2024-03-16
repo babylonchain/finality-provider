@@ -4,8 +4,8 @@ import "github.com/prometheus/client_golang/prometheus"
 
 // Metrics holds our metrics
 type Metrics struct {
-	runningFpCounter    prometheus.Counter
-	stoppedFpCounter    prometheus.Counter
+	runningFpCounter    prometheus.Gauge
+	stoppedFpCounter    prometheus.Gauge
 	createdFpCounter    prometheus.Counter
 	registeredFpCounter prometheus.Counter
 	activeFpCounter     prometheus.Counter
@@ -16,14 +16,14 @@ type Metrics struct {
 // RegisterMetrics registers the metrics for finality providers.
 func RegisterMetrics() *Metrics {
 	m := &Metrics{
-		runningFpCounter: prometheus.NewCounter(
-			prometheus.CounterOpts{
+		runningFpCounter: prometheus.NewGauge(
+			prometheus.GaugeOpts{
 				Name: "running_finality_providers_counter",
 				Help: "Total number of finality providers that are currently running",
 			},
 		),
-		stoppedFpCounter: prometheus.NewCounter(
-			prometheus.CounterOpts{
+		stoppedFpCounter: prometheus.NewGauge(
+			prometheus.GaugeOpts{
 				Name: "stopped_finality_providers_counter",
 				Help: "Total number of finality providers that have been stopped",
 			},
@@ -72,16 +72,16 @@ func RegisterMetrics() *Metrics {
 	return m
 }
 
-func (m *Metrics) IncrementRunningFPCounter() {
-	m.runningFpCounter.Inc()
+func (m *Metrics) SetRunningFpCounter(value float64) {
+	m.runningFpCounter.Set(value)
 }
 
-func (m *Metrics) IncrementStoppedFPCounter() {
-	m.stoppedFpCounter.Inc()
+func (m *Metrics) SetStoppedFpCounter(value float64) {
+	m.stoppedFpCounter.Set(value)
 }
 
-func (m *Metrics) IncrementCreatedFPCounter() {
-	m.createdFpCounter.Inc()
+func (m *Metrics) SetCreatedFPCounter(value float64) {
+	m.createdFpCounter.Add(value)
 }
 
 func (m *Metrics) IncrementRegisteredFPCounter() {

@@ -17,6 +17,7 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -46,6 +47,8 @@ type FinalityProviderManager struct {
 	cc     clientcontroller.ClientController
 	em     eotsmanager.EOTSManager
 	logger *zap.Logger
+
+	metrics *metrics.Metrics
 
 	criticalErrChan chan *CriticalError
 
@@ -130,7 +133,19 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 				continue
 			}
 			fpis := fpm.ListFinalityProviderInstances()
+			var (
+				runningFpCount int
+				stoppedFpCount int
+				createdFpCount int
+			)
 			for _, fpi := range fpis {
+				if fpi.IsRunning() {
+					runningFpCount++
+				}
+				if fpi.GetStatus() == proto.FinalityProviderStatus_CREATED {
+					createdFpCount++
+				}
+
 				oldStatus := fpi.GetStatus()
 				power, err := fpi.GetVotingPowerWithRetry(latestBlock.Height)
 				if err != nil {
@@ -167,6 +182,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 				// power == 0 and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
 				if slashed {
 					fpm.setFinalityProviderSlashed(fpi)
+					stoppedFpCount++
 					fpm.logger.Debug(
 						"the finality-provider is slashed",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
@@ -184,6 +200,10 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 				}
 			}
+			fpm.metrics.SetRunningFpCounter(float64(runningFpCount))
+			fpm.metrics.SetStoppedFpCounter(float64(stoppedFpCount))
+			fpm.metrics.SetCreatedFPCounter(float64(createdFpCount))
+
 		case <-fpm.quit:
 			return
 		}

@@ -402,7 +402,7 @@ func (app *FinalityProviderApp) eventLoop() {
 				continue
 			}
 
-			app.metrics.IncrementCreatedFPCounter()
+			app.metrics.SetCreatedFPCounter()
 			req.successResponse <- &createFinalityProviderResponse{FpInfo: res.FpInfo}
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
