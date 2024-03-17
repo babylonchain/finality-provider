@@ -275,6 +275,7 @@ func (fpm *FinalityProviderManager) Stop() error {
 			stopErr = err
 			break
 		}
+		fpm.metrics.DecrementRunningFpGauge()
 	}
 
 	close(fpm.quit)
@@ -368,7 +369,6 @@ func (fpm *FinalityProviderManager) removeFinalityProviderInstance(fpPk *bbntype
 
 	delete(fpm.fpis, keyHex)
 	fpm.metrics.DecrementRunningFpGauge()
-	fpm.metrics.IncrementStoppedFpGauge()
 	return nil
 }
 

@@ -9,7 +9,6 @@ import (
 // Metrics holds our metrics
 type Metrics struct {
 	runningFpGauge prometheus.Gauge
-	stoppedFpGauge prometheus.Gauge
 	fpStatus       *prometheus.GaugeVec
 }
 
@@ -27,10 +26,6 @@ func RegisterMetrics() *Metrics {
 				Name: "running_finality_providers",
 				Help: "Current number of finality providers that are running",
 			}),
-			stoppedFpGauge: prometheus.NewGauge(prometheus.GaugeOpts{
-				Name: "stopped_finality_providers",
-				Help: "Current number of finality providers that have been stopped",
-			}),
 			fpStatus: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Name: "finality_provider_status",
 				Help: "Current status of a finality provider",
@@ -39,7 +34,6 @@ func RegisterMetrics() *Metrics {
 
 		// Register the metrics with Prometheus
 		prometheus.MustRegister(metricsInstance.runningFpGauge)
-		prometheus.MustRegister(metricsInstance.stoppedFpGauge)
 		prometheus.MustRegister(metricsInstance.fpStatus)
 	})
 	return metricsInstance
@@ -51,10 +45,6 @@ func (m *Metrics) DecrementRunningFpGauge() {
 
 func (m *Metrics) IncrementRunningFpGauge() {
 	m.runningFpGauge.Inc()
-}
-
-func (m *Metrics) IncrementStoppedFpGauge() {
-	m.stoppedFpGauge.Inc()
 }
 
 func (m *Metrics) RecordFpStatus(fpBtcPkHex string, status proto.FinalityProviderStatus) {
