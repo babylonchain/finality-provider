@@ -29,7 +29,7 @@ func RegisterMetrics() *Metrics {
 				Name: "finality_provider_status",
 				Help: "Current status of a finality provider",
 			},
-			[]string{"fp_name"},
+			[]string{"fp_btc_pk_hex"},
 		),
 	}
 
@@ -52,6 +52,6 @@ func (m *Metrics) IncrementStoppedFpGauge() {
 	m.stoppedFpGauge.Inc()
 }
 
-func (m *Metrics) RecordFpStatus(fpName string, status float64) {
-	m.fpStatus.WithLabelValues(fpName).Set(status)
+func (m *Metrics) RecordFpStatus(fpBtcPkHex string, status float64) {
+	m.fpStatus.WithLabelValues(fpBtcPkHex).Set(status)
 }
