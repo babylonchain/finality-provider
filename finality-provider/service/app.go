@@ -346,6 +346,7 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
 		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
 	}
+	app.fpManager.metrics.RecordFpStatus(fpPk.MarshalHex(), proto.FinalityProviderStatus_CREATED)
 
 	app.logger.Info("successfully created a finality-provider",
 		zap.String("btc_pk", fpPk.MarshalHex()),
@@ -407,6 +408,7 @@ func (app *FinalityProviderApp) eventLoop() {
 					zap.Error(err),
 				)
 			}
+			app.fpManager.metrics.RecordFpStatus(ev.btcPubKey.MarshalHex(), proto.FinalityProviderStatus_REGISTERED)
 
 			// return to the caller
 			ev.successResponse <- &RegisterFinalityProviderResponse{
