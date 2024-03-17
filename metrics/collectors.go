@@ -4,98 +4,54 @@ import "github.com/prometheus/client_golang/prometheus"
 
 // Metrics holds our metrics
 type Metrics struct {
-	runningFpCounter    prometheus.Gauge
-	stoppedFpCounter    prometheus.Gauge
-	createdFpCounter    prometheus.Gauge
-	registeredFpCounter prometheus.Gauge
-	activeFpCounter     prometheus.Gauge
-	inactiveFpCounter   prometheus.Gauge
-	slashedFpCounter    prometheus.Gauge
+	runningFpGauge prometheus.Gauge
+	stoppedFpGauge prometheus.Gauge
+	fpStatus       *prometheus.GaugeVec
 }
 
 // RegisterMetrics registers the metrics for finality providers.
 func RegisterMetrics() *Metrics {
 	m := &Metrics{
-		runningFpCounter: prometheus.NewGauge(
+		runningFpGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Name: "running_finality_providers_counter",
-				Help: "Total number of finality providers that are currently running",
+				Name: "running_finality_providers",
+				Help: "Current number of finality providers that are running",
 			},
 		),
-		stoppedFpCounter: prometheus.NewGauge(
+		stoppedFpGauge: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Name: "stopped_finality_providers_counter",
-				Help: "Total number of finality providers that have been stopped",
+				Name: "stopped_finality_providers",
+				Help: "Current number of finality providers that have been stopped",
 			},
 		),
-		createdFpCounter: prometheus.NewGauge(
+		fpStatus: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: "created_finality_providers_counter",
-				Help: "Total number of finality providers that have been created",
+				Name: "finality_provider_status",
+				Help: "Current status of a finality provider",
 			},
-		),
-		registeredFpCounter: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "registered_finality_providers_counter",
-				Help: "Total number of finality providers that have been registered",
-			},
-		),
-		activeFpCounter: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "active_finality_providers_counter",
-				Help: "Total number of active finality providers",
-			},
-		),
-		inactiveFpCounter: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "inactive_finality_providers_counter",
-				Help: "Total number of inactive finality providers",
-			},
-		),
-		slashedFpCounter: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "slashed_finality_providers_counter",
-				Help: "Total number of finality providers that have been slashed",
-			},
+			[]string{"fp_name"},
 		),
 	}
 
 	// Register the metrics.
-	prometheus.MustRegister(m.runningFpCounter)
-	prometheus.MustRegister(m.stoppedFpCounter)
-	prometheus.MustRegister(m.createdFpCounter)
-	prometheus.MustRegister(m.registeredFpCounter)
-	prometheus.MustRegister(m.activeFpCounter)
-	prometheus.MustRegister(m.inactiveFpCounter)
-	prometheus.MustRegister(m.slashedFpCounter)
-
+	prometheus.MustRegister(m.runningFpGauge)
+	prometheus.MustRegister(m.stoppedFpGauge)
+	prometheus.MustRegister(m.fpStatus)
 	return m
 }
 
-func (m *Metrics) DecrementRunningFpCounter() {
-	m.runningFpCounter.Dec()
+func (m *Metrics) DecrementRunningFpGauge() {
+	m.runningFpGauge.Dec()
 }
 
-func (m *Metrics) IncrementRunningFpCounter() {
-	m.runningFpCounter.Inc()
+func (m *Metrics) IncrementRunningFpGauge() {
+	m.runningFpGauge.Inc()
 }
 
-func (m *Metrics) IncrementStoppedFpCounter() {
-	m.stoppedFpCounter.Inc()
+func (m *Metrics) IncrementStoppedFpGauge() {
+	m.stoppedFpGauge.Inc()
 }
 
-func (m *Metrics) SetCreatedFpCounter(value float64) {
-	m.createdFpCounter.Set(value)
-}
-
-func (m *Metrics) SetRegisteredFpCounter(value float64) {
-	m.registeredFpCounter.Set(value)
-}
-
-func (m *Metrics) SetActiveFpCounter(value float64) {
-	m.activeFpCounter.Set(value)
-}
-
-func (m *Metrics) SetInactiveFpCounter(value float64) {
-	m.inactiveFpCounter.Set(value)
+func (m *Metrics) RecordFpStatus(fpName string, status float64) {
+	m.fpStatus.WithLabelValues(fpName).Set(status)
 }
