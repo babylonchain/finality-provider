@@ -72,12 +72,16 @@ func RegisterMetrics() *Metrics {
 	return m
 }
 
-func (m *Metrics) SetRunningFpCounter(value float64) {
-	m.runningFpCounter.Set(value)
+func (m *Metrics) DecrementRunningFpCounter() {
+	m.runningFpCounter.Dec()
 }
 
-func (m *Metrics) SetStoppedFpCounter(value float64) {
-	m.stoppedFpCounter.Set(value)
+func (m *Metrics) IncrementRunningFpCounter() {
+	m.runningFpCounter.Inc()
+}
+
+func (m *Metrics) IncrementStoppedFpCounter() {
+	m.stoppedFpCounter.Inc()
 }
 
 func (m *Metrics) SetCreatedFpCounter(value float64) {

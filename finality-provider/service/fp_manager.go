@@ -218,8 +218,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 				}
 			}
-			fpm.metrics.SetRunningFpCounter(float64(runningFpCount))
-			fpm.metrics.SetStoppedFpCounter(float64(stoppedFpCount))
 			fpm.metrics.SetCreatedFpCounter(float64(createdFpCount))
 			fpm.metrics.SetRegisteredFpCounter(float64(registeredFpCount))
 			fpm.metrics.SetActiveFpCounter(float64(activeFpCount))
@@ -397,6 +395,8 @@ func (fpm *FinalityProviderManager) removeFinalityProviderInstance(fpPk *bbntype
 	}
 
 	delete(fpm.fpis, keyHex)
+	fpm.metrics.DecrementRunningFpCounter()
+	fpm.metrics.IncrementStoppedFpCounter()
 	return nil
 }
 
@@ -430,6 +430,7 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 	}
 
 	fpm.fpis[pkHex] = fpIns
+	fpm.metrics.IncrementRunningFpCounter()
 
 	return nil
 }
