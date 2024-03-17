@@ -70,6 +70,7 @@ func NewFinalityProviderManager(
 		config:          config,
 		cc:              cc,
 		em:              em,
+		metrics:         metrics.RegisterMetrics(),
 		logger:          logger,
 		quit:            make(chan struct{}),
 	}, nil
