@@ -1,6 +1,9 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/babylonchain/finality-provider/finality-provider/proto"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics holds our metrics
 type Metrics struct {
@@ -52,6 +55,6 @@ func (m *Metrics) IncrementStoppedFpGauge() {
 	m.stoppedFpGauge.Inc()
 }
 
-func (m *Metrics) RecordFpStatus(fpBtcPkHex string, status float64) {
-	m.fpStatus.WithLabelValues(fpBtcPkHex).Set(status)
+func (m *Metrics) RecordFpStatus(fpBtcPkHex string, status proto.FinalityProviderStatus) {
+	m.fpStatus.WithLabelValues(fpBtcPkHex).Set(float64(status))
 }
