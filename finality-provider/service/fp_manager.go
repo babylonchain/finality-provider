@@ -134,16 +134,35 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			}
 			fpis := fpm.ListFinalityProviderInstances()
 			var (
-				runningFpCount int
-				stoppedFpCount int
-				createdFpCount int
+				runningFpCount    int
+				stoppedFpCount    int
+				createdFpCount    int
+				registeredFpCount int
+				activeFpCount     int
+				inactiveFpCount   int
+				slashFpCount      int
 			)
 			for _, fpi := range fpis {
 				if fpi.IsRunning() {
 					runningFpCount++
+				} else {
+					stoppedFpCount++
 				}
+
 				if fpi.GetStatus() == proto.FinalityProviderStatus_CREATED {
 					createdFpCount++
+				}
+				if fpi.GetStatus() == proto.FinalityProviderStatus_REGISTERED {
+					registeredFpCount++
+				}
+				if fpi.GetStatus() == proto.FinalityProviderStatus_ACTIVE {
+					activeFpCount++
+				}
+				if fpi.GetStatus() == proto.FinalityProviderStatus_INACTIVE {
+					inactiveFpCount++
+				}
+				if fpi.GetStatus() == proto.FinalityProviderStatus_SLASHED {
+					slashFpCount++
 				}
 
 				oldStatus := fpi.GetStatus()
@@ -182,7 +201,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 				// power == 0 and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
 				if slashed {
 					fpm.setFinalityProviderSlashed(fpi)
-					stoppedFpCount++
 					fpm.logger.Debug(
 						"the finality-provider is slashed",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
@@ -202,7 +220,9 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			}
 			fpm.metrics.SetRunningFpCounter(float64(runningFpCount))
 			fpm.metrics.SetStoppedFpCounter(float64(stoppedFpCount))
-			fpm.metrics.SetCreatedFPCounter(float64(createdFpCount))
+			fpm.metrics.SetCreatedFpCounter(float64(createdFpCount))
+			fpm.metrics.SetRegisteredFpCounter(float64(registeredFpCount))
+			fpm.metrics.SetActiveFpCounter(float64(activeFpCount))
 
 		case <-fpm.quit:
 			return

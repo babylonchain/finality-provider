@@ -402,7 +402,6 @@ func (app *FinalityProviderApp) eventLoop() {
 				continue
 			}
 
-			app.metrics.SetCreatedFPCounter()
 			req.successResponse <- &createFinalityProviderResponse{FpInfo: res.FpInfo}
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
@@ -415,7 +414,6 @@ func (app *FinalityProviderApp) eventLoop() {
 				)
 			}
 
-			app.metrics.IncrementRegisteredFPCounter()
 			// return to the caller
 			ev.successResponse <- &RegisterFinalityProviderResponse{
 				bbnPubKey: ev.bbnPubKey,
