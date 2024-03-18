@@ -1,8 +1,8 @@
 package service
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -94,7 +94,9 @@ func (fpm *FinalityProviderManager) monitorCriticalErr() {
 					zap.String("pk", criticalErr.fpBtcPk.MarshalHex()))
 				continue
 			}
-			if errors.Is(criticalErr.err, btcstakingtypes.ErrFpAlreadySlashed) {
+			// cannot use error.Is because the unwrapped error
+			// is not the expected error type
+			if strings.Contains(criticalErr.err.Error(), btcstakingtypes.ErrFpAlreadySlashed.Error()) {
 				fpm.setFinalityProviderSlashed(fpi)
 				fpm.logger.Debug("the finality-provider has been slashed",
 					zap.String("pk", criticalErr.fpBtcPk.MarshalHex()))
