@@ -614,6 +614,8 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 		} else {
 			// the public randomness has been successfully submitted
 			fp.metrics.RecordFpRandomnessTime(fp.GetBtcPkHex())
+			fp.metrics.RecordFpLastCommittedRandomnessHeight(fp.GetBtcPkHex(), targetBlock.Height)
+			fp.metrics.IncFpTotalCommittedRandomness(fp.GetBtcPkHex())
 			return res, nil
 		}
 		select {

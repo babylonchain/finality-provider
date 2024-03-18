@@ -21,8 +21,10 @@ type Metrics struct {
 	fpSecondsSinceLastRandomness    *prometheus.GaugeVec
 	fpLastVotedHeight               *prometheus.GaugeVec
 	fpLastProcessedHeight           *prometheus.GaugeVec
+	fpLastCommittedRandomnessHeight *prometheus.GaugeVec
 	fpTotalBlocksWithoutVotingPower *prometheus.CounterVec
 	fpTotalVotedBlocks              *prometheus.GaugeVec
+	fpTotalCommittedRandomness      *prometheus.GaugeVec
 	// time keeper
 	mu                     sync.Mutex
 	previousVoteByFp       map[string]*time.Time
@@ -101,6 +103,20 @@ func RegisterMetrics() *Metrics {
 				},
 				[]string{"fp_btc_pk_hex"},
 			),
+			fpTotalCommittedRandomness: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_total_committed_randomness",
+					Help: "The total number of randomness commitments by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
+			fpLastCommittedRandomnessHeight: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_last_committed_randomness_height",
+					Help: "The last block height with randomness commitment by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
 			mu: sync.Mutex{},
 		}
 
@@ -116,6 +132,8 @@ func RegisterMetrics() *Metrics {
 		prometheus.MustRegister(metricsInstance.fpLastProcessedHeight)
 		prometheus.MustRegister(metricsInstance.fpTotalBlocksWithoutVotingPower)
 		prometheus.MustRegister(metricsInstance.fpTotalVotedBlocks)
+		prometheus.MustRegister(metricsInstance.fpTotalCommittedRandomness)
+		prometheus.MustRegister(metricsInstance.fpLastCommittedRandomnessHeight)
 	})
 	return metricsInstance
 }
@@ -160,6 +178,10 @@ func (m *Metrics) RecordFpLastProcessedHeight(fpBtcPkHex string, height uint64) 
 	m.fpLastProcessedHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
 }
 
+func (m *Metrics) RecordFpLastCommittedRandomnessHeight(fpBtcPkHex string, height uint64) {
+	m.fpLastCommittedRandomnessHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
+}
+
 func (m *Metrics) IncFpTotalBlocksWithoutVotingPower(fpBtcPkHex string) {
 	m.fpTotalBlocksWithoutVotingPower.WithLabelValues(fpBtcPkHex).Inc()
 }
@@ -170,6 +192,10 @@ func (m *Metrics) IncFpTotalVotedBlocks(fpBtcPkHex string) {
 
 func (m *Metrics) AddToFpTotalVotedBlocks(fpBtcPkHex string, num float64) {
 	m.fpTotalVotedBlocks.WithLabelValues(fpBtcPkHex).Add(num)
+}
+
+func (m *Metrics) IncFpTotalCommittedRandomness(fpBtcPkHex string) {
+	m.fpTotalCommittedRandomness.WithLabelValues(fpBtcPkHex).Inc()
 }
 
 func (m *Metrics) RecordFpVoteTime(fpBtcPkHex string) {
