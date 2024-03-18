@@ -81,6 +81,11 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create finality-provider app: %v", err)
 	}
 
+	// sync finality-provider status
+	if err := fpApp.SyncFinalityProviderStatus(); err != nil {
+		return fmt.Errorf("failed to sync finality-provider status: %w", err)
+	}
+
 	// only start the app without starting any finality-provider instance
 	// as there might be no finality-provider registered yet
 	if err := fpApp.Start(); err != nil {
