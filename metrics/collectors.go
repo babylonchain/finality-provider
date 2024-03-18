@@ -9,15 +9,18 @@ import (
 )
 
 type Metrics struct {
-	// collectors
-	runningFpGauge               prometheus.Gauge
+	// all finality provider metrics
+	runningFpGauge prometheus.Gauge
+	// poller metrics
+	babylonTipHeight     prometheus.Gauge
+	lastPolledHeight     prometheus.Gauge
+	pollerStartingHeight prometheus.Gauge
+	// single finality provider metrics
 	fpStatus                     *prometheus.GaugeVec
-	babylonTipHeight             prometheus.Gauge
-	lastPolledHeight             prometheus.Gauge
-	pollerStartingHeight         prometheus.Gauge
 	fpSecondsSinceLastVote       *prometheus.GaugeVec
 	fpSecondsSinceLastRandomness *prometheus.GaugeVec
-
+	fpLastVotedHeight            *prometheus.GaugeVec
+	fpLastProcessedHeight        *prometheus.GaugeVec
 	// time keeper
 	mu                     sync.Mutex
 	previousVoteByFp       map[string]*time.Time
@@ -115,7 +118,15 @@ func (m *Metrics) RecordFpSecondsSinceLastRandomness(fpBtcPkHex string, seconds 
 	m.fpSecondsSinceLastRandomness.WithLabelValues(fpBtcPkHex).Set(seconds)
 }
 
-func (m *Metrics) RecordVoteTime(fpBtcPkHex string) {
+func (m *Metrics) RecordFpLastVotedHeight(fpBtcPkHex string, height uint64) {
+	m.fpLastVotedHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
+}
+
+func (m *Metrics) RecordFpLastProcessedHeight(fpBtcPkHex string, height uint64) {
+	m.fpLastProcessedHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
+}
+
+func (m *Metrics) RecordFpVoteTime(fpBtcPkHex string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -127,7 +138,7 @@ func (m *Metrics) RecordVoteTime(fpBtcPkHex string) {
 	m.previousVoteByFp[fpBtcPkHex] = &now
 }
 
-func (m *Metrics) RecordRandomnessTime(fpBtcPkHex string) {
+func (m *Metrics) RecordFpRandomnessTime(fpBtcPkHex string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

@@ -144,6 +144,7 @@ func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
 		fp.logger.Fatal("failed to set last processed height",
 			zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("last_processed_height", height))
 	}
+	fp.metrics.RecordFpLastProcessedHeight(fp.GetBtcPkHex(), height)
 }
 
 func (fp *FinalityProviderInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
