@@ -117,7 +117,9 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	fp := testutil.GenStoredFinalityProvider(r, t, app, passphrase, hdPath)
 	err = app.GetFinalityProviderStore().SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
 	require.NoError(t, err)
-	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, metrics.RegisterMetrics(), passphrase, make(chan *service.CriticalError), logger)
+	// TODO: use mock metrics
+	m := metrics.RegisterMetrics()
+	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, m, passphrase, make(chan *service.CriticalError), logger)
 	require.NoError(t, err)
 
 	cleanUp := func() {
