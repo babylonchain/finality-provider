@@ -3,8 +3,10 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/babylonchain/finality-provider/metrics"
 	"strings"
 	"sync"
+	"time"
 
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -33,12 +35,6 @@ type FinalityProviderApp struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
-	sentWg   sync.WaitGroup
-	sentQuit chan struct{}
-
-	eventWg   sync.WaitGroup
-	eventQuit chan struct{}
-
 	cc     clientcontroller.ClientController
 	kr     keyring.Keyring
 	fps    *store.FinalityProviderStore
@@ -48,6 +44,8 @@ type FinalityProviderApp struct {
 
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
+
+	metricsTimeKeeper *metrics.TimeKeeper
 
 	createFinalityProviderRequestChan   chan *createFinalityProviderRequest
 	registerFinalityProviderRequestChan chan *registerFinalityProviderRequest
@@ -104,6 +102,8 @@ func NewFinalityProviderApp(
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
 
+	metricsTimeKeeper := metrics.NewTimeKeeper()
+
 	return &FinalityProviderApp{
 		cc:                                  cc,
 		fps:                                 fpStore,
@@ -113,9 +113,8 @@ func NewFinalityProviderApp(
 		input:                               input,
 		fpManager:                           fpm,
 		eotsManager:                         em,
+		metricsTimeKeeper:                   metricsTimeKeeper,
 		quit:                                make(chan struct{}),
-		sentQuit:                            make(chan struct{}),
-		eventQuit:                           make(chan struct{}),
 		createFinalityProviderRequestChan:   make(chan *createFinalityProviderRequest),
 		registerFinalityProviderRequestChan: make(chan *registerFinalityProviderRequest),
 		finalityProviderRegisteredEventChan: make(chan *finalityProviderRegisteredEvent),
@@ -229,11 +228,10 @@ func (app *FinalityProviderApp) Start() error {
 	app.startOnce.Do(func() {
 		app.logger.Info("Starting FinalityProviderApp")
 
-		app.eventWg.Add(1)
+		app.wg.Add(3)
 		go app.eventLoop()
-
-		app.sentWg.Add(1)
 		go app.registrationLoop()
+		go app.metricsUpdateLoop()
 	})
 
 	return startErr
@@ -254,14 +252,6 @@ func (app *FinalityProviderApp) Stop() error {
 			stopErr = err
 			return
 		}
-
-		app.logger.Debug("Sent to Babylon loop stopped")
-		close(app.sentQuit)
-		app.sentWg.Wait()
-
-		app.logger.Debug("Stopping main eventLoop")
-		close(app.eventQuit)
-		app.eventWg.Wait()
 
 		app.logger.Debug("Stopping EOTS manager")
 		if err := app.eotsManager.Close(); err != nil {
@@ -386,7 +376,7 @@ func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath st
 
 // main event loop for the finality-provider app
 func (app *FinalityProviderApp) eventLoop() {
-	defer app.eventWg.Done()
+	defer app.wg.Done()
 
 	for {
 		select {
@@ -417,7 +407,7 @@ func (app *FinalityProviderApp) eventLoop() {
 				TxHash:    ev.txHash,
 			}
 
-		case <-app.eventQuit:
+		case <-app.quit:
 			app.logger.Debug("exiting main event loop")
 			return
 		}
@@ -425,7 +415,7 @@ func (app *FinalityProviderApp) eventLoop() {
 }
 
 func (app *FinalityProviderApp) registrationLoop() {
-	defer app.sentWg.Done()
+	defer app.wg.Done()
 	for {
 		select {
 		case req := <-app.registerFinalityProviderRequestChan:
@@ -476,8 +466,28 @@ func (app *FinalityProviderApp) registrationLoop() {
 				// the registration
 				successResponse: req.successResponse,
 			}
-		case <-app.sentQuit:
+		case <-app.quit:
 			app.logger.Debug("exiting registration loop")
+			return
+		}
+	}
+}
+
+func (app *FinalityProviderApp) metricsUpdateLoop() {
+	defer app.wg.Done()
+
+	interval := app.config.Metrics.UpdateInterval
+	app.logger.Info("starting metrics update loop",
+		zap.Float64("interval seconds", interval.Seconds()))
+	updateTicker := time.NewTicker(interval)
+
+	for {
+		select {
+		case <-updateTicker.C:
+			metricsTimeKeeper.UpdatePrometheusMetrics()
+		case <-app.quit:
+			updateTicker.Stop()
+			app.logger.Info("exiting metrics update loop")
 			return
 		}
 	}

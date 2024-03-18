@@ -545,6 +545,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			}
 		} else {
 			// the signature has been successfully submitted
+			// here seconds since last vote
 			return res, nil
 		}
 		select {

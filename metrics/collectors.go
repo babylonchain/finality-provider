@@ -7,11 +7,13 @@ import (
 )
 
 type Metrics struct {
-	runningFpGauge       prometheus.Gauge
-	fpStatus             *prometheus.GaugeVec
-	babylonTipHeight     prometheus.Gauge
-	lastPolledHeight     prometheus.Gauge
-	pollerStartingHeight prometheus.Gauge
+	runningFpGauge               prometheus.Gauge
+	fpStatus                     *prometheus.GaugeVec
+	babylonTipHeight             prometheus.Gauge
+	lastPolledHeight             prometheus.Gauge
+	pollerStartingHeight         prometheus.Gauge
+	fpSecondsSinceLastVote       *prometheus.GaugeVec
+	fpSecondsSinceLastRandomness *prometheus.GaugeVec
 }
 
 // Declare a package-level variable for sync.Once to ensure metrics are registered only once
@@ -44,6 +46,20 @@ func RegisterMetrics() *Metrics {
 				Name: "poller_starting_height",
 				Help: "The initial block height when the poller started operation",
 			}),
+			fpSecondsSinceLastVote: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_seconds_since_last_vote",
+					Help: "Seconds since the last finality sig vote by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
+			fpSecondsSinceLastRandomness: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_seconds_since_last_randomness",
+					Help: "Seconds since the last public randomness commitment by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
 		}
 
 		// Register the metrics with Prometheus
@@ -52,6 +68,8 @@ func RegisterMetrics() *Metrics {
 		prometheus.MustRegister(metricsInstance.babylonTipHeight)
 		prometheus.MustRegister(metricsInstance.lastPolledHeight)
 		prometheus.MustRegister(metricsInstance.pollerStartingHeight)
+		prometheus.MustRegister(metricsInstance.fpSecondsSinceLastVote)
+		prometheus.MustRegister(metricsInstance.fpSecondsSinceLastRandomness)
 	})
 	return metricsInstance
 }
@@ -78,4 +96,12 @@ func (m *Metrics) RecordLastPolledHeight(height uint64) {
 
 func (m *Metrics) RecordPollerStartingHeight(height uint64) {
 	m.pollerStartingHeight.Set(float64(height))
+}
+
+func (m *Metrics) RecordFpSecondsSinceLastVote(fpBtcPkHex string, seconds float64) {
+	m.fpSecondsSinceLastVote.WithLabelValues(fpBtcPkHex).Set(seconds)
+}
+
+func (m *Metrics) RecordFpSecondsSinceLastRandomness(fpBtcPkHex string, seconds float64) {
+	m.fpSecondsSinceLastRandomness.WithLabelValues(fpBtcPkHex).Set(seconds)
 }
