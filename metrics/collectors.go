@@ -44,11 +44,11 @@ func RegisterMetrics() *Metrics {
 	registerOnce.Do(func() {
 		metricsInstance = &Metrics{
 			runningFpGauge: prometheus.NewGauge(prometheus.GaugeOpts{
-				Name: "running_finality_providers",
+				Name: "total_running_fps",
 				Help: "Current number of finality providers that are running",
 			}),
 			fpStatus: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-				Name: "finality_provider_status",
+				Name: "fp_status",
 				Help: "Current status of a finality provider",
 			}, []string{"fp_btc_pk_hex"}),
 			babylonTipHeight: prometheus.NewGauge(prometheus.GaugeOpts{
