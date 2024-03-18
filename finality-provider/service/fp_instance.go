@@ -545,7 +545,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			}
 		} else {
 			// the signature has been successfully submitted
-			// here seconds since last vote
+			fp.metrics.RecordVoteTime(fp.GetBtcPkHex())
 			return res, nil
 		}
 		select {
@@ -610,6 +610,7 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 			}
 		} else {
 			// the public randomness has been successfully submitted
+			fp.metrics.RecordRandomnessTime(fp.GetBtcPkHex())
 			return res, nil
 		}
 		select {
