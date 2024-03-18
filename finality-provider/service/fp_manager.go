@@ -137,7 +137,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			fpis := fpm.ListFinalityProviderInstances()
 			for _, fpi := range fpis {
 				oldStatus := fpi.GetStatus()
-				fpm.metrics.RecordFpStatus(fpi.GetBtcPkHex(), oldStatus)
 				power, err := fpi.GetVotingPowerWithRetry(latestBlock.Height)
 				if err != nil {
 					fpm.logger.Debug(
@@ -152,7 +151,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 				if power > 0 {
 					if oldStatus != proto.FinalityProviderStatus_ACTIVE {
 						fpi.MustSetStatus(proto.FinalityProviderStatus_ACTIVE)
-						fpm.metrics.RecordFpStatus(fpi.GetBtcPkHex(), proto.FinalityProviderStatus_ACTIVE)
 						fpm.logger.Debug(
 							"the finality-provider status is changed to ACTIVE",
 							zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
@@ -174,7 +172,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 				// power == 0 and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
 				if slashed {
 					fpm.setFinalityProviderSlashed(fpi)
-					fpm.metrics.RecordFpStatus(fpi.GetBtcPkHex(), proto.FinalityProviderStatus_SLASHED)
 					fpm.logger.Debug(
 						"the finality-provider is slashed",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
@@ -185,7 +182,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 				// power == 0 and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
 				if oldStatus == proto.FinalityProviderStatus_ACTIVE {
 					fpi.MustSetStatus(proto.FinalityProviderStatus_INACTIVE)
-					fpm.metrics.RecordFpStatus(fpi.GetBtcPkHex(), proto.FinalityProviderStatus_INACTIVE)
 					fpm.logger.Debug(
 						"the finality-provider status is changed to INACTIVE",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
@@ -193,7 +189,6 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 				}
 			}
-
 		case <-fpm.quit:
 			return
 		}
