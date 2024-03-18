@@ -84,6 +84,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 		if err != nil {
 			return nil, err
 		}
+		fp.metrics.AddToFpTotalVotedBlocks(fp.GetBtcPkHex(), float64(len(catchUpBlocks)))
 
 		responses = append(responses, res)
 

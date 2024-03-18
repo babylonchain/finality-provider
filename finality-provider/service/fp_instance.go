@@ -548,6 +548,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			// the signature has been successfully submitted
 			fp.metrics.RecordFpVoteTime(fp.GetBtcPkHex())
 			fp.metrics.RecordFpLastVotedHeight(fp.GetBtcPkHex(), targetBlock.Height)
+			fp.metrics.IncFpTotalVotedBlocks(fp.GetBtcPkHex())
 			return res, nil
 		}
 		select {
