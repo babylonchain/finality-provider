@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"github.com/babylonchain/finality-provider/metrics"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -121,7 +122,8 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	fpStore, err := fpstore.NewFinalityProviderStore(fpdb)
 	require.NoError(t, err)
 
-	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, em, logger)
+	metricsCollectors := metrics.RegisterMetrics()
+	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, em, metricsCollectors, logger)
 	require.NoError(t, err)
 
 	// create registered finality-provider

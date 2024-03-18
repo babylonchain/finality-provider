@@ -2,11 +2,14 @@ package metrics
 
 import (
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
+	"github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"sync"
+	"time"
 )
 
 type Metrics struct {
+	// collectors
 	runningFpGauge               prometheus.Gauge
 	fpStatus                     *prometheus.GaugeVec
 	babylonTipHeight             prometheus.Gauge
@@ -14,6 +17,11 @@ type Metrics struct {
 	pollerStartingHeight         prometheus.Gauge
 	fpSecondsSinceLastVote       *prometheus.GaugeVec
 	fpSecondsSinceLastRandomness *prometheus.GaugeVec
+
+	// time keeper
+	mu                     sync.Mutex
+	previousVoteByFp       map[string]*time.Time
+	previousRandomnessByFp map[string]*time.Time
 }
 
 // Declare a package-level variable for sync.Once to ensure metrics are registered only once
@@ -60,6 +68,7 @@ func RegisterMetrics() *Metrics {
 				},
 				[]string{"fp_btc_pk_hex"},
 			),
+			mu: sync.Mutex{},
 		}
 
 		// Register the metrics with Prometheus
@@ -104,4 +113,45 @@ func (m *Metrics) RecordFpSecondsSinceLastVote(fpBtcPkHex string, seconds float6
 
 func (m *Metrics) RecordFpSecondsSinceLastRandomness(fpBtcPkHex string, seconds float64) {
 	m.fpSecondsSinceLastRandomness.WithLabelValues(fpBtcPkHex).Set(seconds)
+}
+
+func (m *Metrics) RecordVoteTime(fpBtcPkHex string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+
+	if m.previousVoteByFp == nil {
+		m.previousVoteByFp = make(map[string]*time.Time)
+	}
+	m.previousVoteByFp[fpBtcPkHex] = &now
+}
+
+func (m *Metrics) RecordRandomnessTime(fpBtcPkHex string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+
+	if m.previousRandomnessByFp == nil {
+		m.previousRandomnessByFp = make(map[string]*time.Time)
+	}
+	m.previousRandomnessByFp[fpBtcPkHex] = &now
+}
+
+func (m *Metrics) UpdateFpMetrics(fps []*store.StoredFinalityProvider) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, fp := range fps {
+		m.RecordFpStatus(fp.GetBIP340BTCPK().MarshalHex(), fp.Status)
+
+		if lastVoteTime, ok := m.previousVoteByFp[fp.GetBIP340BTCPK().MarshalHex()]; ok {
+			m.RecordFpSecondsSinceLastVote(fp.GetBIP340BTCPK().MarshalHex(), time.Since(*lastVoteTime).Seconds())
+		}
+
+		if lastRandomnessTime, ok := m.previousRandomnessByFp[fp.GetBIP340BTCPK().MarshalHex()]; ok {
+			m.RecordFpSecondsSinceLastRandomness(fp.GetBIP340BTCPK().MarshalHex(), time.Since(*lastRandomnessTime).Seconds())
+		}
+	}
 }

@@ -60,6 +60,7 @@ func NewFinalityProviderManager(
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
+	metrics *metrics.Metrics,
 	logger *zap.Logger,
 ) (*FinalityProviderManager, error) {
 	return &FinalityProviderManager{
@@ -70,7 +71,7 @@ func NewFinalityProviderManager(
 		config:          config,
 		cc:              cc,
 		em:              em,
-		metrics:         metrics.RegisterMetrics(),
+		metrics:         metrics,
 		logger:          logger,
 		quit:            make(chan struct{}),
 	}, nil

@@ -45,7 +45,7 @@ type FinalityProviderApp struct {
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
 
-	metricsTimeKeeper *metrics.TimeKeeper
+	metrics *metrics.Metrics
 
 	createFinalityProviderRequestChan   chan *createFinalityProviderRequest
 	registerFinalityProviderRequestChan chan *registerFinalityProviderRequest
@@ -97,12 +97,12 @@ func NewFinalityProviderApp(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, logger)
+	metricsCollectors := metrics.RegisterMetrics()
+
+	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, metricsCollectors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
-
-	metricsTimeKeeper := metrics.NewTimeKeeper()
 
 	return &FinalityProviderApp{
 		cc:                                  cc,
@@ -113,7 +113,7 @@ func NewFinalityProviderApp(
 		input:                               input,
 		fpManager:                           fpm,
 		eotsManager:                         em,
-		metricsTimeKeeper:                   metricsTimeKeeper,
+		metrics:                             metricsCollectors,
 		quit:                                make(chan struct{}),
 		createFinalityProviderRequestChan:   make(chan *createFinalityProviderRequest),
 		registerFinalityProviderRequestChan: make(chan *registerFinalityProviderRequest),
@@ -484,7 +484,12 @@ func (app *FinalityProviderApp) metricsUpdateLoop() {
 	for {
 		select {
 		case <-updateTicker.C:
-			metricsTimeKeeper.UpdatePrometheusMetrics()
+			fps, err := app.fps.GetAllStoredFinalityProviders()
+			if err != nil {
+				app.logger.Error("failed to get finality-providers from the store", zap.Error(err))
+				continue
+			}
+			app.metrics.UpdateFpMetrics(fps)
 		case <-app.quit:
 			updateTicker.Stop()
 			app.logger.Info("exiting metrics update loop")
