@@ -22,6 +22,7 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -32,10 +33,11 @@ type FinalityProviderInstance struct {
 	state *fpState
 	cfg   *fpcfg.Config
 
-	logger *zap.Logger
-	em     eotsmanager.EOTSManager
-	cc     clientcontroller.ClientController
-	poller *ChainPoller
+	logger  *zap.Logger
+	em      eotsmanager.EOTSManager
+	cc      clientcontroller.ClientController
+	poller  *ChainPoller
+	metrics *metrics.Metrics
 
 	// passphrase is used to unlock private keys
 	passphrase string
@@ -59,6 +61,7 @@ func NewFinalityProviderInstance(
 	s *store.FinalityProviderStore,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
+	fpMetrics *metrics.Metrics,
 	passphrase string,
 	errChan chan<- *CriticalError,
 	logger *zap.Logger,
@@ -89,6 +92,7 @@ func NewFinalityProviderInstance(
 		passphrase:      passphrase,
 		em:              em,
 		cc:              cc,
+		metrics:         fpMetrics,
 	}, nil
 }
 
@@ -103,11 +107,12 @@ func (fp *FinalityProviderInstance) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap the finality-provider %s: %w", fp.GetBtcPkHex(), err)
 	}
+	fp.metrics.RecordPollerStartingHeight(startHeight)
 
 	fp.logger.Info("the finality-provider has been bootstrapped",
 		zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", startHeight))
 
-	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc)
+	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc, fp.metrics)
 
 	if err := poller.Start(startHeight + 1); err != nil {
 		return fmt.Errorf("failed to start the poller: %w", err)
@@ -949,6 +954,7 @@ func (fp *FinalityProviderInstance) getLatestBlockWithRetry() (*types.BlockInfo,
 	})); err != nil {
 		return nil, err
 	}
+	fp.metrics.RecordBabylonTipHeight(latestBlock.Height)
 
 	return latestBlock, nil
 }

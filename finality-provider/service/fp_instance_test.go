@@ -17,6 +17,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/types"
 )
@@ -116,7 +117,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	fp := testutil.GenStoredFinalityProvider(r, t, app, passphrase, hdPath)
 	err = app.GetFinalityProviderStore().SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
 	require.NoError(t, err)
-	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, passphrase, make(chan *service.CriticalError), logger)
+	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, metrics.RegisterMetrics(), passphrase, make(chan *service.CriticalError), logger)
 	require.NoError(t, err)
 
 	cleanUp := func() {

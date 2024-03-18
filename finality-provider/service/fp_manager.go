@@ -392,7 +392,7 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 		return fmt.Errorf("finality-provider instance already exists")
 	}
 
-	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.em, passphrase, fpm.criticalErrChan, fpm.logger)
+	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider %s instance: %w", pkHex, err)
 	}
