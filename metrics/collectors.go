@@ -16,11 +16,12 @@ type Metrics struct {
 	lastPolledHeight     prometheus.Gauge
 	pollerStartingHeight prometheus.Gauge
 	// single finality provider metrics
-	fpStatus                     *prometheus.GaugeVec
-	fpSecondsSinceLastVote       *prometheus.GaugeVec
-	fpSecondsSinceLastRandomness *prometheus.GaugeVec
-	fpLastVotedHeight            *prometheus.GaugeVec
-	fpLastProcessedHeight        *prometheus.GaugeVec
+	fpStatus                        *prometheus.GaugeVec
+	fpSecondsSinceLastVote          *prometheus.GaugeVec
+	fpSecondsSinceLastRandomness    *prometheus.GaugeVec
+	fpLastVotedHeight               *prometheus.GaugeVec
+	fpLastProcessedHeight           *prometheus.GaugeVec
+	fpTotalBlocksWithoutVotingPower *prometheus.GaugeVec
 	// time keeper
 	mu                     sync.Mutex
 	previousVoteByFp       map[string]*time.Time
@@ -71,6 +72,27 @@ func RegisterMetrics() *Metrics {
 				},
 				[]string{"fp_btc_pk_hex"},
 			),
+			fpLastVotedHeight: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_last_voted_height",
+					Help: "The last block height voted by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
+			fpLastProcessedHeight: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_last_processed_height",
+					Help: "The last block height processed by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
+			fpTotalBlocksWithoutVotingPower: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "fp_total_blocks_without_voting_power",
+					Help: "The total number of blocks without voting power for a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
 			mu: sync.Mutex{},
 		}
 
@@ -82,6 +104,9 @@ func RegisterMetrics() *Metrics {
 		prometheus.MustRegister(metricsInstance.pollerStartingHeight)
 		prometheus.MustRegister(metricsInstance.fpSecondsSinceLastVote)
 		prometheus.MustRegister(metricsInstance.fpSecondsSinceLastRandomness)
+		prometheus.MustRegister(metricsInstance.fpLastVotedHeight)
+		prometheus.MustRegister(metricsInstance.fpLastProcessedHeight)
+		prometheus.MustRegister(metricsInstance.fpTotalBlocksWithoutVotingPower)
 	})
 	return metricsInstance
 }
