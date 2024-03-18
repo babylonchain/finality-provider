@@ -25,6 +25,8 @@ type Metrics struct {
 	fpTotalBlocksWithoutVotingPower *prometheus.CounterVec
 	fpTotalVotedBlocks              *prometheus.GaugeVec
 	fpTotalCommittedRandomness      *prometheus.GaugeVec
+	fpTotalFailedVotes              *prometheus.CounterVec
+	fpTotalFailedRandomness         *prometheus.CounterVec
 	// time keeper
 	mu                     sync.Mutex
 	previousVoteByFp       map[string]*time.Time
@@ -117,6 +119,20 @@ func RegisterMetrics() *Metrics {
 				},
 				[]string{"fp_btc_pk_hex"},
 			),
+			fpTotalFailedVotes: prometheus.NewCounterVec(
+				prometheus.CounterOpts{
+					Name: "fp_total_failed_votes",
+					Help: "The total number of failed votes by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
+			fpTotalFailedRandomness: prometheus.NewCounterVec(
+				prometheus.CounterOpts{
+					Name: "fp_total_failed_randomness",
+					Help: "The total number of failed randomness commitments by a finality provider.",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
 			mu: sync.Mutex{},
 		}
 
@@ -134,6 +150,8 @@ func RegisterMetrics() *Metrics {
 		prometheus.MustRegister(metricsInstance.fpTotalVotedBlocks)
 		prometheus.MustRegister(metricsInstance.fpTotalCommittedRandomness)
 		prometheus.MustRegister(metricsInstance.fpLastCommittedRandomnessHeight)
+		prometheus.MustRegister(metricsInstance.fpTotalFailedVotes)
+		prometheus.MustRegister(metricsInstance.fpTotalFailedRandomness)
 	})
 	return metricsInstance
 }
@@ -196,6 +214,14 @@ func (m *Metrics) AddToFpTotalVotedBlocks(fpBtcPkHex string, num float64) {
 
 func (m *Metrics) IncFpTotalCommittedRandomness(fpBtcPkHex string) {
 	m.fpTotalCommittedRandomness.WithLabelValues(fpBtcPkHex).Inc()
+}
+
+func (m *Metrics) IncFpTotalFailedVotes(fpBtcPkHex string) {
+	m.fpTotalFailedVotes.WithLabelValues(fpBtcPkHex).Inc()
+}
+
+func (m *Metrics) IncFpTotalFailedRandomness(fpBtcPkHex string) {
+	m.fpTotalFailedRandomness.WithLabelValues(fpBtcPkHex).Inc()
 }
 
 func (m *Metrics) RecordFpVoteTime(fpBtcPkHex string) {

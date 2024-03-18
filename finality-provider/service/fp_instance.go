@@ -219,6 +219,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			nextBlock := *b
 			res, err := fp.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
+				fp.metrics.IncFpTotalFailedVotes(fp.GetBtcPkHex())
 				fp.reportCriticalErr(err)
 				continue
 			}
@@ -292,6 +293,7 @@ func (fp *FinalityProviderInstance) randomnessCommitmentLoop() {
 			}
 			txRes, err := fp.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
+				fp.metrics.IncFpTotalFailedRandomness(fp.GetBtcPkHex())
 				fp.reportCriticalErr(err)
 				continue
 			}
