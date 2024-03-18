@@ -39,10 +39,12 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
+	delsResp := tm.WaitForNPendingDels(t, 1)
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	require.NoError(t, err)
 
 	// send covenant sigs
-	tm.InsertCovenantSigForDelegation(t, dels[0])
+	tm.InsertCovenantSigForDelegation(t, del)
 
 	// check the BTC delegation is active
 	_ = tm.WaitForNActiveDels(t, 1)
@@ -69,10 +71,12 @@ func TestDoubleSigning(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
+	delsResp := tm.WaitForNPendingDels(t, 1)
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	require.NoError(t, err)
 
 	// send covenant sigs
-	tm.InsertCovenantSigForDelegation(t, dels[0])
+	tm.InsertCovenantSigForDelegation(t, del)
 
 	// check the BTC delegation is active
 	_ = tm.WaitForNActiveDels(t, 1)
@@ -131,11 +135,13 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	tm.Wg.Wait()
 
 	// check the BTC delegations are pending
-	dels := tm.WaitForNPendingDels(t, n)
-	require.Equal(t, n, len(dels))
+	delsResp := tm.WaitForNPendingDels(t, n)
+	require.Equal(t, n, len(delsResp))
 
 	// send covenant sigs to each of the delegations
-	for _, d := range dels {
+	for _, delResp := range delsResp {
+		d, err := ParseRespBTCDelToBTCDel(delResp)
+		require.NoError(t, err)
 		// send covenant sigs
 		tm.InsertCovenantSigForDelegation(t, d)
 	}
@@ -161,10 +167,12 @@ func TestFastSync(t *testing.T) {
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
 
 	// check the BTC delegation is pending
-	dels := tm.WaitForNPendingDels(t, 1)
+	delsResp := tm.WaitForNPendingDels(t, 1)
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	require.NoError(t, err)
 
 	// send covenant sigs
-	tm.InsertCovenantSigForDelegation(t, dels[0])
+	tm.InsertCovenantSigForDelegation(t, del)
 
 	// check the BTC delegation is active
 	_ = tm.WaitForNActiveDels(t, 1)

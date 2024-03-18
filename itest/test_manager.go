@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"encoding/hex"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -239,9 +240,9 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 	t.Logf("public randomness is successfully committed")
 }
 
-func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
 	var (
-		dels []*bstypes.BTCDelegation
+		dels []*bstypes.BTCDelegationResponse
 		err  error
 	)
 	require.Eventually(t, func() bool {
@@ -259,9 +260,9 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 	return dels
 }
 
-func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegation {
+func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
 	var (
-		dels []*bstypes.BTCDelegation
+		dels []*bstypes.BTCDelegationResponse
 		err  error
 	)
 	require.Eventually(t, func() bool {
@@ -542,15 +543,17 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTip, err := tm.BBNClient.QueryBtcLightClientTip()
+	btcTipHeaderResp, err := tm.BBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(btcTipHeaderResp.HeaderHex)
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
-	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, btcTipHeaderResp.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
 		Header: &blockWithStakingTx.HeaderBytes,
 		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
-		Height: currentBtcTip.Height + 1,
+		Height: btcTipHeaderResp.Height + 1,
 		Work:   &accumulatedWork,
 	}
 	headers := make([]bbntypes.BTCHeaderBytes, 0)
@@ -688,4 +691,76 @@ func tempDirWithName(name string) (string, error) {
 func newDescription(moniker string) *stakingtypes.Description {
 	dec := stakingtypes.NewDescription(moniker, "", "", "", "")
 	return &dec
+}
+
+// ParseRespBTCDelToBTCDel parses an BTC delegation response to BTC Delegation
+// adapted from
+// https://github.com/babylonchain/babylon/blob/1a3c50da64885452c8d669fcea2a2fad78c8a028/test/e2e/btc_staking_e2e_test.go#L548
+func ParseRespBTCDelToBTCDel(resp *bstypes.BTCDelegationResponse) (btcDel *bstypes.BTCDelegation, err error) {
+	stakingTx, err := hex.DecodeString(resp.StakingTxHex)
+	if err != nil {
+		return nil, err
+	}
+
+	delSig, err := bbntypes.NewBIP340SignatureFromHex(resp.DelegatorSlashSigHex)
+	if err != nil {
+		return nil, err
+	}
+
+	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(resp.SlashingTxHex)
+	if err != nil {
+		return nil, err
+	}
+
+	btcDel = &bstypes.BTCDelegation{
+		// missing BabylonPk, Pop
+		// these fields are not sent out to the client on BTCDelegationResponse
+		BtcPk:            resp.BtcPk,
+		FpBtcPkList:      resp.FpBtcPkList,
+		StartHeight:      resp.StartHeight,
+		EndHeight:        resp.EndHeight,
+		TotalSat:         resp.TotalSat,
+		StakingTx:        stakingTx,
+		DelegatorSig:     delSig,
+		StakingOutputIdx: resp.StakingOutputIdx,
+		CovenantSigs:     resp.CovenantSigs,
+		UnbondingTime:    resp.UnbondingTime,
+		SlashingTx:       slashingTx,
+	}
+
+	if resp.UndelegationResponse != nil {
+		ud := resp.UndelegationResponse
+		unbondTx, err := hex.DecodeString(ud.UnbondingTxHex)
+		if err != nil {
+			return nil, err
+		}
+
+		slashTx, err := bstypes.NewBTCSlashingTxFromHex(ud.SlashingTxHex)
+		if err != nil {
+			return nil, err
+		}
+
+		delSlashingSig, err := bbntypes.NewBIP340SignatureFromHex(ud.DelegatorSlashingSigHex)
+		if err != nil {
+			return nil, err
+		}
+
+		btcDel.BtcUndelegation = &bstypes.BTCUndelegation{
+			UnbondingTx:              unbondTx,
+			CovenantUnbondingSigList: ud.CovenantUnbondingSigList,
+			CovenantSlashingSigs:     ud.CovenantSlashingSigs,
+			SlashingTx:               slashTx,
+			DelegatorSlashingSig:     delSlashingSig,
+		}
+
+		if len(ud.DelegatorUnbondingSigHex) > 0 {
+			delUnbondingSig, err := bbntypes.NewBIP340SignatureFromHex(ud.DelegatorUnbondingSigHex)
+			if err != nil {
+				return nil, err
+			}
+			btcDel.BtcUndelegation.DelegatorUnbondingSig = delUnbondingSig
+		}
+	}
+
+	return btcDel, nil
 }
