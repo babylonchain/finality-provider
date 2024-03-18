@@ -21,7 +21,7 @@ type Metrics struct {
 	fpSecondsSinceLastRandomness    *prometheus.GaugeVec
 	fpLastVotedHeight               *prometheus.GaugeVec
 	fpLastProcessedHeight           *prometheus.GaugeVec
-	fpTotalBlocksWithoutVotingPower *prometheus.GaugeVec
+	fpTotalBlocksWithoutVotingPower *prometheus.CounterVec
 	// time keeper
 	mu                     sync.Mutex
 	previousVoteByFp       map[string]*time.Time
@@ -86,8 +86,8 @@ func RegisterMetrics() *Metrics {
 				},
 				[]string{"fp_btc_pk_hex"},
 			),
-			fpTotalBlocksWithoutVotingPower: prometheus.NewGaugeVec(
-				prometheus.GaugeOpts{
+			fpTotalBlocksWithoutVotingPower: prometheus.NewCounterVec(
+				prometheus.CounterOpts{
 					Name: "fp_total_blocks_without_voting_power",
 					Help: "The total number of blocks without voting power for a finality provider.",
 				},
@@ -149,6 +149,10 @@ func (m *Metrics) RecordFpLastVotedHeight(fpBtcPkHex string, height uint64) {
 
 func (m *Metrics) RecordFpLastProcessedHeight(fpBtcPkHex string, height uint64) {
 	m.fpLastProcessedHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
+}
+
+func (m *Metrics) IncFpTotalBlocksWithoutVotingPower(fpBtcPkHex string) {
+	m.fpTotalBlocksWithoutVotingPower.WithLabelValues(fpBtcPkHex).Inc()
 }
 
 func (m *Metrics) RecordFpVoteTime(fpBtcPkHex string) {

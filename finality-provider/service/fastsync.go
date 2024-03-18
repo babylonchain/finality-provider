@@ -59,6 +59,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 				return nil, err
 			}
 			if !hasVp {
+				fp.metrics.IncFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
 				continue
 			}
 			// check whether the randomness has been committed

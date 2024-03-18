@@ -204,6 +204,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				// the finality provider does not have voting power
 				// and it will never will at this block
 				fp.MustSetLastProcessedHeight(b.Height)
+				fp.metrics.IncFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
 				continue
 			}
 			// check whether the randomness has been committed
