@@ -223,29 +223,47 @@ func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, er
 	return record.PrivKey, nil
 }
 
-// Sync the finality-provider status
-// It will update the fp status CREATED to REGISTERED in the fpd database,
-// if the fp appears to be registered in the Babylon chain.
+// SyncFinalityProviderStatus syncs the status of the finality-providers
 func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
-	fps, err := app.fps.GetAllStoredFinalityProviders()
+	latestBlock, err := app.cc.QueryBestBlock()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(fps)
-
+	fps, err := app.fps.GetAllStoredFinalityProviders()
+	if err != nil {
+		return err
+	}
+	
 	for _, fp := range fps {
-		// QueryFinalityProviderSlashed will not occur any error,
-		// if fp is registered in the Babylon chain.
-		_, err = app.cc.QueryFinalityProviderSlashed(fp.BtcPk)
+		vp, err := app.cc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
 		if err != nil {
-			// if error occured then the finality-provider is not registered in the Babylon chain
+			// if error occured then the finality-provider is not registered in the Babylon chain yet
 			continue
 		}
 
-		err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
-		if err != nil {
-			return err
+		if vp > 0 {
+			// voting power > 0 then set the status to ACTIVE
+			err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_ACTIVE)
+			if err != nil {
+				return err
+			}
+		} else if vp == 0 {
+			// voting power == 0 then set status depending on previous status
+			switch fp.Status {
+			case proto.FinalityProviderStatus_CREATED:
+				// previous status is CREATED then set to REGISTERED
+				err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
+				if err != nil {
+					return err
+				}
+			case proto.FinalityProviderStatus_ACTIVE:
+				// previous status is ACTIVE then set to INACTIVE
+				err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_INACTIVE)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
