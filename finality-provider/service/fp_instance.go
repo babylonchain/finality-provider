@@ -203,7 +203,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				// the finality provider does not have voting power
 				// and it will never will at this block
 				fp.MustSetLastProcessedHeight(b.Height)
-				fp.metrics.IncFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
+				fp.metrics.IncrementFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
 				continue
 			}
 			// check whether the randomness has been committed
@@ -218,7 +218,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			nextBlock := *b
 			res, err := fp.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
-				fp.metrics.IncFpTotalFailedVotes(fp.GetBtcPkHex())
+				fp.metrics.IncrementFpTotalFailedVotes(fp.GetBtcPkHex())
 				fp.reportCriticalErr(err)
 				continue
 			}
@@ -292,7 +292,7 @@ func (fp *FinalityProviderInstance) randomnessCommitmentLoop() {
 			}
 			txRes, err := fp.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
-				fp.metrics.IncFpTotalFailedRandomness(fp.GetBtcPkHex())
+				fp.metrics.IncrementFpTotalFailedRandomness(fp.GetBtcPkHex())
 				fp.reportCriticalErr(err)
 				continue
 			}
@@ -749,7 +749,7 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 
 	// update metrics
 	fp.metrics.RecordFpVoteTime(fp.GetBtcPkHex())
-	fp.metrics.IncFpTotalVotedBlocks(fp.GetBtcPkHex())
+	fp.metrics.IncrementFpTotalVotedBlocks(fp.GetBtcPkHex())
 
 	return res, nil
 }
