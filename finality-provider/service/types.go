@@ -157,6 +157,7 @@ func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(he
 			zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", height))
 	}
 	fp.metrics.RecordFpLastVotedHeight(fp.GetBtcPkHex(), height)
+	fp.metrics.RecordFpLastProcessedHeight(fp.GetBtcPkHex(), height)
 }
 
 func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
