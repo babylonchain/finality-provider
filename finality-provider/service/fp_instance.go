@@ -547,9 +547,6 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			}
 		} else {
 			// the signature has been successfully submitted
-			fp.metrics.RecordFpVoteTime(fp.GetBtcPkHex())
-			fp.metrics.RecordFpLastVotedHeight(fp.GetBtcPkHex(), targetBlock.Height)
-			fp.metrics.IncFpTotalVotedBlocks(fp.GetBtcPkHex())
 			return res, nil
 		}
 		select {
@@ -747,6 +744,10 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 
 	// update DB
 	fp.MustUpdateStateAfterFinalitySigSubmission(b.Height)
+
+	// update metrics
+	fp.metrics.RecordFpVoteTime(fp.GetBtcPkHex())
+	fp.metrics.IncFpTotalVotedBlocks(fp.GetBtcPkHex())
 
 	return res, nil
 }
