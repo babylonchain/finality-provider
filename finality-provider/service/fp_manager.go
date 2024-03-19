@@ -243,7 +243,6 @@ func (fpm *FinalityProviderManager) StartAll() error {
 	}
 
 	for _, fp := range storedFps {
-		fpm.metrics.RecordFpStatus(fp.GetBIP340BTCPK().MarshalHex(), fp.Status)
 		if fp.Status == proto.FinalityProviderStatus_CREATED || fp.Status == proto.FinalityProviderStatus_SLASHED {
 			fpm.logger.Info("the finality provider cannot be started with status",
 				zap.String("btc-pk", fp.GetBIP340BTCPK().MarshalHex()),
