@@ -107,7 +107,6 @@ func (fp *FinalityProviderInstance) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap the finality-provider %s: %w", fp.GetBtcPkHex(), err)
 	}
-	fp.metrics.RecordPollerStartingHeight(startHeight)
 
 	fp.logger.Info("the finality-provider has been bootstrapped",
 		zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", startHeight))

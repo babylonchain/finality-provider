@@ -87,6 +87,7 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 
 	go cp.pollChain()
 
+	cp.metrics.RecordPollerStartingHeight(startHeight)
 	cp.logger.Info("the chain poller is successfully started")
 
 	return nil
