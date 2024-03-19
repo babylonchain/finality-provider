@@ -110,7 +110,7 @@ func DefaultConfigWithHome(homePath string) Config {
 		EOTSManagerAddress:       defaultEOTSManagerAddress,
 		RpcListener:              DefaultRpcListener,
 		MaxNumFinalityProviders:  defaultMaxNumFinalityProviders,
-		Metrics:                  metrics.DefaultConfig(),
+		Metrics:                  metrics.DefaultFpConfig(),
 	}
 
 	if err := cfg.Validate(); err != nil {

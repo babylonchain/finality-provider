@@ -128,7 +128,7 @@ func DefaultConfigWithHomePath(homePath string) *Config {
 		KeyringBackend: defaultKeyringBackend,
 		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
 		RpcListener:    defaultRpcListener,
-		Metrics:        metrics.DefaultConfig(),
+		Metrics:        metrics.DefaultEotsConfig(),
 	}
 	if err := cfg.Validate(); err != nil {
 		panic(err)
