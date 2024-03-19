@@ -611,9 +611,6 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 			}
 		} else {
 			// the public randomness has been successfully submitted
-			fp.metrics.RecordFpRandomnessTime(fp.GetBtcPkHex())
-			fp.metrics.RecordFpLastCommittedRandomnessHeight(fp.GetBtcPkHex(), targetBlock.Height)
-			fp.metrics.IncFpTotalCommittedRandomness(fp.GetBtcPkHex())
 			return res, nil
 		}
 		select {
@@ -705,6 +702,11 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 		// TODO Add retry. check issue: https://github.com/babylonchain/finality-provider/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
+
+	// Update metrics
+	fp.metrics.RecordFpRandomnessTime(fp.GetBtcPkHex())
+	fp.metrics.RecordFpLastCommittedRandomnessHeight(fp.GetBtcPkHex(), tipBlock.Height)
+	fp.metrics.IncFpTotalCommittedRandomness(fp.GetBtcPkHex())
 
 	return res, nil
 }
