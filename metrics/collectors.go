@@ -212,8 +212,8 @@ func (m *Metrics) AddToFpTotalVotedBlocks(fpBtcPkHex string, num float64) {
 	m.fpTotalVotedBlocks.WithLabelValues(fpBtcPkHex).Add(num)
 }
 
-func (m *Metrics) IncFpTotalCommittedRandomness(fpBtcPkHex string) {
-	m.fpTotalCommittedRandomness.WithLabelValues(fpBtcPkHex).Inc()
+func (m *Metrics) AddToFpTotalCommittedRandomness(fpBtcPkHex string, num float64) {
+	m.fpTotalCommittedRandomness.WithLabelValues(fpBtcPkHex).Add(num)
 }
 
 func (m *Metrics) IncFpTotalFailedVotes(fpBtcPkHex string) {
