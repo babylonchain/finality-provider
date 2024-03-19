@@ -705,7 +705,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 
 	// Update metrics
 	fp.metrics.RecordFpRandomnessTime(fp.GetBtcPkHex())
-	fp.metrics.RecordFpLastCommittedRandomnessHeight(fp.GetBtcPkHex(), tipBlock.Height)
+	fp.metrics.RecordFpLastCommittedRandomnessHeight(fp.GetBtcPkHex(), lastCommittedHeight)
 	fp.metrics.AddToFpTotalCommittedRandomness(fp.GetBtcPkHex(), float64(len(pubRandList)))
 
 	return res, nil
