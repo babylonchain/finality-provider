@@ -1,6 +1,7 @@
 package eotsmanager
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -130,6 +131,7 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 		zap.String("key name", name),
 		zap.String("pk", eotsPk.MarshalHex()),
 	)
+	lm.metrics.IncrementEotsCreatedKeysCounter()
 
 	return eotsPk.MustMarshal(), nil
 }
@@ -150,6 +152,8 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte
 
 		prList = append(prList, pubRand)
 	}
+	lm.metrics.IncrementEotsFpTotalGeneratedRandomnessCounter(hex.EncodeToString(fpPk))
+	lm.metrics.SetEotsFpLastGeneratedRandomnessHeight(hex.EncodeToString(fpPk), float64(startHeight))
 
 	return prList, nil
 }
@@ -165,6 +169,10 @@ func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, he
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
 
+	// Update metrics
+	lm.metrics.IncrementEotsFpTotalEotsSignCounter(hex.EncodeToString(fpPk))
+	lm.metrics.SetEotsFpLastEotsSignHeight(hex.EncodeToString(fpPk), float64(height))
+
 	return eots.Sign(privKey, privRand, msg)
 }
 
@@ -173,6 +181,9 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
+
+	// Update metrics
+	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
 
 	return schnorr.Sign(privKey, msg)
 }
