@@ -67,7 +67,7 @@ func (s *Server) RunUntilShutdown() error {
 		s.db.Close()
 		s.logger.Info("Database closed")
 		metricsServer.Stop(context.Background())
-		s.logger.Info("FpMetrics server stopped")
+		s.logger.Info("Metrics server stopped")
 	}()
 
 	listenAddr := s.cfg.RpcListener
