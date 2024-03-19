@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/babylonchain/finality-provider/metrics"
+
 	"github.com/babylonchain/babylon/crypto/eots"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -33,7 +35,8 @@ type LocalEOTSManager struct {
 	es     *store.EOTSStore
 	logger *zap.Logger
 	// input is to send passphrase to kr
-	input *strings.Reader
+	input   *strings.Reader
+	metrics *metrics.EotsMetrics
 }
 
 func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.Backend, logger *zap.Logger) (*LocalEOTSManager, error) {
@@ -49,11 +52,14 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.
 		return nil, fmt.Errorf("failed to initialize keyring: %w", err)
 	}
 
+	eotsMetrics := metrics.NewEotsMetrics()
+
 	return &LocalEOTSManager{
-		kr:     kr,
-		es:     es,
-		logger: logger,
-		input:  inputReader,
+		kr:      kr,
+		es:      es,
+		logger:  logger,
+		input:   inputReader,
+		metrics: eotsMetrics,
 	}, nil
 }
 

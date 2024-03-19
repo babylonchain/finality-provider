@@ -1,10 +1,13 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
+
+	"github.com/babylonchain/finality-provider/metrics"
 
 	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/lightningnetwork/lnd/signal"
@@ -50,6 +53,13 @@ func (s *Server) RunUntilShutdown() error {
 		return nil
 	}
 
+	// Start the metrics server.
+	promAddr, err := s.cfg.Metrics.Address()
+	if err != nil {
+		return fmt.Errorf("failed to get prometheus address: %w", err)
+	}
+	metricsServer := metrics.Start(promAddr, s.logger)
+
 	defer func() {
 		s.logger.Info("Shutdown complete")
 	}()
@@ -58,6 +68,8 @@ func (s *Server) RunUntilShutdown() error {
 		s.logger.Info("Closing database...")
 		s.db.Close()
 		s.logger.Info("Database closed")
+		metricsServer.Stop(context.Background())
+		s.logger.Info("FpMetrics server stopped")
 	}()
 
 	listenAddr := s.cfg.RpcListener

@@ -3,10 +3,11 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/babylonchain/finality-provider/metrics"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/babylonchain/finality-provider/metrics"
 
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -97,9 +98,9 @@ func NewFinalityProviderApp(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	metricsCollectors := metrics.NewFpMetrics()
+	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, metricsCollectors, logger)
+	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, fpMetrics, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
@@ -113,7 +114,7 @@ func NewFinalityProviderApp(
 		input:                               input,
 		fpManager:                           fpm,
 		eotsManager:                         em,
-		metrics:                             metricsCollectors,
+		metrics:                             fpMetrics,
 		quit:                                make(chan struct{}),
 		createFinalityProviderRequestChan:   make(chan *createFinalityProviderRequest),
 		registerFinalityProviderRequestChan: make(chan *registerFinalityProviderRequest),

@@ -10,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/jessevdk/go-flags"
 
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/util"
 )
 
@@ -40,6 +41,8 @@ type Config struct {
 	DatabaseConfig *DBConfig
 
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
+
+	Metrics *metrics.Config `group:"metrics" namespace:"metrics"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -88,6 +91,14 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("the keyring backend should not be empty")
 	}
 
+	if cfg.Metrics == nil {
+		return fmt.Errorf("empty metrics config")
+	}
+
+	if err := cfg.Metrics.Validate(); err != nil {
+		return fmt.Errorf("invalid metrics config")
+	}
+
 	return nil
 }
 
@@ -117,6 +128,7 @@ func DefaultConfigWithHomePath(homePath string) *Config {
 		KeyringBackend: defaultKeyringBackend,
 		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
 		RpcListener:    defaultRpcListener,
+		Metrics:        metrics.DefaultConfig(),
 	}
 	if err := cfg.Validate(); err != nil {
 		panic(err)
