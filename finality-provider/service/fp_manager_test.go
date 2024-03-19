@@ -122,7 +122,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	fpStore, err := fpstore.NewFinalityProviderStore(fpdb)
 	require.NoError(t, err)
 
-	metricsCollectors := metrics.RegisterMetrics()
+	metricsCollectors := metrics.NewFpMetrics()
 	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, em, metricsCollectors, logger)
 	require.NoError(t, err)
 

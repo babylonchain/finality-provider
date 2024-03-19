@@ -48,7 +48,7 @@ type FinalityProviderManager struct {
 	em     eotsmanager.EOTSManager
 	logger *zap.Logger
 
-	metrics *metrics.Metrics
+	metrics *metrics.FpMetrics
 
 	criticalErrChan chan *CriticalError
 
@@ -60,7 +60,7 @@ func NewFinalityProviderManager(
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
-	metrics *metrics.Metrics,
+	metrics *metrics.FpMetrics,
 	logger *zap.Logger,
 ) (*FinalityProviderManager, error) {
 	return &FinalityProviderManager{

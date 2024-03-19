@@ -45,7 +45,7 @@ type FinalityProviderApp struct {
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
 
-	metrics *metrics.Metrics
+	metrics *metrics.FpMetrics
 
 	createFinalityProviderRequestChan   chan *createFinalityProviderRequest
 	registerFinalityProviderRequestChan chan *registerFinalityProviderRequest
@@ -97,7 +97,7 @@ func NewFinalityProviderApp(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	metricsCollectors := metrics.RegisterMetrics()
+	metricsCollectors := metrics.NewFpMetrics()
 
 	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, metricsCollectors, logger)
 	if err != nil {
@@ -233,7 +233,7 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	if err != nil {
 		return err
 	}
-	
+
 	for _, fp := range fps {
 		vp, err := app.cc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
 		if err != nil {

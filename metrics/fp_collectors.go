@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type Metrics struct {
+type FpMetrics struct {
 	// all finality provider metrics
 	runningFpGauge prometheus.Gauge
 	// poller metrics
@@ -34,15 +34,15 @@ type Metrics struct {
 }
 
 // Declare a package-level variable for sync.Once to ensure metrics are registered only once
-var registerOnce sync.Once
+var fpMetricsRegisterOnce sync.Once
 
-// Declare a variable to hold the instance of Metrics
-var metricsInstance *Metrics
+// Declare a variable to hold the instance of FpMetrics
+var fpMetricsInstance *FpMetrics
 
-// RegisterMetrics initializes and registers the metrics, using sync.Once to ensure it's done only once
-func RegisterMetrics() *Metrics {
-	registerOnce.Do(func() {
-		metricsInstance = &Metrics{
+// NewFpMetrics initializes and registers the metrics, using sync.Once to ensure it's done only once
+func NewFpMetrics() *FpMetrics {
+	fpMetricsRegisterOnce.Do(func() {
+		fpMetricsInstance = &FpMetrics{
 			runningFpGauge: prometheus.NewGauge(prometheus.GaugeOpts{
 				Name: "total_running_fps",
 				Help: "Current number of finality providers that are running",
@@ -137,94 +137,94 @@ func RegisterMetrics() *Metrics {
 		}
 
 		// Register the metrics with Prometheus
-		prometheus.MustRegister(metricsInstance.runningFpGauge)
-		prometheus.MustRegister(metricsInstance.fpStatus)
-		prometheus.MustRegister(metricsInstance.babylonTipHeight)
-		prometheus.MustRegister(metricsInstance.lastPolledHeight)
-		prometheus.MustRegister(metricsInstance.pollerStartingHeight)
-		prometheus.MustRegister(metricsInstance.fpSecondsSinceLastVote)
-		prometheus.MustRegister(metricsInstance.fpSecondsSinceLastRandomness)
-		prometheus.MustRegister(metricsInstance.fpLastVotedHeight)
-		prometheus.MustRegister(metricsInstance.fpLastProcessedHeight)
-		prometheus.MustRegister(metricsInstance.fpTotalBlocksWithoutVotingPower)
-		prometheus.MustRegister(metricsInstance.fpTotalVotedBlocks)
-		prometheus.MustRegister(metricsInstance.fpTotalCommittedRandomness)
-		prometheus.MustRegister(metricsInstance.fpLastCommittedRandomnessHeight)
-		prometheus.MustRegister(metricsInstance.fpTotalFailedVotes)
-		prometheus.MustRegister(metricsInstance.fpTotalFailedRandomness)
+		prometheus.MustRegister(fpMetricsInstance.runningFpGauge)
+		prometheus.MustRegister(fpMetricsInstance.fpStatus)
+		prometheus.MustRegister(fpMetricsInstance.babylonTipHeight)
+		prometheus.MustRegister(fpMetricsInstance.lastPolledHeight)
+		prometheus.MustRegister(fpMetricsInstance.pollerStartingHeight)
+		prometheus.MustRegister(fpMetricsInstance.fpSecondsSinceLastVote)
+		prometheus.MustRegister(fpMetricsInstance.fpSecondsSinceLastRandomness)
+		prometheus.MustRegister(fpMetricsInstance.fpLastVotedHeight)
+		prometheus.MustRegister(fpMetricsInstance.fpLastProcessedHeight)
+		prometheus.MustRegister(fpMetricsInstance.fpTotalBlocksWithoutVotingPower)
+		prometheus.MustRegister(fpMetricsInstance.fpTotalVotedBlocks)
+		prometheus.MustRegister(fpMetricsInstance.fpTotalCommittedRandomness)
+		prometheus.MustRegister(fpMetricsInstance.fpLastCommittedRandomnessHeight)
+		prometheus.MustRegister(fpMetricsInstance.fpTotalFailedVotes)
+		prometheus.MustRegister(fpMetricsInstance.fpTotalFailedRandomness)
 	})
-	return metricsInstance
+	return fpMetricsInstance
 }
 
-func (m *Metrics) DecrementRunningFpGauge() {
+func (m *FpMetrics) DecrementRunningFpGauge() {
 	m.runningFpGauge.Dec()
 }
 
-func (m *Metrics) IncrementRunningFpGauge() {
+func (m *FpMetrics) IncrementRunningFpGauge() {
 	m.runningFpGauge.Inc()
 }
 
-func (m *Metrics) RecordFpStatus(fpBtcPkHex string, status proto.FinalityProviderStatus) {
+func (m *FpMetrics) RecordFpStatus(fpBtcPkHex string, status proto.FinalityProviderStatus) {
 	m.fpStatus.WithLabelValues(fpBtcPkHex).Set(float64(status))
 }
 
-func (m *Metrics) RecordBabylonTipHeight(height uint64) {
+func (m *FpMetrics) RecordBabylonTipHeight(height uint64) {
 	m.babylonTipHeight.Set(float64(height))
 }
 
-func (m *Metrics) RecordLastPolledHeight(height uint64) {
+func (m *FpMetrics) RecordLastPolledHeight(height uint64) {
 	m.lastPolledHeight.Set(float64(height))
 }
 
-func (m *Metrics) RecordPollerStartingHeight(height uint64) {
+func (m *FpMetrics) RecordPollerStartingHeight(height uint64) {
 	m.pollerStartingHeight.Set(float64(height))
 }
 
-func (m *Metrics) RecordFpSecondsSinceLastVote(fpBtcPkHex string, seconds float64) {
+func (m *FpMetrics) RecordFpSecondsSinceLastVote(fpBtcPkHex string, seconds float64) {
 	m.fpSecondsSinceLastVote.WithLabelValues(fpBtcPkHex).Set(seconds)
 }
 
-func (m *Metrics) RecordFpSecondsSinceLastRandomness(fpBtcPkHex string, seconds float64) {
+func (m *FpMetrics) RecordFpSecondsSinceLastRandomness(fpBtcPkHex string, seconds float64) {
 	m.fpSecondsSinceLastRandomness.WithLabelValues(fpBtcPkHex).Set(seconds)
 }
 
-func (m *Metrics) RecordFpLastVotedHeight(fpBtcPkHex string, height uint64) {
+func (m *FpMetrics) RecordFpLastVotedHeight(fpBtcPkHex string, height uint64) {
 	m.fpLastVotedHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
 }
 
-func (m *Metrics) RecordFpLastProcessedHeight(fpBtcPkHex string, height uint64) {
+func (m *FpMetrics) RecordFpLastProcessedHeight(fpBtcPkHex string, height uint64) {
 	m.fpLastProcessedHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
 }
 
-func (m *Metrics) RecordFpLastCommittedRandomnessHeight(fpBtcPkHex string, height uint64) {
+func (m *FpMetrics) RecordFpLastCommittedRandomnessHeight(fpBtcPkHex string, height uint64) {
 	m.fpLastCommittedRandomnessHeight.WithLabelValues(fpBtcPkHex).Set(float64(height))
 }
 
-func (m *Metrics) IncFpTotalBlocksWithoutVotingPower(fpBtcPkHex string) {
+func (m *FpMetrics) IncFpTotalBlocksWithoutVotingPower(fpBtcPkHex string) {
 	m.fpTotalBlocksWithoutVotingPower.WithLabelValues(fpBtcPkHex).Inc()
 }
 
-func (m *Metrics) IncFpTotalVotedBlocks(fpBtcPkHex string) {
+func (m *FpMetrics) IncFpTotalVotedBlocks(fpBtcPkHex string) {
 	m.fpTotalVotedBlocks.WithLabelValues(fpBtcPkHex).Inc()
 }
 
-func (m *Metrics) AddToFpTotalVotedBlocks(fpBtcPkHex string, num float64) {
+func (m *FpMetrics) AddToFpTotalVotedBlocks(fpBtcPkHex string, num float64) {
 	m.fpTotalVotedBlocks.WithLabelValues(fpBtcPkHex).Add(num)
 }
 
-func (m *Metrics) AddToFpTotalCommittedRandomness(fpBtcPkHex string, num float64) {
+func (m *FpMetrics) AddToFpTotalCommittedRandomness(fpBtcPkHex string, num float64) {
 	m.fpTotalCommittedRandomness.WithLabelValues(fpBtcPkHex).Add(num)
 }
 
-func (m *Metrics) IncFpTotalFailedVotes(fpBtcPkHex string) {
+func (m *FpMetrics) IncFpTotalFailedVotes(fpBtcPkHex string) {
 	m.fpTotalFailedVotes.WithLabelValues(fpBtcPkHex).Inc()
 }
 
-func (m *Metrics) IncFpTotalFailedRandomness(fpBtcPkHex string) {
+func (m *FpMetrics) IncFpTotalFailedRandomness(fpBtcPkHex string) {
 	m.fpTotalFailedRandomness.WithLabelValues(fpBtcPkHex).Inc()
 }
 
-func (m *Metrics) RecordFpVoteTime(fpBtcPkHex string) {
+func (m *FpMetrics) RecordFpVoteTime(fpBtcPkHex string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -236,7 +236,7 @@ func (m *Metrics) RecordFpVoteTime(fpBtcPkHex string) {
 	m.previousVoteByFp[fpBtcPkHex] = &now
 }
 
-func (m *Metrics) RecordFpRandomnessTime(fpBtcPkHex string) {
+func (m *FpMetrics) RecordFpRandomnessTime(fpBtcPkHex string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -248,7 +248,7 @@ func (m *Metrics) RecordFpRandomnessTime(fpBtcPkHex string) {
 	m.previousRandomnessByFp[fpBtcPkHex] = &now
 }
 
-func (m *Metrics) UpdateFpMetrics(fps []*store.StoredFinalityProvider) {
+func (m *FpMetrics) UpdateFpMetrics(fps []*store.StoredFinalityProvider) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

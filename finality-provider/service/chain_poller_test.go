@@ -47,7 +47,7 @@ func FuzzChainPoller_Start(f *testing.F) {
 		}
 
 		// TODO: use mock metrics
-		m := metrics.RegisterMetrics()
+		m := metrics.NewFpMetrics()
 		pollerCfg := fpcfg.DefaultChainPollerConfig()
 		pollerCfg.PollInterval = 10 * time.Millisecond
 		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController, m)
@@ -98,7 +98,7 @@ func FuzzChainPoller_SkipHeight(f *testing.F) {
 		}
 
 		// TODO: use mock metrics
-		m := metrics.RegisterMetrics()
+		m := metrics.NewFpMetrics()
 		pollerCfg := fpcfg.DefaultChainPollerConfig()
 		pollerCfg.PollInterval = 1 * time.Second
 		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController, m)
