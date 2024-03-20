@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/babylonchain/finality-provider/metrics"
-
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -26,6 +24,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 	fpkr "github.com/babylonchain/finality-provider/keyring"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 

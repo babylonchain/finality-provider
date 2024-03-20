@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"github.com/babylonchain/finality-provider/metrics"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -24,6 +23,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/keyring"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/testutil/mocks"
 	"github.com/babylonchain/finality-provider/types"
