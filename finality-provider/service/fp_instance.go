@@ -37,7 +37,7 @@ type FinalityProviderInstance struct {
 	em      eotsmanager.EOTSManager
 	cc      clientcontroller.ClientController
 	poller  *ChainPoller
-	metrics *metrics.Metrics
+	metrics *metrics.FpMetrics
 
 	// passphrase is used to unlock private keys
 	passphrase string
@@ -61,7 +61,7 @@ func NewFinalityProviderInstance(
 	s *store.FinalityProviderStore,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
-	fpMetrics *metrics.Metrics,
+	metrics *metrics.FpMetrics,
 	passphrase string,
 	errChan chan<- *CriticalError,
 	logger *zap.Logger,
@@ -92,7 +92,7 @@ func NewFinalityProviderInstance(
 		passphrase:      passphrase,
 		em:              em,
 		cc:              cc,
-		metrics:         fpMetrics,
+		metrics:         metrics,
 	}, nil
 }
 

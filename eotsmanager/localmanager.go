@@ -1,8 +1,11 @@
 package eotsmanager
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/babylonchain/finality-provider/metrics"
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -33,7 +36,8 @@ type LocalEOTSManager struct {
 	es     *store.EOTSStore
 	logger *zap.Logger
 	// input is to send passphrase to kr
-	input *strings.Reader
+	input   *strings.Reader
+	metrics *metrics.EotsMetrics
 }
 
 func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.Backend, logger *zap.Logger) (*LocalEOTSManager, error) {
@@ -49,11 +53,14 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.
 		return nil, fmt.Errorf("failed to initialize keyring: %w", err)
 	}
 
+	eotsMetrics := metrics.NewEotsMetrics()
+
 	return &LocalEOTSManager{
-		kr:     kr,
-		es:     es,
-		logger: logger,
-		input:  inputReader,
+		kr:      kr,
+		es:      es,
+		logger:  logger,
+		input:   inputReader,
+		metrics: eotsMetrics,
 	}, nil
 }
 
@@ -124,6 +131,7 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 		zap.String("key name", name),
 		zap.String("pk", eotsPk.MarshalHex()),
 	)
+	lm.metrics.IncrementEotsCreatedKeysCounter()
 
 	return eotsPk.MustMarshal(), nil
 }
@@ -144,6 +152,8 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte
 
 		prList = append(prList, pubRand)
 	}
+	lm.metrics.IncrementEotsFpTotalGeneratedRandomnessCounter(hex.EncodeToString(fpPk))
+	lm.metrics.SetEotsFpLastGeneratedRandomnessHeight(hex.EncodeToString(fpPk), float64(startHeight))
 
 	return prList, nil
 }
@@ -159,6 +169,10 @@ func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, he
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
 
+	// Update metrics
+	lm.metrics.IncrementEotsFpTotalEotsSignCounter(hex.EncodeToString(fpPk))
+	lm.metrics.SetEotsFpLastEotsSignHeight(hex.EncodeToString(fpPk), float64(height))
+
 	return eots.Sign(privKey, privRand, msg)
 }
 
@@ -167,6 +181,9 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
+
+	// Update metrics
+	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
 
 	return schnorr.Sign(privKey, msg)
 }

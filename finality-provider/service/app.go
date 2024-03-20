@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/babylonchain/finality-provider/metrics"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 	fpkr "github.com/babylonchain/finality-provider/keyring"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -45,7 +45,7 @@ type FinalityProviderApp struct {
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
 
-	metrics *metrics.Metrics
+	metrics *metrics.FpMetrics
 
 	createFinalityProviderRequestChan   chan *createFinalityProviderRequest
 	registerFinalityProviderRequestChan chan *registerFinalityProviderRequest
@@ -97,9 +97,9 @@ func NewFinalityProviderApp(
 		return nil, fmt.Errorf("failed to create keyring: %w", err)
 	}
 
-	metricsCollectors := metrics.RegisterMetrics()
+	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, metricsCollectors, logger)
+	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, fpMetrics, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
@@ -113,7 +113,7 @@ func NewFinalityProviderApp(
 		input:                               input,
 		fpManager:                           fpm,
 		eotsManager:                         em,
-		metrics:                             metricsCollectors,
+		metrics:                             fpMetrics,
 		quit:                                make(chan struct{}),
 		createFinalityProviderRequestChan:   make(chan *createFinalityProviderRequest),
 		registerFinalityProviderRequestChan: make(chan *registerFinalityProviderRequest),
@@ -233,7 +233,7 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	if err != nil {
 		return err
 	}
-	
+
 	for _, fp := range fps {
 		vp, err := app.cc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
 		if err != nil {
