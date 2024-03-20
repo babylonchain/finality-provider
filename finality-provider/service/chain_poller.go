@@ -11,6 +11,7 @@ import (
 
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	cfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -43,6 +44,7 @@ type ChainPoller struct {
 
 	cc             clientcontroller.ClientController
 	cfg            *cfg.ChainPollerConfig
+	metrics        *metrics.Metrics
 	blockInfoChan  chan *types.BlockInfo
 	skipHeightChan chan *skipHeightRequest
 	nextHeight     uint64
@@ -53,12 +55,14 @@ func NewChainPoller(
 	logger *zap.Logger,
 	cfg *cfg.ChainPollerConfig,
 	cc clientcontroller.ClientController,
+	metrics *metrics.Metrics,
 ) *ChainPoller {
 	return &ChainPoller{
 		isStarted:      atomic.NewBool(false),
 		logger:         logger,
 		cfg:            cfg,
 		cc:             cc,
+		metrics:        metrics,
 		blockInfoChan:  make(chan *types.BlockInfo, cfg.BufferSize),
 		skipHeightChan: make(chan *skipHeightRequest),
 		quit:           make(chan struct{}),
@@ -83,6 +87,7 @@ func (cp *ChainPoller) Start(startHeight uint64) error {
 
 	go cp.pollChain()
 
+	cp.metrics.RecordPollerStartingHeight(startHeight)
 	cp.logger.Info("the chain poller is successfully started")
 
 	return nil
@@ -245,6 +250,7 @@ func (cp *ChainPoller) pollChain() {
 			// notification about data
 			cp.nextHeight = blockToRetrieve + 1
 			failedCycles = 0
+			cp.metrics.RecordLastPolledHeight(block.Height)
 
 			cp.logger.Info("the poller retrieved the block from the consumer chain",
 				zap.Uint64("height", block.Height))

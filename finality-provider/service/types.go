@@ -144,6 +144,7 @@ func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
 		fp.logger.Fatal("failed to set last processed height",
 			zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("last_processed_height", height))
 	}
+	fp.metrics.RecordFpLastProcessedHeight(fp.GetBtcPkHex(), height)
 }
 
 func (fp *FinalityProviderInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
@@ -155,6 +156,8 @@ func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(he
 		fp.logger.Fatal("failed to update state after finality signature submitted",
 			zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", height))
 	}
+	fp.metrics.RecordFpLastVotedHeight(fp.GetBtcPkHex(), height)
+	fp.metrics.RecordFpLastProcessedHeight(fp.GetBtcPkHex(), height)
 }
 
 func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {

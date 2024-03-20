@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/metrics"
 )
 
 // Server is the main daemon construct for the Finality Provider server. It handles
@@ -49,6 +51,13 @@ func (s *Server) RunUntilShutdown() error {
 		return nil
 	}
 
+	// Start the metrics server.
+	promAddr, err := s.cfg.Metrics.Address()
+	if err != nil {
+		return fmt.Errorf("failed to get prometheus address: %w", err)
+	}
+	metricsServer := metrics.Start(promAddr, s.logger)
+
 	defer func() {
 		s.logger.Info("Shutdown complete")
 	}()
@@ -57,6 +66,8 @@ func (s *Server) RunUntilShutdown() error {
 		s.logger.Info("Closing database...")
 		s.db.Close()
 		s.logger.Info("Database closed")
+		metricsServer.Stop(context.Background())
+		s.logger.Info("Metrics server stopped")
 	}()
 
 	listenAddr := s.cfg.RpcListener

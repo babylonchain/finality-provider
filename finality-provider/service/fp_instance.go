@@ -22,6 +22,7 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -32,10 +33,11 @@ type FinalityProviderInstance struct {
 	state *fpState
 	cfg   *fpcfg.Config
 
-	logger *zap.Logger
-	em     eotsmanager.EOTSManager
-	cc     clientcontroller.ClientController
-	poller *ChainPoller
+	logger  *zap.Logger
+	em      eotsmanager.EOTSManager
+	cc      clientcontroller.ClientController
+	poller  *ChainPoller
+	metrics *metrics.Metrics
 
 	// passphrase is used to unlock private keys
 	passphrase string
@@ -59,6 +61,7 @@ func NewFinalityProviderInstance(
 	s *store.FinalityProviderStore,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
+	fpMetrics *metrics.Metrics,
 	passphrase string,
 	errChan chan<- *CriticalError,
 	logger *zap.Logger,
@@ -89,6 +92,7 @@ func NewFinalityProviderInstance(
 		passphrase:      passphrase,
 		em:              em,
 		cc:              cc,
+		metrics:         fpMetrics,
 	}, nil
 }
 
@@ -107,7 +111,7 @@ func (fp *FinalityProviderInstance) Start() error {
 	fp.logger.Info("the finality-provider has been bootstrapped",
 		zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", startHeight))
 
-	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc)
+	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc, fp.metrics)
 
 	if err := poller.Start(startHeight + 1); err != nil {
 		return fmt.Errorf("failed to start the poller: %w", err)
@@ -199,6 +203,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				// the finality provider does not have voting power
 				// and it will never will at this block
 				fp.MustSetLastProcessedHeight(b.Height)
+				fp.metrics.IncrementFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
 				continue
 			}
 			// check whether the randomness has been committed
@@ -213,6 +218,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			nextBlock := *b
 			res, err := fp.retrySubmitFinalitySignatureUntilBlockFinalized(&nextBlock)
 			if err != nil {
+				fp.metrics.IncrementFpTotalFailedVotes(fp.GetBtcPkHex())
 				fp.reportCriticalErr(err)
 				continue
 			}
@@ -286,6 +292,7 @@ func (fp *FinalityProviderInstance) randomnessCommitmentLoop() {
 			}
 			txRes, err := fp.retryCommitPubRandUntilBlockFinalized(tipBlock)
 			if err != nil {
+				fp.metrics.IncrementFpTotalFailedRandomness(fp.GetBtcPkHex())
 				fp.reportCriticalErr(err)
 				continue
 			}
@@ -696,6 +703,11 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
 
+	// Update metrics
+	fp.metrics.RecordFpRandomnessTime(fp.GetBtcPkHex())
+	fp.metrics.RecordFpLastCommittedRandomnessHeight(fp.GetBtcPkHex(), lastCommittedHeight)
+	fp.metrics.AddToFpTotalCommittedRandomness(fp.GetBtcPkHex(), float64(len(pubRandList)))
+
 	return res, nil
 }
 
@@ -734,6 +746,10 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 
 	// update DB
 	fp.MustUpdateStateAfterFinalitySigSubmission(b.Height)
+
+	// update metrics
+	fp.metrics.RecordFpVoteTime(fp.GetBtcPkHex())
+	fp.metrics.IncrementFpTotalVotedBlocks(fp.GetBtcPkHex())
 
 	return res, nil
 }
@@ -949,6 +965,7 @@ func (fp *FinalityProviderInstance) getLatestBlockWithRetry() (*types.BlockInfo,
 	})); err != nil {
 		return nil, err
 	}
+	fp.metrics.RecordBabylonTipHeight(latestBlock.Height)
 
 	return latestBlock, nil
 }
