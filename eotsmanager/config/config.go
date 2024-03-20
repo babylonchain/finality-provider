@@ -38,8 +38,9 @@ type Config struct {
 	LogLevel       string          `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
 	KeyringBackend string          `long:"keyring-type" description:"Type of keyring to use"`
 	RpcListener    string          `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
-	DatabaseConfig *DBConfig       `group:"dbconfig" namespace:"dbconfig"`
 	Metrics        *metrics.Config `group:"metrics" namespace:"metrics"`
+
+	DatabaseConfig *DBConfig `group:"dbconfig" namespace:"dbconfig"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
