@@ -135,7 +135,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Pop:         &bbnPop,
 		Commission:  commission,
 		Description: &sdkDescription,
-		ChainID:     chainID,
+		ChainId:     chainID,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
