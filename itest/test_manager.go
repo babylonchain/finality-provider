@@ -44,7 +44,6 @@ var (
 
 	fpNamePrefix  = "test-fp-"
 	monikerPrefix = "moniker-"
-	chainID       = "chain-test"
 	passphrase    = "testpass"
 	hdPath        = ""
 	simnetParams  = &chaincfg.SimNetParams
