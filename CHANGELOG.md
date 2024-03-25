@@ -15,24 +15,25 @@
 - failed to register finality-provider \(not found: key not found\) [\#279](https://github.com/babylonchain/finality-provider/issues/279)
 - "unauthorized" error with fpcli register-finality-provider [\#273](https://github.com/babylonchain/finality-provider/issues/273)
 
-## [euphrates-0.1.0-rc.0](https://github.com/babylonchain/finality-provider/tree/euphrates-0.1.0-rc.0) (2024-03-26)
+## [euphrates-0.1.0-rc.0](https://github.com/babylonchain/finality-provider/tree/euphrates-0.1.0-rc.0) (2024-03-25)
 
 [Full Changelog](https://github.com/babylonchain/finality-provider/compare/v0.1.0...euphrates-0.1.0-rc.0)
 
-**Fixed bugs:**
-
-- Finality provider status `CREATED` is not changed to `REGISTERED` in some cases [\#253](https://github.com/babylonchain/finality-provider/issues/253)
-
 **Closed issues:**
 
+- Consumer chain finality provider [\#276](https://github.com/babylonchain/finality-provider/issues/276)
 - eotsd init panics [\#266](https://github.com/babylonchain/finality-provider/issues/266)
 - DB needs refactoring [\#252](https://github.com/babylonchain/finality-provider/issues/252)
--  failed to register the finality-provider to Babylon: error in json rpc client [\#249](https://github.com/babylonchain/finality-provider/issues/249)
+- failed to register the finality-provider to Babylon: error in json rpc client [\#249](https://github.com/babylonchain/finality-provider/issues/249)
 - `fpcli ls` should return all the managed fps with different status [\#244](https://github.com/babylonchain/finality-provider/issues/244)
 - Change the default parameters to ones used in a stable devnet [\#230](https://github.com/babylonchain/finality-provider/issues/230)
 - Crash recovery potentially causes inconsistent state [\#196](https://github.com/babylonchain/finality-provider/issues/196)
 - Command for collecting finality provider rewards [\#176](https://github.com/babylonchain/finality-provider/issues/176)
 - Drop blocks when a block channel of a validator gets full [\#72](https://github.com/babylonchain/finality-provider/issues/72)
+
+**Fixed bugs:**
+
+- Finality provider status `CREATED` is not changed to `REGISTERED` in some cases [\#253](https://github.com/babylonchain/finality-provider/issues/253)
 
 ## [v0.1.0](https://github.com/babylonchain/finality-provider/tree/v0.1.0) (2024-02-08)
 
