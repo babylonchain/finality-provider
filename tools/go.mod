@@ -222,6 +222,6 @@ require (
 replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240322095331-1ebc154d8e32
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240325072659-f24dbe741b1c
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
