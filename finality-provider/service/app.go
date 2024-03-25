@@ -191,6 +191,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 	}
 
 	request := &registerFinalityProviderRequest{
+		chainID:         fp.ChainID,
 		bbnPubKey:       fp.ChainPk,
 		btcPubKey:       bbntypes.NewBIP340PubKeyFromBTCPK(fp.BtcPk),
 		pop:             pop,
@@ -577,6 +578,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				continue
 			}
 			res, err := app.cc.RegisterFinalityProvider(
+				req.chainID,
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,

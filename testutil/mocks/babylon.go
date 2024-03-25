@@ -10,7 +10,7 @@ import (
 	math "cosmossdk.io/math"
 	types "github.com/babylonchain/babylon/x/finality/types"
 	types0 "github.com/babylonchain/finality-provider/types"
-	btcec "github.com/btcsuite/btcd/btcec/v2"
+	v2 "github.com/btcsuite/btcd/btcec/v2"
 	schnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -53,7 +53,7 @@ func (mr *MockClientControllerMockRecorder) Close() *gomock.Call {
 }
 
 // CommitPubRandList mocks base method.
-func (m *MockClientController) CommitPubRandList(fpPk *btcec.PublicKey, startHeight, numPubRand uint64, commitment []byte, sig *schnorr.Signature) (*types0.TxResponse, error) {
+func (m *MockClientController) CommitPubRandList(fpPk *v2.PublicKey, startHeight, numPubRand uint64, commitment []byte, sig *schnorr.Signature) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CommitPubRandList", fpPk, startHeight, numPubRand, commitment, sig)
 	ret0, _ := ret[0].(*types0.TxResponse)
@@ -128,7 +128,7 @@ func (mr *MockClientControllerMockRecorder) QueryBlocks(startHeight, endHeight, 
 }
 
 // QueryFinalityProviderSlashed mocks base method.
-func (m *MockClientController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
+func (m *MockClientController) QueryFinalityProviderSlashed(fpPk *v2.PublicKey) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryFinalityProviderSlashed", fpPk)
 	ret0, _ := ret[0].(bool)
@@ -143,7 +143,7 @@ func (mr *MockClientControllerMockRecorder) QueryFinalityProviderSlashed(fpPk in
 }
 
 // QueryFinalityProviderVotingPower mocks base method.
-func (m *MockClientController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+func (m *MockClientController) QueryFinalityProviderVotingPower(fpPk *v2.PublicKey, blockHeight uint64) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryFinalityProviderVotingPower", fpPk, blockHeight)
 	ret0, _ := ret[0].(uint64)
@@ -158,7 +158,7 @@ func (mr *MockClientControllerMockRecorder) QueryFinalityProviderVotingPower(fpP
 }
 
 // QueryLastCommittedPublicRand mocks base method.
-func (m *MockClientController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommitResponse, error) {
+func (m *MockClientController) QueryLastCommittedPublicRand(fpPk *v2.PublicKey, count uint64) (map[uint64]*types.PubRandCommitResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryLastCommittedPublicRand", fpPk, count)
 	ret0, _ := ret[0].(map[uint64]*types.PubRandCommitResponse)
@@ -188,22 +188,22 @@ func (mr *MockClientControllerMockRecorder) QueryLatestFinalizedBlocks(count int
 }
 
 // RegisterFinalityProvider mocks base method.
-func (m *MockClientController) RegisterFinalityProvider(chainPk []byte, fpPk *btcec.PublicKey, pop []byte, commission *math.LegacyDec, description []byte) (*types0.TxResponse, error) {
+func (m *MockClientController) RegisterFinalityProvider(chainID string, chainPk []byte, fpPk *v2.PublicKey, pop []byte, commission *math.LegacyDec, description []byte) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterFinalityProvider", chainPk, fpPk, pop, commission, description)
+	ret := m.ctrl.Call(m, "RegisterFinalityProvider", chainID, chainPk, fpPk, pop, commission, description)
 	ret0, _ := ret[0].(*types0.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RegisterFinalityProvider indicates an expected call of RegisterFinalityProvider.
-func (mr *MockClientControllerMockRecorder) RegisterFinalityProvider(chainPk, fpPk, pop, commission, description interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) RegisterFinalityProvider(chainID, chainPk, fpPk, pop, commission, description interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterFinalityProvider", reflect.TypeOf((*MockClientController)(nil).RegisterFinalityProvider), chainPk, fpPk, pop, commission, description)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterFinalityProvider", reflect.TypeOf((*MockClientController)(nil).RegisterFinalityProvider), chainID, chainPk, fpPk, pop, commission, description)
 }
 
 // SubmitBatchFinalitySigs mocks base method.
-func (m *MockClientController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types0.BlockInfo, pubRandList []*btcec.FieldVal, proofList [][]byte, sigs []*btcec.ModNScalar) (*types0.TxResponse, error) {
+func (m *MockClientController) SubmitBatchFinalitySigs(fpPk *v2.PublicKey, blocks []*types0.BlockInfo, pubRandList []*v2.FieldVal, proofList [][]byte, sigs []*v2.ModNScalar) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", fpPk, blocks, pubRandList, proofList, sigs)
 	ret0, _ := ret[0].(*types0.TxResponse)
@@ -218,7 +218,7 @@ func (mr *MockClientControllerMockRecorder) SubmitBatchFinalitySigs(fpPk, blocks
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockClientController) SubmitFinalitySig(fpPk *btcec.PublicKey, block *types0.BlockInfo, pubRand *btcec.FieldVal, proof []byte, sig *btcec.ModNScalar) (*types0.TxResponse, error) {
+func (m *MockClientController) SubmitFinalitySig(fpPk *v2.PublicKey, block *types0.BlockInfo, pubRand *v2.FieldVal, proof []byte, sig *v2.ModNScalar) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitFinalitySig", fpPk, block, pubRand, proof, sig)
 	ret0, _ := ret[0].(*types0.TxResponse)
