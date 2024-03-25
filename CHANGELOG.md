@@ -9,7 +9,7 @@
 - Consumer chain finality provider [\#276](https://github.com/babylonchain/finality-provider/issues/276)
 - eotsd init panics [\#266](https://github.com/babylonchain/finality-provider/issues/266)
 - DB needs refactoring [\#252](https://github.com/babylonchain/finality-provider/issues/252)
--  failed to register the finality-provider to Babylon: error in json rpc client [\#249](https://github.com/babylonchain/finality-provider/issues/249)
+- failed to register the finality-provider to Babylon: error in json rpc client [\#249](https://github.com/babylonchain/finality-provider/issues/249)
 - `fpcli ls` should return all the managed fps with different status [\#244](https://github.com/babylonchain/finality-provider/issues/244)
 - Change the default parameters to ones used in a stable devnet [\#230](https://github.com/babylonchain/finality-provider/issues/230)
 - Crash recovery potentially causes inconsistent state [\#196](https://github.com/babylonchain/finality-provider/issues/196)
