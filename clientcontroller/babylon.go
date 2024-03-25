@@ -112,6 +112,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sd
 // RegisterFinalityProvider registers a finality provider via a MsgCreateFinalityProvider to Babylon
 // it returns tx hash, registered epoch, and error
 func (bc *BabylonController) RegisterFinalityProvider(
+	chainID string,
 	chainPk []byte,
 	fpPk *btcec.PublicKey,
 	pop []byte,
@@ -137,6 +138,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Commission:    commission,
 		Description:   &sdkDescription,
 		MasterPubRand: masterPubRand,
+		ConsumerId:    chainID,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)

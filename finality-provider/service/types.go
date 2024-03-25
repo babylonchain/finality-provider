@@ -32,6 +32,7 @@ type createFinalityProviderRequest struct {
 }
 
 type registerFinalityProviderRequest struct {
+	chainID   string
 	bbnPubKey *secp256k1.PubKey
 	btcPubKey *bbntypes.BIP340PubKey
 	// TODO we should have our own representation of PoP
