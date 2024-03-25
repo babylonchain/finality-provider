@@ -6,7 +6,6 @@ import (
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
@@ -34,6 +33,7 @@ type registerFinalityProviderRequest struct {
 	fpAddr          sdk.AccAddress
 	btcPubKey       *bbntypes.BIP340PubKey
 	pop             *btcstakingtypes.ProofOfPossessionBTC
+	chainID         string
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
 	errResponse     chan error

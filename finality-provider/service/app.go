@@ -9,7 +9,6 @@ import (
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -196,6 +195,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 
 	request := &registerFinalityProviderRequest{
 		fpAddr:          fpAddr,
+		chainID:         fp.ChainID,
 		btcPubKey:       bbntypes.NewBIP340PubKeyFromBTCPK(fp.BtcPk),
 		pop:             pop,
 		description:     fp.Description,
@@ -591,6 +591,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				continue
 			}
 			res, err := app.cc.RegisterFinalityProvider(
+				req.chainID,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
 				req.commission,

@@ -98,6 +98,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		txHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
 			RegisterFinalityProvider(
+				fp.ChainID,
 				fp.BtcPk,
 				popBytes,
 				testutil.ZeroCommissionRate(),

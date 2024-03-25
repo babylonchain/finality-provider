@@ -23,6 +23,8 @@ type ClientController interface {
 	// it returns tx hash and error. The address of the finality provider will be
 	// the signer of the msg.
 	RegisterFinalityProvider(
+		chainID string,
+		chainPk []byte,
 		fpPk *btcec.PublicKey,
 		pop []byte,
 		commission *math.LegacyDec,
