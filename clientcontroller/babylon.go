@@ -15,6 +15,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -565,4 +566,21 @@ func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctyp
 	}
 
 	return res, nil
+}
+
+// RegisterConsumerChain registers a consumer chain via a MsgRegisterChain to Babylon
+func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (*types.TxResponse, error) {
+	msg := &bsctypes.MsgRegisterConsumer{
+		Signer:              bc.mustGetTxSigner(),
+		ConsumerId:          id,
+		ConsumerName:        name,
+		ConsumerDescription: description,
+	}
+
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
