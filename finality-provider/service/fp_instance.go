@@ -714,7 +714,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64) ([]bbntypes.SchnorrPubRand, error) {
 	pubRandList, err := fp.em.CreateRandomnessPairList(
 		fp.btcPk.MustMarshal(),
-		fp.GetChainID(),
+		[]byte(fp.GetChainID()),
 		startHeight,
 		uint32(fp.cfg.NumPubRand),
 		fp.passphrase,
@@ -791,7 +791,7 @@ func (fp *FinalityProviderInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.S
 		BlockAppHash: b.Hash,
 	}
 	msgToSign := msg.MsgToSign()
-	sig, err := fp.em.SignEOTS(fp.btcPk.MustMarshal(), fp.GetChainID(), msgToSign, b.Height, fp.passphrase)
+	sig, err := fp.em.SignEOTS(fp.btcPk.MustMarshal(), []byte(fp.GetChainID()), msgToSign, b.Height, fp.passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}
