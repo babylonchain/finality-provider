@@ -14,6 +14,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -577,6 +578,23 @@ func (bc *BabylonController) SubmitCovenantSigs(
 		SlashingTxSigs:          slashingSigs,
 		UnbondingTxSig:          bip340UnbondingSig,
 		SlashingUnbondingTxSigs: unbondingSlashingSigs,
+	}
+
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+}
+
+// RegisterConsumerChain registers a consumer chain via a MsgRegisterChain to Babylon
+func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (*types.TxResponse, error) {
+	msg := &bsctypes.MsgRegisterChain{
+		Signer:           bc.mustGetTxSigner(),
+		ChainId:          id,
+		ChainName:        name,
+		ChainDescription: description,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)

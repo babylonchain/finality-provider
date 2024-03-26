@@ -121,8 +121,8 @@ func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
 	return fp.state.getStoreFinalityProvider().LastProcessedHeight
 }
 
-func (fp *FinalityProviderInstance) GetChainID() []byte {
-	return []byte(fp.state.getStoreFinalityProvider().ChainID)
+func (fp *FinalityProviderInstance) GetChainID() string {
+	return fp.state.getStoreFinalityProvider().ChainID
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {

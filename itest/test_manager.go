@@ -44,7 +44,6 @@ var (
 
 	fpNamePrefix  = "test-fp-"
 	monikerPrefix = "moniker-"
-	chainID       = "chain-test"
 	passphrase    = "testpass"
 	hdPath        = ""
 	simnetParams  = &chaincfg.SimNetParams
@@ -150,15 +149,32 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
 	tm := StartManager(t)
+
+	fpInsList := tm.CreateFinalityProviders(t, n)
+
+	require.Equal(t, n, len(fpInsList))
+	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
+
+	return tm, fpInsList
+}
+
+func (tm *TestManager) CreateFinalityProviders(t *testing.T, n int) []*service.FinalityProviderInstance {
 	app := tm.Fpa
+	cfg := app.GetConfig()
+
+	return tm.CreateFinalityProvidersForChain(t, cfg.BabylonConfig.ChainID, n)
+}
+
+func (tm *TestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) []*service.FinalityProviderInstance {
+	app := tm.Fpa
+	cfg := app.GetConfig()
 
 	for i := 0; i < n; i++ {
-		fpName := fpNamePrefix + strconv.Itoa(i)
-		moniker := monikerPrefix + strconv.Itoa(i)
+		fpName := fpNamePrefix + chainID + "-" + strconv.Itoa(i)
+		moniker := monikerPrefix + chainID + "-" + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := newDescription(moniker)
-		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath)
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, chainID, fpName, keyring.BackendTest, passphrase, hdPath)
 		require.NoError(t, err)
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
@@ -198,12 +214,10 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
 
-	fpInsList := app.ListFinalityProviderInstances()
+	fpInsList := app.ListFinalityProviderInstancesForChain(chainID)
 	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
-
-	return tm, fpInsList
+	return fpInsList
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
