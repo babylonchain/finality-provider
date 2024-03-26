@@ -212,9 +212,7 @@ func TestConsumerFinalityProviderRegistration(t *testing.T) {
 	consumerChainID := "consumer-chain-test-1"
 
 	_, err := tm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-	if err != nil {
-		t.Fatalf("failed to register consumer chain: %v", err)
-	}
+	require.NoError(t, err)
 
 	tm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
 }
