@@ -150,6 +150,10 @@ func (app *FinalityProviderApp) ListFinalityProviderInstances() []*FinalityProvi
 	return app.fpManager.ListFinalityProviderInstances()
 }
 
+func (app *FinalityProviderApp) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+	return app.fpManager.ListFinalityProviderInstancesForChain(chainID)
+}
+
 func (app *FinalityProviderApp) ListAllFinalityProvidersInfo() ([]*proto.FinalityProviderInfo, error) {
 	return app.fpManager.AllFinalityProviders()
 }
