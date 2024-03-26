@@ -206,6 +206,70 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	return tm, fpInsList
 }
 
+func (tm *TestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) []*service.FinalityProviderInstance {
+	app := tm.Fpa
+	cfg := app.GetConfig()
+
+	// register all finality providers
+	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
+	for i := 0; i < n; i++ {
+		fpName := fpNamePrefix + chainID + "-" + strconv.Itoa(i)
+		moniker := monikerPrefix + chainID + "-" + strconv.Itoa(i)
+		commission := sdkmath.LegacyZeroDec()
+		desc := newDescription(moniker)
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, chainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		require.NoError(t, err)
+		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
+		require.NoError(t, err)
+		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+		require.NoError(t, err)
+		fpPKs = append(fpPKs, fpPk)
+		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		require.NoError(t, err)
+	}
+
+	for i := 0; i < n; i++ {
+		// start
+		err := app.StartHandlingFinalityProvider(fpPKs[i], passphrase)
+		require.NoError(t, err)
+		fpIns, err := app.GetFinalityProviderInstance(fpPKs[i])
+		require.NoError(t, err)
+		require.True(t, fpIns.IsRunning())
+		require.NoError(t, err)
+	}
+
+	// check finality providers on Babylon side
+	require.Eventually(t, func() bool {
+		fps, err := tm.BBNClient.QueryFinalityProviders()
+		if err != nil {
+			t.Logf("failed to query finality providers from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(fps) != n {
+			return false
+		}
+
+		for _, fp := range fps {
+			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				return false
+			}
+			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+				return false
+			}
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	fpInsList := app.ListFinalityProviderInstancesForChain(chainID)
+	require.Equal(t, n, len(fpInsList))
+
+	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
+
+	return fpInsList
+}
+
 func (tm *TestManager) Stop(t *testing.T) {
 	err := tm.Fpa.Stop()
 	require.NoError(t, err)
