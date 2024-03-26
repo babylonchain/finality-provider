@@ -588,7 +588,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
-// Test methods for e2e testing
+// RegisterConsumerChain registers a consumer chain via a MsgRegisterChain to Babylon
 func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (*types.TxResponse, error) {
 	msg := &bsctypes.MsgRegisterChain{
 		Signer:           bc.mustGetTxSigner(),
