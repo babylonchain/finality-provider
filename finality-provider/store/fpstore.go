@@ -47,6 +47,7 @@ func (s *FinalityProviderStore) CreateFinalityProvider(
 	btcPk *btcec.PublicKey,
 	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
+	masterPubRand string,
 	keyName, chainId string,
 	chainSig, btcSig []byte,
 ) error {
@@ -64,6 +65,7 @@ func (s *FinalityProviderStore) CreateFinalityProvider(
 			BtcSig:   btcSig,
 		},
 		RegisteredEpoch: math.MaxUint64,
+		MasterPubRand:   masterPubRand,
 		KeyName:         keyName,
 		ChainId:         chainId,
 		Status:          proto.FinalityProviderStatus_CREATED,

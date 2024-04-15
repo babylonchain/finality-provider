@@ -10,11 +10,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
@@ -23,11 +18,16 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/keyring"
+	fpkr "github.com/babylonchain/finality-provider/keyring"
 	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/testutil/mocks"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/babylonchain/finality-provider/util"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 var (
@@ -143,11 +143,14 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
 	require.NoError(t, err)
 
+	_, mpr, err := fpkr.GenerateMasterRandPair(fpRecord.PrivKey.Serialize(), types.MarshalChainID(chainID))
+
 	err = fpStore.CreateFinalityProvider(
 		bbnPk,
 		btcPk.MustToBTCPK(),
 		testutil.RandomDescription(r),
 		testutil.ZeroCommissionRate(),
+		mpr.MarshalBase58(),
 		keyName,
 		chainID,
 		pop.BabylonSig,

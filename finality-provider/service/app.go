@@ -186,6 +186,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 		pop:             pop,
 		description:     fp.Description,
 		commission:      fp.Commission,
+		masterPubRand:   fp.MasterPubRand,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *RegisterFinalityProviderResponse, 1),
 	}
@@ -377,10 +378,16 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	// 3. create proof-of-possession
 	pop, err := kr.CreatePop(fpRecord.PrivKey, req.passPhrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create proof-of-possession of the finality-provider: %w", err)
+		return nil, fmt.Errorf("failed to create proof-of-possession of the finality provider: %w", err)
 	}
 
-	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
+	// 4. Create derive master public randomness
+	_, mpr, err := fpkr.GenerateMasterRandPair(fpRecord.PrivKey.Serialize(), types.MarshalChainID(req.chainID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get master public randomness of the finality provider: %w", err)
+	}
+
+	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, mpr.MarshalBase58(), req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
 		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
 	}
 	app.fpManager.metrics.RecordFpStatus(fpPk.MarshalHex(), proto.FinalityProviderStatus_CREATED)
@@ -493,6 +500,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				popBytes,
 				req.commission,
 				desBytes,
+				req.masterPubRand,
 			)
 
 			if err != nil {

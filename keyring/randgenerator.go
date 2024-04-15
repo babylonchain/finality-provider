@@ -1,4 +1,4 @@
-package randgenerator
+package keyring
 
 import (
 	"crypto/hmac"

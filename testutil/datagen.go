@@ -13,6 +13,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -67,13 +68,17 @@ func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *store.StoredFinality
 	err = pop.Verify(chainPk, bip340PK, &chaincfg.SimNetParams)
 	require.NoError(t, err)
 
+	_, mpr, err := eots.NewMasterRandPair(r)
+	require.NoError(t, err)
+
 	return &store.StoredFinalityProvider{
-		KeyName:     GenRandomHexStr(r, 4),
-		ChainID:     "chain-test",
-		ChainPk:     &secp256k1.PubKey{Key: chainPk.Bytes()},
-		BtcPk:       bip340PK.MustToBTCPK(),
-		Description: RandomDescription(r),
-		Commission:  ZeroCommissionRate(),
+		KeyName:       GenRandomHexStr(r, 4),
+		ChainID:       "chain-test",
+		ChainPk:       &secp256k1.PubKey{Key: chainPk.Bytes()},
+		BtcPk:         bip340PK.MustToBTCPK(),
+		Description:   RandomDescription(r),
+		Commission:    ZeroCommissionRate(),
+		MasterPubRand: mpr.MarshalBase58(),
 		Pop: &proto.ProofOfPossession{
 			ChainSig: pop.BabylonSig,
 			BtcSig:   pop.BtcSig,

@@ -13,6 +13,7 @@ import (
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 type createFinalityProviderResponse struct {
@@ -37,6 +38,7 @@ type registerFinalityProviderRequest struct {
 	pop             *btcstakingtypes.ProofOfPossession
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
+	masterPubRand   string
 	errResponse     chan error
 	successResponse chan *RegisterFinalityProviderResponse
 }
@@ -122,7 +124,7 @@ func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
 }
 
 func (fp *FinalityProviderInstance) GetChainID() []byte {
-	return []byte(fp.state.getStoreFinalityProvider().ChainID)
+	return types.MarshalChainID(fp.state.getStoreFinalityProvider().ChainID)
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {

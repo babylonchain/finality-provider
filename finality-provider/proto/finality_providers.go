@@ -50,6 +50,7 @@ func NewFinalityProviderInfo(sfp *FinalityProvider) (*FinalityProviderInfo, erro
 			Details:         des.Details,
 		},
 		RegisteredEpoch: sfp.RegisteredEpoch,
+		MasterPubRand:   sfp.MasterPubRand,
 		LastVotedHeight: sfp.LastVotedHeight,
 		Status:          sfp.Status.String(),
 	}, nil

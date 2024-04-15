@@ -26,6 +26,7 @@ type ClientController interface {
 		pop []byte,
 		commission *math.LegacyDec,
 		description []byte,
+		masterPubRand string,
 	) (*types.TxResponse, uint64, error)
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain

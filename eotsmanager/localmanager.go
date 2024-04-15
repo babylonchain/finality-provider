@@ -19,9 +19,9 @@ import (
 
 	"github.com/babylonchain/finality-provider/codec"
 	"github.com/babylonchain/finality-provider/eotsmanager/config"
-	"github.com/babylonchain/finality-provider/eotsmanager/randgenerator"
 	"github.com/babylonchain/finality-provider/eotsmanager/store"
 	eotstypes "github.com/babylonchain/finality-provider/eotsmanager/types"
+	fpkeyring "github.com/babylonchain/finality-provider/keyring"
 )
 
 const (
@@ -198,7 +198,7 @@ func (lm *LocalEOTSManager) getMasterRandPair(fpPk []byte, chainID []byte, passp
 	if err != nil {
 		return nil, nil, err
 	}
-	return randgenerator.GenerateMasterRandPair(record.PrivKey.Serialize(), chainID)
+	return fpkeyring.GenerateMasterRandPair(record.PrivKey.Serialize(), chainID)
 }
 
 // TODO: we ignore passPhrase in local implementation for now

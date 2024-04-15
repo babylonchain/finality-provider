@@ -117,6 +117,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	pop []byte,
 	commission *math.LegacyDec,
 	description []byte,
+	masterPubRand string,
 ) (*types.TxResponse, uint64, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
@@ -129,12 +130,13 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	}
 
 	msg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:      bc.mustGetTxSigner(),
-		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
-		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
-		Pop:         &bbnPop,
-		Commission:  commission,
-		Description: &sdkDescription,
+		Signer:        bc.mustGetTxSigner(),
+		BabylonPk:     &secp256k1.PubKey{Key: chainPk},
+		BtcPk:         bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
+		Pop:           &bbnPop,
+		Commission:    commission,
+		Description:   &sdkDescription,
+		MasterPubRand: masterPubRand,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)

@@ -103,7 +103,8 @@ func FuzzCreateMasterRandPair(f *testing.F) {
 			// verify using the master public randomness and height
 			pr, err := mpr.DerivePubRand(uint32(height))
 			require.NoError(t, err)
-			eots.Verify(fpBTCPK.MustToBTCPK(), pr, msg, sig)
+			err = eots.Verify(fpBTCPK.MustToBTCPK(), pr, msg, sig)
+			require.NoError(t, err)
 		}
 	})
 }

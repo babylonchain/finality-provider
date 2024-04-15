@@ -821,14 +821,16 @@ func (tm *TestManager) FinalizeUntilEpoch(t *testing.T, epoch uint64) {
 		opReturn2 := datagen.CreateBlockWithTransaction(r, opReturn1.HeaderBytes.ToBlockHeader(), tx2)
 
 		// insert headers and proofs
-		tm.BBNClient.InsertBtcBlockHeaders([]bbntypes.BTCHeaderBytes{
+		_, err = tm.BBNClient.InsertBtcBlockHeaders([]bbntypes.BTCHeaderBytes{
 			opReturn1.HeaderBytes,
 			opReturn2.HeaderBytes,
 		})
-		tm.BBNClient.InsertSpvProofs(submitter.Address, []*btcctypes.BTCSpvProof{
+		require.NoError(t, err)
+		_, err = tm.BBNClient.InsertSpvProofs(submitter.Address, []*btcctypes.BTCSpvProof{
 			opReturn1.SpvProof,
 			opReturn2.SpvProof,
 		})
+		require.NoError(t, err)
 
 		// wait until this checkpoint is submitted
 		require.Eventually(t, func() bool {

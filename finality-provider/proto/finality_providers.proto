@@ -125,19 +125,22 @@ message FinalityProvider {
     ];
     // pop is the proof of possession of chain_pk and btc_pk
     ProofOfPossession pop = 5;
+    // master_pub_rand is the master public randomness of the finality provider
+    // encoded as a base58 string
+    string master_pub_rand = 6;
     // registered_epoch is the epoch number when the finality provider is registered on Babylon
-    uint64 registered_epoch = 6;
+    uint64 registered_epoch = 7;
     // key_name is the identifier of the keyring
-    string key_name = 7;
+    string key_name = 8;
     // chain_id is the identifier of the consumer chain that the finality provider connected to
-    string chain_id = 8;
+    string chain_id = 9;
     // last_voted_height defines the height of the last voted chain block
-    uint64 last_voted_height = 9;
+    uint64 last_voted_height = 10;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 10;
+    uint64 last_processed_height = 11;
     // status defines the current finality provider status
-    FinalityProviderStatus status = 11;
+    FinalityProviderStatus status = 12;
 }
 
 // FinalityProviderInfo is the basic information of a finality provider mainly for external usage
@@ -155,12 +158,15 @@ message FinalityProviderInfo {
     ];
     // registered_epoch is the epoch number when the finality provider is registered on Babylon
     uint64 registered_epoch = 5;
+    // master_pub_rand is the master public randomness of the finality provider
+    // encoded as a base58 string
+    string master_pub_rand = 6;
     // last_voted_height defines the height of the last voted chain block
-    uint64 last_voted_height = 6;
+    uint64 last_voted_height = 7;
     // status defines the current finality provider status
-    string status = 7;
+    string status = 8;
     // is_running shows whether the finality provider is running within the daemon
-    bool is_running = 8;
+    bool is_running = 9;
 }
 
 // Description defines description fields for a finality provider
