@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -21,31 +20,6 @@ import (
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/types"
 )
-
-func FuzzCommitPubRandList(f *testing.F) {
-	testutil.AddRandomSeedsToFuzzer(f, 10)
-	f.Fuzz(func(t *testing.T, seed int64) {
-		r := rand.New(rand.NewSource(seed))
-
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
-		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), gomock.Any()).
-			Return(uint64(0), nil).AnyTimes()
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
-		defer cleanUp()
-
-		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().
-			CommitPubRandList(fpIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
-			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
-		res, err := fpIns.CommitPubRand(startingBlock)
-		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.TxHash)
-	})
-}
 
 func FuzzSubmitFinalitySig(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
@@ -62,10 +36,6 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		lastCommittedHeight := randomStartingHeight + 25
-		lastCommittedPubRandMap := make(map[uint64]*btcec.FieldVal)
-		lastCommittedPubRandMap[lastCommittedHeight] = testutil.GenPublicRand(r, t).ToFieldVal()
-		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 

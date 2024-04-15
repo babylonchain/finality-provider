@@ -228,18 +228,6 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 	t.Logf("the finality-provider is successfully registered")
 }
 
-func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
-	require.Eventually(t, func() bool {
-		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
-		if err != nil {
-			return false
-		}
-		return lastCommittedHeight > 0
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	t.Logf("public randomness is successfully committed")
-}
-
 func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
 	var (
 		dels []*bstypes.BTCDelegationResponse

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -50,12 +49,6 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	for idx = 0; idx < num; idx++ {
 		f.Add(r.Int63())
 	}
-}
-
-func GenPublicRand(r *rand.Rand, t *testing.T) *bbn.SchnorrPubRand {
-	_, eotsPR, err := eots.RandGen(r)
-	require.NoError(t, err)
-	return bbn.NewSchnorrPubRandFromFieldVal(eotsPR)
 }
 
 func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *store.StoredFinalityProvider {

@@ -5,7 +5,6 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
@@ -29,10 +28,6 @@ type ClientController interface {
 		description []byte,
 	) (*types.TxResponse, error)
 
-	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
-	// it returns tx hash and error
-	CommitPubRandList(fpPk *btcec.PublicKey, startHeight uint64, pubRandList []*btcec.FieldVal, sig *schnorr.Signature) (*types.TxResponse, error)
-
 	// SubmitFinalitySig submits the finality signature to the consumer chain
 	SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
 
@@ -49,9 +44,6 @@ type ClientController interface {
 
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
-
-	// QueryLastCommittedPublicRand returns the last committed public randomness
-	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error)
 
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)

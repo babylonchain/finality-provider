@@ -54,21 +54,13 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 				continue
 			}
 			// check whether the finality provider has voting power
-			hasVp, err := fp.hasVotingPower(b)
+			hasVp, err := fp.canVote(b)
 			if err != nil {
 				return nil, err
 			}
 			if !hasVp {
 				fp.metrics.IncrementFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
 				continue
-			}
-			// check whether the randomness has been committed
-			hasRand, err := fp.hasRandomness(b)
-			if err != nil {
-				return nil, err
-			}
-			if !hasRand {
-				break
 			}
 			// all good, add the block for catching up
 			catchUpBlocks = append(catchUpBlocks, b)
