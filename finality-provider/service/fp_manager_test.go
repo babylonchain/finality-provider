@@ -144,6 +144,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 
 	_, mpr, err := fpkr.GenerateMasterRandPair(fpRecord.PrivKey.Serialize(), types.MarshalChainID(chainID))
+	require.NoError(t, err)
 
 	err = fpStore.CreateFinalityProvider(
 		bbnPk,

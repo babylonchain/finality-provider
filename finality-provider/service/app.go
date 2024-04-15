@@ -494,7 +494,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				req.errResponse <- err
 				continue
 			}
-			res, resgiteredEpoch, err := app.cc.RegisterFinalityProvider(
+			res, registeredEpoch, err := app.cc.RegisterFinalityProvider(
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
@@ -524,7 +524,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				btcPubKey:       req.btcPubKey,
 				bbnPubKey:       req.bbnPubKey,
 				txHash:          res.TxHash,
-				registeredEpoch: resgiteredEpoch,
+				registeredEpoch: registeredEpoch,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,
