@@ -357,6 +357,10 @@ func (bc *BabylonController) Close() error {
 	Implementations for e2e tests only
 */
 
+func (bc *BabylonController) GetBBNClient() *bbnclient.Client {
+	return bc.bbnClient
+}
+
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
@@ -543,4 +547,18 @@ func (bc *BabylonController) SubmitCovenantSigs(
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+}
+
+func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctypes.BTCSpvProof) (*provider.RelayerTxResponse, error) {
+	msg := &btcctypes.MsgInsertBTCSpvProof{
+		Submitter: submitter,
+		Proofs:    proofs,
+	}
+
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }

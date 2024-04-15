@@ -174,3 +174,8 @@ func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) 
 func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
 	return fp.getEOTSPrivKey()
 }
+
+// only used for testing purposes
+func (fp *FinalityProviderInstance) RegisteredEpoch() uint64 {
+	return fp.state.fp.RegisteredEpoch
+}

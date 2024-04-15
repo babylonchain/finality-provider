@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"math"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -62,9 +63,10 @@ func (s *FinalityProviderStore) CreateFinalityProvider(
 			ChainSig: chainSig,
 			BtcSig:   btcSig,
 		},
-		KeyName: keyName,
-		ChainId: chainId,
-		Status:  proto.FinalityProviderStatus_CREATED,
+		RegisteredEpoch: math.MaxUint64,
+		KeyName:         keyName,
+		ChainId:         chainId,
+		Status:          proto.FinalityProviderStatus_CREATED,
 	}
 
 	return s.createFinalityProviderInternal(fp)

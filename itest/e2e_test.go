@@ -27,13 +27,13 @@ var (
 // activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
 func TestFinalityProviderLifeCycle(t *testing.T) {
-	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
+	tm, fpInsList, lastRegisteredEpoch := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
 	fpIns := fpInsList[0]
 
-	// check the public randomness is committed
-	tm.WaitForFpPubRandCommitted(t, fpIns)
+	// wait until the last registered epoch is finalised
+	tm.FinalizeUntilEpoch(t, lastRegisteredEpoch)
 
 	// send a BTC delegation
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
@@ -59,13 +59,13 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 // sends a finality vote over a conflicting block
 // in this case, the BTC private key should be extracted by Babylon
 func TestDoubleSigning(t *testing.T) {
-	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
+	tm, fpInsList, lastRegisteredEpoch := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
 	fpIns := fpInsList[0]
 
-	// check the public randomness is committed
-	tm.WaitForFpPubRandCommitted(t, fpIns)
+	// wait until the last registered epoch is finalised
+	tm.FinalizeUntilEpoch(t, lastRegisteredEpoch)
 
 	// send a BTC delegation
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
@@ -118,16 +118,18 @@ func TestDoubleSigning(t *testing.T) {
 // TestMultipleFinalityProviders tests starting with multiple finality providers
 func TestMultipleFinalityProviders(t *testing.T) {
 	n := 3
-	tm, fpInstances := StartManagerWithFinalityProvider(t, n)
+	tm, fpInstances, lastRegisteredEpoch := StartManagerWithFinalityProvider(t, n)
 	defer tm.Stop(t)
+
+	// wait until the last registered epoch is finalised
+	tm.FinalizeUntilEpoch(t, lastRegisteredEpoch)
 
 	// submit BTC delegations for each finality-provider
 	for _, fpIns := range fpInstances {
 		tm.Wg.Add(1)
 		go func(fpi *service.FinalityProviderInstance) {
 			defer tm.Wg.Done()
-			// check the public randomness is committed
-			tm.WaitForFpPubRandCommitted(t, fpi)
+
 			// send a BTC delegation
 			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, stakingTime, stakingAmount)
 		}(fpIns)
@@ -155,13 +157,13 @@ func TestMultipleFinalityProviders(t *testing.T) {
 
 // TestFastSync tests the fast sync process where the finality-provider is terminated and restarted with fast sync
 func TestFastSync(t *testing.T) {
-	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
+	tm, fpInsList, lastRegisteredEpoch := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
-	fpIns := fpInsList[0]
+	// wait until the last registered epoch is finalised
+	tm.FinalizeUntilEpoch(t, lastRegisteredEpoch)
 
-	// check the public randomness is committed
-	tm.WaitForFpPubRandCommitted(t, fpIns)
+	fpIns := fpInsList[0]
 
 	// send a BTC delegation
 	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
