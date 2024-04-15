@@ -45,6 +45,7 @@ type finalityProviderRegisteredEvent struct {
 	bbnPubKey       *secp256k1.PubKey
 	btcPubKey       *bbntypes.BIP340PubKey
 	txHash          string
+	registeredEpoch uint64
 	successResponse chan *RegisterFinalityProviderResponse
 }
 

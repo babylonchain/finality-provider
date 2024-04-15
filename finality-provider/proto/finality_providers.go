@@ -49,6 +49,7 @@ func NewFinalityProviderInfo(sfp *FinalityProvider) (*FinalityProviderInfo, erro
 			SecurityContact: des.SecurityContact,
 			Details:         des.Details,
 		},
+		RegisteredEpoch: sfp.RegisteredEpoch,
 		LastVotedHeight: sfp.LastVotedHeight,
 		Status:          sfp.Status.String(),
 	}, nil

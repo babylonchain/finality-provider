@@ -187,13 +187,11 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				zap.Uint64("height", b.Height),
 			)
 
-			// TODO(timestamping): ensure the finality provider's registered epoch is finalised
-
 			// check whether the block has been processed before
 			if fp.hasProcessed(b) {
 				continue
 			}
-			// check whether the finality provider has voting power
+			// check whether the finality provider has voting power and its regsitered epoch is BTC timestamping finalised
 			hasVp, err := fp.canVote(b)
 			if err != nil {
 				fp.reportCriticalErr(err)
@@ -369,6 +367,22 @@ func (fp *FinalityProviderInstance) hasProcessed(b *types.BlockInfo) bool {
 // - its registered epoch is BTC timestamping-finalised
 func (fp *FinalityProviderInstance) canVote(b *types.BlockInfo) (bool, error) {
 	// TODO(timestamping): ensure the finality provider's registered epoch is finalised
+	registeredEpoch := fp.state.fp.RegisteredEpoch
+	lastFinalizedEpoch, err := fp.cc.QueryLastFinalizedEpoch()
+	if err != nil {
+		return false, err
+	}
+	if lastFinalizedEpoch < registeredEpoch {
+		fp.logger.Debug(
+			"the finality provider's registered epoch is not BTC timestamped yet",
+			zap.String("pk", fp.GetBtcPkHex()),
+			zap.Uint64("block_height", b.Height),
+			zap.Uint64("registered_epoch", registeredEpoch),
+			zap.Uint64("last_finalized_epoch", lastFinalizedEpoch),
+		)
+
+		return false, nil
+	}
 
 	power, err := fp.GetVotingPowerWithRetry(b.Height)
 	if err != nil {
@@ -376,7 +390,7 @@ func (fp *FinalityProviderInstance) canVote(b *types.BlockInfo) (bool, error) {
 	}
 	if power == 0 {
 		fp.logger.Debug(
-			"the finality-provider does not have voting power",
+			"the finality provider does not have voting power",
 			zap.String("pk", fp.GetBtcPkHex()),
 			zap.Uint64("block_height", b.Height),
 		)

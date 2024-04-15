@@ -26,7 +26,7 @@ type ClientController interface {
 		pop []byte,
 		commission *math.LegacyDec,
 		description []byte,
-	) (*types.TxResponse, error)
+	) (*types.TxResponse, uint64, error)
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain
 	SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
@@ -57,6 +57,9 @@ type ClientController interface {
 	// QueryActivatedHeight returns the activated height of the consumer chain
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
+
+	// QueryLastFinalizedEpoch returns the last finalised epoch of Babylon
+	QueryLastFinalizedEpoch() (uint64, error)
 
 	Close() error
 }

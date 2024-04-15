@@ -437,10 +437,17 @@ func (app *FinalityProviderApp) eventLoop() {
 			req.successResponse <- &createFinalityProviderResponse{FpInfo: res.FpInfo}
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
+			btcPK := ev.btcPubKey.MustToBTCPK()
+			// set the finality provider's registered epoch
+			if err := app.fps.SetFpRegisteredEpoch(btcPK, ev.registeredEpoch); err != nil {
+				app.logger.Fatal("failed to set the finality provider's registered epoch",
+					zap.String("pk", ev.btcPubKey.MarshalHex()),
+					zap.Error(err),
+				)
+			}
 			// change the status of the finality-provider to registered
-			err := app.fps.SetFpStatus(ev.btcPubKey.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
-			if err != nil {
-				app.logger.Fatal("failed to set finality-provider status to REGISTERED",
+			if err := app.fps.SetFpStatus(btcPK, proto.FinalityProviderStatus_REGISTERED); err != nil {
+				app.logger.Fatal("failed to set the finalityprovider's status to REGISTERED",
 					zap.String("pk", ev.btcPubKey.MarshalHex()),
 					zap.Error(err),
 				)
@@ -480,7 +487,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				req.errResponse <- err
 				continue
 			}
-			res, err := app.cc.RegisterFinalityProvider(
+			res, resgiteredEpoch, err := app.cc.RegisterFinalityProvider(
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
@@ -506,9 +513,10 @@ func (app *FinalityProviderApp) registrationLoop() {
 			)
 
 			app.finalityProviderRegisteredEventChan <- &finalityProviderRegisteredEvent{
-				btcPubKey: req.btcPubKey,
-				bbnPubKey: req.bbnPubKey,
-				txHash:    res.TxHash,
+				btcPubKey:       req.btcPubKey,
+				bbnPubKey:       req.bbnPubKey,
+				txHash:          res.TxHash,
+				registeredEpoch: resgiteredEpoch,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,

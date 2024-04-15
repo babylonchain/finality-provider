@@ -113,6 +113,15 @@ func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto
 	return s.setFinalityProviderState(btcPk, setFpStatus)
 }
 
+func (s *FinalityProviderStore) SetFpRegisteredEpoch(btcPk *btcec.PublicKey, registeredEpoch uint64) error {
+	setFpStatus := func(fp *proto.FinalityProvider) error {
+		fp.RegisteredEpoch = registeredEpoch
+		return nil
+	}
+
+	return s.setFinalityProviderState(btcPk, setFpStatus)
+}
+
 // SetFpLastVotedHeight sets the last voted height to the stored last voted height and last processed height
 // only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
 func (s *FinalityProviderStore) SetFpLastVotedHeight(btcPk *btcec.PublicKey, lastVotedHeight uint64) error {

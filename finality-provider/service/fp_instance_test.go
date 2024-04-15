@@ -26,18 +26,21 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
+		randomRegiteredEpoch := uint64(r.Int63n(10) + 1)
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight, randomRegiteredEpoch)
 		defer cleanUp()
 
+		// mock voting power
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		// mock finalised BTC timestamped
+		mockClientController.EXPECT().QueryLastFinalizedEpoch().
+			Return(randomRegiteredEpoch, nil).AnyTimes()
 
 		// submit finality sig
 		nextBlock := &types.BlockInfo{
@@ -58,7 +61,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64) (*service.FinalityProviderApp, *service.FinalityProviderInstance, func()) {
+func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64, registeredEpoch uint64) (*service.FinalityProviderApp, *service.FinalityProviderInstance, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
@@ -87,6 +90,10 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	fp := testutil.GenStoredFinalityProvider(r, t, app, passphrase, hdPath)
 	err = app.GetFinalityProviderStore().SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
 	require.NoError(t, err)
+
+	err = app.GetFinalityProviderStore().SetFpRegisteredEpoch(fp.BtcPk, registeredEpoch)
+	require.NoError(t, err)
+
 	// TODO: use mock metrics
 	m := metrics.NewFpMetrics()
 	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, m, passphrase, make(chan *service.CriticalError), logger)
