@@ -53,14 +53,15 @@ The expected result is:
   },
   "commission": "0.050000000000000000",
   "babylon_pk": {
-    "key": "Ay+3n0i8B14iaqPzfYdyEUfsRISPHKSP8IteCQJELJVf"
+    "key": "A6swHKxNoqAP9BLnqiY6VwNSasNiC1u/1TylRUZZzepA"
   },
-  "btc_pk": "e36171a9efa696aa444c0f02c03afebd675938a0db66f1450fd7479417c44f3c",
+  "btc_pk": "ff06bfc18a3e5d44836a8d310be05a8648f8e4ebedeb88420bf5a2255e5f9e29",
   "pop": {
-    "babylon_sig": "BOF8XAXuUfQhdAA/WubB8BkCEBsgD+1QufhN4liKGzdA4eZDbh8vjiYnDmJWXQgswjQXovSttZiRy+HAxz/p7w==",
-    "btc_sig": "5G18w/zXvQkUSOeB1pSLqzw0JcwyK+t4eoRpVv0zt0kttZCUkkSlB17YwhSYlhCLvNpUke5M2rdYWFi61OqvMw=="
+    "babylon_sig": "c9g/L8hlVGTf6/4Zk++P+JzX6qSOXRjWO948NrsQpy1WWRLq82/pqv0HUo0nZHDbPjFmGtITZMDMlIQkCGtGKg==",
+    "btc_sig": "L6XvFY+nJw57VWafo5rAmjbGt5dOFmGkbsBQKGVd8Z8kVJtQhDf1qOAMCBUqJB6jmu37vmZgzTXgJL5BuzG8FQ=="
   },
-  "master_pub_rand": "xpub661MyMwAqRbcEb5uJdjkpdZNH3NeUinTLbxePMCoVnfT5RBdZjqypSzgHYNhVJr2YiJxb4QzQrdftPoCmZ3qGxo3xCCm2hZvNgH9gSLspHm"
+  "master_pub_rand": "xpub661MyMwAqRbcFRjHEMroeyKJhPp76kdAHMh5D1bZSNEeaJHuKK74BucAGESCXjykzqFUZtZQFDxqg8cLFk6iuVYe26oAPFoPXBYnTAKGnEf",
+  "fp_sig_hex": "87ca116fbd2c919060dc8dfbd429b424f3c25bb979a344c6e6c2b04b639ec7d33b84ed047413d3968dfa11a030936d90e2b09687f1c9c3add17293cc9122dde3"
 }
 ```
 

@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,13 @@ import (
 
 	"github.com/urfave/cli"
 )
+
+type FinalityProviderSigned struct {
+	btcstktypes.FinalityProvider
+	// FpSigHex is the finality provider cosmos sdk chain key
+	// can be verified with the pub key in btcstktypes.FinalityProvider.BabylonPk
+	FpSigHex string `json:"fp_sig_hex"`
+}
 
 var Phase1ExportFinalityProvider = cli.Command{
 	Name:      "p1-export-finality-provider",
@@ -145,12 +153,12 @@ func exportFp(ctx *cli.Context) error {
 		}
 	}
 
-	stored, err := app.StoreFinalityProvider(ctx.String(passphraseFlag), keyName, ctx.String(hdPathFlag), ctx.String(chainIdFlag), &description, &commissionRate)
+	stored, chainSk, err := app.StoreFinalityProvider(ctx.String(passphraseFlag), keyName, ctx.String(hdPathFlag), ctx.String(chainIdFlag), &description, &commissionRate)
 	if err != nil {
 		return err
 	}
 
-	printRespJSON(btcstktypes.FinalityProvider{
+	fp := btcstktypes.FinalityProvider{
 		BtcPk:         stored.GetBIP340BTCPK(),
 		MasterPubRand: stored.MasterPubRand,
 		Pop: &btcstktypes.ProofOfPossession{
@@ -164,6 +172,21 @@ func exportFp(ctx *cli.Context) error {
 		RegisteredEpoch:      0,
 		SlashedBabylonHeight: 0,
 		SlashedBtcHeight:     0,
+	}
+
+	fpbz, err := fp.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal finality provider %+v: %w", fp, err)
+	}
+
+	signature, err := chainSk.Sign(fpbz)
+	if err != nil {
+		return fmt.Errorf("failed to sign finality provider %+v: %w", fp, err)
+	}
+
+	printRespJSON(FinalityProviderSigned{
+		FinalityProvider: fp,
+		FpSigHex:         hex.EncodeToString(signature),
 	})
 
 	return nil
