@@ -345,60 +345,7 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 }
 
 func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
-	// 1. check if the chain key exists
-	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
-	if err != nil {
-		return nil, err
-	}
-	chainSk, err := kr.GetChainPrivKey(req.passPhrase)
-	if err != nil {
-		// the chain key does not exist, should create the chain key first
-		keyInfo, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create chain key %s: %w", req.keyName, err)
-		}
-		chainSk = &secp256k1.PrivKey{Key: keyInfo.PrivateKey.Serialize()}
-	}
-	chainPk := &secp256k1.PubKey{Key: chainSk.PubKey().Bytes()}
-
-	// 2. create EOTS key
-	fpPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
-	if err != nil {
-		return nil, err
-	}
-	fpPk, err := bbntypes.NewBIP340PubKey(fpPkBytes)
-	if err != nil {
-		return nil, err
-	}
-	fpRecord, err := app.eotsManager.KeyRecord(fpPk.MustMarshal(), req.passPhrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get finality-provider record: %w", err)
-	}
-
-	// 3. create proof-of-possession
-	pop, err := kr.CreatePop(fpRecord.PrivKey, req.passPhrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create proof-of-possession of the finality provider: %w", err)
-	}
-
-	// 4. Create derive master public randomness
-	_, mpr, err := fpkr.GenerateMasterRandPair(fpRecord.PrivKey.Serialize(), types.MarshalChainID(req.chainID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get master public randomness of the finality provider: %w", err)
-	}
-
-	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, mpr.MarshalBase58(), req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
-		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
-	}
-	app.fpManager.metrics.RecordFpStatus(fpPk.MarshalHex(), proto.FinalityProviderStatus_CREATED)
-
-	app.logger.Info("successfully created a finality-provider",
-		zap.String("btc_pk", fpPk.MarshalHex()),
-		zap.String("chain_pk", chainPk.String()),
-		zap.String("key_name", req.keyName),
-	)
-
-	storedFp, err := app.fps.GetFinalityProvider(fpPk.MustToBTCPK())
+	storedFp, err := app.StoreFinalityProvider(req.passPhrase, req.keyName, req.hdPath, req.chainID, req.description, req.commission)
 	if err != nil {
 		return nil, err
 	}
@@ -406,6 +353,69 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	return &createFinalityProviderResponse{
 		FpInfo: storedFp.ToFinalityProviderInfo(),
 	}, nil
+}
+
+// StoreFinalityProvider stores a new finality provider in the fp store.
+func (app *FinalityProviderApp) StoreFinalityProvider(passPhrase, keyName, hdPath, chainID string, description *stakingtypes.Description, commission *sdkmath.LegacyDec) (*store.StoredFinalityProvider, error) {
+	// 1. check if the chain key exists
+	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, keyName, app.input)
+	if err != nil {
+		return nil, err
+	}
+	chainSk, err := kr.GetChainPrivKey(passPhrase)
+	if err != nil {
+		// the chain key does not exist, should create the chain key first
+		keyInfo, err := kr.CreateChainKey(passPhrase, hdPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chain key %s: %w", keyName, err)
+		}
+		chainSk = &secp256k1.PrivKey{Key: keyInfo.PrivateKey.Serialize()}
+	}
+	chainPk := &secp256k1.PubKey{Key: chainSk.PubKey().Bytes()}
+
+	// 2. create EOTS key
+	fpPkBytes, err := app.eotsManager.CreateKey(keyName, passPhrase, hdPath)
+	if err != nil {
+		return nil, err
+	}
+	fpPk, err := bbntypes.NewBIP340PubKey(fpPkBytes)
+	if err != nil {
+		return nil, err
+	}
+	fpRecord, err := app.eotsManager.KeyRecord(fpPk.MustMarshal(), passPhrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get finality-provider record: %w", err)
+	}
+
+	// 3. create proof-of-possession
+	pop, err := kr.CreatePop(fpRecord.PrivKey, passPhrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proof-of-possession of the finality provider: %w", err)
+	}
+
+	// 4. Create derive master public randomness
+	_, mpr, err := fpkr.GenerateMasterRandPair(fpRecord.PrivKey.Serialize(), types.MarshalChainID(chainID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get master public randomness of the finality provider: %w", err)
+	}
+
+	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), description, commission, mpr.MarshalBase58(), keyName, chainID, pop.BabylonSig, pop.BtcSig); err != nil {
+		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
+	}
+	app.fpManager.metrics.RecordFpStatus(fpPk.MarshalHex(), proto.FinalityProviderStatus_CREATED)
+
+	app.logger.Info("successfully created a finality-provider",
+		zap.String("btc_pk", fpPk.MarshalHex()),
+		zap.String("chain_pk", chainPk.String()),
+		zap.String("key_name", keyName),
+	)
+
+	storedFp, err := app.fps.GetFinalityProvider(fpPk.MustToBTCPK())
+	if err != nil {
+		return nil, err
+	}
+
+	return storedFp, nil
 }
 
 func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.ChainKeyInfo, error) {

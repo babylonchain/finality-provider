@@ -2,12 +2,13 @@ package log
 
 import (
 	"fmt"
-	"github.com/babylonchain/finality-provider/util"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/babylonchain/finality-provider/util"
 
 	zaplogfmt "github.com/jsternberg/zap-logfmt"
 	"go.uber.org/zap"
