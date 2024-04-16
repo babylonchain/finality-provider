@@ -1,9 +1,11 @@
-package main
+package daemon
 
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -15,10 +17,11 @@ import (
 )
 
 var (
-	defaultAppHashStr = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
+	defaultFpdDaemonAddress = "127.0.0.1:" + strconv.Itoa(fpcfg.DefaultRPCPort)
+	defaultAppHashStr       = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
 )
 
-var getDaemonInfoCmd = cli.Command{
+var GetDaemonInfoCmd = cli.Command{
 	Name:      "get-info",
 	ShortName: "gi",
 	Usage:     "Get information of the running daemon.",
@@ -51,7 +54,7 @@ func getInfo(ctx *cli.Context) error {
 	return nil
 }
 
-var createFpDaemonCmd = cli.Command{
+var CreateFpDaemonCmd = cli.Command{
 	Name:      "create-finality-provider",
 	ShortName: "cfp",
 	Usage:     "Create a finality provider object and save it in database.",
@@ -186,7 +189,7 @@ func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, erro
 	return description.EnsureLength()
 }
 
-var lsFpDaemonCmd = cli.Command{
+var LsFpDaemonCmd = cli.Command{
 	Name:      "list-finality-providers",
 	ShortName: "ls",
 	Usage:     "List finality providers stored in the database.",
@@ -218,7 +221,7 @@ func lsFpDaemon(ctx *cli.Context) error {
 	return nil
 }
 
-var fpInfoDaemonCmd = cli.Command{
+var FpInfoDaemonCmd = cli.Command{
 	Name:      "finality-provider-info",
 	ShortName: "fpi",
 	Usage:     "Show the information of the finality provider.",
@@ -260,7 +263,7 @@ func fpInfoDaemon(ctx *cli.Context) error {
 	return nil
 }
 
-var registerFpDaemonCmd = cli.Command{
+var RegisterFpDaemonCmd = cli.Command{
 	Name:      "register-finality-provider",
 	ShortName: "rfp",
 	Usage:     "Register a created finality provider to Babylon.",
@@ -309,9 +312,9 @@ func registerFp(ctx *cli.Context) error {
 	return nil
 }
 
-// addFinalitySigDaemonCmd allows manual submission of finality signatures
+// AddFinalitySigDaemonCmd allows manual submission of finality signatures
 // NOTE: should only be used for presentation/testing purposes
-var addFinalitySigDaemonCmd = cli.Command{
+var AddFinalitySigDaemonCmd = cli.Command{
 	Name:      "add-finality-sig",
 	ShortName: "afs",
 	Usage:     "Send a finality signature to the consumer chain. This command should only be used for presentation/testing purposes",
@@ -368,4 +371,14 @@ func addFinalitySig(ctx *cli.Context) error {
 	printRespJSON(res)
 
 	return nil
+}
+
+func printRespJSON(resp interface{}) {
+	jsonBytes, err := json.MarshalIndent(resp, "", "    ")
+	if err != nil {
+		fmt.Println("unable to decode response: ", err)
+		return
+	}
+
+	fmt.Printf("%s\n", jsonBytes)
 }
