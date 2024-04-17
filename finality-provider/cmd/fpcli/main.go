@@ -25,7 +25,7 @@ func main() {
 		dcli.FpInfoDaemonCmd,
 		dcli.RegisterFpDaemonCmd,
 		dcli.AddFinalitySigDaemonCmd,
-		dcli.Phase1ExportFinalityProvider,
+		dcli.ExportFinalityProvider,
 	)
 
 	if err := app.Run(os.Args); err != nil {
