@@ -25,10 +25,10 @@ type FinalityProviderSigned struct {
 	FpSigHex string `json:"fp_sig_hex"`
 }
 
-var Phase1ExportFinalityProvider = cli.Command{
-	Name:      "p1-export-finality-provider",
-	ShortName: "p1efpd",
-	Usage:     "Exports an finality provider to phase 1.",
+var ExportFinalityProvider = cli.Command{
+	Name:      "export-finality-provider",
+	ShortName: "exfpd",
+	Usage:     "Exports an finality provider.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  keyNameFlag,
