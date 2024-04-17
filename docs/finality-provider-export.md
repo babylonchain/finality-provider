@@ -49,9 +49,8 @@ randomness for the blocks it intends to provide finality signatures for,
 and submitting finality signatures. To just create one finality provider and
 export his information, there is no need to connect to babylon chain, just
 initialize the working directory for the finality provider config.
-This config is needed to define the `[dbconfig]` where it is set the
-path and database configurations. To initialize the fpd work directory,
-run `fpd init`. It creates in the default home location, unless `--home` flag is specified.
+To initialize the fpd work directory, run `fpd init`. It creates
+in the default home location, unless `--home` flag is specified.
 
 ```shell
 $ fpd init --home ./export-fp/fpd
