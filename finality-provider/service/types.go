@@ -13,6 +13,7 @@ import (
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 type createFinalityProviderResponse struct {
@@ -37,6 +38,7 @@ type registerFinalityProviderRequest struct {
 	pop             *btcstakingtypes.ProofOfPossession
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
+	masterPubRand   string
 	errResponse     chan error
 	successResponse chan *RegisterFinalityProviderResponse
 }
@@ -45,13 +47,15 @@ type finalityProviderRegisteredEvent struct {
 	bbnPubKey       *secp256k1.PubKey
 	btcPubKey       *bbntypes.BIP340PubKey
 	txHash          string
+	registeredEpoch uint64
 	successResponse chan *RegisterFinalityProviderResponse
 }
 
 type RegisterFinalityProviderResponse struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
-	TxHash    string
+	bbnPubKey       *secp256k1.PubKey
+	btcPubKey       *bbntypes.BIP340PubKey
+	TxHash          string
+	RegisteredEpoch uint64
 }
 
 type CreateFinalityProviderResult struct {
@@ -121,7 +125,7 @@ func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
 }
 
 func (fp *FinalityProviderInstance) GetChainID() []byte {
-	return []byte(fp.state.getStoreFinalityProvider().ChainID)
+	return types.MarshalChainID(fp.state.getStoreFinalityProvider().ChainID)
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {
@@ -172,4 +176,9 @@ func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) 
 // only used for testing purposes
 func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
 	return fp.getEOTSPrivKey()
+}
+
+// only used for testing purposes
+func (fp *FinalityProviderInstance) RegisteredEpoch() uint64 {
+	return fp.state.fp.RegisteredEpoch
 }

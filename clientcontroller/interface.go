@@ -5,7 +5,6 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
@@ -27,11 +26,8 @@ type ClientController interface {
 		pop []byte,
 		commission *math.LegacyDec,
 		description []byte,
-	) (*types.TxResponse, error)
-
-	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
-	// it returns tx hash and error
-	CommitPubRandList(fpPk *btcec.PublicKey, startHeight uint64, pubRandList []*btcec.FieldVal, sig *schnorr.Signature) (*types.TxResponse, error)
+		masterPubRand string,
+	) (*types.TxResponse, uint64, error)
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain
 	SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
@@ -50,9 +46,6 @@ type ClientController interface {
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
 
-	// QueryLastCommittedPublicRand returns the last committed public randomness
-	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error)
-
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)
 
@@ -65,6 +58,9 @@ type ClientController interface {
 	// QueryActivatedHeight returns the activated height of the consumer chain
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
+
+	// QueryLastFinalizedEpoch returns the last finalised epoch of Babylon
+	QueryLastFinalizedEpoch() (uint64, error)
 
 	Close() error
 }

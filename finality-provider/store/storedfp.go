@@ -20,6 +20,8 @@ type StoredFinalityProvider struct {
 	Description         *stakingtypes.Description
 	Commission          *sdkmath.LegacyDec
 	Pop                 *proto.ProofOfPossession
+	RegisteredEpoch     uint64
+	MasterPubRand       string
 	KeyName             string
 	ChainID             string
 	LastVotedHeight     uint64
@@ -53,6 +55,8 @@ func protoFpToStoredFinalityProvider(fp *proto.FinalityProvider) (*StoredFinalit
 			ChainSig: fp.Pop.ChainSig,
 			BtcSig:   fp.Pop.BtcSig,
 		},
+		RegisteredEpoch:     fp.RegisteredEpoch,
+		MasterPubRand:       fp.MasterPubRand,
 		KeyName:             fp.KeyName,
 		ChainID:             fp.ChainId,
 		LastVotedHeight:     fp.LastVotedHeight,
@@ -80,6 +84,8 @@ func (sfp *StoredFinalityProvider) ToFinalityProviderInfo() *proto.FinalityProvi
 			SecurityContact: sfp.Description.SecurityContact,
 			Details:         sfp.Description.Details,
 		},
+		RegisteredEpoch: sfp.RegisteredEpoch,
+		MasterPubRand:   sfp.MasterPubRand,
 		Commission:      sfp.Commission.String(),
 		LastVotedHeight: sfp.LastVotedHeight,
 		Status:          sfp.Status.String(),
