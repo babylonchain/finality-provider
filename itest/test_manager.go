@@ -155,6 +155,9 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	tm := StartManager(t)
 	app := tm.Fpa
 
+	// register all finality providers
+	registeredEpoch := uint64(0)
+	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
 	for i := 0; i < n; i++ {
 		fpName := fpNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
@@ -167,54 +170,55 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
-		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		fpPKs = append(fpPKs, fpPk)
+		resp, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+		registeredEpoch = resp.RegisteredEpoch // last registered epoch
+	}
+
+	// wait until the last registered epoch is finalised
+	tm.FinalizeUntilEpoch(t, registeredEpoch)
+
+	for i := 0; i < n; i++ {
+		// start
+		err := app.StartHandlingFinalityProvider(fpPKs[i], passphrase)
 		require.NoError(t, err)
-		fpIns, err := app.GetFinalityProviderInstance(fpPk)
+		fpIns, err := app.GetFinalityProviderInstance(fpPKs[i])
 		require.NoError(t, err)
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
-
-		// check finality providers on Babylon side
-		require.Eventually(t, func() bool {
-			fps, err := tm.BBNClient.QueryFinalityProviders()
-			if err != nil {
-				t.Logf("failed to query finality providers from Babylon %s", err.Error())
-				return false
-			}
-
-			if len(fps) != i+1 {
-				return false
-			}
-
-			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
-					return false
-				}
-				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
-					return false
-				}
-			}
-
-			return true
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
+
+	// check finality providers on Babylon side
+	require.Eventually(t, func() bool {
+		fps, err := tm.BBNClient.QueryFinalityProviders()
+		if err != nil {
+			t.Logf("failed to query finality providers from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(fps) != n {
+			return false
+		}
+
+		for _, fp := range fps {
+			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				return false
+			}
+			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+				return false
+			}
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
 
-	lastRegisteredEpoch := uint64(0)
-	for _, fpIns := range fpInsList {
-		registeredEpoch := fpIns.RegisteredEpoch()
-		if lastRegisteredEpoch < registeredEpoch {
-			lastRegisteredEpoch = registeredEpoch
-		}
-	}
-
 	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
 
-	return tm, fpInsList, lastRegisteredEpoch
+	return tm, fpInsList, registeredEpoch
 }
 
 func (tm *TestManager) Stop(t *testing.T) {

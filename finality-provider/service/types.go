@@ -52,9 +52,10 @@ type finalityProviderRegisteredEvent struct {
 }
 
 type RegisterFinalityProviderResponse struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
-	TxHash    string
+	bbnPubKey       *secp256k1.PubKey
+	btcPubKey       *bbntypes.BIP340PubKey
+	TxHash          string
+	RegisteredEpoch uint64
 }
 
 type CreateFinalityProviderResult struct {

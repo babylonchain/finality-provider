@@ -7,8 +7,8 @@ import (
 	"github.com/babylonchain/babylon/crypto/eots"
 )
 
-// GenerateRandomness generates a random scalar with the given key and src
-// the result is deterministic with each given input
+// GenerateMasterRandPair generates pair of master secret/public randomness
+// The result is deterministic with each given input
 func GenerateMasterRandPair(key []byte, chainID []byte) (*eots.MasterSecretRand, *eots.MasterPublicRand, error) {
 	// calculate the random hash of the key concatenated with chainID and height
 	hasher := hmac.New(sha256.New, key)
