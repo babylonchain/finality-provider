@@ -148,7 +148,7 @@ func verifyExportedFp(ctx *cli.Context) error {
 
 	rawSig, err := hex.DecodeString(signedFp.FpSigHex)
 	if err != nil {
-		return fmt.Errorf("unable to decode signed fp %s: %w", &signedFp.FpSigHex, err)
+		return fmt.Errorf("unable to decode signed fp %s: %w", signedFp.FpSigHex, err)
 	}
 
 	fpbz, err := signedFp.FinalityProvider.Marshal()
