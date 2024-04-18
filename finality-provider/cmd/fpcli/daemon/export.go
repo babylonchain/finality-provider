@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,10 @@ import (
 	btcstktypes "github.com/babylonchain/babylon/x/btcstaking/types"
 
 	"github.com/urfave/cli"
+)
+
+const (
+	signedFinalityProviderFlag = "signed-fp"
 )
 
 // FinalityProviderSigned wrap the finality provider by adding the
@@ -92,6 +97,69 @@ structure on the stdout`,
 		},
 	},
 	Action: exportFp,
+}
+
+var VerifyExportedFinalityProvider = cli.Command{
+	Name:      "verify-exported-finality-provider",
+	ShortName: "vexfp",
+	Usage:     "Checks if finality provider is correctly signed.",
+	UsageText: `fpcli vexfp --signed-fp '{
+	"description": {
+		"moniker": "my-fp-nickname",
+		"identity": "anyIdentity",
+		"website": "www.my-public-available-website.com",
+		"security_contact": "your.email@gmail.com",
+		"details": "other overall info"
+	},
+	"commission": "0.050000000000000000",
+	"babylon_pk": {
+		"key": "AzHiB4T9Za1H7pn9NB95UhUJLQ0vOpUAx82jKUtdkyka"
+	},
+	"btc_pk": "5affe98cd7b180e2822d4d25fd8fab2dafd6b31a9441b3f6c593022fc4d30e5a",
+	"pop": {
+		"babylon_sig": "waCl0LFEs8m3vSE6cZoDNb4qRMheZtrGgpvNiZptmb4xueLfvoP8y/b2MqOlBiBSsmfypYni468eICGsO0ITmA==",
+		"btc_sig": "KxPlo28i7H9IH3fJAAe/ZsuOYdUkGcEw+nnv1BxgakFycW85xag69js6Q5zmvuO++MFh0JbbZq+lTjneE9tosQ=="
+	},
+	"master_pub_rand": "xpub661MyMwAqRbcG23M9EWAJw71GYxJWfnU47bqCw9gjnALYB1vPQkG6cnkkxyU1LriBi5JXCZb8XK2r454NSnPRrdVxaZNJs9bVKdj4ff3NkC",
+	"fp_sig_hex": "dad8205a2686a38e01bc1d2dd20366981fcd381d0fe2d330ddc415dcb8f507e6407672aac39d121f2d3683ed8ad7bd53241047a1c28d7b163db7c4c5256bc1ba"
+}'`,
+	Description: `Parses the signed finality provider from input
+	as json and verifies if it matches the signature.
+	Returns an error message if failed to verify`,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  signedFinalityProviderFlag,
+			Usage: "The signed finality provider to be verified",
+		},
+	},
+	Action: verifyExportedFp,
+}
+
+func verifyExportedFp(ctx *cli.Context) error {
+	rawSignedFp := ctx.String(signedFinalityProviderFlag)
+	if len(rawSignedFp) == 0 {
+		return fmt.Errorf("flag %s is mandatory, set a signed fp", signedFinalityProviderFlag)
+	}
+
+	var signedFp FinalityProviderSigned
+	if err := json.Unmarshal([]byte(rawSignedFp), &signedFp); err != nil {
+		return fmt.Errorf("invalid input %s to parse into FinalityProviderSigned: %w", rawSignedFp, err)
+	}
+
+	rawSig, err := hex.DecodeString(signedFp.FpSigHex)
+	if err != nil {
+		return fmt.Errorf("unable to decode signed fp %s: %w", &signedFp.FpSigHex, err)
+	}
+
+	fpbz, err := signedFp.FinalityProvider.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal signed finality provider %+v: %w", signedFp.FinalityProvider, err)
+	}
+
+	if !signedFp.BabylonPk.VerifySignature(fpbz, rawSig) {
+		return fmt.Errorf("bad signature %s to finality provider: %+v", signedFp.FpSigHex, signedFp.FinalityProvider)
+	}
+	return nil
 }
 
 func exportFp(ctx *cli.Context) error {
