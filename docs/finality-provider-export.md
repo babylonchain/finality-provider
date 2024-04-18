@@ -128,14 +128,15 @@ The expected result is a finality with 5% comission exported:
   },
   "commission": "0.050000000000000000",
   "babylon_pk": {
-    "key": "AqfJOCq5j6N5TgFOLIrhBL17qqRCSCVmGUX4QZKgFrX7"
+    "key": "AzHiB4T9Za1H7pn9NB95UhUJLQ0vOpUAx82jKUtdkyka"
   },
-  "btc_pk": "0cfd00adaec3f07d6224fb9cce48f498b7d8e99321f65110641b7d1a4a18885d",
+  "btc_pk": "5affe98cd7b180e2822d4d25fd8fab2dafd6b31a9441b3f6c593022fc4d30e5a",
   "pop": {
-    "babylon_sig": "pv3vA49T4lh8BS0V7UhdPI2ofBAzb0JHgeGmQD85D4o89IJoKkc3NIHEZElbT/w1bO0t7bTlEsIlmnwplKEjag==",
-    "btc_sig": "yoWEB2Z5rjpM9jjZG9aFOioN85Ln30z8yfZ5I9XipmUffbeb/8qePOnv2mjPtQkP7M01+Zjp+yvNGVb4mK77mw=="
+    "babylon_sig": "waCl0LFEs8m3vSE6cZoDNb4qRMheZtrGgpvNiZptmb4xueLfvoP8y/b2MqOlBiBSsmfypYni468eICGsO0ITmA==",
+    "btc_sig": "KxPlo28i7H9IH3fJAAe/ZsuOYdUkGcEw+nnv1BxgakFycW85xag69js6Q5zmvuO++MFh0JbbZq+lTjneE9tosQ=="
   },
-  "master_pub_rand": "xpub661MyMwAqRbcEhPAZh9oM6MbxoEkqnKeAuiCexiLCbxaBJTuwcKcn95VKiy6nyRQDf2A8GwgtoP7KkERYM3XrsKPbgHiZgHzHaF3DH58HKk"
+  "master_pub_rand": "xpub661MyMwAqRbcG23M9EWAJw71GYxJWfnU47bqCw9gjnALYB1vPQkG6cnkkxyU1LriBi5JXCZb8XK2r454NSnPRrdVxaZNJs9bVKdj4ff3NkC",
+  "fp_sig_hex": "dad8205a2686a38e01bc1d2dd20366981fcd381d0fe2d330ddc415dcb8f507e6407672aac39d121f2d3683ed8ad7bd53241047a1c28d7b163db7c4c5256bc1ba"
 }
 ```
 
