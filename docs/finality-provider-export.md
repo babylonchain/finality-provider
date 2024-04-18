@@ -1,7 +1,7 @@
 # Finality Provider Export
 
 Finality providers are responsible for voting at a finality round on top of CometBFT that is powered by BTC stake.
-Similar to any native PoS validator, a finality provider can receive voting power delegations from BTC stakers, and
+Similar to any native PoS validator, finality providers can receive voting power delegations from BTC stakers, and
 through their voting power provide economic security to the underlying PoS protocol.
 In this document,
 we explore how someone can create a finality provider and export details about it in JSON format.
