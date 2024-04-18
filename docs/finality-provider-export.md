@@ -90,6 +90,7 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 ```
 
 > Creates one key pair identified by the key name `finality-provider`
+> Store safely the mnemonic generated
 
 ## Creation & Export of Finality provider
 
