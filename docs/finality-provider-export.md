@@ -49,7 +49,6 @@ $ eotsd start --home ./export-fp/eots
 
 ### Setup fpd
 
-
 The fpd is reposible for monitoring for new Babylon blocks, committing public
 randomness for the blocks it intends to provide finality signatures for,
 and submitting finality signatures. To just create one finality provider and
