@@ -239,7 +239,7 @@ func (bc *BabylonController) QueryFinalityProviderRegisteredEpoch(fpPk *btcec.Pu
 		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query finality provider: %w", err)
+		return 0, fmt.Errorf("failed to query finality provider registered epoch: %w", err)
 	}
 
 	return res.FinalityProvider.RegisteredEpoch, nil
