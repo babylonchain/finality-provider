@@ -172,12 +172,9 @@ func exportFp(ctx *cli.Context) error {
 			BabylonSig: stored.Pop.ChainSig,
 			BtcSig:     stored.Pop.BtcSig,
 		},
-		BabylonPk:            stored.ChainPk,
-		Description:          stored.Description,
-		Commission:           stored.Commission,
-		RegisteredEpoch:      0,
-		SlashedBabylonHeight: 0,
-		SlashedBtcHeight:     0,
+		BabylonPk:   stored.ChainPk,
+		Description: stored.Description,
+		Commission:  stored.Commission,
 	}
 
 	fpbz, err := fp.Marshal()
