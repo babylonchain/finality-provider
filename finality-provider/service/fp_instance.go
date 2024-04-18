@@ -82,13 +82,6 @@ func NewFinalityProviderInstance(
 		return nil, fmt.Errorf("failed to get the last finalized epoch: %v", err)
 	}
 	if lastFinalizedEpoch < registeredEpoch {
-		logger.Debug(
-			"the finality provider's registered epoch is not BTC timestamped yet",
-			zap.String("finality_provider", sfp.KeyName),
-			zap.Uint64("registered_epoch", registeredEpoch),
-			zap.Uint64("last_finalized_epoch", lastFinalizedEpoch),
-		)
-
 		return nil, fmt.Errorf("the registered epoch %d of the finality provider %s is not BTC timestamped yet (last finalized epoch: %d)", registeredEpoch, sfp.KeyName, lastFinalizedEpoch)
 	}
 
