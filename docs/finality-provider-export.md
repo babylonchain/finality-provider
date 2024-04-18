@@ -6,14 +6,17 @@ through their voting power provide economic security to the underlying PoS proto
 In this document,
 we explore how someone can create a finality provider and export details about it in JSON format.
 
-## Requirements
+## Prerequisite
 
-- [eotsd](https://github.com/babylonchain/finality-provider)
-- [fpd](https://github.com/babylonchain/finality-provider)
+### Install binaries
 
-[Instructions](../README.md#2-installation) to install the requirements.
+[Follow these instructions](../README.md#2-installation) to install the binaries.
 
-## EOTS
+- `eotsd`
+- `fpd`
+- `fpcli`
+
+### Setup EOTS
 
 The eots is responsible for managing EOTS keys, producing EOTS randomness,
 and using them to produce EOTS signatures.
@@ -44,7 +47,8 @@ $ eotsd start --home ./export-fp/eots
 > Starts the eots process that can be turned down after the finality provider is exported
 > (run all commands of this file).
 
-## Creation & Export of Finality provider
+### Setup fpd
+
 
 The fpd is reposible for monitoring for new Babylon blocks, committing public
 randomness for the blocks it intends to provide finality signatures for,
@@ -88,9 +92,12 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 
 > Creates one key pair identified by the key name `finality-provider`
 
-Finally to create and export the finality provider, run `fpcli export-finality-provider`.
-This command connects with the eots manager daemon process, creates one key and produces
-the finality provider export information.
+## Creation & Export of Finality provider
+
+Finally, after setup of `eots` and `fdp`, to create and export the finality
+provider, run `fpcli export-finality-provider`.
+This command connects with the eots manager daemon process, creates one key and
+produces the finality provider export information.
 
 > Obs.: This command does not send a transaction to babylon chain `babylond tx btcstaking create-finality-provider`.
 
