@@ -20,7 +20,11 @@ import (
 var ExportFinalityProvider = cli.Command{
 	Name:      "export-finality-provider",
 	ShortName: "exfpd",
-	Usage:     "Exports an finality provider.",
+	Usage:     "Create, stores, and exports one finality provider.",
+	Description: `Connects with the EOTS manager defined in config, creates a new
+key pair formatted by BIP-340 (Schnorr Signatures), generates the master public
+randomness pair, stores the finality provider and export it by printing the json
+structure on the stdout`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  keyNameFlag,
