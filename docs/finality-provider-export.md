@@ -11,6 +11,8 @@ we explore how someone can create a finality provider and export details about i
 - [eotsd](https://github.com/babylonchain/finality-provider)
 - [fpd](https://github.com/babylonchain/finality-provider)
 
+[Instructions](../README.md#2-installation) to install the requirements.
+
 ## EOTS
 
 The eots is responsible for managing EOTS keys, producing EOTS randomness,
