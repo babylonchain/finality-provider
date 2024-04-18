@@ -463,9 +463,10 @@ func (app *FinalityProviderApp) eventLoop() {
 
 			// return to the caller
 			ev.successResponse <- &RegisterFinalityProviderResponse{
-				bbnPubKey: ev.bbnPubKey,
-				btcPubKey: ev.btcPubKey,
-				TxHash:    ev.txHash,
+				bbnPubKey:       ev.bbnPubKey,
+				btcPubKey:       ev.btcPubKey,
+				TxHash:          ev.txHash,
+				RegisteredEpoch: ev.registeredEpoch,
 			}
 
 		case <-app.quit:

@@ -138,10 +138,6 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 
 // CreateMasterRandPair creates a pair of master secret/public randomness deterministically
 // from the finality provider's secret key and chain ID
-// TODO: the current implementation is a PoC, which does not contain any anti-slasher mechanism.
-// A simple anti-slasher mechanism could be that the manager remembers the tuple (fpPk, chainID, height) or
-//
-//	the hash of each generated randomness and return error if the same randomness is requested tweice
 func (lm *LocalEOTSManager) CreateMasterRandPair(fpPk []byte, chainID []byte, passphrase string) (string, error) {
 	_, mpr, err := lm.getMasterRandPair(fpPk, chainID, passphrase)
 	if err != nil {
@@ -153,6 +149,8 @@ func (lm *LocalEOTSManager) CreateMasterRandPair(fpPk []byte, chainID []byte, pa
 
 func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
 	// get master secret randomness
+	// TODO: instead of calculating master secret randomness everytime, is it possible
+	// to manage it in the keyring?
 	msr, _, err := lm.getMasterRandPair(fpPk, chainID, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get master secret randomness: %w", err)

@@ -31,16 +31,15 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		// mock finalised BTC timestamped
+		mockClientController.EXPECT().QueryLastFinalizedEpoch().Return(randomRegiteredEpoch, nil).AnyTimes()
+
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight, randomRegiteredEpoch)
 		defer cleanUp()
 
 		// mock voting power
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		// mock finalised BTC timestamped
-		mockClientController.EXPECT().QueryLastFinalizedEpoch().
-			Return(randomRegiteredEpoch, nil).AnyTimes()
 
 		// submit finality sig
 		nextBlock := &types.BlockInfo{

@@ -54,7 +54,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 				continue
 			}
 			// check whether the finality provider has voting power
-			hasVp, err := fp.canVote(b)
+			hasVp, err := fp.hasVotingPower(b)
 			if err != nil {
 				return nil, err
 			}
