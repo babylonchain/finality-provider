@@ -158,9 +158,11 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 		pop.BtcSig,
 	)
 	require.NoError(t, err)
-	err = fpStore.SetFpStatus(btcPk.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
-	err = fpStore.SetFpRegisteredEpoch(btcPk.MustToBTCPK(), 0)
 
+	err = fpStore.SetFpStatus(btcPk.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
+	require.NoError(t, err)
+
+	err = fpStore.SetFpRegisteredEpoch(btcPk.MustToBTCPK(), 0)
 	require.NoError(t, err)
 
 	cleanUp := func() {
