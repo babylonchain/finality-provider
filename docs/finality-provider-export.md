@@ -12,19 +12,15 @@ we explore how someone can create a finality provider and export details about i
 
 [Follow these instructions](../README.md#2-installation) to install the binaries.
 
-- `eotsd`
-- `fpd`
-- `fpcli`
+- `eotsd`: EOTS manager daemon to create and manage EOTS keys for each finality provider and provide finality signatures.
+- `fpd`: Finality provider daemon to host the finality provider instance.
+- `fpcli`: User interface of the finality provider that requires `eotsd` or `fpd` is running.
 
-### Setup EOTS
+### Setup EOTS manager daemon
 
-The eots is responsible for managing EOTS keys, producing EOTS randomness,
-and using them to produce EOTS signatures.
-Each finality provider needs to provide public randomness.
-So, to export one finality provider it is needed to register a new key.
-
-To initialize the eots work directory, run `eotsd init`. It creates in the default
-home location, unless `--home` flag is specified.
+We need the EOTS manager daemon (`eotsd`) to create and manage EOTS keys for each
+finality provider. To initialize the `eotsd` work directory, run `eotsd init`.
+It creates the default home location, unless `--home` flag is specified.
 
 ```shell
 $ eotsd init --home ./export-fp/eots
@@ -34,7 +30,7 @@ data/  eotsd.conf  logs/
 
 > Creates the config file and two directories for logs and data.
 
-After the proper configuration, start the etos daemon with the command `eotsd start`,
+After the proper configuration, start the etos daemon with the command `eotsd start`.
 The home folder should point to the work directory previously created with `eotsd init`.
 
 ```shell
@@ -47,15 +43,12 @@ $ eotsd start --home ./export-fp/eots
 > Starts the eots process that can be turned down after the finality provider is exported
 > (run all commands of this file).
 
-### Setup fpd
+### Setup finality provider daemon
 
-The fpd is reposible for monitoring for new Babylon blocks, committing public
-randomness for the blocks it intends to provide finality signatures for,
-and submitting finality signatures. To just create one finality provider and
-export his information, there is no need to connect to babylon chain, just
-initialize the working directory for the finality provider config.
-To initialize the fpd work directory, run `fpd init`. It creates
-in the default home location, unless `--home` flag is specified.
+The finality provider daemon (fpd) is responsible for polling consumer chain blocks
+and providing finality signatures if it has voting power. To initialize the `fpd`
+work directory, run `fpd init`, which creates the default home location, unless
+the `--home` flag is specified.
 
 ```shell
 $ fpd init --home ./export-fp/fpd
@@ -65,9 +58,9 @@ fpd.conf  logs/
 
 > Creates the config file and one directory for logs.
 
-The finality provider need a private and public key on the consumer chain,
-in this case `babylon`, for creating a key for the finality provider run
-`fpd keys add --key-name [my-name]`. For this command, several flags are available:
+To connect the finality provider to a specific consumer chain (`Babylon chain` in this case),
+we need to generate a key pair for it. Run `fpd keys add --key-name [my-name]` to create
+the key pair. Some available flags:
 
 - `--key-name` mandatory as it identifies the name for the key to be created.
 - `--chain-id` mandatory as it specifies the chain ID to be used for context
@@ -91,12 +84,13 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 
 > Creates one key pair identified by the key name `finality-provider`
 > Store safely the mnemonic generated
+> The added key will be used to create the proof-of-possession (pop) of the finality provider.
 
-## Creation & Export of Finality provider
+## Create and Export a Finality Provider
 
 Finally, after setup of `eots` and `fdp`, to create and export the finality
 provider, run `fpcli export-finality-provider`.
-This command connects with the eots manager daemon process, creates one key and
+This command connects with the `eotsd` to create the EOTS key and
 produces the finality provider export information.
 
 > Obs.: This command does not send a transaction to babylon chain `babylond tx btcstaking create-finality-provider`.
