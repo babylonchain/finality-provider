@@ -58,9 +58,6 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 	homePath = util.CleanAndExpandPath(homePath)
-
-	passphrase := ctx.String(passphraseFlag)
-	fpPkStr := ctx.String(fpPkFlag)
 	rpcListener := ctx.String(rpcListenerFlag)
 
 	cfg, err := fpcfg.LoadConfig(homePath)
@@ -91,25 +88,8 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load app: %w", err)
 	}
 
-	// only start the app without starting any finality-provider instance
-	// as there might be no finality-provider registered yet
-	if err := fpApp.Start(); err != nil {
-		return fmt.Errorf("failed to start the finality-provider app: %w", err)
-	}
-
-	if fpPkStr != "" {
-		// start the finality-provider instance with the given public key
-		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
-		if err != nil {
-			return fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
-		}
-		if err := fpApp.StartHandlingFinalityProvider(fpPk, passphrase); err != nil {
-			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
-		}
-	} else {
-		if err := fpApp.StartHandlingAll(); err != nil {
-			return err
-		}
+	if err := startApp(ctx, fpApp); err != nil {
+		return fmt.Errorf("failed to start app: %w", err)
 	}
 
 	// Hook interceptor for os signals.
@@ -119,7 +99,6 @@ func start(ctx *cli.Context) error {
 	}
 
 	fpServer := service.NewFinalityProviderServer(cfg, logger, fpApp, dbBackend, shutdownInterceptor)
-
 	return fpServer.RunUntilShutdown()
 }
 
@@ -150,4 +129,35 @@ func loadApp(
 	}
 
 	return fpApp, nil
+}
+
+// startApp starts the app and the handle of finality providers if needed based on flags.
+func startApp(
+	ctx *cli.Context,
+	fpApp *service.FinalityProviderApp,
+) error {
+	// only start the app without starting any finality-provider instance
+	// as there might be no finality-provider registered yet
+	if err := fpApp.Start(); err != nil {
+		return fmt.Errorf("failed to start the finality-provider app: %w", err)
+	}
+
+	if ctx.Bool(noBabylonChainFlag) {
+		return nil // no need to handle fps, it calls bbn
+	}
+
+	fpPkStr := ctx.String(fpPkFlag)
+	if fpPkStr != "" {
+		// start the finality-provider instance with the given public key
+		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
+		if err != nil {
+			return fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
+		}
+
+		if err := fpApp.StartHandlingFinalityProvider(fpPk, ctx.String(passphraseFlag)); err != nil {
+			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
+		}
+	}
+
+	return fpApp.StartHandlingAll()
 }
