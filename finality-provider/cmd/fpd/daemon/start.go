@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
+	"go.uber.org/zap"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
@@ -15,7 +17,11 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var startCommand = cli.Command{
+const (
+	noBabylonChainFlag = "no-bbn"
+)
+
+var StartCommand = cli.Command{
 	Name:        "start",
 	Usage:       "Start the finality-provider app",
 	Description: "Start the finality-provider app. Note that eotsd should be started beforehand",
@@ -37,6 +43,10 @@ var startCommand = cli.Command{
 		cli.StringFlag{
 			Name:  rpcListenerFlag,
 			Usage: "The address that the RPC server listens to",
+		},
+		cli.BoolFlag{
+			Name:  noBabylonChainFlag,
+			Usage: "If specified, does not connect to client controller",
 		},
 	},
 	Action: start,
@@ -76,14 +86,9 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger)
+	fpApp, err := loadApp(ctx, logger, cfg, dbBackend)
 	if err != nil {
-		return fmt.Errorf("failed to create finality-provider app: %v", err)
-	}
-
-	// sync finality-provider status
-	if err := fpApp.SyncFinalityProviderStatus(); err != nil {
-		return fmt.Errorf("failed to sync finality-provider status: %w", err)
+		return fmt.Errorf("failed to load app: %w", err)
 	}
 
 	// only start the app without starting any finality-provider instance
@@ -116,4 +121,33 @@ func start(ctx *cli.Context) error {
 	fpServer := service.NewFinalityProviderServer(cfg, logger, fpApp, dbBackend, shutdownInterceptor)
 
 	return fpServer.RunUntilShutdown()
+}
+
+// loadApp initialize an finality provider app based on config and flags set.
+func loadApp(
+	ctx *cli.Context,
+	logger *zap.Logger,
+	cfg *fpcfg.Config,
+	dbBackend walletdb.DB,
+) (*service.FinalityProviderApp, error) {
+	if ctx.Bool(noBabylonChainFlag) {
+		fpApp, err := service.NewFinalityProviderAppWithEotsFromConfig(cfg, dbBackend, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create finality-provider with not bbn chain app: %v", err)
+		}
+
+		return fpApp, nil
+	}
+
+	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create finality-provider app: %v", err)
+	}
+
+	// sync finality-provider status
+	if err := fpApp.SyncFinalityProviderStatus(); err != nil {
+		return nil, fmt.Errorf("failed to sync finality-provider status: %w", err)
+	}
+
+	return fpApp, nil
 }
