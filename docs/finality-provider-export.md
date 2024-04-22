@@ -101,7 +101,10 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 
 After the setup of the configuration and key to be used, start the `fpd` daemon
 with the command `fpd start` with no chain backend `--no-chain-backend`.
-The home golder should point to the work directory previously created with `fpd init`
+No chain backend is needed to create and export the finality provider information.
+The `fpd` daemon only needs to connect to the backend blockchain to consume blocks
+and verify if the finality provider is active to provide finality signatures.
+The home folder should point to the work directory previously created with `fpd init`
 
 ```shell
 $ fpd start --home ./export-fp/fpd --no-chain-backend
