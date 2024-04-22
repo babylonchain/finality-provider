@@ -16,6 +16,7 @@ any special hardware requirements
 and can operate on standard mid-sized machines
 running a UNIX-flavored operating system.
 It consists of the following programs:
+
 - *Babylon full node*: An instance of a Babylon node connecting to
   the Babylon network. Running one is not a strict requirement,
   but it is recommended for security compared to trusting a third-party RPC node.
@@ -30,7 +31,6 @@ It consists of the following programs:
 The following graphic demonstrates the interconnections between the above programs:
 
 ![Finality Provider Interconnections](./docs/finality-toolset.png)
-
 
 ## 2. Installation
 

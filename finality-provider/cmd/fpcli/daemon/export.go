@@ -1,19 +1,18 @@
 package daemon
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"cosmossdk.io/math"
-	eotsclient "github.com/babylonchain/finality-provider/eotsmanager/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/finality-provider/service"
-	"github.com/babylonchain/finality-provider/log"
-	"github.com/babylonchain/finality-provider/util"
+	dc "github.com/babylonchain/finality-provider/finality-provider/service/client"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/cosmos-sdk/x/staking/types"
 
+	bbn "github.com/babylonchain/babylon/types"
 	btcstktypes "github.com/babylonchain/babylon/x/btcstaking/types"
 
 	"github.com/urfave/cli"
@@ -42,6 +41,21 @@ randomness pair, stores the finality provider and exports it by printing the jso
 structure on the stdout`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
+			Name:  fpdDaemonAddressFlag,
+			Usage: "The RPC server address of fpd",
+			Value: defaultFpdDaemonAddress,
+		},
+		cli.StringFlag{
+			Name:     fpBTCPkFlag,
+			Usage:    "The hex string of the BTC public key",
+			Required: true,
+		},
+		cli.BoolFlag{
+			Name: signedFlag,
+			Usage: `Defines if needs to sign the exported finality provider,
+			if true, it is necessary to define keyring flags`,
+		},
+		cli.StringFlag{
 			Name:  keyNameFlag,
 			Usage: "The unique name of the finality provider key",
 		},
@@ -49,11 +63,6 @@ structure on the stdout`,
 			Name:  homeFlag,
 			Usage: "The home path of the finality provider daemon (fpd)",
 			Value: fpcfg.DefaultFpdDir,
-		},
-		cli.StringFlag{
-			Name:     chainIdFlag,
-			Usage:    "The identifier of the consumer chain",
-			Required: true,
 		},
 		cli.StringFlag{
 			Name:  passphraseFlag,
@@ -64,36 +73,6 @@ structure on the stdout`,
 			Name:  hdPathFlag,
 			Usage: "The hd path used to derive the private key",
 			Value: defaultHdPath,
-		},
-		cli.StringFlag{
-			Name:  commissionRateFlag,
-			Usage: "The commission rate for the finality provider, e.g., 0.05",
-			Value: "0.05",
-		},
-		cli.StringFlag{
-			Name:  monikerFlag,
-			Usage: "A human-readable name for the finality provider",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  identityFlag,
-			Usage: "An optional identity signature (ex. UPort or Keybase)",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  websiteFlag,
-			Usage: "An optional website link",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  securityContactFlag,
-			Usage: "An optional email for security contact",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  detailsFlag,
-			Usage: "Other optional details",
-			Value: "",
 		},
 	},
 	Action: exportFp,
@@ -163,104 +142,89 @@ func verifyExportedFp(ctx *cli.Context) error {
 }
 
 func exportFp(ctx *cli.Context) error {
-	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
+	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
-		return fmt.Errorf("invalid commission rate: %w", err)
+		return fmt.Errorf("failled to connect to daemon addr %s: %w", daemonAddress, err)
 	}
+	defer cleanUp()
 
-	description, err := getDescriptionFromContext(ctx)
+	fpBtcPkHex := ctx.String(fpBTCPkFlag)
+	fpPk, err := bbn.NewBIP340PubKeyFromHex(fpBtcPkHex)
 	if err != nil {
-		return fmt.Errorf("invalid description: %w", err)
+		return fmt.Errorf("invalid fp btc pk hex %s: %w", fpBtcPkHex, err)
 	}
 
-	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	fpInfoResp, err := client.QueryFinalityProviderInfo(context.Background(), fpPk)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to query fp info from %s: %w", fpBtcPkHex, err)
 	}
-	homePath = util.CleanAndExpandPath(homePath)
 
-	// we add the following check to ensure that the chain key is created
-	// beforehand
-	cfg, err := fpcfg.LoadConfig(homePath)
+	fpInfo := fpInfoResp.FinalityProvider
+	comm, err := math.LegacyNewDecFromStr(fpInfo.Commission)
 	if err != nil {
-		return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
+		return fmt.Errorf("failed to parse fp commission %s: %w", fpInfo.Commission, err)
 	}
 
-	dbBackend, err := cfg.DatabaseConfig.GetDbBackend()
+	cosmosRawPubKey, err := hex.DecodeString(fpInfo.ChainPkHex)
 	if err != nil {
-		return fmt.Errorf("failed to create db backend: %w", err)
+		return fmt.Errorf("failed to decode chain pk hex %s: %w", fpInfo.ChainPkHex, err)
 	}
 
-	// if the EOTSManagerAddress is empty, run a local EOTS manager;
-	// otherwise connect a remote one with a gRPC client
-	em, err := eotsclient.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
-	if err != nil {
-		return fmt.Errorf("failed to create EOTS manager client: %w", err)
+	cosmosPubKey := &secp256k1.PubKey{
+		Key: cosmosRawPubKey,
 	}
 
-	logFilePath := filepath.Join(fpcfg.LogDir(homePath), "fpd.export.log")
-	if err := util.MakeDirectory(filepath.Dir(logFilePath)); err != nil {
-		return err
-	}
-
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return err
-	}
-
-	logger, err := log.NewRootLogger("console", cfg.LogLevel, logFile)
-	if err != nil {
-		return fmt.Errorf("failed to initialize the logger: %w", err)
-	}
-
-	app, err := service.NewFinalityProviderApp(cfg, nil, em, dbBackend, logger)
-	if err != nil {
-		return fmt.Errorf("failed to initialize the app: %w", err)
-	}
-
-	keyName := ctx.String(keyNameFlag)
-	// if key name is not specified, we use the key of the config
-	if keyName == "" {
-		keyName = cfg.BabylonConfig.Key
-		if keyName == "" {
-			return fmt.Errorf("the key in config is empty")
-		}
-	}
-
-	stored, chainSk, err := app.StoreFinalityProvider(ctx.String(passphraseFlag), keyName, ctx.String(hdPathFlag), ctx.String(chainIdFlag), &description, &commissionRate)
-	if err != nil {
-		return err
-	}
-
+	desc := fpInfo.Description
 	fp := btcstktypes.FinalityProvider{
-		BtcPk:         stored.GetBIP340BTCPK(),
-		MasterPubRand: stored.MasterPubRand,
+		BtcPk:         fpPk,
+		MasterPubRand: fpInfo.MasterPubRand,
 		Pop: &btcstktypes.ProofOfPossession{
 			BtcSigType: btcstktypes.BTCSigType_BIP340,
-			BabylonSig: stored.Pop.ChainSig,
-			BtcSig:     stored.Pop.BtcSig,
+			BabylonSig: fpInfo.Pop.ChainSig,
+			BtcSig:     fpInfo.Pop.BtcSig,
 		},
-		BabylonPk:            stored.ChainPk,
-		Description:          stored.Description,
-		Commission:           stored.Commission,
-		RegisteredEpoch:      0,
-		SlashedBabylonHeight: 0,
-		SlashedBtcHeight:     0,
+		BabylonPk: cosmosPubKey,
+		Description: &types.Description{
+			Moniker:         desc.Moniker,
+			Identity:        desc.Identity,
+			Website:         desc.Website,
+			SecurityContact: desc.SecurityContact,
+			Details:         desc.Details,
+		},
+		Commission: &comm,
 	}
 
+	if !ctx.Bool(signedFlag) {
+		printRespJSON(fp)
+		return nil
+	}
+
+	keyName, err := loadKeyName(ctx)
+	if err != nil {
+		return fmt.Errorf("not able to load key name: %w", err)
+	}
+
+	// sign the finality provider data.
 	fpbz, err := fp.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal finality provider %+v: %w", fp, err)
 	}
 
-	signature, err := chainSk.Sign(fpbz)
+	resp, err := client.SignMessageFromChainKey(
+		context.Background(),
+		keyName,
+		ctx.String(passphraseFlag),
+		ctx.String(hdPathFlag),
+		fpbz,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to sign finality provider %+v: %w", fp, err)
+		return fmt.Errorf("failed to sign finality provider: %w", err)
 	}
 
 	printRespJSON(FinalityProviderSigned{
 		FinalityProvider: fp,
-		FpSigHex:         hex.EncodeToString(signature),
+		FpSigHex:         hex.EncodeToString(resp.Signature),
 	})
 
 	return nil

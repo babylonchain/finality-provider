@@ -10,6 +10,7 @@ const (
 	passphraseFlag       = "passphrase"
 	hdPathFlag           = "hd-path"
 	chainIdFlag          = "chain-id"
+	signedFlag           = "signed"
 	defaultPassphrase    = ""
 	defaultHdPath        = ""
 

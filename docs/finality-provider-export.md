@@ -12,19 +12,15 @@ we explore how someone can create a finality provider and export details about i
 
 [Follow these instructions](../README.md#2-installation) to install the binaries.
 
-- `eotsd`
-- `fpd`
-- `fpcli`
+- `eotsd`: EOTS manager daemon to create and manage EOTS keys for each finality provider and provide finality signatures.
+- `fpd`: Finality provider daemon to host the finality provider instance.
+- `fpcli`: User interface of the finality provider that requires `eotsd` or `fpd` is running.
 
-### Setup EOTS
+### Setup EOTS manager daemon
 
-The eots is responsible for managing EOTS keys, producing EOTS randomness,
-and using them to produce EOTS signatures.
-Each finality provider needs to provide public randomness.
-So, to export one finality provider it is needed to register a new key.
-
-To initialize the eots work directory, run `eotsd init`. It creates in the default
-home location, unless `--home` flag is specified.
+We need the EOTS manager daemon (`eotsd`) to create and manage EOTS keys for each
+finality provider. To initialize the `eotsd` work directory, run `eotsd init`.
+It creates the default home location, unless `--home` flag is specified.
 
 ```shell
 $ eotsd init --home ./export-fp/eots
@@ -34,7 +30,7 @@ data/  eotsd.conf  logs/
 
 > Creates the config file and two directories for logs and data.
 
-After the proper configuration, start the etos daemon with the command `eotsd start`,
+After the proper configuration, start the etos daemon with the command `eotsd start`.
 The home folder should point to the work directory previously created with `eotsd init`.
 
 ```shell
@@ -47,15 +43,12 @@ $ eotsd start --home ./export-fp/eots
 > Starts the eots process that can be turned down after the finality provider is exported
 > (run all commands of this file).
 
-### Setup fpd
+### Setup Finality Provider Daemon
 
-The fpd is reposible for monitoring for new Babylon blocks, committing public
-randomness for the blocks it intends to provide finality signatures for,
-and submitting finality signatures. To just create one finality provider and
-export his information, there is no need to connect to babylon chain, just
-initialize the working directory for the finality provider config.
-To initialize the fpd work directory, run `fpd init`. It creates
-in the default home location, unless `--home` flag is specified.
+The finality provider daemon (fpd) is responsible for polling consumer chain blocks
+and providing finality signatures if it has voting power. To initialize the `fpd`
+work directory, run `fpd init`, which creates the default home location, unless
+the `--home` flag is specified.
 
 ```shell
 $ fpd init --home ./export-fp/fpd
@@ -63,11 +56,14 @@ $ ls ./export-fp/eots
 fpd.conf  logs/
 ```
 
+After the setup of `fpd` config, update the `ChainID` config property of `[babylon]` to the proper chain ID to be used in the `./export-fp/fpd/fpd.conf` file.
+![image](https://github.com/babylonchain/finality-provider/assets/17556614/be079679-eb44-4bc8-877e-1bf39dbcd506)
+
 > Creates the config file and one directory for logs.
 
-The finality provider need a private and public key on the consumer chain,
-in this case `babylon`, for creating a key for the finality provider run
-`fpd keys add --key-name [my-name]`. For this command, several flags are available:
+To connect the finality provider to a specific consumer chain (`Babylon chain` in this case),
+we need to generate a key pair for it. Run `fpd keys add --key-name [my-name]` to create
+the key pair. Some available flags:
 
 - `--key-name` mandatory as it identifies the name for the key to be created.
 - `--chain-id` mandatory as it specifies the chain ID to be used for context
@@ -80,7 +76,7 @@ are available, by default `test` is used.
 - `--hd-path` defines the hd path to use for derivation of the private key.
 
 ```shell
-$ fpd keys add --home ./export-fp/fpd --chain-id babylon-1 --key-name finality-provider
+$ fpd keys add --home ./export-fp/fpd --chain-id babylon-1 --key-name finality-provider --keyring-backend os
 New key for the consumer chain is created (mnemonic should be kept in a safe place for recovery):
 {
   "name": "finality-provider",
@@ -89,15 +85,30 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 }
 ```
 
-> Creates one key pair identified by the key name `finality-provider`
-> Store safely the mnemonic generated
+> Creates one key pair identified by the key name `finality-provider`.
+> Store safely the mnemonic and generated keys.
+> The added key will be used to create the proof-of-possession (pop) of the finality provider.
+> For production enviroments, make sure to select a proper [backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring)
+, one of `[os, file, pass, kwallet]`.
 
-## Creation & Export of Finality provider
+After the setup of the configuration and key to be used, start the `fpd` daemon with the command `fpd start` with no babylon chain `--no-bbn`.
+The home golder should point to the work directory previously created with `fpd init`
 
-Finally, after setup of `eots` and `fdp`, to create and export the finality
-provider, run `fpcli export-finality-provider`.
-This command connects with the eots manager daemon process, creates one key and
-produces the finality provider export information.
+```shell
+$ fpd start --home ./export-fp/fpd --no-bbn
+2024-04-22T10:15:42.548999Z     info    successfully connected to a remote EOTS manager     {"address": "127.0.0.1:12582"}
+2024-04-22T10:15:42.577365Z     info    Starting FinalityProviderApp
+2024-04-22T10:15:42.577481Z     info    starting metrics update loop{"interval seconds": 0.1}
+2024-04-22T10:15:42.577589Z     info    RPC server listening    {"address": "127.0.0.1:12581"}
+2024-04-22T10:15:42.577625Z     info    Finality Provider Daemon is fully active!
+2024-04-22T10:15:42.577610Z     info    Metrics server is starting {"addr": "127.0.0.1:2112"}
+```
+
+## Create a Finality Provider
+
+After the setup and start of `eots` and `fdp`, to interact with the `fpd`
+daemon, it is used the `fpcli`. To create the finality provider, run
+`fpcli create-finality-provider`.
 
 > Obs.: This command does not send a transaction to babylon chain `babylond tx btcstaking create-finality-provider`.
 
@@ -118,10 +129,55 @@ to load the configuration.
   - `--details` any other optional detail information.
 
 ```shell
-$ fpcli export-finality-provider --home ./export-fp/fpd --key-name finality-provider \
+$ fpcli create-finality-provider --home ./export-fp/fpd --key-name finality-provider \
 --chain-id babylon-1 --commission 0.05 --moniker my-fp-nickname --identity anyIdentity \
 --website www.my-public-available-website.com --security-contact your.email@gmail.com \
 --details 'other overall info'
+
+{
+  "chain_pk_hex": "02d3c46a006a55050bea8834a87f87e38a457fda7759c1c0bdafb30b6fbbe17f29",
+  "btc_pk_hex": "25d13990ce6175dc5b5901cdaceb07e337b9b2a6aa39d0f6ae0ad75738dff7c1",
+  "description": {
+    "moniker": "my-fp-nickname",
+    "identity": "anyIdentity",
+    "website": "www.my-public-available-website.com",
+    "security_contact": "your.email@gmail.com",
+    "details": "other overall info"
+  },
+  "commission": "0.050000000000000000",
+  "registered_epoch": 18446744073709551615,
+  "master_pub_rand": "xpub661MyMwAqRbcFLhUq9uPM7GncSytVZvoNg4w7LLx1Y74GeeAZerkpV1amvGBTcw4ECmrwFsTNMNf1LFBKkA2pmd8aJ5Jmp8uKD5xgVSezBq",
+  "status": "CREATED",
+  "pop": {
+    "chain_sig": "sAg34vImQTFVlZYsziw9PCCKDuRyZv38V2MX8Ij9fQhyOdpxCUZ1VEgpSlwV/dbnpDs1UOez8Ni9EcbADkmnBA==",
+    "btc_sig": "sHLpEHVTyTp9K55oeHxnPlkV4unc/r1obqzKn5S1gq95oXA3AgL1jyCzd/mGb23RfKbEyABjYUdcIBtZ02l5jg=="
+  }
+}
+```
+
+> store the `btc_pk_hex` value to be used in the export command.
+
+## Export a Finality Provider
+
+Finally, after the creation of the finality provider, to export the finality
+provider, run `fpcli export-finality-provider`.
+This command connects with the `fpd` daemon to load the finality provider previously
+created using the flag `--btc-pk`.
+
+This command also has several flag options.:
+
+- `--btc-pk` the hex string of the BTC public key.
+- `--signed` signs the finality provider as a proof of a untempered exported data.
+- `--key-name` mandatory as it identifies the name for the key to use on fpd creation.
+- `--home` flag needs to be the same as used in the `fpd init` command,
+to load the configuration.
+- `--passphrase` the password used to encrypt the key.
+- `--hd-path` the hd derivation path of the private key.
+
+```shell
+$ fpcli export-finality-provider --btc-pk 25d13990ce6175dc5b5901cdaceb07e337b9b2a6aa39d0f6ae0ad75738dff7c1 \
+--home ./export-fp/fpd --key-name finality-provider \
+--signed
 ```
 
 The expected result is a finality with 5% comission exported:
@@ -137,16 +193,19 @@ The expected result is a finality with 5% comission exported:
   },
   "commission": "0.050000000000000000",
   "babylon_pk": {
-    "key": "AzHiB4T9Za1H7pn9NB95UhUJLQ0vOpUAx82jKUtdkyka"
+    "key": "AtPEagBqVQUL6og0qH+H44pFf9p3WcHAva+zC2+74X8p"
   },
-  "btc_pk": "5affe98cd7b180e2822d4d25fd8fab2dafd6b31a9441b3f6c593022fc4d30e5a",
+  "btc_pk": "25d13990ce6175dc5b5901cdaceb07e337b9b2a6aa39d0f6ae0ad75738dff7c1",
   "pop": {
-    "babylon_sig": "waCl0LFEs8m3vSE6cZoDNb4qRMheZtrGgpvNiZptmb4xueLfvoP8y/b2MqOlBiBSsmfypYni468eICGsO0ITmA==",
-    "btc_sig": "KxPlo28i7H9IH3fJAAe/ZsuOYdUkGcEw+nnv1BxgakFycW85xag69js6Q5zmvuO++MFh0JbbZq+lTjneE9tosQ=="
+    "babylon_sig": "sAg34vImQTFVlZYsziw9PCCKDuRyZv38V2MX8Ij9fQhyOdpxCUZ1VEgpSlwV/dbnpDs1UOez8Ni9EcbADkmnBA==",
+    "btc_sig": "sHLpEHVTyTp9K55oeHxnPlkV4unc/r1obqzKn5S1gq95oXA3AgL1jyCzd/mGb23RfKbEyABjYUdcIBtZ02l5jg=="
   },
-  "master_pub_rand": "xpub661MyMwAqRbcG23M9EWAJw71GYxJWfnU47bqCw9gjnALYB1vPQkG6cnkkxyU1LriBi5JXCZb8XK2r454NSnPRrdVxaZNJs9bVKdj4ff3NkC",
-  "fp_sig_hex": "dad8205a2686a38e01bc1d2dd20366981fcd381d0fe2d330ddc415dcb8f507e6407672aac39d121f2d3683ed8ad7bd53241047a1c28d7b163db7c4c5256bc1ba"
+  "master_pub_rand": "xpub661MyMwAqRbcFLhUq9uPM7GncSytVZvoNg4w7LLx1Y74GeeAZerkpV1amvGBTcw4ECmrwFsTNMNf1LFBKkA2pmd8aJ5Jmp8uKD5xgVSezBq",
+  "fp_sig_hex": "8ded8158bf65d492c5c6d1ff61c04a2176da9c55ea92dcce5638d11a177b999732a094db186964ab1b73c6a69aaa664672a36620dedb9da41c05e88ad981edda"
 }
 ```
 
 > The eots manager (`eotsd start`) can be turned down.
+> The fpd daemon (`fpd start`) can be turned down.
+> Keep the database folders of `eots` and `fpd` securely stored as it contains
+information that will be used latter for running the finality provider.
