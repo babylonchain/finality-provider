@@ -191,7 +191,7 @@ $ fpcli export-finality-provider --btc-pk 25d13990ce6175dc5b5901cdaceb07e337b9b2
 --signed
 ```
 
-The expected result is a finality with 5% comission exported:
+The expected result is a finality with signature exported:
 
 ```json
 {
