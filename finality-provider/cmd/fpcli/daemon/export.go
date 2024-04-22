@@ -18,10 +18,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-const (
-	signedFinalityProviderFlag = "signed-fp"
-)
-
 // FinalityProviderSigned wrap the finality provider by adding the
 // signed finality probider by the bbn pub key as hex
 type FinalityProviderSigned struct {
