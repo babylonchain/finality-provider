@@ -135,20 +135,9 @@ func createFpDaemon(ctx *cli.Context) error {
 		return fmt.Errorf("invalid description: %w", err)
 	}
 
-	// we add the following check to ensure that the chain key is created
-	// beforehand
-	cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
+	keyName, err := loadKeyName(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
-	}
-
-	keyName := ctx.String(keyNameFlag)
-	// if key name is not specified, we use the key of the config
-	if keyName == "" {
-		keyName = cfg.BabylonConfig.Key
-		if keyName == "" {
-			return fmt.Errorf("the key in config is empty")
-		}
+		return fmt.Errorf("not able to load key name: %w", err)
 	}
 
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
@@ -381,4 +370,25 @@ func printRespJSON(resp interface{}) {
 	}
 
 	fmt.Printf("%s\n", jsonBytes)
+}
+
+func loadKeyName(ctx *cli.Context) (string, error) {
+	keyName := ctx.String(keyNameFlag)
+	// if key name is not specified, we use the key of the config
+	if keyName != "" {
+		return keyName, nil
+	}
+
+	// we add the following check to ensure that the chain key is created
+	// beforehand
+	cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
+	if err != nil {
+		return "", fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
+	}
+
+	keyName = cfg.BabylonConfig.Key
+	if keyName == "" {
+		return "", fmt.Errorf("the key in config is empty")
+	}
+	return keyName, nil
 }

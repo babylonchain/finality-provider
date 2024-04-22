@@ -132,20 +132,9 @@ func exportFp(ctx *cli.Context) error {
 		return nil
 	}
 
-	keyName := ctx.String(keyNameFlag)
-	// if key name is not specified, we use the key of the config
-	if keyName == "" {
-		// we add the following check to ensure that the chain key is created
-		// beforehand
-		cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
-		if err != nil {
-			return fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
-		}
-
-		keyName = cfg.BabylonConfig.Key
-		if keyName == "" {
-			return fmt.Errorf("the key in config is empty")
-		}
+	keyName, err := loadKeyName(ctx)
+	if err != nil {
+		return fmt.Errorf("not able to load key name: %w", err)
 	}
 
 	// sign the finality provider data.
