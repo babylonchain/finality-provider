@@ -29,11 +29,9 @@ type FinalityProviderSigned struct {
 var ExportFinalityProvider = cli.Command{
 	Name:      "export-finality-provider",
 	ShortName: "exfp",
-	Usage:     "Creates, stores, and exports one finality provider.",
-	Description: `Connects with the EOTS manager defined in config, creates a new
-key pair formatted by BIP-340 (Schnorr Signatures), generates the master public
-randomness pair, stores the finality provider and exports it by printing the json
-structure on the stdout`,
+	Usage:     "It exports the finality provider by the given BTC public key.",
+	Description: `Fetches the finality provider from the database and exports it
+	by printing the json structure on the stdout.`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  fpdDaemonAddressFlag,
@@ -48,7 +46,7 @@ structure on the stdout`,
 		cli.BoolFlag{
 			Name: signedFlag,
 			Usage: `Defines if needs to sign the exported finality provider,
-			if true, it is necessary to define keyring flags`,
+			if true, it is necessary to define the key name flag`,
 		},
 		cli.StringFlag{
 			Name:  keyNameFlag,
