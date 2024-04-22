@@ -43,7 +43,7 @@ $ eotsd start --home ./export-fp/eots
 > Starts the eots process that can be turned down after the finality provider is exported
 > (run all commands of this file).
 
-### Setup finality provider daemon
+### Setup Finality Provider Daemon
 
 The finality provider daemon (fpd) is responsible for polling consumer chain blocks
 and providing finality signatures if it has voting power. To initialize the `fpd`
