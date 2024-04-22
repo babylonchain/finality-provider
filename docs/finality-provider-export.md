@@ -30,7 +30,7 @@ data/  eotsd.conf  logs/
 
 > Creates the config file and two directories for logs and data.
 
-After the proper configuration, start the etos daemon with the command `eotsd start`.
+After the proper configuration, start the eots daemon with the command `eotsd start`.
 The home folder should point to the work directory previously created with `eotsd init`.
 
 ```shell
