@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli"
 	"go.uber.org/zap"
 
+	"github.com/babylonchain/finality-provider/clientcontroller"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/log"
@@ -110,7 +111,7 @@ func loadApp(
 	dbBackend walletdb.DB,
 ) (*service.FinalityProviderApp, error) {
 	if ctx.Bool(noChainBackendFlag) {
-		fpApp, err := service.NewFinalityProviderAppWithEotsFromConfig(cfg, dbBackend, logger)
+		fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create finality-provider with not bbn chain app: %v", err)
 		}
@@ -118,7 +119,12 @@ func loadApp(
 		return fpApp, nil
 	}
 
-	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger)
+	cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
+	}
+
+	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger, cc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider app: %v", err)
 	}

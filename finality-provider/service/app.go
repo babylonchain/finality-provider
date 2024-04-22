@@ -56,12 +56,8 @@ func NewFinalityProviderAppFromConfig(
 	config *fpcfg.Config,
 	db kvdb.Backend,
 	logger *zap.Logger,
+	cc clientcontroller.ClientController,
 ) (*FinalityProviderApp, error) {
-	cc, err := clientcontroller.NewClientController(config.ChainName, config.BabylonConfig, &config.BTCNetParams, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", config.ChainName, err)
-	}
-
 	// if the EOTSManagerAddress is empty, run a local EOTS manager;
 	// otherwise connect a remote one with a gRPC client
 	em, err := client.NewEOTSManagerGRpcClient(config.EOTSManagerAddress)
@@ -72,25 +68,6 @@ func NewFinalityProviderAppFromConfig(
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
 
 	return NewFinalityProviderApp(config, cc, em, db, logger)
-}
-
-// NewFinalityProviderAppWithEotsFromConfig creates a new finality provider app loading
-// the eots manager from config without client controller.
-func NewFinalityProviderAppWithEotsFromConfig(
-	config *fpcfg.Config,
-	db kvdb.Backend,
-	logger *zap.Logger,
-) (*FinalityProviderApp, error) {
-	// if the EOTSManagerAddress is empty, run a local EOTS manager;
-	// otherwise connect a remote one with a gRPC client
-	em, err := client.NewEOTSManagerGRpcClient(config.EOTSManagerAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
-	}
-
-	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", config.EOTSManagerAddress))
-
-	return NewFinalityProviderApp(config, nil, em, db, logger)
 }
 
 func NewFinalityProviderApp(
