@@ -56,7 +56,7 @@ $ ls ./export-fp/eots
 fpd.conf  logs/
 ```
 
-After the setup of `fpd` config, update the `ChainID` config property of `[babylon]` to the proper chain ID to be used.
+After the setup of `fpd` config, update the `ChainID` config property of `[babylon]` to the proper chain ID to be used in the `./export-fp/fpd/fpd.conf` file.
 ![image](https://github.com/babylonchain/finality-provider/assets/17556614/be079679-eb44-4bc8-877e-1bf39dbcd506)
 
 > Creates the config file and one directory for logs.
