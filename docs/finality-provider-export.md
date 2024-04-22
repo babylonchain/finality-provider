@@ -207,4 +207,4 @@ The expected result is a finality with 5% comission exported:
 > The eots manager (`eotsd start`) can be turned down.
 > The fpd daemon (`fpd start`) can be turned down.
 > Keep the database folders of `eots` and `fpd` securely stored as it contains
-information that will be used latter for the finality provider.
+information that will be used latter for running the finality provider.
