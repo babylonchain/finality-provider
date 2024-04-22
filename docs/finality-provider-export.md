@@ -61,6 +61,7 @@ fpd.conf  logs/
 
 After the setup of `fpd` config, update the `ChainID` config property of `[babylon]`
 to the proper chain ID to be used in the `./export-fp/fpd/fpd.conf` file.
+
 ![image](https://github.com/babylonchain/finality-provider/assets/17556614/be079679-eb44-4bc8-877e-1bf39dbcd506)
 
 > Creates the config file and one directory for logs.
@@ -82,7 +83,9 @@ with no defaults.
 - `--hd-path` defines the hd path to use for derivation of the private key.
 
 ```shell
-$ fpd keys add --home ./export-fp/fpd --chain-id babylon-1 --key-name finality-provider --keyring-backend os
+$ fpd keys add --home ./export-fp/fpd --chain-id babylon-1 --key-name finality-provider --keyring-backend file
+Enter keyring passphrase (attempt 1/3): ...
+Re-enter keyring passphrase: ...
 New key for the consumer chain is created (mnemonic should be kept in a safe place for recovery):
 {
   "name": "finality-provider",
@@ -91,8 +94,9 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 }
 ```
 
+**⚠ Store safely the mnemonic and generated keys.**
+
 > Creates one key pair identified by the key name `finality-provider`.
-> Store safely the mnemonic and generated keys.
 > The added key will be used to create the proof-of-possession (pop)
 > of the finality provider.
 > For production enviroments, make sure to select a proper
@@ -220,3 +224,20 @@ The expected result is a finality with signature exported:
 > The fpd daemon (`fpd start`) can be turned down.
 > Keep the database folders of `eots` and `fpd` securely stored as it contains
 information that will be used latter for running the finality provider.
+
+## Security considerations
+
+All the generated files and keyring must be stored in a secure place for latter usage.
+If any keys are lost, BTC or backend chain the finality provider will not be able
+to start the chain with BTC delegations prior genesis block and all the BTC locked
+in the finality provider that lost his keys will not be providing security
+and by consequent, not earn any rewards.
+
+The recommendation is to safely store the entire `./export-fp` directory
+that compress occupies roughly 5kb. To compress, run the following command:
+
+```shell
+tar czf backup-exported-fpd.tar.gz ./export-fp
+```
+
+⚠ Keep the compressed directory stored securely.
