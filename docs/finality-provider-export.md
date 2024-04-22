@@ -1,7 +1,8 @@
 # Finality Provider Export
 
-Finality providers are responsible for voting at a finality round on top of CometBFT that is powered by BTC stake.
-Similar to any native PoS validator, finality providers can receive voting power delegations from BTC stakers, and
+Finality providers are responsible for voting at a finality round on top of
+CometBFT that is powered by BTC stake. Similar to any native PoS validator,
+finality providers can receive voting power delegations from BTC stakers, and
 through their voting power provide economic security to the underlying PoS protocol.
 In this document,
 we explore how someone can create a finality provider and export details about it in JSON format.
@@ -46,7 +47,8 @@ $ eotsd start --home ./export-fp/eots
 ### Setup Finality Provider Daemon
 
 The finality provider daemon (fpd) is responsible for polling consumer chain blocks
-and providing finality signatures if it has voting power. To initialize the `fpd`
+and providing finality signatures if it is in the active finality provider set.
+To initialize the `fpd`
 work directory, run `fpd init`, which creates the default home location, unless
 the `--home` flag is specified.
 
@@ -88,10 +90,12 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 > Creates one key pair identified by the key name `finality-provider`.
 > Store safely the mnemonic and generated keys.
 > The added key will be used to create the proof-of-possession (pop) of the finality provider.
-> For production enviroments, make sure to select a proper [backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring)
+> For production enviroments, make sure to select a proper
+[backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring)
 , one of `[os, file, pass, kwallet]`.
 
-After the setup of the configuration and key to be used, start the `fpd` daemon with the command `fpd start` with no chain backend `--no-chain-backend`.
+After the setup of the configuration and key to be used, start the `fpd` daemon
+with the command `fpd start` with no chain backend `--no-chain-backend`.
 The home golder should point to the work directory previously created with `fpd init`
 
 ```shell
