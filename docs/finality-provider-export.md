@@ -122,8 +122,7 @@ After the setup and start of `eots` and `fdp`, to interact with the `fpd`
 daemon, you can use the `fpcli` utility. To create the finality provider,
 run `fpcli create-finality-provider`.
 
-> Obs.: This command does not send a transaction to babylon chain
- `babylond tx btcstaking create-finality-provider`.
+> Obs.: This command does not send a transaction to babylon chain.
 
 This command also has several flag options.:
 
