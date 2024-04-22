@@ -4,8 +4,8 @@ Finality providers are responsible for voting at a finality round on top of
 CometBFT that is powered by BTC stake. Similar to any native PoS validator,
 finality providers can receive voting power delegations from BTC stakers, and
 through their voting power provide economic security to the underlying PoS protocol.
-In this document,
-we explore how someone can create a finality provider and export details about it in JSON format.
+In this document, we explore how someone can create a finality provider and
+export details about it in JSON format.
 
 ## Prerequisite
 
@@ -13,9 +13,11 @@ we explore how someone can create a finality provider and export details about i
 
 [Follow these instructions](../README.md#2-installation) to install the binaries.
 
-- `eotsd`: EOTS manager daemon to create and manage EOTS keys for each finality provider and provide finality signatures.
+- `eotsd`: EOTS manager daemon to create and manage EOTS keys for each finality
+provider and provide finality signatures.
 - `fpd`: Finality provider daemon to host the finality provider instance.
-- `fpcli`: User interface of the finality provider that requires `eotsd` or `fpd` is running.
+- `fpcli`: User interface of the finality provider that requires `eotsd` or `fpd`
+is running.
 
 ### Setup EOTS manager daemon
 
@@ -41,16 +43,15 @@ $ eotsd start --home ./export-fp/eots
 2024-04-17T16:52:10.554061Z     info    EOTS Manager Daemon is fully active!
 ```
 
-> Starts the eots process that can be turned down after the finality provider is exported
-> (run all commands of this file).
+> Starts the eots process that can be turned down after the finality provider
+> is exported (run all commands of this file).
 
 ### Setup Finality Provider Daemon
 
 The finality provider daemon (fpd) is responsible for polling consumer chain blocks
 and providing finality signatures if it is in the active finality provider set.
-To initialize the `fpd`
-work directory, run `fpd init`, which creates the default home location, unless
-the `--home` flag is specified.
+To initialize the `fpd` work directory, run `fpd init`, which creates the
+default home location, unless the `--home` flag is specified.
 
 ```shell
 $ fpd init --home ./export-fp/fpd
@@ -58,14 +59,16 @@ $ ls ./export-fp/eots
 fpd.conf  logs/
 ```
 
-After the setup of `fpd` config, update the `ChainID` config property of `[babylon]` to the proper chain ID to be used in the `./export-fp/fpd/fpd.conf` file.
+After the setup of `fpd` config, update the `ChainID` config property of `[babylon]`
+to the proper chain ID to be used in the `./export-fp/fpd/fpd.conf` file.
 ![image](https://github.com/babylonchain/finality-provider/assets/17556614/be079679-eb44-4bc8-877e-1bf39dbcd506)
 
 > Creates the config file and one directory for logs.
 
-To connect the finality provider to a specific consumer chain (`Babylon chain` in this case),
-we need to generate a key pair for it. Run `fpd keys add --key-name [my-name]` to create
-the key pair. Some available flags:
+To connect the finality provider to a specific consumer chain
+(`Babylon chain` in this case), we need to generate a key pair for it.
+Run `fpd keys add --key-name [my-name]` to create the key pair.
+Some available flags:
 
 - `--key-name` mandatory as it identifies the name for the key to be created.
 - `--chain-id` mandatory as it specifies the chain ID to be used for context
@@ -74,7 +77,8 @@ creation of the key.
 to load the configuration.
 - `--keyring-backend` specifies the keyring options, any of `[file, os, kwallet, test, pass, memory]`
 are available, by default `test` is used.
-- `--passphrase` sets a password to encrypt the keys, this is a optional flag with no defaults.
+- `--passphrase` sets a password to encrypt the keys, this is a optional flag
+with no defaults.
 - `--hd-path` defines the hd path to use for derivation of the private key.
 
 ```shell
@@ -89,7 +93,8 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 
 > Creates one key pair identified by the key name `finality-provider`.
 > Store safely the mnemonic and generated keys.
-> The added key will be used to create the proof-of-possession (pop) of the finality provider.
+> The added key will be used to create the proof-of-possession (pop)
+> of the finality provider.
 > For production enviroments, make sure to select a proper
 [backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring)
 , one of `[os, file, pass, kwallet]`.
@@ -114,7 +119,8 @@ After the setup and start of `eots` and `fdp`, to interact with the `fpd`
 daemon, it is used the `fpcli`. To create the finality provider, run
 `fpcli create-finality-provider`.
 
-> Obs.: This command does not send a transaction to babylon chain `babylond tx btcstaking create-finality-provider`.
+> Obs.: This command does not send a transaction to babylon chain
+ `babylond tx btcstaking create-finality-provider`.
 
 This command also has several flag options.:
 
@@ -164,9 +170,8 @@ $ fpcli create-finality-provider --home ./export-fp/fpd --key-name finality-prov
 ## Export a Finality Provider
 
 Finally, after the creation of the finality provider, to export the finality
-provider, run `fpcli export-finality-provider`.
-This command connects with the `fpd` daemon to load the finality provider previously
-created using the flag `--btc-pk`.
+provider, run `fpcli export-finality-provider`. This command connects with the
+`fpd` daemon to load the finality provider previously created using the flag `--btc-pk`.
 
 This command also has several flag options.:
 
