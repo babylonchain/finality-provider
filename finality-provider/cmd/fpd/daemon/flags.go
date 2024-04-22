@@ -10,6 +10,7 @@ const (
 	keyNameFlag        = "key-name"
 	hdPathFlag         = "hd-path"
 	chainIdFlag        = "chain-id"
+	fromMnemonicFlag   = "from-mnemonic"
 	keyringBackendFlag = "keyring-backend"
 	rpcListenerFlag    = "rpc-listener"
 

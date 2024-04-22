@@ -1,14 +1,16 @@
 package daemon
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-
-	"github.com/jessevdk/go-flags"
-	"github.com/urfave/cli"
+	"os"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/cosmos/cosmos-sdk/client/input"
+	"github.com/jessevdk/go-flags"
+	"github.com/urfave/cli"
 )
 
 type KeyOutput struct {
@@ -61,6 +63,10 @@ var AddKeyCmd = cli.Command{
 			Usage: "The hd path used to derive the private key",
 			Value: defaultHdPath,
 		},
+		cli.BoolFlag{
+			Name:  fromMnemonicFlag,
+			Usage: "Define if the key should be created from a mnemonic",
+		},
 	},
 	Action: addKey,
 }
@@ -80,6 +86,15 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load the config from %s: %w", fpcfg.ConfigFile(homePath), err)
 	}
 
+	mnemonic := ""
+	if ctx.Bool(fromMnemonicFlag) {
+		reader := bufio.NewReader(os.Stdin)
+		mnemonic, err = input.GetString("Enter your mnemonic", reader)
+		if err != nil {
+			return fmt.Errorf("failed to read mnemonic from stdin: %w", err)
+		}
+	}
+
 	keyInfo, err := service.CreateChainKey(
 		homePath,
 		chainID,
@@ -87,6 +102,7 @@ func addKey(ctx *cli.Context) error {
 		backend,
 		passphrase,
 		hdPath,
+		mnemonic,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create the chain key: %w", err)

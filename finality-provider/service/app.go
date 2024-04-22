@@ -375,7 +375,7 @@ func (app *FinalityProviderApp) loadChainKeyring(
 	chainSk, err := kr.GetChainPrivKey(passPhrase)
 	if err != nil {
 		// the chain key does not exist, should create the chain key first
-		keyInfo, err := kr.CreateChainKey(passPhrase, hdPath)
+		keyInfo, err := kr.CreateChainKey(passPhrase, hdPath, "")
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create chain key %s: %w", keyName, err)
 		}
@@ -443,7 +443,7 @@ func (app *FinalityProviderApp) StoreFinalityProvider(
 	return storedFp, nil
 }
 
-func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.ChainKeyInfo, error) {
+func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath, mnemonic string) (*types.ChainKeyInfo, error) {
 	sdkCtx, err := fpkr.CreateClientCtx(
 		keyringDir, chainID,
 	)
@@ -460,7 +460,7 @@ func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath st
 		return nil, err
 	}
 
-	return krController.CreateChainKey(passphrase, hdPath)
+	return krController.CreateChainKey(passphrase, hdPath, mnemonic)
 }
 
 // main event loop for the finality-provider app
