@@ -91,11 +91,11 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 > For production enviroments, make sure to select a proper [backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring)
 , one of `[os, file, pass, kwallet]`.
 
-After the setup of the configuration and key to be used, start the `fpd` daemon with the command `fpd start` with no babylon chain `--no-bbn`.
+After the setup of the configuration and key to be used, start the `fpd` daemon with the command `fpd start` with no chain backend `--no-chain-backend`.
 The home golder should point to the work directory previously created with `fpd init`
 
 ```shell
-$ fpd start --home ./export-fp/fpd --no-bbn
+$ fpd start --home ./export-fp/fpd --no-chain-backend
 2024-04-22T10:15:42.548999Z     info    successfully connected to a remote EOTS manager     {"address": "127.0.0.1:12582"}
 2024-04-22T10:15:42.577365Z     info    Starting FinalityProviderApp
 2024-04-22T10:15:42.577481Z     info    starting metrics update loop{"interval seconds": 0.1}

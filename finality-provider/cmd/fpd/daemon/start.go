@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	noBabylonChainFlag = "no-bbn"
+	noChainBackendFlag = "no-chain-backend"
 )
 
 var StartCommand = cli.Command{
@@ -45,8 +45,8 @@ var StartCommand = cli.Command{
 			Usage: "The address that the RPC server listens to",
 		},
 		cli.BoolFlag{
-			Name:  noBabylonChainFlag,
-			Usage: "If specified, does not connect to client controller",
+			Name:  noChainBackendFlag,
+			Usage: "If specified, does not connect to the chain backend",
 		},
 	},
 	Action: start,
@@ -109,7 +109,7 @@ func loadApp(
 	cfg *fpcfg.Config,
 	dbBackend walletdb.DB,
 ) (*service.FinalityProviderApp, error) {
-	if ctx.Bool(noBabylonChainFlag) {
+	if ctx.Bool(noChainBackendFlag) {
 		fpApp, err := service.NewFinalityProviderAppWithEotsFromConfig(cfg, dbBackend, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create finality-provider with not bbn chain app: %v", err)
@@ -142,7 +142,7 @@ func startApp(
 		return fmt.Errorf("failed to start the finality-provider app: %w", err)
 	}
 
-	if ctx.Bool(noBabylonChainFlag) {
+	if ctx.Bool(noChainBackendFlag) {
 		return nil // no need to handle fps, it calls bbn
 	}
 
