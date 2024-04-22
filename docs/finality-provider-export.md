@@ -88,7 +88,8 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 > Creates one key pair identified by the key name `finality-provider`.
 > Store safely the mnemonic and generated keys.
 > The added key will be used to create the proof-of-possession (pop) of the finality provider.
-> For production enviroments, make sure to select a proper [backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring), one of `[os, file, pass, kwallet]`.
+> For production enviroments, make sure to select a proper [backend keyring](https://docs.cosmos.network/v0.45/run-node/keyring.html#available-backends-for-the-keyring)
+, one of `[os, file, pass, kwallet]`.
 
 After the setup of the configuration and key to be used, start the `fpd` daemon with the command `fpd start` with no babylon chain `--no-bbn`.
 The home golder should point to the work directory previously created with `fpd init`
