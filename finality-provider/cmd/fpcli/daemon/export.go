@@ -17,8 +17,8 @@ import (
 	"github.com/urfave/cli"
 )
 
-// FinalityProviderSigned wrap the finality provider by adding the
-// signed finality probider by the bbn pub key as hex
+// FinalityProviderSigned wraps the finality provider by adding the
+// signature signed by the finality provider's Babylon key in hex
 type FinalityProviderSigned struct {
 	btcstktypes.FinalityProvider
 	// FpSigHex is the finality provider cosmos sdk chain key
