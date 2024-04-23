@@ -216,8 +216,8 @@ fpcli list-finality-providers
 }
 ```
 
-After the creation of the finality provider, it is possible to export the
-finality provider information, run `fpcli export-finality-provider`.
+After the creation of the finality provider in the local db, it is possible
+to export the finality provider information, run `fpcli export-finality-provider`.
 This command connects with the `fpd` daemon to load the finality
 provider previously created using the flag `--btc-pk` as key.
 
