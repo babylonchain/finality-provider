@@ -87,6 +87,7 @@ are available, by default `test` is used.
 - `--passphrase` sets a password to encrypt the keys, this is a optional flag
 with no defaults.
 - `--hd-path` defines the hd path to use for derivation of the private key.
+- `--from-mnemonic` optional flag to be prompt to input the mnemonic used for key generation.
 
 ```shell
 $ fpd keys add --home ./export-fp/fpd --chain-id babylon-1 --key-name finality-provider --keyring-backend file
@@ -100,7 +101,7 @@ New key for the consumer chain is created (mnemonic should be kept in a safe pla
 }
 ```
 
-**⚠ Store safely the mnemonic and generated keys.**
+**⚠ Store safely the mnemonic.**
 
 > Creates one key pair identified by the key name `finality-provider`.
 > The added key will be used to create the proof-of-possession (pop)
@@ -142,6 +143,7 @@ This command also has several flag options.:
 to load the configuration.
 - `--passphrase` the password used to encrypt the key.
 - `--hd-path` the hd derivation path of the private key.
+- `--from-mnemonic` optional flag to be prompt to input the mnemonic used for key generation.
 - `--comission` the commission charged from btc stakers rewards, default is `0.05` 5%.
 - Multiple flags are used for description and identification of the finality provider
   - `--moniker` nickname of the finality provider.
@@ -154,7 +156,10 @@ to load the configuration.
 $ fpcli create-finality-provider --home ./export-fp/fpd --key-name finality-provider \
 --chain-id babylon-1 --commission 0.05 --moniker my-fp-nickname --identity anyIdentity \
 --website www.my-public-available-website.com --security-contact your.email@gmail.com \
---details 'other overall info'
+--details 'other overall info' --from-mnemonic
+
+> Enter your mnemonic
+bad mnemonic actress issue error swap sphere excuse anxiety machine meat immense rebuild adapt color push polar decorate poverty material skin wear battle zebra
 
 {
   "chain_pk_hex": "02d3c46a006a55050bea8834a87f87e38a457fda7759c1c0bdafb30b6fbbe17f29",
@@ -233,17 +238,103 @@ information that will be used latter for running the finality provider.
 
 ## Security considerations
 
-All the generated files and keyring must be stored in a secure place for latter usage.
-If any keys are lost, BTC or backend chain the finality provider will not be able
-to start the chain with BTC delegations prior genesis block and all the BTC locked
-in the finality provider that lost his keys will not be providing security
-and by consequent, not earn any rewards.
+All the generated files and keyring were generated using a single mnemonic.
+Store safely the mnemonic used to be able to recover keys if needed.
+If the mnemonic and any keys are lost, BTC or backend chain the finality
+provider will not be able to start the chain with BTC delegations prior
+genesis block and all the BTC locked in the finality provider that lost
+his keys will not be providing security and by consequent, not earn any rewards.
 
-The recommendation is to safely store the entire `./export-fp` directory
-that compress occupies roughly 5kb. To compress, run the following command:
+⚠ Keep the used mnemonic to generate keys in a safe place.
+
+### How to recover with mnemonic
+
+If for some reason the generated files and keys are lost, but the
+`fpcli create-finality-provider` was generated with the flag `--from-mnemonic`
+and the mnemonic is not lost, the recovery steps are the following.
+
+Init and start the eots
 
 ```shell
-tar czf backup-exported-fpd.tar.gz ./export-fp
+$ eotsd init --home ./export-fp/eots
+$ eotsd start --home ./export-fp/eots
+2024-04-17T16:52:10.553893Z     info    Metrics server is starting      {"addr": "127.0.0.1:2113"}
+2024-04-17T16:52:10.554021Z     info    RPC server listening    {"address": "127.0.0.1:12582"}
+2024-04-17T16:52:10.554061Z     info    EOTS Manager Daemon is fully active!
 ```
 
-⚠ Keep the compressed directory stored securely.
+Init the fpd config
+
+```shell
+$ fpd init --home ./export-fp/fpd
+$ ls ./export-fp/eots
+fpd.conf  logs/
+```
+
+Create the chain key from mnemonic
+
+```shell
+$ fpd keys add --home ./export-fp/fpd --chain-id babylon-1 --key-name finality-provider \
+--keyring-backend file --from-mnemonic
+
+> Enter your mnemonic
+bad mnemonic actress issue error swap sphere excuse anxiety machine meat immense rebuild adapt color push polar decorate poverty material skin wear battle zebra
+
+Enter keyring passphrase (attempt 1/3): ...
+Re-enter keyring passphrase: ...
+New key for the consumer chain is created (mnemonic should be kept in a safe place for recovery):
+{
+  "name": "finality-provider",
+  "address": "bbn1d54vq462hyh0jj07hmxrn2p59p4axn5mwlzqeu",
+  "mnemonic": "bad mnemonic actress issue error swap sphere excuse anxiety machine meat immense rebuild adapt color push polar decorate poverty material skin wear battle zebra"
+}
+```
+
+> The generated address should match with the first one.
+
+Start the fpd
+
+```shell
+$ fpd start --home ./export-fp/fpd --no-chain-backend
+2024-04-22T10:15:42.548999Z     info    successfully connected to a remote EOTS manager     {"address": "127.0.0.1:12582"}
+2024-04-22T10:15:42.577365Z     info    Starting FinalityProviderApp
+2024-04-22T10:15:42.577481Z     info    starting metrics update loop{"interval seconds": 0.1}
+2024-04-22T10:15:42.577589Z     info    RPC server listening    {"address": "127.0.0.1:12581"}
+2024-04-22T10:15:42.577625Z     info    Finality Provider Daemon is fully active!
+2024-04-22T10:15:42.577610Z     info    Metrics server is starting {"addr": "127.0.0.1:2112"}
+```
+
+Create the finality provider again from the same mnemonic
+
+```shell
+$ fpcli create-finality-provider --home ./export-fp/fpd --key-name finality-provider \
+--chain-id babylon-1 --commission 0.05 --moniker my-fp-nickname --identity anyIdentity \
+--website www.my-public-available-website.com --security-contact your.email@gmail.com \
+--details 'other overall info' --from-mnemonic
+
+> Enter your mnemonic
+bad mnemonic actress issue error swap sphere excuse anxiety machine meat immense rebuild adapt color push polar decorate poverty material skin wear battle zebra
+
+{
+  "chain_pk_hex": "02d3c46a006a55050bea8834a87f87e38a457fda7759c1c0bdafb30b6fbbe17f29",
+  "btc_pk_hex": "25d13990ce6175dc5b5901cdaceb07e337b9b2a6aa39d0f6ae0ad75738dff7c1",
+  "description": {
+    "moniker": "my-fp-nickname",
+    "identity": "anyIdentity",
+    "website": "www.my-public-available-website.com",
+    "security_contact": "your.email@gmail.com",
+    "details": "other overall info"
+  },
+  "commission": "0.050000000000000000",
+  "registered_epoch": 18446744073709551615,
+  "master_pub_rand": "xpub661MyMwAqRbcFLhUq9uPM7GncSytVZvoNg4w7LLx1Y74GeeAZerkpV1amvGBTcw4ECmrwFsTNMNf1LFBKkA2pmd8aJ5Jmp8uKD5xgVSezBq",
+  "status": "CREATED",
+  "pop": {
+    "chain_sig": "sAg34vImQTFVlZYsziw9PCCKDuRyZv38V2MX8Ij9fQhyOdpxCUZ1VEgpSlwV/dbnpDs1UOez8Ni9EcbADkmnBA==",
+    "btc_sig": "sHLpEHVTyTp9K55oeHxnPlkV4unc/r1obqzKn5S1gq95oXA3AgL1jyCzd/mGb23RfKbEyABjYUdcIBtZ02l5jg=="
+  }
+}
+```
+
+> The generated finality provider should match exactly as the old one, if the
+same mnemonic was used to recover.
