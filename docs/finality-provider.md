@@ -215,3 +215,50 @@ fpcli list-finality-providers
     ]
 }
 ```
+
+After the creation of the finality provider, it is possible to export the
+finality provider information, run `fpcli export-finality-provider`.
+This command connects with the `fpd` daemon to load the finality
+provider previously created using the flag `--btc-pk` as key.
+
+This command also has several flag options.:
+
+- `--btc-pk` the hex string of the BTC public key.
+- `--daemon-address` the RPC server address of `fpd` daemon.
+- `--signed` signs the finality provider with chain key as a proof of a
+untempered exported data.
+- `--key-name` mandatory as it identifies the name for the key to use on fpd creation.
+- `--home` flag needs to be the same as used in the `fpd init` command,
+to load the configuration.
+- `--passphrase` the password used to encrypt the key.
+- `--hd-path` the hd derivation path of the private key.
+
+```shell
+$ fpcli export-finality-provider --btc-pk 02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077 \
+--home ./export-fp/fpd --key-name finality-provider --signed
+```
+
+The expected result is a finality with signature exported:
+
+```json
+{
+  "description": {
+    "moniker": "my-fp-nickname",
+    "identity": "anyIdentity",
+    "website": "www.my-public-available-website.com",
+    "security_contact": "your.email@gmail.com",
+    "details": "other overall info"
+  },
+  "commission": "0.050000000000000000",
+  "babylon_pk": {
+    "key": "AtPEagBqVQUL6og0qH+H44pFf9p3WcHAva+zC2+74X8p"
+  },
+  "btc_pk": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
+  "pop": {
+    "babylon_sig": "sAg34vImQTFVlZYsziw9PCCKDuRyZv38V2MX8Ij9fQhyOdpxCUZ1VEgpSlwV/dbnpDs1UOez8Ni9EcbADkmnBA==",
+    "btc_sig": "sHLpEHVTyTp9K55oeHxnPlkV4unc/r1obqzKn5S1gq95oXA3AgL1jyCzd/mGb23RfKbEyABjYUdcIBtZ02l5jg=="
+  },
+  "master_pub_rand": "xpub661MyMwAqRbcFLhUq9uPM7GncSytVZvoNg4w7LLx1Y74GeeAZerkpV1amvGBTcw4ECmrwFsTNMNf1LFBKkA2pmd8aJ5Jmp8uKD5xgVSezBq",
+  "fp_sig_hex": "8ded8158bf65d492c5c6d1ff61c04a2176da9c55ea92dcce5638d11a177b999732a094db186964ab1b73c6a69aaa664672a36620dedb9da41c05e88ad981edda"
+}
+```
