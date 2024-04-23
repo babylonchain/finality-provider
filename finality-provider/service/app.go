@@ -310,7 +310,7 @@ func (app *FinalityProviderApp) Stop() error {
 }
 
 func (app *FinalityProviderApp) CreateFinalityProvider(
-	keyName, chainID, passPhrase, hdPath string,
+	keyName, chainID, passPhrase, hdPath, mnemonic string,
 	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
 ) (*CreateFinalityProviderResult, error) {
@@ -320,6 +320,7 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 		chainID:         chainID,
 		passPhrase:      passPhrase,
 		hdPath:          hdPath,
+		mnemonic:        mnemonic,
 		description:     description,
 		commission:      commission,
 		errResponse:     make(chan error, 1),
@@ -341,7 +342,7 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 }
 
 func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
-	storedFp, err := app.StoreFinalityProvider(req.keyName, req.passPhrase, req.hdPath, req.chainID, req.description, req.commission)
+	storedFp, err := app.StoreFinalityProvider(req.keyName, req.passPhrase, req.hdPath, req.chainID, req.mnemonic, req.description, req.commission)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +388,7 @@ func (app *FinalityProviderApp) loadChainKeyring(
 
 // StoreFinalityProvider stores a new finality provider in the fp store.
 func (app *FinalityProviderApp) StoreFinalityProvider(
-	keyName, passPhrase, hdPath, chainID string,
+	keyName, passPhrase, hdPath, chainID, mnemonic string,
 	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
 ) (*store.StoredFinalityProvider, error) {
@@ -399,10 +400,11 @@ func (app *FinalityProviderApp) StoreFinalityProvider(
 	chainPk := &secp256k1.PubKey{Key: chainSk.PubKey().Bytes()}
 
 	// 2. create EOTS key
-	fpPkBytes, err := app.eotsManager.CreateKey(keyName, passPhrase, hdPath)
+	fpPkBytes, err := app.createEotsKey(keyName, passPhrase, hdPath, chainID, mnemonic)
 	if err != nil {
 		return nil, err
 	}
+
 	fpPk, err := bbntypes.NewBIP340PubKey(fpPkBytes)
 	if err != nil {
 		return nil, err
@@ -441,6 +443,13 @@ func (app *FinalityProviderApp) StoreFinalityProvider(
 	}
 
 	return storedFp, nil
+}
+
+func (app *FinalityProviderApp) createEotsKey(keyName, passPhrase, hdPath, chainID, mnemonic string) ([]byte, error) {
+	if len(mnemonic) != 0 {
+		return app.eotsManager.CreateKeyFromMnemonic(keyName, passPhrase, hdPath, mnemonic)
+	}
+	return app.eotsManager.CreateKey(keyName, passPhrase, hdPath)
 }
 
 func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath, mnemonic string) (*types.ChainKeyInfo, error) {

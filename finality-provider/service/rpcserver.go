@@ -100,6 +100,7 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 		req.ChainId,
 		req.Passphrase,
 		req.HdPath,
+		req.Mnemonic,
 		&description,
 		&commissionRate,
 	)

@@ -25,6 +25,7 @@ type createFinalityProviderRequest struct {
 	passPhrase      string
 	hdPath          string
 	chainID         string
+	mnemonic        string
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
 	errResponse     chan error

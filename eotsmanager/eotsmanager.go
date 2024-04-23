@@ -13,6 +13,11 @@ type EOTSManager interface {
 	// It fails if there is an existing key Info with the same name or public key.
 	CreateKey(name, passphrase, hdPath string) ([]byte, error)
 
+	// CreateKeyFromMnemonic generates a key pair from the mnemonic at the given name
+	// and persists it in storage. The key pair is formatted by BIP-340 (Schnorr Signatures)
+	// It fails if there is an existing key Info with the same name or public key.
+	CreateKeyFromMnemonic(name, passphrase, hdPath, mnemonic string) ([]byte, error)
+
 	// CreateMasterRandPair generates a pair of master secret/public randomness
 	// It fails if the finality provider does not exist or passPhrase is incorrect
 	// NOTE: the master randomness pair is deterministically generated based on the EOTS key and chainID

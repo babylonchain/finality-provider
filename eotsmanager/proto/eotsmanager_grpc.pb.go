@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	EOTSManager_Ping_FullMethodName                 = "/proto.EOTSManager/Ping"
-	EOTSManager_CreateKey_FullMethodName            = "/proto.EOTSManager/CreateKey"
-	EOTSManager_CreateMasterRandPair_FullMethodName = "/proto.EOTSManager/CreateMasterRandPair"
-	EOTSManager_KeyRecord_FullMethodName            = "/proto.EOTSManager/KeyRecord"
-	EOTSManager_SignEOTS_FullMethodName             = "/proto.EOTSManager/SignEOTS"
-	EOTSManager_SignSchnorrSig_FullMethodName       = "/proto.EOTSManager/SignSchnorrSig"
+	EOTSManager_Ping_FullMethodName                  = "/proto.EOTSManager/Ping"
+	EOTSManager_CreateKey_FullMethodName             = "/proto.EOTSManager/CreateKey"
+	EOTSManager_CreateKeyFromMnemonic_FullMethodName = "/proto.EOTSManager/CreateKeyFromMnemonic"
+	EOTSManager_CreateMasterRandPair_FullMethodName  = "/proto.EOTSManager/CreateMasterRandPair"
+	EOTSManager_KeyRecord_FullMethodName             = "/proto.EOTSManager/KeyRecord"
+	EOTSManager_SignEOTS_FullMethodName              = "/proto.EOTSManager/SignEOTS"
+	EOTSManager_SignSchnorrSig_FullMethodName        = "/proto.EOTSManager/SignSchnorrSig"
 )
 
 // EOTSManagerClient is the client API for EOTSManager service.
@@ -34,6 +35,8 @@ type EOTSManagerClient interface {
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	// CreateKey generates and saves an EOTS key
 	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error)
+	// CreateKeyFromMnemonic generates an EOTS key based on a mnemonic and saves it.
+	CreateKeyFromMnemonic(ctx context.Context, in *CreateKeyFromMnemonicRequest, opts ...grpc.CallOption) (*CreateKeyFromMnemonicResponse, error)
 	// CreateMasterRandPair creates a pair of master secret/public randomness
 	CreateMasterRandPair(ctx context.Context, in *CreateMasterRandPairRequest, opts ...grpc.CallOption) (*CreateMasterRandPairResponse, error)
 	// KeyRecord returns the key record
@@ -64,6 +67,15 @@ func (c *eOTSManagerClient) Ping(ctx context.Context, in *PingRequest, opts ...g
 func (c *eOTSManagerClient) CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error) {
 	out := new(CreateKeyResponse)
 	err := c.cc.Invoke(ctx, EOTSManager_CreateKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *eOTSManagerClient) CreateKeyFromMnemonic(ctx context.Context, in *CreateKeyFromMnemonicRequest, opts ...grpc.CallOption) (*CreateKeyFromMnemonicResponse, error) {
+	out := new(CreateKeyFromMnemonicResponse)
+	err := c.cc.Invoke(ctx, EOTSManager_CreateKeyFromMnemonic_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +125,8 @@ type EOTSManagerServer interface {
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	// CreateKey generates and saves an EOTS key
 	CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error)
+	// CreateKeyFromMnemonic generates an EOTS key based on a mnemonic and saves it.
+	CreateKeyFromMnemonic(context.Context, *CreateKeyFromMnemonicRequest) (*CreateKeyFromMnemonicResponse, error)
 	// CreateMasterRandPair creates a pair of master secret/public randomness
 	CreateMasterRandPair(context.Context, *CreateMasterRandPairRequest) (*CreateMasterRandPairResponse, error)
 	// KeyRecord returns the key record
@@ -133,6 +147,9 @@ func (UnimplementedEOTSManagerServer) Ping(context.Context, *PingRequest) (*Ping
 }
 func (UnimplementedEOTSManagerServer) CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateKey not implemented")
+}
+func (UnimplementedEOTSManagerServer) CreateKeyFromMnemonic(context.Context, *CreateKeyFromMnemonicRequest) (*CreateKeyFromMnemonicResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateKeyFromMnemonic not implemented")
 }
 func (UnimplementedEOTSManagerServer) CreateMasterRandPair(context.Context, *CreateMasterRandPairRequest) (*CreateMasterRandPairResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateMasterRandPair not implemented")
@@ -191,6 +208,24 @@ func _EOTSManager_CreateKey_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EOTSManagerServer).CreateKey(ctx, req.(*CreateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EOTSManager_CreateKeyFromMnemonic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateKeyFromMnemonicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EOTSManagerServer).CreateKeyFromMnemonic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EOTSManager_CreateKeyFromMnemonic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EOTSManagerServer).CreateKeyFromMnemonic(ctx, req.(*CreateKeyFromMnemonicRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -281,6 +316,10 @@ var EOTSManager_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateKey",
 			Handler:    _EOTSManager_CreateKey_Handler,
+		},
+		{
+			MethodName: "CreateKeyFromMnemonic",
+			Handler:    _EOTSManager_CreateKeyFromMnemonic_Handler,
 		},
 		{
 			MethodName: "CreateMasterRandPair",

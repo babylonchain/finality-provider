@@ -11,6 +11,10 @@ service EOTSManager {
   rpc CreateKey (CreateKeyRequest)
       returns (CreateKeyResponse);
 
+  // CreateKeyFromMnemonic generates an EOTS key based on a mnemonic and saves it.
+  rpc CreateKeyFromMnemonic (CreateKeyFromMnemonicRequest)
+      returns (CreateKeyFromMnemonicResponse);
+
   // CreateMasterRandPair creates a pair of master secret/public randomness
   rpc CreateMasterRandPair (CreateMasterRandPairRequest)
       returns (CreateMasterRandPairResponse);
@@ -42,6 +46,22 @@ message CreateKeyRequest {
 }
 
 message CreateKeyResponse {
+  // pk is the EOTS public key following BIP-340 spec
+  bytes pk = 1;
+}
+
+message CreateKeyFromMnemonicRequest {
+  // name is the identifier key in keyring
+  string name = 1;
+  // passphrase is used to encrypt the EOTS key
+  string passphrase = 2;
+  // hd_path is the hd path for private key derivation
+  string hd_path = 3;
+  // mnemonic is the mnemonic used to generate the key
+  string mnemonic = 4;
+}
+
+message CreateKeyFromMnemonicResponse {
   // pk is the EOTS public key following BIP-340 spec
   bytes pk = 1;
 }

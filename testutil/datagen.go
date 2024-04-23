@@ -113,7 +113,7 @@ func GenStoredFinalityProvider(r *rand.Rand, t *testing.T, app *service.Finality
 	_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, keyName, keyring.BackendTest, passphrase, hdPath, "")
 	require.NoError(t, err)
 
-	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, RandomDescription(r), ZeroCommissionRate())
+	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, "", RandomDescription(r), ZeroCommissionRate())
 	require.NoError(t, err)
 
 	btcPk, err := bbn.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)

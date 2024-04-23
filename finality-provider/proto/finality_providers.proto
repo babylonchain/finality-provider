@@ -61,6 +61,8 @@ message CreateFinalityProviderRequest {
         (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
         (gogoproto.nullable)   = false
     ];
+    // mnemonic is the mnemonic used to generate key.
+    string mnemonic = 7;
 }
 
 message CreateFinalityProviderResponse {

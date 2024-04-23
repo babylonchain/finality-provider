@@ -75,16 +75,6 @@ func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Re
 }
 
 func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, error) {
-	if lm.keyExists(name) {
-		return nil, eotstypes.ErrFinalityProviderAlreadyExisted
-	}
-
-	keyringAlgos, _ := lm.kr.SupportedAlgorithms()
-	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
-	if err != nil {
-		return nil, err
-	}
-
 	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
 	entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
 	if err != nil {
@@ -92,6 +82,20 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 	}
 
 	mnemonic, err := bip39.NewMnemonic(entropySeed)
+	if err != nil {
+		return nil, err
+	}
+
+	return lm.CreateKeyFromMnemonic(name, passphrase, hdPath, mnemonic)
+}
+
+func (lm *LocalEOTSManager) CreateKeyFromMnemonic(name, passphrase, hdPath, mnemonic string) ([]byte, error) {
+	if lm.keyExists(name) {
+		return nil, eotstypes.ErrFinalityProviderAlreadyExisted
+	}
+
+	keyringAlgos, _ := lm.kr.SupportedAlgorithms()
+	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
 		return nil, err
 	}

@@ -60,6 +60,17 @@ func (c *EOTSManagerGRpcClient) CreateKey(name, passphrase, hdPath string) ([]by
 	return res.Pk, nil
 }
 
+// CreateKeyFromMnemonic call the client to generate a key from mnemonic
+func (c *EOTSManagerGRpcClient) CreateKeyFromMnemonic(name string, passphrase string, hdPath string, mnemonic string) ([]byte, error) {
+	req := &proto.CreateKeyFromMnemonicRequest{Name: name, Passphrase: passphrase, HdPath: hdPath, Mnemonic: mnemonic}
+	res, err := c.client.CreateKeyFromMnemonic(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Pk, nil
+}
+
 func (c *EOTSManagerGRpcClient) CreateMasterRandPair(uid, chainID []byte, passphrase string) (string, error) {
 	req := &proto.CreateMasterRandPairRequest{
 		Uid:        uid,

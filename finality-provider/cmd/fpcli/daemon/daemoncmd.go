@@ -1,14 +1,17 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/client/input"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/urfave/cli"
 
@@ -118,6 +121,10 @@ var CreateFpDaemonCmd = cli.Command{
 			Usage: "Other optional details",
 			Value: "",
 		},
+		cli.BoolFlag{
+			Name:  fromMnemonicFlag,
+			Usage: "Define if the key should be created from a mnemonic",
+		},
 	},
 	Action: createFpDaemon,
 }
@@ -146,12 +153,22 @@ func createFpDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
+	mnemonic := ""
+	if ctx.Bool(fromMnemonicFlag) {
+		reader := bufio.NewReader(os.Stdin)
+		mnemonic, err = input.GetString("Enter your mnemonic", reader)
+		if err != nil {
+			return fmt.Errorf("failed to read mnemonic from stdin: %w", err)
+		}
+	}
+
 	info, err := client.CreateFinalityProvider(
 		context.Background(),
 		keyName,
 		ctx.String(chainIdFlag),
 		ctx.String(passphraseFlag),
 		ctx.String(hdPathFlag),
+		mnemonic,
 		description,
 		&commissionRate,
 	)

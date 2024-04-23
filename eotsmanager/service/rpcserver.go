@@ -52,6 +52,18 @@ func (r *rpcServer) CreateKey(ctx context.Context, req *proto.CreateKeyRequest) 
 	return &proto.CreateKeyResponse{Pk: pk}, nil
 }
 
+// CreateKey generates a key from mnemonic and stores it.
+func (r *rpcServer) CreateKeyFromMnemonic(
+	ctx context.Context, req *proto.CreateKeyFromMnemonicRequest,
+) (*proto.CreateKeyFromMnemonicResponse, error) {
+	pk, err := r.em.CreateKeyFromMnemonic(req.Name, req.Passphrase, req.HdPath, req.Mnemonic)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.CreateKeyFromMnemonicResponse{Pk: pk}, nil
+}
+
 // CreateMasterRandPair returns a list of Schnorr randomness pairs
 func (r *rpcServer) CreateMasterRandPair(ctx context.Context, req *proto.CreateMasterRandPairRequest) (*proto.CreateMasterRandPairResponse, error) {
 
