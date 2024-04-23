@@ -33,6 +33,12 @@ data/  eotsd.conf  logs/
 
 > Creates the config file and two directories for logs and data.
 
+After the setup of `eots` config, update the `DBPath` config property of
+`[dbconfig]` in `./export-fp/eots/eotsd.conf` to the data directory created inside
+`finality-provider/export-fp/eots/data`. To store all the data in one place for easy backup.
+
+![image](https://github.com/babylonchain/finality-provider/assets/17556614/5a510281-7fa2-4d9c-a3e6-13e8263b4a71)
+
 After the proper configuration, start the eots daemon with the command `eotsd start`.
 The home folder should point to the work directory previously created with `eotsd init`.
 
