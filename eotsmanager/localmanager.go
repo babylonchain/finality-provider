@@ -26,7 +26,7 @@ import (
 
 const (
 	secp256k1Type       = "secp256k1"
-	mnemonicEntropySize = 256
+	MnemonicEntropySize = 256
 )
 
 var _ EOTSManager = &LocalEOTSManager{}
@@ -75,23 +75,41 @@ func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Re
 }
 
 func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, error) {
+	mnemonic, err := NewMnemonic()
+	if err != nil {
+		return nil, err
+	}
+
+	eotsPk, err := lm.CreateKeyWithMnemonic(name, passphrase, hdPath, mnemonic)
+	if err != nil {
+		return nil, err
+	}
+
+	return eotsPk.MustMarshal(), nil
+}
+
+func NewMnemonic() (string, error) {
+	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
+	entropySeed, err := bip39.NewEntropy(MnemonicEntropySize)
+	if err != nil {
+		return "", err
+	}
+
+	mnemonic, err := bip39.NewMnemonic(entropySeed)
+	if err != nil {
+		return "", err
+	}
+
+	return mnemonic, nil
+}
+
+func (lm *LocalEOTSManager) CreateKeyWithMnemonic(name, passphrase, hdPath, mnemonic string) (*bbntypes.BIP340PubKey, error) {
 	if lm.keyExists(name) {
 		return nil, eotstypes.ErrFinalityProviderAlreadyExisted
 	}
 
 	keyringAlgos, _ := lm.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
-	if err != nil {
-		return nil, err
-	}
-
-	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
-	entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
-	if err != nil {
-		return nil, err
-	}
-
-	mnemonic, err := bip39.NewMnemonic(entropySeed)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +151,7 @@ func (lm *LocalEOTSManager) CreateKey(name, passphrase, hdPath string) ([]byte, 
 	)
 	lm.metrics.IncrementEotsCreatedKeysCounter()
 
-	return eotsPk.MustMarshal(), nil
+	return eotsPk, nil
 }
 
 // CreateMasterRandPair creates a pair of master secret/public randomness deterministically
