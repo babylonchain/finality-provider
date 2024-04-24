@@ -3,10 +3,12 @@ package daemon
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/cosmos/cosmos-sdk/client/input"
+	"github.com/cosmos/go-bip39"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 
@@ -91,6 +93,9 @@ func addKey(ctx *cli.Context) error {
 		mnemonic, err = input.GetString("Enter your mnemonic", reader)
 		if err != nil {
 			return fmt.Errorf("failed to read mnemonic from stdin: %w", err)
+		}
+		if !bip39.IsMnemonicValid(mnemonic) {
+			return errors.New("invalid mnemonic")
 		}
 	}
 
