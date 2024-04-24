@@ -209,3 +209,14 @@ func (r *rpcServer) QueryFinalityProviderList(ctx context.Context, req *proto.Qu
 
 	return &proto.QueryFinalityProviderListResponse{FinalityProviders: fps}, nil
 }
+
+// SignMessageFromChainKey signs a message from the chain keyring.
+func (r *rpcServer) SignMessageFromChainKey(ctx context.Context, req *proto.SignMessageFromChainKeyRequest) (
+	*proto.SignMessageFromChainKeyResponse, error) {
+	signature, err := r.app.SignRawMsg(req.KeyName, req.Passphrase, req.HdPath, req.MsgToSign)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.SignMessageFromChainKeyResponse{Signature: signature}, nil
+}

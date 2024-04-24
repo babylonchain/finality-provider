@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"bufio"
@@ -20,18 +20,18 @@ type KeyOutput struct {
 	Mnemonic string `json:"mnemonic,omitempty" yaml:"mnemonic"`
 }
 
-var keysCommands = []cli.Command{
+var KeysCommands = []cli.Command{
 	{
 		Name:     "keys",
 		Usage:    "Command sets of managing keys for interacting with the consumer chain.",
 		Category: "Key management",
 		Subcommands: []cli.Command{
-			addKeyCmd,
+			AddKeyCmd,
 		},
 	},
 }
 
-var addKeyCmd = cli.Command{
+var AddKeyCmd = cli.Command{
 	Name:  "add",
 	Usage: "Add a key to the consumer chain's keyring. Note that this will change the config file in place.",
 	Flags: []cli.Flag{

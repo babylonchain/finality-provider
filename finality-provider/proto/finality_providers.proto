@@ -32,6 +32,10 @@ service FinalityProviders {
     // QueryFinalityProviderList queries a list of finality providers
     rpc QueryFinalityProviderList (QueryFinalityProviderListRequest)
         returns (QueryFinalityProviderListResponse);
+
+    // SignMessageFromChainKey signs a message from the chain keyring.
+    rpc SignMessageFromChainKey (SignMessageFromChainKeyRequest)
+        returns (SignMessageFromChainKeyResponse);
 }
 
 message GetInfoRequest {
@@ -167,6 +171,8 @@ message FinalityProviderInfo {
     string status = 8;
     // is_running shows whether the finality provider is running within the daemon
     bool is_running = 9;
+    // pop is the proof of possession of chain_pk and btc_pk
+    ProofOfPossession pop = 10;
 }
 
 // Description defines description fields for a finality provider
@@ -222,4 +228,20 @@ enum FinalityProviderStatus {
     INACTIVE = 3 [(gogoproto.enumvalue_customname) = "INACTIVE"];
     // SLASHED defines a finality provider that has been slashed
     SLASHED = 4 [(gogoproto.enumvalue_customname) = "SLASHED"];
+}
+
+message SignMessageFromChainKeyRequest {
+    // msg_to_sign the raw bytes to sign using the private key.
+    bytes msg_to_sign = 1;
+    // key_name is the identifier key in keyring
+    string key_name = 2;
+    // passphrase is used to encrypt the keys
+    string passphrase = 3;
+    // hd_path is the hd path for private key derivation
+    string hd_path = 4;
+}
+
+// SignMessageFromChainKeyResponse contains the signed message from the chain keyring.
+message SignMessageFromChainKeyResponse {
+    bytes signature = 1;
 }

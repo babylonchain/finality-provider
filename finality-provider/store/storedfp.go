@@ -84,6 +84,7 @@ func (sfp *StoredFinalityProvider) ToFinalityProviderInfo() *proto.FinalityProvi
 			SecurityContact: sfp.Description.SecurityContact,
 			Details:         sfp.Description.Details,
 		},
+		Pop:             sfp.Pop,
 		RegisteredEpoch: sfp.RegisteredEpoch,
 		MasterPubRand:   sfp.MasterPubRand,
 		Commission:      sfp.Commission.String(),

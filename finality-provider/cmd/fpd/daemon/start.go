@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/urfave/cli"
+	"go.uber.org/zap"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
@@ -15,7 +17,7 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var startCommand = cli.Command{
+var StartCommand = cli.Command{
 	Name:        "start",
 	Usage:       "Start the finality-provider app",
 	Description: "Start the finality-provider app. Note that eotsd should be started beforehand",
@@ -48,9 +50,6 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 	homePath = util.CleanAndExpandPath(homePath)
-
-	passphrase := ctx.String(passphraseFlag)
-	fpPkStr := ctx.String(fpPkFlag)
 	rpcListener := ctx.String(rpcListenerFlag)
 
 	cfg, err := fpcfg.LoadConfig(homePath)
@@ -76,35 +75,13 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger)
+	fpApp, err := loadApp(ctx, logger, cfg, dbBackend)
 	if err != nil {
-		return fmt.Errorf("failed to create finality-provider app: %v", err)
+		return fmt.Errorf("failed to load app: %w", err)
 	}
 
-	// sync finality-provider status
-	if err := fpApp.SyncFinalityProviderStatus(); err != nil {
-		return fmt.Errorf("failed to sync finality-provider status: %w", err)
-	}
-
-	// only start the app without starting any finality-provider instance
-	// as there might be no finality-provider registered yet
-	if err := fpApp.Start(); err != nil {
-		return fmt.Errorf("failed to start the finality-provider app: %w", err)
-	}
-
-	if fpPkStr != "" {
-		// start the finality-provider instance with the given public key
-		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
-		if err != nil {
-			return fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
-		}
-		if err := fpApp.StartHandlingFinalityProvider(fpPk, passphrase); err != nil {
-			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
-		}
-	} else {
-		if err := fpApp.StartHandlingAll(); err != nil {
-			return err
-		}
+	if err := startApp(ctx, fpApp); err != nil {
+		return fmt.Errorf("failed to start app: %w", err)
 	}
 
 	// Hook interceptor for os signals.
@@ -114,6 +91,52 @@ func start(ctx *cli.Context) error {
 	}
 
 	fpServer := service.NewFinalityProviderServer(cfg, logger, fpApp, dbBackend, shutdownInterceptor)
-
 	return fpServer.RunUntilShutdown()
+}
+
+// loadApp initialize an finality provider app based on config and flags set.
+func loadApp(
+	ctx *cli.Context,
+	logger *zap.Logger,
+	cfg *fpcfg.Config,
+	dbBackend walletdb.DB,
+) (*service.FinalityProviderApp, error) {
+	fpApp, err := service.NewFinalityProviderAppFromConfig(cfg, dbBackend, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create finality-provider app: %v", err)
+	}
+
+	// sync finality-provider status
+	if err := fpApp.SyncFinalityProviderStatus(); err != nil {
+		return nil, fmt.Errorf("failed to sync finality-provider status: %w", err)
+	}
+
+	return fpApp, nil
+}
+
+// startApp starts the app and the handle of finality providers if needed based on flags.
+func startApp(
+	ctx *cli.Context,
+	fpApp *service.FinalityProviderApp,
+) error {
+	// only start the app without starting any finality-provider instance
+	// as there might be no finality-provider registered yet
+	if err := fpApp.Start(); err != nil {
+		return fmt.Errorf("failed to start the finality-provider app: %w", err)
+	}
+
+	fpPkStr := ctx.String(fpPkFlag)
+	if fpPkStr != "" {
+		// start the finality-provider instance with the given public key
+		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
+		if err != nil {
+			return fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
+		}
+
+		if err := fpApp.StartHandlingFinalityProvider(fpPk, ctx.String(passphraseFlag)); err != nil {
+			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
+		}
+	}
+
+	return fpApp.StartHandlingAll()
 }
