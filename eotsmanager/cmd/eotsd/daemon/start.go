@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var startCommand = cli.Command{
+var StartCommand = cli.Command{
 	Name:        "start",
 	Usage:       "Start the Extractable One Time Signature Daemon.",
 	Description: "Start the Extractable One Time Signature Daemon.",

@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var initCommand = cli.Command{
+var InitCommand = cli.Command{
 	Name:  "init",
 	Usage: "Initialize the eotsd home directory.",
 	Flags: []cli.Flag{

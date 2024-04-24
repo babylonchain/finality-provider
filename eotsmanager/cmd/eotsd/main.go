@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/urfave/cli"
 	"os"
+
+	"github.com/urfave/cli"
+
+	dcli "github.com/babylonchain/finality-provider/eotsmanager/cmd/eotsd/daemon"
 )
 
 func fatal(err error) {
@@ -15,7 +18,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "eotsd"
 	app.Usage = "Extractable One Time Signature Daemon (eotsd)."
-	app.Commands = append(app.Commands, startCommand, initCommand)
+	app.Commands = append(app.Commands, dcli.StartCommand, dcli.InitCommand)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)
