@@ -57,6 +57,7 @@ func initHome(c *cli.Context) error {
 	}
 
 	defaultConfig := eotscfg.DefaultConfig()
+	defaultConfig.DatabaseConfig.DBPath = dataDir
 	fileParser := flags.NewParser(defaultConfig, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(eotscfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
