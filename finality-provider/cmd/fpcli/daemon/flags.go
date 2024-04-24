@@ -1,4 +1,4 @@
-package main
+package daemon
 
 const (
 	fpdDaemonAddressFlag = "daemon-address"
@@ -10,14 +10,15 @@ const (
 	passphraseFlag       = "passphrase"
 	hdPathFlag           = "hd-path"
 	chainIdFlag          = "chain-id"
+	signedFlag           = "signed"
 	defaultPassphrase    = ""
 	defaultHdPath        = ""
 
 	// flags for description
-	monikerFlag          = "moniker"
-	identityFlag         = "identity"
-	websiteFlag          = "website"
-	securityContactFlag  = "security-contact"
-	detailsFlag          = "details"
-	commissionRateFlag   = "commission"
+	monikerFlag         = "moniker"
+	identityFlag        = "identity"
+	websiteFlag         = "website"
+	securityContactFlag = "security-contact"
+	detailsFlag         = "details"
+	commissionRateFlag  = "commission"
 )
