@@ -135,7 +135,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	btcPk, err := bbntypes.NewBIP340PubKey(btcPkBytes)
 	require.NoError(t, err)
-	keyInfo, err := kc.CreateChainKey(passphrase, hdPath)
+	keyInfo, err := kc.CreateChainKey(passphrase, hdPath, "")
 	require.NoError(t, err)
 	bbnPk := &secp256k1.PubKey{Key: keyInfo.PublicKey.SerializeCompressed()}
 	fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)

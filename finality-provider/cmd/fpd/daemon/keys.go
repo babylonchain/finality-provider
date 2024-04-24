@@ -1,9 +1,14 @@
 package daemon
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 
+	"github.com/cosmos/cosmos-sdk/client/input"
+	"github.com/cosmos/go-bip39"
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 
@@ -61,6 +66,10 @@ var AddKeyCmd = cli.Command{
 			Usage: "The hd path used to derive the private key",
 			Value: defaultHdPath,
 		},
+		cli.BoolFlag{
+			Name:  recoverFlag,
+			Usage: "Provide seed phrase to recover existing key instead of creating",
+		},
 	},
 	Action: addKey,
 }
@@ -74,10 +83,20 @@ func addKey(ctx *cli.Context) error {
 	hdPath := ctx.String(hdPathFlag)
 	keyBackend := ctx.String(keyringBackendFlag)
 
-	// check the config file exists
-	cfg, err := fpcfg.LoadConfig(homePath)
-	if err != nil {
-		return fmt.Errorf("failed to load the config from %s: %w", fpcfg.ConfigFile(homePath), err)
+	var (
+		mnemonic string
+		err      error
+	)
+
+	if ctx.Bool(recoverFlag) {
+		reader := bufio.NewReader(os.Stdin)
+		mnemonic, err = input.GetString("Enter your mnemonic", reader)
+		if err != nil {
+			return fmt.Errorf("failed to read mnemonic from stdin: %w", err)
+		}
+		if !bip39.IsMnemonicValid(mnemonic) {
+			return errors.New("invalid mnemonic")
+		}
 	}
 
 	keyInfo, err := service.CreateChainKey(
@@ -87,6 +106,7 @@ func addKey(ctx *cli.Context) error {
 		backend,
 		passphrase,
 		hdPath,
+		mnemonic,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create the chain key: %w", err)
@@ -99,6 +119,12 @@ func addKey(ctx *cli.Context) error {
 			Mnemonic: keyInfo.Mnemonic,
 		},
 	)
+
+	// check the config file exists
+	cfg, err := fpcfg.LoadConfig(homePath)
+	if err != nil {
+		return nil // config does not exist, so does not update it
+	}
 
 	// write the updated config into the config file
 	cfg.BabylonConfig.Key = keyName
