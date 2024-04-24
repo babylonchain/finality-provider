@@ -89,3 +89,40 @@ network segment to enhance security. This helps isolate the key management
 functionality and reduces the potential attack surface. You can edit the
 `EOTSManagerAddress` in the configuration file of the finality provider to reference
 the address of the machine where `eotsd` is running.
+
+## 4. Create BTC key
+
+The binary `eotsd` has the option to add a new key to the keyring for
+later usage with BTC key signing. For add a new key run `eotsd keys add`
+command.
+
+This command has several flag options:
+
+- `--home` specifies the home directory of the eots config in which
+the new key will be created.
+- `--key-name` mandatory flag and identifies the name of the key to be generated.
+- `--passphrase` specifies the password used to encrypt the key, if such a
+passphrase is required.
+- `--hd-path` the hd derivation path of the private key.
+- `--keyring-backend` specifies the keyring options, any of `[file, os, kwallet, test, pass, memory]`
+are available, by default `test` is used.
+- `--recover` define that the user needs to provide a seed phrase to recover
+the existing key instead of randomly creating
+
+```shell
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file --recover
+
+> Enter your mnemonic
+...
+
+Enter keyring passphrase (attempt 1/3):
+...
+
+2024-04-24T18:00:16.989742Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd"}
+New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
+{
+  "name": "my-key-name",
+  "pub_key_hex": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd",
+  "mnemonic": "bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series"
+}
+```
