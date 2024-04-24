@@ -123,21 +123,9 @@ func (lm *LocalEOTSManager) CreateKeyWithMnemonic(name, passphrase, hdPath, mnem
 		return nil, err
 	}
 
-	pubKey, err := record.GetPubKey()
+	eotsPk, err := loadBIP340PubKeyFromKeyringRecord(record)
 	if err != nil {
 		return nil, err
-	}
-
-	var eotsPk *bbntypes.BIP340PubKey
-	switch v := pubKey.(type) {
-	case *secp256k1.PubKey:
-		pk, err := btcec.ParsePubKey(v.Key)
-		if err != nil {
-			return nil, err
-		}
-		eotsPk = bbntypes.NewBIP340PubKeyFromBTCPK(pk)
-	default:
-		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 
 	if err := lm.es.AddEOTSKeyName(eotsPk.MustToBTCPK(), name); err != nil {
@@ -152,6 +140,26 @@ func (lm *LocalEOTSManager) CreateKeyWithMnemonic(name, passphrase, hdPath, mnem
 	lm.metrics.IncrementEotsCreatedKeysCounter()
 
 	return eotsPk, nil
+}
+
+func loadBIP340PubKeyFromKeyringRecord(record *keyring.Record) (*bbntypes.BIP340PubKey, error) {
+	pubKey, err := record.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
+
+	var eotsPk *bbntypes.BIP340PubKey
+	switch v := pubKey.(type) {
+	case *secp256k1.PubKey:
+		pk, err := btcec.ParsePubKey(v.Key)
+		if err != nil {
+			return nil, err
+		}
+		eotsPk = bbntypes.NewBIP340PubKeyFromBTCPK(pk)
+		return eotsPk, nil
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
+	}
 }
 
 // CreateMasterRandPair creates a pair of master secret/public randomness deterministically
@@ -202,6 +210,23 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
 
 	return schnorr.Sign(privKey, msg)
+}
+
+func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName string, msg []byte, passphrase string) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
+	record, err := lm.kr.Key(keyName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load keyring record for key %s: %w", keyName, err)
+	}
+
+	eotsPk, err := loadBIP340PubKeyFromKeyringRecord(record)
+	if err != nil {
+		return nil, nil, err
+	}
+	signature, err := lm.SignSchnorrSig(*eotsPk, msg, passphrase)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to schnorr sign: %w", err)
+	}
+	return signature, eotsPk, nil
 }
 
 func (lm *LocalEOTSManager) Close() error {
