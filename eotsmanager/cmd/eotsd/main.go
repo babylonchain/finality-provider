@@ -19,6 +19,7 @@ func main() {
 	app.Name = "eotsd"
 	app.Usage = "Extractable One Time Signature Daemon (eotsd)."
 	app.Commands = append(app.Commands, dcli.StartCommand, dcli.InitCommand)
+	app.Commands = append(app.Commands, dcli.KeysCommands...)
 
 	if err := app.Run(os.Args); err != nil {
 		fatal(err)
