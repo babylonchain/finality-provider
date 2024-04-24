@@ -34,11 +34,10 @@ var StartCommand = cli.Command{
 }
 
 func startFn(ctx *cli.Context) error {
-	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	homePath, err := getHomeFlag(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load home flag: %w", err)
 	}
-	homePath = util.CleanAndExpandPath(homePath)
 
 	cfg, err := config.LoadConfig(homePath)
 	if err != nil {
@@ -78,4 +77,12 @@ func startFn(ctx *cli.Context) error {
 	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
 
 	return eotsServer.RunUntilShutdown()
+}
+
+func getHomeFlag(ctx *cli.Context) (string, error) {
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	if err != nil {
+		return "", err
+	}
+	return util.CleanAndExpandPath(homePath), nil
 }
