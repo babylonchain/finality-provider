@@ -217,20 +217,21 @@ fpcli list-finality-providers
 ```
 
 After the creation of the finality provider in the local db, it is possible
-to export the finality provider information, run `fpcli export-finality-provider`.
-This command connects with the `fpd` daemon to load the finality
+to export the finality provider information through the `fpcli export-finality-provider` command.
+This command connects with the `fpd` daemon to retrieve the finality
 provider previously created using the flag `--btc-pk` as key.
 
-This command also has several flag options.:
+This command also has several flag options:
 
 - `--btc-pk` the hex string of the BTC public key.
 - `--daemon-address` the RPC server address of `fpd` daemon.
-- `--signed` signs the finality provider with chain key as a proof of a
-untempered exported data.
-- `--key-name` mandatory as it identifies the name for the key to use on fpd creation.
-- `--home` flag needs to be the same as used in the `fpd init` command,
-to load the configuration.
-- `--passphrase` the password used to encrypt the key.
+- `--signed` signs the finality provider with the chain key of the PoS
+chain secured as a proof of untempered exported data.
+- `--key-name` identifies the name of the key to use to sign the finality provider.
+- `--home` specifies the home directory of the finality provider daemon in which
+the finality provider db is stored.
+- `--passphrase` specifies the password used to encrypt the key, if such a
+passphrase is required.
 - `--hd-path` the hd derivation path of the private key.
 
 ```shell
@@ -238,7 +239,7 @@ $ fpcli export-finality-provider --btc-pk 02face5996b2792114677604ec9dfad4fe66ee
 --home ./export-fp/fpd --key-name finality-provider --signed
 ```
 
-The expected result is a finality with signature exported:
+The expected result is a JSON object corresponding to the finality provider information.
 
 ```json
 {

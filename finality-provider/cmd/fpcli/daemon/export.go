@@ -45,8 +45,9 @@ var ExportFinalityProvider = cli.Command{
 		},
 		cli.BoolFlag{
 			Name: signedFlag,
-			Usage: `Defines if needs to sign the exported finality provider,
-			if true, it is necessary to define the key name flag`,
+			Usage: `Specify if the exported finality provider information should be signed,
+			if true, it will sign using the flag key-name, if not set it will load from the
+			babylon key on config.`,
 		},
 		cli.StringFlag{
 			Name:  keyNameFlag,
