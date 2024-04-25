@@ -90,30 +90,27 @@ functionality and reduces the potential attack surface. You can edit the
 `EOTSManagerAddress` in the configuration file of the finality provider to reference
 the address of the machine where `eotsd` is running.
 
-## 4. Create BTC key
+## 4. Create EOTS Keys
 
 The binary `eotsd` has the option to add a new key to the keyring for
-later usage with BTC key signing. For add a new key run `eotsd keys add`
-command.
+later usage with signing EOTS and Schnorr signatures. To add a new key,
+run `eotsd keys add`.
 
 This command has several flag options:
 
-- `--home` specifies the home directory of the eots config in which
-the new key will be created.
+- `--home` specifies the home directory of the `eotsd` in which
+the new key will be stored.
 - `--key-name` mandatory flag and identifies the name of the key to be generated.
 - `--passphrase` specifies the password used to encrypt the key, if such a
 passphrase is required.
 - `--hd-path` the hd derivation path of the private key.
-- `--keyring-backend` specifies the keyring options, any of `[file, os, kwallet, test, pass, memory]`
+- `--keyring-backend` specifies the keyring backend, any of `[file, os, kwallet, test, pass, memory]`
 are available, by default `test` is used.
-- `--recover` define that the user needs to provide a seed phrase to recover
-the existing key instead of randomly creating
+- `--recover` indicates whether the user wants to provide a seed phrase to recover
+the existing key instead of randomly creating.
 
 ```shell
-eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file --recover
-
-> Enter your mnemonic
-...
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file
 
 Enter keyring passphrase (attempt 1/3):
 ...
