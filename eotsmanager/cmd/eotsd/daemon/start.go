@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var startCommand = cli.Command{
+var StartCommand = cli.Command{
 	Name:        "start",
 	Usage:       "Start the Extractable One Time Signature Daemon.",
 	Description: "Start the Extractable One Time Signature Daemon.",
@@ -34,11 +34,10 @@ var startCommand = cli.Command{
 }
 
 func startFn(ctx *cli.Context) error {
-	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	homePath, err := getHomeFlag(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load home flag: %w", err)
 	}
-	homePath = util.CleanAndExpandPath(homePath)
 
 	cfg, err := config.LoadConfig(homePath)
 	if err != nil {
@@ -64,7 +63,7 @@ func startFn(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg, dbBackend, logger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg.KeyringBackend, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
@@ -78,4 +77,12 @@ func startFn(ctx *cli.Context) error {
 	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
 
 	return eotsServer.RunUntilShutdown()
+}
+
+func getHomeFlag(ctx *cli.Context) (string, error) {
+	homePath, err := filepath.Abs(ctx.String(homeFlag))
+	if err != nil {
+		return "", err
+	}
+	return util.CleanAndExpandPath(homePath), nil
 }

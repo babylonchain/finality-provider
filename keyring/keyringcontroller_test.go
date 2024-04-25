@@ -43,7 +43,7 @@ func FuzzCreatePoP(f *testing.F) {
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHome)
 		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, eotsCfg, dbBackend, zap.NewNop())
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHome, eotsCfg.KeyringBackend, dbBackend, zap.NewNop())
 		defer func() {
 			dbBackend.Close()
 			err := os.RemoveAll(eotsHome)
