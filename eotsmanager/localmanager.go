@@ -215,7 +215,7 @@ func (lm *LocalEOTSManager) SignSchnorrSigFromPrivKey(privKey *btcec.PrivateKey,
 	return schnorr.Sign(privKey, msg)
 }
 
-func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName string, msg []byte, passphrase string) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
+func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName, passphrase string, msg []byte) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
 	lm.input.Reset(passphrase)
 	k, err := lm.kr.Key(keyName)
 	if err != nil {
