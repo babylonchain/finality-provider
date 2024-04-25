@@ -100,7 +100,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
 	eotsdb, err := eotsCfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, eotsdb, logger)
+	em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg.KeyringBackend, eotsdb, logger)
 	require.NoError(t, err)
 
 	// create finality-provider app with randomized config

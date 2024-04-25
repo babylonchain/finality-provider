@@ -100,7 +100,7 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg, dbBackend, logger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg.KeyringBackend, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
