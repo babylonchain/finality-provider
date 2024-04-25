@@ -15,16 +15,16 @@ import (
 	"github.com/urfave/cli"
 )
 
-type MsgSigned struct {
-	KeyName                string `json:"key_name"`
-	PubKeyHex              string `json:"pub_key_hex"`
-	SignedMsgHex           string `json:"signed_msg_hex"`
-	SerializedSignatureHex string `json:"serialized_signature_hex"`
+type DataSigned struct {
+	KeyName             string `json:"key_name"`
+	PubKeyHex           string `json:"pub_key_hex"`
+	SignedDataHashHex   string `json:"signed_data_hash_hex"`
+	SchnorrSignatureHex string `json:"schnorr_signature_hex"`
 }
 
 var SignSchnorrSig = cli.Command{
 	Name:      "sign-schnorr",
-	Usage:     "Signs a arbritrary msg with the EOTS private key.",
+	Usage:     "Signs a Schnorr signature over arbitrary data with the EOTS private key.",
 	UsageText: "sign-schnorr [file-path] --key-name [my-key-name]",
 	Description: `Read the file received as argument, hash it with
 	sha256 and sign based on the Schnorr key associated with the key-name flag`,
@@ -40,7 +40,7 @@ var SignSchnorrSig = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  passphraseFlag,
-			Usage: "The pass phrase used to encrypt the keys",
+			Usage: "The passphrase used to decrypt the keyring",
 			Value: defaultPassphrase,
 		},
 	},
@@ -86,7 +86,7 @@ func SignSchnorr(ctx *cli.Context) error {
 
 	f, err := os.Open(inputFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open the file %s: %w", inputFilePath, err)
 	}
 	defer f.Close()
 
@@ -100,11 +100,11 @@ func SignSchnorr(ctx *cli.Context) error {
 		return fmt.Errorf("failed to sign msg: %w", err)
 	}
 
-	printRespJSON(MsgSigned{
-		KeyName:                keyName,
-		PubKeyHex:              pubKey.MarshalHex(),
-		SignedMsgHex:           hex.EncodeToString(hashOfMsgToSign),
-		SerializedSignatureHex: hex.EncodeToString(signature.Serialize()),
+	printRespJSON(DataSigned{
+		KeyName:             keyName,
+		PubKeyHex:           pubKey.MarshalHex(),
+		SignedDataHashHex:   hex.EncodeToString(hashOfMsgToSign),
+		SchnorrSignatureHex: hex.EncodeToString(signature.Serialize()),
 	})
 
 	return nil

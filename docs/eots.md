@@ -126,18 +126,18 @@ New key for the BTC chain is created (mnemonic should be kept in a safe place fo
 
 ## 5. Sign Schnorr
 
-If you have the key created on the keyring and wants to schnorr sign any data,
-there is an option to do it by running `eotsd sign-schnorr`. The command takes
-as a argument the file path which should contain the msg that will be hashed by
-sha256 to reduce the size to 32 bytes and sign it using the private BTC key
-associated with the `--key-name` flag.
+If you have the key created on the keyring and want Schnorr signature over
+arbitrary data, there is an option to do it by running `eotsd sign-schnorr`.
+The command takes as an argument the file path, hashes the file content using
+sha256, and signs the hash with the EOTS private key in Schnorr format by the
+given key name.
 
 ```shell
-eotsd sign-schnorr /path/to/msg.x --home /path/to/eotsd/home/ --key-name my-key-name
+eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name
 {
   "key_name": "my-key-name",
   "pub_key_hex": "667ebbe6cec5889d20ab56e05a4c1402bf9369637ae2e2ec26c12fe02405a22b",
-  "signed_msg_hex": "b123ef5f69545cd07ad505c6d3b4931aa87b6adb361fb492275bb81374d98953",
+  "signed_data_hash_hex": "b123ef5f69545cd07ad505c6d3b4931aa87b6adb361fb492275bb81374d98953",
   "serialized_signature_hex": "36b23d0ecd40a5da16ca2ef3550a364583f5abab69a9b4eae63199a3f98f0d1442fffe9c4f53fe345990e777361db94a53d4db3d68c3d2d7bbd2ca28901288cc"
 }
 ```
