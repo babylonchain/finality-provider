@@ -49,6 +49,7 @@ var AddKeyCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
+			Usage:    "The name of the key to be created",
 			Required: true,
 		},
 		cli.StringFlag{
