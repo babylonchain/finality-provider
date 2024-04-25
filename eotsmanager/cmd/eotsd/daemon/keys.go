@@ -86,10 +86,6 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	if len(keyringBackend) > 0 { // on creation of key it reads the keyring backend from config.
-		cfg.KeyringBackend = keyringBackend
-	}
-
 	logger, err := log.NewRootLoggerWithFile(config.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
 		return fmt.Errorf("failed to load the logger")
@@ -100,7 +96,7 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg.KeyringBackend, dbBackend, logger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, keyringBackend, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
