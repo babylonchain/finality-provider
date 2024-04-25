@@ -59,42 +59,12 @@ For different operating systems, those are:
 - **Linux** `~/.Eotsd`
 - **Windows** `C:\Users\<username>\AppData\Local\Eotsd`
 
-## 3. Starting the EOTS Daemon
-
-You can start the EOTS daemon using the following command:
-
-```bash
-eotsd start --home /path/to/eotsd/home
-```
-
-If the `--home` flag is not specified, then the default home location will be used.
-
-This will start the EOTS rpc server at the address specified in `eotsd.conf` under
-the `RpcListener` field, which is by default set to `127.0.0.1:12582`. You can change
-this value in the configuration file or override this value and specify a custom
-address using the `--rpc-listener` flag.
-
-```bash
-eotsd start
-
-2024-02-08T17:59:11.467212Z	info	RPC server listening	{"address": "127.0.0.1:12582"}
-2024-02-08T17:59:11.467660Z	info	EOTS Manager Daemon is fully active!
-```
-
-All the available cli options can be viewed using the `--help` flag. These options
-can also be set in the configuration file.
-
-**Note**: It is recommended to run the `eotsd` daemon on a separate machine or
-network segment to enhance security. This helps isolate the key management
-functionality and reduces the potential attack surface. You can edit the
-`EOTSManagerAddress` in the configuration file of the finality provider to reference
-the address of the machine where `eotsd` is running.
-
-## 4. Create EOTS Keys
+## 3. Create EOTS Keys
 
 The binary `eotsd` has the option to add a new key to the keyring for
-later usage with signing EOTS and Schnorr signatures. To add a new key,
-run `eotsd keys add`.
+later usage with signing EOTS and Schnorr signatures. Keep in mind
+that new keys can be created on demand by the GRPC call from `fpd`.
+But, if you would like to add a new EOTS keys manually, run `eotsd keys add`.
 
 This command has several flag options:
 
@@ -137,3 +107,34 @@ bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe das
 ```
 
 You will be prompt to provide the mnemonic on key creation.
+
+## 4. Starting the EOTS Daemon
+
+You can start the EOTS daemon using the following command:
+
+```bash
+eotsd start --home /path/to/eotsd/home
+```
+
+If the `--home` flag is not specified, then the default home location will be used.
+
+This will start the EOTS rpc server at the address specified in `eotsd.conf` under
+the `RpcListener` field, which is by default set to `127.0.0.1:12582`. You can change
+this value in the configuration file or override this value and specify a custom
+address using the `--rpc-listener` flag.
+
+```bash
+eotsd start
+
+2024-02-08T17:59:11.467212Z	info	RPC server listening	{"address": "127.0.0.1:12582"}
+2024-02-08T17:59:11.467660Z	info	EOTS Manager Daemon is fully active!
+```
+
+All the available cli options can be viewed using the `--help` flag. These options
+can also be set in the configuration file.
+
+**Note**: It is recommended to run the `eotsd` daemon on a separate machine or
+network segment to enhance security. This helps isolate the key management
+functionality and reduces the potential attack surface. You can edit the
+`EOTSManagerAddress` in the configuration file of the finality provider to reference
+the address of the machine where `eotsd` is running.
