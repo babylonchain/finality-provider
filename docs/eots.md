@@ -151,8 +151,8 @@ given key name.
 eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name
 {
   "key_name": "my-key-name",
-  "pub_key_hex": "667ebbe6cec5889d20ab56e05a4c1402bf9369637ae2e2ec26c12fe02405a22b",
+  "pub_key_hex": "46461ba5b9a871bdb146232ddc9c9e611b50d80d3b763a4be6476ab4debef36a",
   "signed_data_hash_hex": "b123ef5f69545cd07ad505c6d3b4931aa87b6adb361fb492275bb81374d98953",
-  "serialized_signature_hex": "36b23d0ecd40a5da16ca2ef3550a364583f5abab69a9b4eae63199a3f98f0d1442fffe9c4f53fe345990e777361db94a53d4db3d68c3d2d7bbd2ca28901288cc"
+  "schnorr_signature_hex": "9ef55715cd8d7211c7e046c8839c278a73b513a990c4fa318cc0413462fab24c3802c0fe3aabc2cd58b6659952527ffa2dd669911e007a19f549df53f1c78cb0"
 }
 ```
