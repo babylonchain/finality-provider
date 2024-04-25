@@ -48,7 +48,7 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
-	kr, err := initKeyring(homeDir, eotsCfg, inputReader)
+	kr, err := initKeyring(homeDir, eotsCfg.KeyringBackend, inputReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize keyring: %w", err)
 	}
@@ -64,10 +64,10 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.
 	}, nil
 }
 
-func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Reader) (keyring.Keyring, error) {
+func initKeyring(homeDir, keyringBackend string, inputReader *strings.Reader) (keyring.Keyring, error) {
 	return keyring.New(
 		"eots-manager",
-		eotsCfg.KeyringBackend,
+		keyringBackend,
 		homeDir,
 		inputReader,
 		codec.MakeCodec(),
