@@ -68,7 +68,7 @@ var AddKeyCmd = cli.Command{
 		},
 		cli.BoolFlag{
 			Name: recoverFlag,
-			Usage: `Will need to provider a seed phrase to recover
+			Usage: `Will need to provide a seed phrase to recover
 	the existing key instead of creating`,
 		},
 	},
