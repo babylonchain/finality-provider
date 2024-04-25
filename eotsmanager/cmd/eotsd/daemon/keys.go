@@ -37,7 +37,10 @@ var KeysCommands = []cli.Command{
 
 var AddKeyCmd = cli.Command{
 	Name:  "add",
-	Usage: "Add a key to the eots BTC keyring. Note that this will change the config file in place.",
+	Usage: "Add a key to the EOTS manager keyring.",
+	Description: `Add a new key to EOTS manager keyring,
+	 Note that this will change the config file in place for
+	 update the keyring-backend type.`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
@@ -60,12 +63,13 @@ var AddKeyCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  keyringBackendFlag,
-			Usage: "Select keyring's backend",
+			Usage: "The backend of the keyring",
 			Value: defaultKeyringBackend,
 		},
 		cli.BoolFlag{
-			Name:  recoverFlag,
-			Usage: "Provide seed phrase to recover existing key instead of creating",
+			Name: recoverFlag,
+			Usage: `Will need to provide a seed phrase to recover
+	the existing key instead of creating`,
 		},
 	},
 	Action: addKey,
