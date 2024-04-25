@@ -128,7 +128,8 @@ You can use your key to create a Schnorr signature over arbitrary data,
 through the `eotsd sign-schnorr` command.
 The command takes as an argument the file path, hashes the file content using
 sha256, and signs the hash with the EOTS private key in Schnorr format by the
-given key name.
+given `key-name` or `btc-pk`. If both flags `--key-name` and `--btc-pk` are
+provided, `btc-pk` takes priority.
 
 ```shell
 eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name
