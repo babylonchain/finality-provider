@@ -59,7 +59,56 @@ For different operating systems, those are:
 - **Linux** `~/.Eotsd`
 - **Windows** `C:\Users\<username>\AppData\Local\Eotsd`
 
-## 3. Starting the EOTS Daemon
+## 3. Create EOTS Keys
+
+The binary `eotsd` has the option to add a new key to the keyring for
+later usage with signing EOTS and Schnorr signatures. Keep in mind
+that new keys can be created on demand by the GRPC call from `fpd`.
+But, if you would like to add a new EOTS keys manually, run `eotsd keys add`.
+
+This command has several flag options:
+
+- `--home` specifies the home directory of the `eotsd` in which
+the new key will be stored.
+- `--key-name` mandatory flag and identifies the name of the key to be generated.
+- `--passphrase` specifies the password used to encrypt the key, if such a
+passphrase is required.
+- `--hd-path` the hd derivation path of the private key.
+- `--keyring-backend` specifies the keyring backend, any of `[file, os, kwallet, test, pass, memory]`
+are available, by default `test` is used.
+- `--recover` indicates whether the user wants to provide a seed phrase to recover
+the existing key instead of randomly creating.
+
+```shell
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file
+
+Enter keyring passphrase (attempt 1/3):
+...
+
+2024-04-24T18:00:16.989742Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd"}
+New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
+{
+  "name": "my-key-name",
+  "pub_key_hex": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd",
+  "mnemonic": "bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series"
+}
+```
+
+> Store the mnemonic in a safe place. With the mnemonic only it is possible to
+recover the generated keys by using the `--recover` flag.
+
+To recover the keys from a mnemonic, run:
+
+```shell
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file --recover
+
+> Enter your mnemonic
+bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series
+```
+
+You will be prompt to provide the mnemonic on key creation.
+
+## 4. Starting the EOTS Daemon
 
 You can start the EOTS daemon using the following command:
 
@@ -90,41 +139,7 @@ functionality and reduces the potential attack surface. You can edit the
 `EOTSManagerAddress` in the configuration file of the finality provider to reference
 the address of the machine where `eotsd` is running.
 
-## 4. Create EOTS Keys
-
-The binary `eotsd` has the option to add a new key to the keyring for
-later usage with signing EOTS and Schnorr signatures. To add a new key,
-run `eotsd keys add`.
-
-This command has several flag options:
-
-- `--home` specifies the home directory of the `eotsd` in which
-the new key will be stored.
-- `--key-name` mandatory flag and identifies the name of the key to be generated.
-- `--passphrase` specifies the password used to encrypt the key, if such a
-passphrase is required.
-- `--hd-path` the hd derivation path of the private key.
-- `--keyring-backend` specifies the keyring backend, any of `[file, os, kwallet, test, pass, memory]`
-are available, by default `test` is used.
-- `--recover` indicates whether the user wants to provide a seed phrase to recover
-the existing key instead of randomly creating.
-
-```shell
-eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file
-
-Enter keyring passphrase (attempt 1/3):
-...
-
-2024-04-24T18:00:16.989742Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd"}
-New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
-{
-  "name": "my-key-name",
-  "pub_key_hex": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd",
-  "mnemonic": "bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series"
-}
-```
-
-## 5. Sign Schnorr
+## 5. Option to Sign Schnorr
 
 If you have the key created on the keyring and want Schnorr signature over
 arbitrary data, there is an option to do it by running `eotsd sign-schnorr`.

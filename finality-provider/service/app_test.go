@@ -37,7 +37,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
 		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg, dbBackend, logger)
+		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg.KeyringBackend, dbBackend, logger)
 		require.NoError(t, err)
 		defer func() {
 			dbBackend.Close()

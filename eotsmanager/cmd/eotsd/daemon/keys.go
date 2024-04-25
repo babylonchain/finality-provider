@@ -9,7 +9,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client/input"
 	"github.com/cosmos/go-bip39"
-	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -38,9 +37,6 @@ var KeysCommands = []cli.Command{
 var AddKeyCmd = cli.Command{
 	Name:  "add",
 	Usage: "Add a key to the EOTS manager keyring.",
-	Description: `Add a new key to EOTS manager keyring,
-	 Note that this will change the config file in place for
-	 update the keyring-backend type.`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
@@ -49,6 +45,7 @@ var AddKeyCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:     keyNameFlag,
+			Usage:    "The name of the key to be created",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -89,10 +86,6 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to load config at %s: %w", homePath, err)
 	}
 
-	if len(keyringBackend) > 0 { // on creation of key it reads the keyring backend from config.
-		cfg.KeyringBackend = keyringBackend
-	}
-
 	logger, err := log.NewRootLoggerWithFile(config.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
 		return fmt.Errorf("failed to load the logger")
@@ -103,7 +96,7 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg, dbBackend, logger)
+	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, keyringBackend, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
@@ -120,10 +113,7 @@ func addKey(ctx *cli.Context) error {
 			Mnemonic:  mnemonic,
 		},
 	)
-
-	// updates the keyring backend if set
-	fileParser := flags.NewParser(cfg, flags.Default)
-	return flags.NewIniParser(fileParser).WriteFile(config.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return nil
 }
 
 // createKey checks if recover flag is set to create a key from mnemonic or if not set, randomly creates it.

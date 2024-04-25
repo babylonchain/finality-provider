@@ -18,7 +18,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/codec"
-	"github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/eotsmanager/store"
 	eotstypes "github.com/babylonchain/finality-provider/eotsmanager/types"
 	fpkeyring "github.com/babylonchain/finality-provider/keyring"
@@ -40,7 +39,7 @@ type LocalEOTSManager struct {
 	metrics *metrics.EotsMetrics
 }
 
-func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.Backend, logger *zap.Logger) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(homeDir, keyringBackend string, dbbackend kvdb.Backend, logger *zap.Logger) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
 
 	es, err := store.NewEOTSStore(dbbackend)
@@ -48,7 +47,7 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.
 		return nil, fmt.Errorf("failed to initialize store: %w", err)
 	}
 
-	kr, err := initKeyring(homeDir, eotsCfg, inputReader)
+	kr, err := initKeyring(homeDir, keyringBackend, inputReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize keyring: %w", err)
 	}
@@ -64,10 +63,10 @@ func NewLocalEOTSManager(homeDir string, eotsCfg *config.Config, dbbackend kvdb.
 	}, nil
 }
 
-func initKeyring(homeDir string, eotsCfg *config.Config, inputReader *strings.Reader) (keyring.Keyring, error) {
+func initKeyring(homeDir, keyringBackend string, inputReader *strings.Reader) (keyring.Keyring, error) {
 	return keyring.New(
 		"eots-manager",
-		eotsCfg.KeyringBackend,
+		keyringBackend,
 		homeDir,
 		inputReader,
 		codec.MakeCodec(),
