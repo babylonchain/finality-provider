@@ -123,3 +123,17 @@ New key for the BTC chain is created (mnemonic should be kept in a safe place fo
   "mnemonic": "bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series"
 }
 ```
+
+> Store the mnemonic in a safe place. With the mnemonic only it is possible to
+recover the generated keys by using the `--recover` flag.
+
+To recover the keys from a mnemonic, run:
+
+```shell
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file --recover
+
+> Enter your mnemonic
+bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series
+```
+
+You will be prompt to provide the mnemonic on key creation.
