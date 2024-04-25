@@ -206,23 +206,34 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
 
+	return lm.SignSchnorrSigFromPrivKey(privKey, fpPk, msg)
+}
+
+// SignSchnorrSigFromPrivKey signs a with schnorr using the private key and updating metrics by the fpPk
+func (lm *LocalEOTSManager) SignSchnorrSigFromPrivKey(privKey *btcec.PrivateKey, fpPk []byte, msg []byte) (*schnorr.Signature, error) {
 	// Update metrics
 	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
-
 	return schnorr.Sign(privKey, msg)
 }
 
 func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName string, msg []byte, passphrase string) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
-	record, err := lm.kr.Key(keyName)
+	lm.input.Reset(passphrase)
+	k, err := lm.kr.Key(keyName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load keyring record for key %s: %w", keyName, err)
 	}
 
-	eotsPk, err := loadBIP340PubKeyFromKeyringRecord(record)
+	eotsPk, err := loadBIP340PubKeyFromKeyringRecord(k)
 	if err != nil {
 		return nil, nil, err
 	}
-	signature, err := lm.SignSchnorrSig(*eotsPk, msg, passphrase)
+
+	privKey, err := EOTSPrivKeyFromRecord(k)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	signature, err := lm.SignSchnorrSigFromPrivKey(privKey, *eotsPk, msg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to schnorr sign: %w", err)
 	}
@@ -271,6 +282,10 @@ func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btc
 		return nil, err
 	}
 
+	return EOTSPrivKeyFromRecord(k)
+}
+
+func EOTSPrivKeyFromRecord(k *keyring.Record) (*btcec.PrivateKey, error) {
 	privKeyCached := k.GetLocal().PrivKey.GetCachedValue()
 
 	var privKey *btcec.PrivateKey
