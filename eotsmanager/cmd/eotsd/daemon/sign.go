@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/babylonchain/babylon/types"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	"github.com/babylonchain/finality-provider/eotsmanager/config"
@@ -136,7 +135,7 @@ func singMsg(
 ) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
 	if len(fpPkStr) > 0 {
 		// start the finality-provider instance with the given public key
-		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
+		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(fpPkStr)
 		if err != nil {
 			return nil, nil, fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
 		}
