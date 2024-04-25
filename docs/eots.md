@@ -141,8 +141,8 @@ the address of the machine where `eotsd` is running.
 
 ## 5. Option to Sign Schnorr
 
-If you have the key created on the keyring and want Schnorr signature over
-arbitrary data, there is an option to do it by running `eotsd sign-schnorr`.
+You can use your key to create a Schnorr signature over arbitrary data,
+through the `eotsd sign-schnorr` command.
 The command takes as an argument the file path, hashes the file content using
 sha256, and signs the hash with the EOTS private key in Schnorr format by the
 given key name.
