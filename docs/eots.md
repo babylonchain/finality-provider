@@ -63,7 +63,7 @@ For different operating systems, those are:
 
 Handles the keys for EOTS.
 
-### 3.1. Create EOTS Key
+### 3.1. Create EOTS Keys
 
 The binary `eotsd` has the option to add a new key to the keyring for
 later usage with signing EOTS and Schnorr signatures. Keep in mind
@@ -101,7 +101,7 @@ New key for the BTC chain is created (mnemonic should be kept in a safe place fo
 > Store the mnemonic in a safe place. With the mnemonic only it is possible to
 recover the generated keys by using the `--recover` flag.
 
-### 3.2. Recover Key
+### 3.2. Recover Keys
 
 To recover the keys from a mnemonic, run:
 
@@ -119,12 +119,11 @@ New key for the BTC chain is created (mnemonic should be kept in a safe place fo
 }
 ```
 
-You will be prompt to provide the mnemonic on key creation. The generated keys
-should be exactly the same.
+You will be prompted to provide the mnemonic on key creation.
 
-### 3.3. Option to Sign Schnorr
+### 3.3. Sign Schnorr Signatures
 
-You can use your key to create a Schnorr signature over arbitrary data,
+You can use your key to create a Schnorr signature over arbitrary data
 through the `eotsd sign-schnorr` command.
 The command takes as an argument the file path, hashes the file content using
 sha256, and signs the hash with the EOTS private key in Schnorr format by the
