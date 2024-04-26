@@ -227,7 +227,7 @@ func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName, passphrase string
 		return nil, nil, err
 	}
 
-	privKey, err := EOTSPrivKeyFromRecord(k)
+	privKey, err := eotsPrivKeyFromRecord(k)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -281,10 +281,10 @@ func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btc
 		return nil, err
 	}
 
-	return EOTSPrivKeyFromRecord(k)
+	return eotsPrivKeyFromRecord(k)
 }
 
-func EOTSPrivKeyFromRecord(k *keyring.Record) (*btcec.PrivateKey, error) {
+func eotsPrivKeyFromRecord(k *keyring.Record) (*btcec.PrivateKey, error) {
 	privKeyCached := k.GetLocal().PrivKey.GetCachedValue()
 
 	var privKey *btcec.PrivateKey
