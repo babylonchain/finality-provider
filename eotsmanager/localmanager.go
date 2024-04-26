@@ -205,11 +205,11 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
 
-	return lm.SignSchnorrSigFromPrivKey(privKey, fpPk, msg)
+	return lm.signSchnorrSigFromPrivKey(privKey, fpPk, msg)
 }
 
-// SignSchnorrSigFromPrivKey signs a with schnorr using the private key and updating metrics by the fpPk
-func (lm *LocalEOTSManager) SignSchnorrSigFromPrivKey(privKey *btcec.PrivateKey, fpPk []byte, msg []byte) (*schnorr.Signature, error) {
+// signSchnorrSigFromPrivKey signs a Schnorr signature using the private key and updates metrics by the fpPk
+func (lm *LocalEOTSManager) signSchnorrSigFromPrivKey(privKey *btcec.PrivateKey, fpPk []byte, msg []byte) (*schnorr.Signature, error) {
 	// Update metrics
 	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
 	return schnorr.Sign(privKey, msg)
@@ -232,7 +232,7 @@ func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName, passphrase string
 		return nil, nil, err
 	}
 
-	signature, err := lm.SignSchnorrSigFromPrivKey(privKey, *eotsPk, msg)
+	signature, err := lm.signSchnorrSigFromPrivKey(privKey, *eotsPk, msg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to schnorr sign: %w", err)
 	}
