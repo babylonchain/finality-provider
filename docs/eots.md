@@ -140,6 +140,20 @@ eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-
 }
 ```
 
+### 3.4. Verify Schnorr Signatures
+
+It is also possible to verify if the generated signature through the
+`eotsd verify-schnorr-sig` command.
+The command takes as an argument the file path, hashes the file content using
+sha256 to generate the signed data, collects the hex pub key from `--btc-pk` flag
+and the hex signature from the `--signature` flag. If does not print anything
+the signature is valid, otherwise it will output an error msg.
+
+```shell
+eotsd verify-schnorr-sig /path/to/data/file --btc-pk 50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383 \
+--signature b91fc06b30b78c0ca66a7e033184d89b61cd6ab572329b20f6052411ab83502effb5c9a1173ed69f20f6502a741eeb5105519bb3f67d37612bc2bcce411f8d72
+```
+
 ## 4. Starting the EOTS Daemon
 
 You can start the EOTS daemon using the following command:
