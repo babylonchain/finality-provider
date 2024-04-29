@@ -59,7 +59,11 @@ For different operating systems, those are:
 - **Linux** `~/.Eotsd`
 - **Windows** `C:\Users\<username>\AppData\Local\Eotsd`
 
-## 3. Create EOTS Keys
+## 3. Keys Management
+
+Handles the keys for EOTS.
+
+### 3.1. Create EOTS Keys
 
 The binary `eotsd` has the option to add a new key to the keyring for
 later usage with signing EOTS and Schnorr signatures. Keep in mind
@@ -85,17 +89,19 @@ eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-back
 Enter keyring passphrase (attempt 1/3):
 ...
 
-2024-04-24T18:00:16.989742Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd"}
+2024-04-25T17:11:09.369163Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383"}
 New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
 {
   "name": "my-key-name",
-  "pub_key_hex": "7573929fff4a7f777ceeeda7d4ea53eb501b4bd06bf66354e18310d8623b5ebd",
+  "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",
   "mnemonic": "bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series"
 }
 ```
 
 > Store the mnemonic in a safe place. With the mnemonic only it is possible to
 recover the generated keys by using the `--recover` flag.
+
+### 3.2. Recover Keys
 
 To recover the keys from a mnemonic, run:
 
@@ -104,9 +110,35 @@ eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-back
 
 > Enter your mnemonic
 bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series
+2024-04-25T17:13:29.681324Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383"}
+New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
+{
+  "name": "my-key-name",
+  "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",
+  "mnemonic": "noise measure tuition inform battle swallow slender bundle horn pigeon wage mule average bicycle claim solve home swamp banner idle chapter surround edit gossip"
+}
 ```
 
-You will be prompt to provide the mnemonic on key creation.
+You will be prompted to provide the mnemonic on key creation.
+
+### 3.3. Sign Schnorr Signatures
+
+You can use your key to create a Schnorr signature over arbitrary data
+through the `eotsd sign-schnorr` command.
+The command takes as an argument the file path, hashes the file content using
+sha256, and signs the hash with the EOTS private key in Schnorr format by the
+given `key-name` or `btc-pk`. If both flags `--key-name` and `--btc-pk` are
+provided, `btc-pk` takes priority.
+
+```shell
+eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name
+{
+  "key_name": "my-key-name",
+  "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",
+  "signed_data_hash_hex": "b123ef5f69545cd07ad505c6d3b4931aa87b6adb361fb492275bb81374d98953",
+  "schnorr_signature_hex": "b91fc06b30b78c0ca66a7e033184d89b61cd6ab572329b20f6052411ab83502effb5c9a1173ed69f20f6502a741eeb5105519bb3f67d37612bc2bcce411f8d72"
+}
+```
 
 ## 4. Starting the EOTS Daemon
 

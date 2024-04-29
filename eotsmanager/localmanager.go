@@ -122,21 +122,9 @@ func (lm *LocalEOTSManager) CreateKeyWithMnemonic(name, passphrase, hdPath, mnem
 		return nil, err
 	}
 
-	pubKey, err := record.GetPubKey()
+	eotsPk, err := loadBIP340PubKeyFromKeyringRecord(record)
 	if err != nil {
 		return nil, err
-	}
-
-	var eotsPk *bbntypes.BIP340PubKey
-	switch v := pubKey.(type) {
-	case *secp256k1.PubKey:
-		pk, err := btcec.ParsePubKey(v.Key)
-		if err != nil {
-			return nil, err
-		}
-		eotsPk = bbntypes.NewBIP340PubKeyFromBTCPK(pk)
-	default:
-		return nil, fmt.Errorf("unsupported key type in keyring")
 	}
 
 	if err := lm.es.AddEOTSKeyName(eotsPk.MustToBTCPK(), name); err != nil {
@@ -151,6 +139,26 @@ func (lm *LocalEOTSManager) CreateKeyWithMnemonic(name, passphrase, hdPath, mnem
 	lm.metrics.IncrementEotsCreatedKeysCounter()
 
 	return eotsPk, nil
+}
+
+func loadBIP340PubKeyFromKeyringRecord(record *keyring.Record) (*bbntypes.BIP340PubKey, error) {
+	pubKey, err := record.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
+
+	var eotsPk *bbntypes.BIP340PubKey
+	switch v := pubKey.(type) {
+	case *secp256k1.PubKey:
+		pk, err := btcec.ParsePubKey(v.Key)
+		if err != nil {
+			return nil, err
+		}
+		eotsPk = bbntypes.NewBIP340PubKeyFromBTCPK(pk)
+		return eotsPk, nil
+	default:
+		return nil, fmt.Errorf("unsupported key type in keyring")
+	}
 }
 
 // CreateMasterRandPair creates a pair of master secret/public randomness deterministically
@@ -197,10 +205,38 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
 	}
 
+	return lm.signSchnorrSigFromPrivKey(privKey, fpPk, msg)
+}
+
+// signSchnorrSigFromPrivKey signs a Schnorr signature using the private key and updates metrics by the fpPk
+func (lm *LocalEOTSManager) signSchnorrSigFromPrivKey(privKey *btcec.PrivateKey, fpPk []byte, msg []byte) (*schnorr.Signature, error) {
 	// Update metrics
 	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
-
 	return schnorr.Sign(privKey, msg)
+}
+
+func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName, passphrase string, msg []byte) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
+	lm.input.Reset(passphrase)
+	k, err := lm.kr.Key(keyName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load keyring record for key %s: %w", keyName, err)
+	}
+
+	eotsPk, err := loadBIP340PubKeyFromKeyringRecord(k)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	privKey, err := eotsPrivKeyFromRecord(k)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	signature, err := lm.signSchnorrSigFromPrivKey(privKey, *eotsPk, msg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to schnorr sign: %w", err)
+	}
+	return signature, eotsPk, nil
 }
 
 func (lm *LocalEOTSManager) Close() error {
@@ -245,6 +281,10 @@ func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btc
 		return nil, err
 	}
 
+	return eotsPrivKeyFromRecord(k)
+}
+
+func eotsPrivKeyFromRecord(k *keyring.Record) (*btcec.PrivateKey, error) {
 	privKeyCached := k.GetLocal().PrivKey.GetCachedValue()
 
 	var privKey *btcec.PrivateKey

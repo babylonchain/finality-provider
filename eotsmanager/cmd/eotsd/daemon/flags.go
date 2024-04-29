@@ -6,6 +6,7 @@ const (
 	homeFlag        = "home"
 	forceFlag       = "force"
 	rpcListenerFlag = "rpc-listener"
+	fpPkFlag        = "btc-pk"
 
 	// flags for keys
 	keyNameFlag        = "key-name"

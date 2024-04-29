@@ -106,7 +106,7 @@ func addKey(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create key: %w", err)
 	}
 
-	printRespJSON(
+	printRespJSONKeys(
 		KeyOutput{
 			Name:      keyName,
 			PubKeyHex: eotsPk.MarshalHex(),
@@ -154,7 +154,7 @@ func getMnemonic(ctx *cli.Context) (string, error) {
 	return eotsmanager.NewMnemonic()
 }
 
-func printRespJSON(resp interface{}) {
+func printRespJSONKeys(resp interface{}) {
 	jsonBytes, err := json.MarshalIndent(resp, "", "    ")
 	if err != nil {
 		fmt.Println("unable to decode response: ", err)
