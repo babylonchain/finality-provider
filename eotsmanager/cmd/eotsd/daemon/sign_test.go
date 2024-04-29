@@ -72,11 +72,14 @@ func AppRunWithOutput(r *rand.Rand, t *testing.T, app *cli.App, arguments []stri
 	defer outPutFile.Close()
 
 	// set file to stdout to read.
+	oldStd := os.Stdout
 	os.Stdout = outPutFile
 
 	err = app.Run(arguments)
 	require.NoError(t, err)
 
+	// set to old stdout
+	os.Stdout = oldStd
 	return readFromFile(outPutFile)
 }
 
