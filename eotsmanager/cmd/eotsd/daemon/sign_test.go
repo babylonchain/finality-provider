@@ -80,7 +80,7 @@ func AppRunWithOutput(r *rand.Rand, t *testing.T, app *cli.App, arguments []stri
 
 	// set to old stdout
 	os.Stdout = oldStd
-	return readFromFile(outPutFile)
+	return readFromFile(t, outPutFile)
 }
 
 func searchInTxt(text, search string) string {
@@ -89,10 +89,13 @@ func searchInTxt(text, search string) string {
 	return strings.ReplaceAll(jsonKeyOutputOut, "\n", "")
 }
 
-func readFromFile(f *os.File) string {
+func readFromFile(t *testing.T, f *os.File) string {
+	_, err := f.Seek(0, 0)
+	require.NoError(t, err)
+
 	buf := new(bytes.Buffer)
-	f.Seek(0, 0)
-	buf.ReadFrom(f)
+	_, err = buf.ReadFrom(f)
+	require.NoError(t, err)
 	return buf.String()
 }
 
