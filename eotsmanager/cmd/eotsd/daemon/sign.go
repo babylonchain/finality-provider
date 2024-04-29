@@ -117,6 +117,7 @@ func SignSchnorrVerify(ctx *cli.Context) error {
 		return errors.New("invalid signature")
 	}
 
+	fmt.Print("Verification is successful!")
 	return nil
 }
 

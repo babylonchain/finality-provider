@@ -142,12 +142,13 @@ eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-
 
 ### 3.4. Verify Schnorr Signatures
 
-It is also possible to verify if the generated signature through the
-`eotsd verify-schnorr-sig` command.
+You can verify the Schnorr signature signed in the previous step through
+the `eptsd veify-schnorr-sig` command.
 The command takes as an argument the file path, hashes the file content using
-sha256 to generate the signed data, collects the hex pub key from `--btc-pk` flag
-and the hex signature from the `--signature` flag. If does not print anything
-the signature is valid, otherwise it will output an error msg.
+sha256 to generate the signed data, and verifies the signature from the `--signature`
+flag using the given public key from the `--btc-pk` flag.
+If the signature is valid, you will see `Verification is successful!` in the output.
+Otherwise, an error message will be printed out.
 
 ```shell
 eotsd verify-schnorr-sig /path/to/data/file --btc-pk 50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383 \
