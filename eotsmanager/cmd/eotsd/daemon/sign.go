@@ -59,6 +59,68 @@ var SignSchnorrSig = cli.Command{
 	Action: SignSchnorr,
 }
 
+var VerifySchnorrSig = cli.Command{
+	Name:      "verify-schnorr-sig",
+	Usage:     "Verify a Schnorr signature over arbitrary data with the given public key.",
+	UsageText: "verify-schnorr-sig [file-path]",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:     fpPkFlag,
+			Usage:    "The EOTS public key that will be used to verify the signature",
+			Required: true,
+		},
+		cli.StringFlag{
+			Name:     signatureFlag,
+			Usage:    "The hex signature to verify",
+			Required: true,
+		},
+	},
+	Action: SignSchnorrVerify,
+}
+
+func SignSchnorrVerify(ctx *cli.Context) error {
+	fpPkStr := ctx.String(fpPkFlag)
+	signatureHex := ctx.String(signatureFlag)
+
+	args := ctx.Args()
+	inputFilePath := args.First()
+	if len(inputFilePath) == 0 {
+		return errors.New("invalid argument, please provide a valid file path as input argument")
+	}
+
+	hashOfMsgToSign, err := hashFromFile(inputFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to generate hash from file %s: %w", inputFilePath, err)
+	}
+
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(fpPkStr)
+	if err != nil {
+		return fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
+	}
+
+	pubKey, err := schnorr.ParsePubKey(*fpPk)
+	if err != nil {
+		return fmt.Errorf("unable to parse public key %s: %w", fpPkStr, err)
+	}
+
+	signatureBz, err := hex.DecodeString(signatureHex)
+	if err != nil {
+		return fmt.Errorf("unable to decode signature %s: %w", signatureHex, err)
+	}
+
+	signature, err := schnorr.ParseSignature(signatureBz)
+	if err != nil {
+		return fmt.Errorf("unable to parse schnorr signature %s: %w", signatureBz, err)
+	}
+
+	if !signature.Verify(hashOfMsgToSign, pubKey) {
+		return errors.New("invalid signature")
+	}
+
+	fmt.Print("Verification is successful!")
+	return nil
+}
+
 func SignSchnorr(ctx *cli.Context) error {
 	keyName := ctx.String(keyNameFlag)
 	fpPkStr := ctx.String(fpPkFlag)
@@ -94,25 +156,18 @@ func SignSchnorr(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
+	defer dbBackend.Close()
 
 	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, keyringBackend, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
 	}
 
-	h := sha256.New()
-
-	f, err := os.Open(inputFilePath)
+	hashOfMsgToSign, err := hashFromFile(inputFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to open the file %s: %w", inputFilePath, err)
-	}
-	defer f.Close()
-
-	if _, err := io.Copy(h, f); err != nil {
-		return err
+		return fmt.Errorf("failed to generate hash from file %s: %w", inputFilePath, err)
 	}
 
-	hashOfMsgToSign := h.Sum(nil)
 	signature, pubKey, err := singMsg(eotsManager, keyName, fpPkStr, passphrase, hashOfMsgToSign)
 	if err != nil {
 		return fmt.Errorf("failed to sign msg: %w", err)
@@ -126,6 +181,22 @@ func SignSchnorr(ctx *cli.Context) error {
 	})
 
 	return nil
+}
+
+func hashFromFile(inputFilePath string) ([]byte, error) {
+	h := sha256.New()
+
+	f, err := os.Open(inputFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open the file %s: %w", inputFilePath, err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(h, f); err != nil {
+		return nil, err
+	}
+
+	return h.Sum(nil), nil
 }
 
 func singMsg(
