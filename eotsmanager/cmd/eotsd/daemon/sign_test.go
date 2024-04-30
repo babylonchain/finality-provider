@@ -42,7 +42,7 @@ func FuzzSignAndVerifySchnorrSig(f *testing.F) {
 		keyName := testutil.GenRandomHexStr(r, 10)
 		keyNameFlag := fmt.Sprintf("--key-name=%s", keyName)
 
-		outputKeysAdd := AppRunWithOutput(r, t, app, []string{"eotsd", "keys", "add", hFlag, keyNameFlag})
+		outputKeysAdd := appRunWithOutput(r, t, app, []string{"eotsd", "keys", "add", hFlag, keyNameFlag})
 		keyOutJson := searchInTxt(outputKeysAdd, "for recovery):")
 
 		var keyOut dcli.KeyOutput
@@ -53,19 +53,47 @@ func FuzzSignAndVerifySchnorrSig(f *testing.F) {
 		writeFpInfoToFile(r, t, fpInfoPath, keyOut.PubKeyHex)
 
 		btcPkFlag := fmt.Sprintf("--btc-pk=%s", keyOut.PubKeyHex)
-		outputSign := AppRunWithOutput(r, t, app, []string{"eotsd", "sign-schnorr", fpInfoPath, hFlag, btcPkFlag})
-		signatureStr := searchInTxt(outputSign, "")
-
-		var dataSigned dcli.DataSigned
-		err = json.Unmarshal([]byte(signatureStr), &dataSigned)
+		dataSignedBtcPk := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, btcPkFlag})
+		err = app.Run([]string{"eotsd", "verify-schnorr-sig", fpInfoPath, btcPkFlag, fmt.Sprintf("--signature=%s", dataSignedBtcPk.SchnorrSignatureHex)})
 		require.NoError(t, err)
 
-		err = app.Run([]string{"eotsd", "verify-schnorr-sig", fpInfoPath, btcPkFlag, fmt.Sprintf("--signature=%s", dataSigned.SchnorrSignatureHex)})
+		dataSignedKeyName := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, keyNameFlag})
+		err = app.Run([]string{"eotsd", "verify-schnorr-sig", fpInfoPath, btcPkFlag, fmt.Sprintf("--signature=%s", dataSignedKeyName.SchnorrSignatureHex)})
 		require.NoError(t, err)
+
+		// check if both generated signatures match
+		require.Equal(t, dataSignedBtcPk.PubKeyHex, dataSignedKeyName.PubKeyHex)
+		require.Equal(t, dataSignedBtcPk.SchnorrSignatureHex, dataSignedKeyName.SchnorrSignatureHex)
+		require.Equal(t, dataSignedBtcPk.SignedDataHashHex, dataSignedKeyName.SignedDataHashHex)
+
+		// sign with both keys and btc-pk, should give btc-pk preference
+		dataSignedBoth := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, btcPkFlag, keyNameFlag})
+		require.Equal(t, dataSignedBoth, dataSignedKeyName)
+
+		// the keyname can even be from a invalid keyname, since it gives btc-pk preference
+		badKeyname := "badKeyName"
+		dataSignedBothBadKeyName := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, btcPkFlag, fmt.Sprintf("--key-name=%s", badKeyname)})
+		require.Equal(t, badKeyname, dataSignedBothBadKeyName.KeyName)
+		require.Equal(t, dataSignedBtcPk.PubKeyHex, dataSignedBothBadKeyName.PubKeyHex)
+		require.Equal(t, dataSignedBtcPk.SchnorrSignatureHex, dataSignedBothBadKeyName.SchnorrSignatureHex)
+		require.Equal(t, dataSignedBtcPk.SignedDataHashHex, dataSignedBothBadKeyName.SignedDataHashHex)
 	})
 }
 
-func AppRunWithOutput(r *rand.Rand, t *testing.T, app *cli.App, arguments []string) (output string) {
+func appRunSignSchnorr(r *rand.Rand, t *testing.T, app *cli.App, arguments []string) dcli.DataSigned {
+	args := []string{"eotsd", "sign-schnorr"}
+	args = append(args, arguments...)
+	outputSign := appRunWithOutput(r, t, app, args)
+	signatureStr := searchInTxt(outputSign, "")
+
+	var dataSigned dcli.DataSigned
+	err := json.Unmarshal([]byte(signatureStr), &dataSigned)
+	require.NoError(t, err)
+
+	return dataSigned
+}
+
+func appRunWithOutput(r *rand.Rand, t *testing.T, app *cli.App, arguments []string) (output string) {
 	outPut := filepath.Join(t.TempDir(), fmt.Sprintf("%s-out.txt", testutil.GenRandomHexStr(r, 10)))
 	outPutFile, err := os.Create(outPut)
 	require.NoError(t, err)
