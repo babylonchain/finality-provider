@@ -62,6 +62,7 @@ type TestManager struct {
 	Fpa               *service.FinalityProviderApp
 	EOTSClient        *client.EOTSManagerGRpcClient
 	BBNClient         *fpcc.BabylonController
+	BBCClient         *fpcc.BabylonConsumerController
 	StakingParams     *types.StakingParams
 	CovenantPrivKeys  []*btcec.PrivateKey
 	baseDir           string
@@ -103,6 +104,8 @@ func StartManager(t *testing.T) *TestManager {
 	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
+	bcc, err := fpcc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	require.NoError(t, err)
 
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
@@ -115,7 +118,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 4. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	fpApp, err := service.NewFinalityProviderApp(cfg, bc, eotsCli, fpdb, logger)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, bcc, eotsCli, fpdb, logger)
 	require.NoError(t, err)
 	err = fpApp.Start()
 	require.NoError(t, err)
@@ -313,7 +316,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
-		b, err := tm.BBNClient.QueryBlock(height)
+		b, err := tm.BBCClient.QueryBlock(height)
 		if err != nil {
 			t.Logf("failed to query block at height %v: %s", height, err.Error())
 			return false
@@ -342,7 +345,7 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.Blo
 		err    error
 	)
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BBNClient.QueryLatestFinalizedBlocks(uint64(n))
+		blocks, err = tm.BBCClient.QueryLatestFinalizedBlocks(uint64(n))
 		if err != nil {
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
@@ -365,13 +368,13 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 }
 
 func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
-	blockBeforeStop, err := tm.BBNClient.QueryBestBlock()
+	blockBeforeStop, err := tm.BBCClient.QueryBestBlock()
 	require.NoError(t, err)
 	err = fpIns.Stop()
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
-		headerAfterStop, err := tm.BBNClient.QueryBestBlock()
+		headerAfterStop, err := tm.BBCClient.QueryBestBlock()
 		if err != nil {
 			return false
 		}

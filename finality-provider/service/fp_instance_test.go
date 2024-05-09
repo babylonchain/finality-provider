@@ -34,7 +34,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		// mock finalised BTC timestamped
 		mockClientController.EXPECT().QueryLastFinalizedEpoch().Return(randomRegiteredEpoch, nil).AnyTimes()
 
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight, randomRegiteredEpoch)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, mockClientController, randomStartingHeight, randomRegiteredEpoch)
 		defer cleanUp()
 
 		// mock voting power
@@ -60,7 +60,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 	})
 }
 
-func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, startingHeight uint64, registeredEpoch uint64) (*service.FinalityProviderApp, *service.FinalityProviderInstance, func()) {
+func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, ccc clientcontroller.ConsumerClientController, startingHeight uint64, registeredEpoch uint64) (*service.FinalityProviderApp, *service.FinalityProviderInstance, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
@@ -78,7 +78,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	fpCfg.PollerConfig.StaticChainScanningStartHeight = startingHeight
 	fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	app, err := service.NewFinalityProviderApp(&fpCfg, cc, em, fpdb, logger)
+	app, err := service.NewFinalityProviderApp(&fpCfg, cc, ccc, em, fpdb, logger)
 	require.NoError(t, err)
 	err = app.Start()
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 
 	// TODO: use mock metrics
 	m := metrics.NewFpMetrics()
-	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, m, passphrase, make(chan *service.CriticalError), logger)
+	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, ccc, em, m, passphrase, make(chan *service.CriticalError), logger)
 	require.NoError(t, err)
 
 	cleanUp := func() {

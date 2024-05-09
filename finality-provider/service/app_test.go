@@ -61,7 +61,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		fpCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
 		fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, em, fpdb, logger)
+		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, mockClientController, em, fpdb, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = fpdb.Close()

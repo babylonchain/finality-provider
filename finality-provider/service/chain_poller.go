@@ -43,6 +43,7 @@ type ChainPoller struct {
 	quit      chan struct{}
 
 	cc             clientcontroller.ClientController
+	ccc            clientcontroller.ConsumerClientController
 	cfg            *cfg.ChainPollerConfig
 	metrics        *metrics.FpMetrics
 	blockInfoChan  chan *types.BlockInfo
@@ -55,6 +56,7 @@ func NewChainPoller(
 	logger *zap.Logger,
 	cfg *cfg.ChainPollerConfig,
 	cc clientcontroller.ClientController,
+	ccc clientcontroller.ConsumerClientController,
 	metrics *metrics.FpMetrics,
 ) *ChainPoller {
 	return &ChainPoller{
@@ -62,6 +64,7 @@ func NewChainPoller(
 		logger:         logger,
 		cfg:            cfg,
 		cc:             cc,
+		ccc:            ccc,
 		metrics:        metrics,
 		blockInfoChan:  make(chan *types.BlockInfo, cfg.BufferSize),
 		skipHeightChan: make(chan *skipHeightRequest),
@@ -129,7 +132,7 @@ func (cp *ChainPoller) latestBlockWithRetry() (*types.BlockInfo, error) {
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = cp.cc.QueryBestBlock()
+		latestBlock, err = cp.ccc.QueryBestBlock()
 		if err != nil {
 			return err
 		}
@@ -153,7 +156,7 @@ func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
 		err   error
 	)
 	if err := retry.Do(func() error {
-		block, err = cp.cc.QueryBlock(height)
+		block, err = cp.ccc.QueryBlock(height)
 		if err != nil {
 			return err
 		}
@@ -205,7 +208,7 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 func (cp *ChainPoller) waitForActivation() {
 	// ensure that the startHeight is no lower than the activated height
 	for {
-		activatedHeight, err := cp.cc.QueryActivatedHeight()
+		activatedHeight, err := cp.ccc.QueryActivatedHeight()
 		if err != nil {
 			cp.logger.Debug("failed to query the consumer chain for the activated height", zap.Error(err))
 		} else {

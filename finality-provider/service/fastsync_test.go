@@ -27,7 +27,7 @@ func FuzzFastSync(f *testing.F) {
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
 		// mock finalised BTC timestamped
 		mockClientController.EXPECT().QueryLastFinalizedEpoch().Return(randomRegiteredEpoch, nil).AnyTimes()
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight, randomRegiteredEpoch)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, mockClientController, randomStartingHeight, randomRegiteredEpoch)
 		defer cleanUp()
 
 		// mock voting power

@@ -45,6 +45,7 @@ type FinalityProviderManager struct {
 	fps    *store.FinalityProviderStore
 	config *fpcfg.Config
 	cc     clientcontroller.ClientController
+	ccc    clientcontroller.ConsumerClientController
 	em     eotsmanager.EOTSManager
 	logger *zap.Logger
 
@@ -59,6 +60,7 @@ func NewFinalityProviderManager(
 	fps *store.FinalityProviderStore,
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
+	ccc clientcontroller.ConsumerClientController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	logger *zap.Logger,
@@ -70,6 +72,7 @@ func NewFinalityProviderManager(
 		fps:             fps,
 		config:          config,
 		cc:              cc,
+		ccc:             ccc,
 		em:              em,
 		metrics:         metrics,
 		logger:          logger,
@@ -389,7 +392,7 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 		return fmt.Errorf("finality-provider instance already exists")
 	}
 
-	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
+	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.ccc, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider %s instance: %w", pkHex, err)
 	}
@@ -411,7 +414,7 @@ func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo,
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = fpm.cc.QueryBestBlock()
+		latestBlock, err = fpm.ccc.QueryBestBlock()
 		if err != nil {
 			return err
 		}
