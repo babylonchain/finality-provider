@@ -62,7 +62,7 @@ func NewFinalityProviderAppFromConfig(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 	}
-	ccc, err := clientcontroller.NewConsumerClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	ccc, err := clientcontroller.NewConsumerClientController(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 	}

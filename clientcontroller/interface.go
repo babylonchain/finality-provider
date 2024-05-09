@@ -91,14 +91,14 @@ type ConsumerClientController interface {
 	Close() error
 }
 
-func NewConsumerClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ConsumerClientController, error) {
+func NewConsumerClientController(config *fpcfg.Config, logger *zap.Logger) (ConsumerClientController, error) {
 	var (
 		ccc ConsumerClientController
 		err error
 	)
-	switch chainName {
+	switch config.ChainName {
 	case babylonConsumerChainName:
-		ccc, err = NewBabylonConsumerController(bbnConfig, netParams, logger)
+		ccc, err = NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
