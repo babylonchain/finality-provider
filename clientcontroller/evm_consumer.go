@@ -57,6 +57,17 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, 
 	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
+func (ec *EVMConsumerController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
+
+	return false, nil
+}
+
+// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+
+	return 0, nil
+}
+
 func (ec *EVMConsumerController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	return ec.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
 }

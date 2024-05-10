@@ -35,13 +35,13 @@ type FinalityProviderApp struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
-	cc     clientcontroller.ClientController
-	ccc    clientcontroller.ConsumerClientController
-	kr     keyring.Keyring
-	fps    *store.FinalityProviderStore
-	config *fpcfg.Config
-	logger *zap.Logger
-	input  *strings.Reader
+	cc         clientcontroller.ClientController
+	consumerCc clientcontroller.ConsumerClientController
+	kr         keyring.Keyring
+	fps        *store.FinalityProviderStore
+	config     *fpcfg.Config
+	logger     *zap.Logger
+	input      *strings.Reader
 
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
@@ -81,7 +81,7 @@ func NewFinalityProviderAppFromConfig(
 func NewFinalityProviderApp(
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
-	ccc clientcontroller.ConsumerClientController,
+	consumerCc clientcontroller.ConsumerClientController,
 	em eotsmanager.EOTSManager,
 	db kvdb.Backend,
 	logger *zap.Logger,
@@ -104,14 +104,14 @@ func NewFinalityProviderApp(
 
 	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, config, cc, ccc, em, fpMetrics, logger)
+	fpm, err := NewFinalityProviderManager(fpStore, config, cc, consumerCc, em, fpMetrics, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
 
 	return &FinalityProviderApp{
 		cc:                                  cc,
-		ccc:                                 ccc,
+		consumerCc:                          consumerCc,
 		fps:                                 fpStore,
 		kr:                                  kr,
 		config:                              config,
@@ -231,7 +231,7 @@ func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, er
 
 // SyncFinalityProviderStatus syncs the status of the finality-providers
 func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
-	latestBlock, err := app.ccc.QueryBestBlock()
+	latestBlock, err := app.consumerCc.QueryBestBlock()
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	}
 
 	for _, fp := range fps {
-		vp, err := app.cc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
+		vp, err := app.consumerCc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
 		if err != nil {
 			// if error occured then the finality-provider is not registered in the Babylon chain yet
 			continue

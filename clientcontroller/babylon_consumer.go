@@ -153,6 +153,31 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicK
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
+func (bc *BabylonConsumerController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
+	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+	res, err := bc.bbnClient.QueryClient.FinalityProvider(fpPubKey.MarshalHex())
+	if err != nil {
+		return false, fmt.Errorf("failed to query the finality provider %s: %v", fpPubKey.MarshalHex(), err)
+	}
+
+	slashed := res.FinalityProvider.SlashedBtcHeight > 0
+
+	return slashed, nil
+}
+
+// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+func (bc *BabylonConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+	res, err := bc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
+		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+		blockHeight,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query the finality provider's voting power at height %d: %w", blockHeight, err)
+	}
+
+	return res.VotingPower, nil
+}
+
 func (bc *BabylonConsumerController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
 }
