@@ -32,12 +32,6 @@ type ClientController interface {
 
 	// Note: the following queries are only for PoC
 
-	// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
-
-	// QueryFinalityProviderSlashed queries if the finality provider is slashed
-	QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error)
-
 	// QueryLastFinalizedEpoch returns the last finalised epoch of Babylon
 	QueryLastFinalizedEpoch() (uint64, error)
 
@@ -71,6 +65,12 @@ type ConsumerClientController interface {
 	SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error)
 
 	// Note: the following queries are only for PoC
+
+	// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
+
+	// QueryFinalityProviderSlashed queries if the finality provider is slashed
+	QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error)
 
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)

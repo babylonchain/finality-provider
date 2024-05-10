@@ -33,12 +33,12 @@ type FinalityProviderInstance struct {
 	state *fpState
 	cfg   *fpcfg.Config
 
-	logger  *zap.Logger
-	em      eotsmanager.EOTSManager
-	cc      clientcontroller.ClientController
-	ccc     clientcontroller.ConsumerClientController
-	poller  *ChainPoller
-	metrics *metrics.FpMetrics
+	logger     *zap.Logger
+	em         eotsmanager.EOTSManager
+	cc         clientcontroller.ClientController
+	consumerCc clientcontroller.ConsumerClientController
+	poller     *ChainPoller
+	metrics    *metrics.FpMetrics
 
 	// passphrase is used to unlock private keys
 	passphrase string
@@ -61,7 +61,7 @@ func NewFinalityProviderInstance(
 	cfg *fpcfg.Config,
 	s *store.FinalityProviderStore,
 	cc clientcontroller.ClientController,
-	ccc clientcontroller.ConsumerClientController,
+	consumerCc clientcontroller.ConsumerClientController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	passphrase string,
@@ -103,7 +103,7 @@ func NewFinalityProviderInstance(
 		passphrase:      passphrase,
 		em:              em,
 		cc:              cc,
-		ccc:             ccc,
+		consumerCc:      consumerCc,
 		metrics:         metrics,
 	}, nil
 }
@@ -123,7 +123,7 @@ func (fp *FinalityProviderInstance) Start() error {
 	fp.logger.Info("the finality-provider has been bootstrapped",
 		zap.String("pk", fp.GetBtcPkHex()), zap.Uint64("height", startHeight))
 
-	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc, fp.ccc, fp.metrics)
+	poller := NewChainPoller(fp.logger, fp.cfg.PollerConfig, fp.cc, fp.consumerCc, fp.metrics)
 
 	if err := poller.Start(startHeight + 1); err != nil {
 		return fmt.Errorf("failed to start the poller: %w", err)
@@ -325,7 +325,7 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlock *types.BlockInfo) (*
 	}
 
 	// get the last finalized height
-	lastFinalizedBlocks, err := fp.ccc.QueryLatestFinalizedBlocks(1)
+	lastFinalizedBlocks, err := fp.consumerCc.QueryLatestFinalizedBlocks(1)
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +466,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 }
 
 func (fp *FinalityProviderInstance) checkBlockFinalization(height uint64) (bool, error) {
-	b, err := fp.ccc.QueryBlock(height)
+	b, err := fp.consumerCc.QueryBlock(height)
 	if err != nil {
 		return false, err
 	}
@@ -482,7 +482,7 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.ccc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
+	res, err := fp.consumerCc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -514,7 +514,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.ccc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, sigs)
+	res, err := fp.consumerCc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, sigs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
 	}
@@ -552,7 +552,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.ccc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
+	res, err := fp.consumerCc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -613,7 +613,7 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 func (fp *FinalityProviderInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*types.BlockInfo, error) {
 	var response []*types.BlockInfo
 	if err := retry.Do(func() error {
-		latestFinalisedBlock, err := fp.ccc.QueryLatestFinalizedBlocks(count)
+		latestFinalisedBlock, err := fp.consumerCc.QueryLatestFinalizedBlocks(count)
 		if err != nil {
 			return err
 		}
@@ -639,7 +639,7 @@ func (fp *FinalityProviderInstance) getLatestBlockWithRetry() (*types.BlockInfo,
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = fp.ccc.QueryBestBlock()
+		latestBlock, err = fp.consumerCc.QueryBestBlock()
 		if err != nil {
 			return err
 		}
@@ -666,7 +666,7 @@ func (fp *FinalityProviderInstance) GetVotingPowerWithRetry(height uint64) (uint
 	)
 
 	if err := retry.Do(func() error {
-		power, err = fp.cc.QueryFinalityProviderVotingPower(fp.GetBtcPk(), height)
+		power, err = fp.consumerCc.QueryFinalityProviderVotingPower(fp.GetBtcPk(), height)
 		if err != nil {
 			return err
 		}
@@ -692,7 +692,7 @@ func (fp *FinalityProviderInstance) GetFinalityProviderSlashedWithRetry() (bool,
 	)
 
 	if err := retry.Do(func() error {
-		slashed, err = fp.cc.QueryFinalityProviderSlashed(fp.GetBtcPk())
+		slashed, err = fp.consumerCc.QueryFinalityProviderSlashed(fp.GetBtcPk())
 		if err != nil {
 			return err
 		}
