@@ -93,7 +93,7 @@ func waitForStatus(t *testing.T, fpIns *service.FinalityProviderInstance, s prot
 		}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
-func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, ccc clientcontroller.ConsumerClientController) (*service.FinalityProviderManager, *bbntypes.BIP340PubKey, func()) {
+func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc clientcontroller.ClientController, consumerCon clientcontroller.ConsumerController) (*service.FinalityProviderManager, *bbntypes.BIP340PubKey, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
@@ -123,7 +123,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 
 	metricsCollectors := metrics.NewFpMetrics()
-	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, ccc, em, metricsCollectors, logger)
+	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, consumerCon, em, metricsCollectors, logger)
 	require.NoError(t, err)
 
 	// create registered finality-provider

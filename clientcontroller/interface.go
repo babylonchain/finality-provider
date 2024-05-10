@@ -62,7 +62,7 @@ func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams
 	return cc, err
 }
 
-type ConsumerClientController interface {
+type ConsumerController interface {
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain
 	SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
@@ -97,9 +97,9 @@ type ConsumerClientController interface {
 	Close() error
 }
 
-func NewConsumerClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ConsumerClientController, error) {
+func NewConsumerController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ConsumerController, error) {
 	var (
-		ccc ConsumerClientController
+		ccc ConsumerController
 		err error
 	)
 	switch chainName {
