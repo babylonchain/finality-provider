@@ -14,6 +14,7 @@ import (
 
 const (
 	babylonConsumerChainName = "babylon"
+	evmConsumerChainName     = "evm"
 )
 
 type ClientController interface {
@@ -28,6 +29,40 @@ type ClientController interface {
 		description []byte,
 		masterPubRand string,
 	) (*types.TxResponse, uint64, error)
+
+	// Note: the following queries are only for PoC
+
+	// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
+
+	// QueryFinalityProviderSlashed queries if the finality provider is slashed
+	QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error)
+
+	// QueryLastFinalizedEpoch returns the last finalised epoch of Babylon
+	QueryLastFinalizedEpoch() (uint64, error)
+
+	Close() error
+}
+
+func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
+	var (
+		cc  ClientController
+		err error
+	)
+	switch chainName {
+	case babylonConsumerChainName:
+		cc, err = NewBabylonController(bbnConfig, netParams, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported consumer chain")
+	}
+
+	return cc, err
+}
+
+type ConsumerController interface {
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain
 	SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
@@ -59,20 +94,17 @@ type ClientController interface {
 	// error will be returned if the consumer chain has not been activated
 	QueryActivatedHeight() (uint64, error)
 
-	// QueryLastFinalizedEpoch returns the last finalised epoch of Babylon
-	QueryLastFinalizedEpoch() (uint64, error)
-
 	Close() error
 }
 
-func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
+func NewConsumerController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ConsumerController, error) {
 	var (
-		cc  ClientController
+		ccc ConsumerController
 		err error
 	)
 	switch chainName {
 	case babylonConsumerChainName:
-		cc, err = NewBabylonController(bbnConfig, netParams, logger)
+		ccc, err = NewBabylonConsumerController(bbnConfig, netParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
@@ -80,5 +112,5 @@ func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams
 		return nil, fmt.Errorf("unsupported consumer chain")
 	}
 
-	return cc, err
+	return ccc, err
 }

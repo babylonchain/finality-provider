@@ -181,7 +181,7 @@ func TestFastSync(t *testing.T) {
 	t.Logf("the latest finalized block is at %v", finalizedHeight)
 
 	// check if the fast sync works by checking if the gap is not more than 1
-	currentHeaderRes, err := tm.BBNClient.QueryBestBlock()
+	currentHeaderRes, err := tm.BBNConsumerClient.QueryBestBlock()
 	currentHeight := currentHeaderRes.Height
 	t.Logf("the current block is at %v", currentHeight)
 	require.NoError(t, err)

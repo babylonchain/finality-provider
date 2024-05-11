@@ -33,7 +33,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 	// we may need several rounds to catch-up as we need to limit
 	// the catch-up distance for each round to avoid memory overflow
 	for startHeight <= endHeight {
-		blocks, err := fp.cc.QueryBlocks(startHeight, endHeight, fp.cfg.FastSyncLimit)
+		blocks, err := fp.consumerCon.QueryBlocks(startHeight, endHeight, fp.cfg.FastSyncLimit)
 		if err != nil {
 			return nil, err
 		}
