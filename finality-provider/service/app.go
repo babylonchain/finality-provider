@@ -35,13 +35,13 @@ type FinalityProviderApp struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
-	cc         clientcontroller.ClientController
-	consumerCc clientcontroller.ConsumerClientController
-	kr         keyring.Keyring
-	fps        *store.FinalityProviderStore
-	config     *fpcfg.Config
-	logger     *zap.Logger
-	input      *strings.Reader
+	cc          clientcontroller.ClientController
+	consumerCon clientcontroller.ConsumerController
+	kr          keyring.Keyring
+	fps         *store.FinalityProviderStore
+	config      *fpcfg.Config
+	logger      *zap.Logger
+	input       *strings.Reader
 
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
@@ -62,7 +62,7 @@ func NewFinalityProviderAppFromConfig(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 	}
-	ccc, err := clientcontroller.NewConsumerClientController(cfg, logger)
+	consumerCon, err := clientcontroller.NewConsumerController(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 	}
@@ -75,13 +75,13 @@ func NewFinalityProviderAppFromConfig(
 
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", cfg.EOTSManagerAddress))
 
-	return NewFinalityProviderApp(cfg, cc, ccc, em, db, logger)
+	return NewFinalityProviderApp(cfg, cc, consumerCon, em, db, logger)
 }
 
 func NewFinalityProviderApp(
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
-	consumerCc clientcontroller.ConsumerClientController,
+	consumerCon clientcontroller.ConsumerController,
 	em eotsmanager.EOTSManager,
 	db kvdb.Backend,
 	logger *zap.Logger,
@@ -104,14 +104,14 @@ func NewFinalityProviderApp(
 
 	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, config, cc, consumerCc, em, fpMetrics, logger)
+	fpm, err := NewFinalityProviderManager(fpStore, config, cc, consumerCon, em, fpMetrics, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
 
 	return &FinalityProviderApp{
 		cc:                                  cc,
-		consumerCc:                          consumerCc,
+		consumerCon:                         consumerCon,
 		fps:                                 fpStore,
 		kr:                                  kr,
 		config:                              config,
@@ -231,7 +231,7 @@ func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, er
 
 // SyncFinalityProviderStatus syncs the status of the finality-providers
 func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
-	latestBlock, err := app.consumerCc.QueryBestBlock()
+	latestBlock, err := app.consumerCon.QueryBestBlock()
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	}
 
 	for _, fp := range fps {
-		vp, err := app.consumerCc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
+		vp, err := app.consumerCon.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
 		if err != nil {
 			// if error occured then the finality-provider is not registered in the Babylon chain yet
 			continue

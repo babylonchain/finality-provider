@@ -131,6 +131,7 @@ func StartManager(t *testing.T) *TestManager {
 		Fpa:               fpApp,
 		EOTSClient:        eotsCli,
 		BBNClient:         bc,
+		BBNConsumerClient: bcc,
 		CovenantPrivKeys:  covenantPrivKeys,
 		baseDir:           testDir,
 	}

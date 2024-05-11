@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerClientController = &BabylonConsumerController{}
+var _ ConsumerController = &BabylonConsumerController{}
 
 type BabylonConsumerController struct {
 	bbnClient *bbnclient.Client

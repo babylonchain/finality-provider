@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerClientController = &EVMConsumerController{}
+var _ ConsumerController = &EVMConsumerController{}
 
 type EVMConsumerController struct {
 	evmClient *rpc.Client
