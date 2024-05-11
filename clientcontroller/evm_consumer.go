@@ -104,15 +104,6 @@ func (ec *EVMConsumerController) QueryBestBlock() (*types.BlockInfo, error) {
 	}, nil
 }
 
-func (ec *EVMConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
-	// Returning response directly, if header with specified number did not exist
-	// at request will contain nil header
-	return &types.BlockInfo{
-		Height: uint64(0),
-		Hash:   nil,
-	}, nil
-}
-
 func (ec *EVMConsumerController) Close() error {
 	ec.evmClient.Close()
 	return nil
