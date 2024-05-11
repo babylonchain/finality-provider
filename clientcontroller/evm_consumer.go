@@ -28,7 +28,6 @@ func NewEVMConsumerController(
 	btcParams *chaincfg.Params,
 	logger *zap.Logger,
 ) (*EVMConsumerController, error) {
-
 	ec, err := rpc.Dial(evmCfg.RPCAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create EVM RPC client: %w", err)

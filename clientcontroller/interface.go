@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	babylonConsumerChainName = "babylon"
-	evmConsumerChainName     = "evm"
+	BabylonConsumerChainName = "babylon"
+	EVMConsumerChainName     = "evm"
 )
 
 type ClientController interface {
@@ -50,7 +50,7 @@ func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams
 		err error
 	)
 	switch chainName {
-	case babylonConsumerChainName:
+	case BabylonConsumerChainName:
 		cc, err = NewBabylonController(bbnConfig, netParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
@@ -103,8 +103,13 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 		err error
 	)
 	switch config.ChainName {
-	case babylonConsumerChainName:
+	case BabylonConsumerChainName:
 		ccc, err = NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
+		}
+	case EVMConsumerChainName:
+		ccc, err = NewEVMConsumerController(config.EVMConfig, &config.BTCNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}

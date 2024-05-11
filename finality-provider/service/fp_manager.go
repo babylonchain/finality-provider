@@ -17,6 +17,7 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/keymanager"
 	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
@@ -391,8 +392,12 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 	if _, exists := fpm.fpis[pkHex]; exists {
 		return fmt.Errorf("finality-provider instance already exists")
 	}
+	var keyMan keymanager.KeyManager
+	if fpm.config.ChainName == clientcontroller.EVMConsumerChainName {
+		keyMan = fpm.config.EVMConfig.NewEVMKeyManager(fpm.logger)
+	}
 
-	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.consumerCon, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
+	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.consumerCon, keyMan, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider %s instance: %w", pkHex, err)
 	}
