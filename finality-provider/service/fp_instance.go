@@ -22,7 +22,6 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
-	"github.com/babylonchain/finality-provider/keymanager"
 	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
 )
@@ -38,7 +37,6 @@ type FinalityProviderInstance struct {
 	em          eotsmanager.EOTSManager
 	cc          clientcontroller.ClientController
 	consumerCon clientcontroller.ConsumerController
-	keyMan      keymanager.KeyManager
 	poller      *ChainPoller
 	metrics     *metrics.FpMetrics
 
@@ -64,7 +62,6 @@ func NewFinalityProviderInstance(
 	s *store.FinalityProviderStore,
 	cc clientcontroller.ClientController,
 	consumerCon clientcontroller.ConsumerController,
-	keyMan keymanager.KeyManager,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	passphrase string,
@@ -104,7 +101,6 @@ func NewFinalityProviderInstance(
 		isLagging:       atomic.NewBool(false),
 		criticalErrChan: errChan,
 		passphrase:      passphrase,
-		keyMan:          keyMan,
 		em:              em,
 		cc:              cc,
 		consumerCon:     consumerCon,
@@ -140,12 +136,14 @@ func (fp *FinalityProviderInstance) Start() error {
 	fp.quit = make(chan struct{})
 
 	if fp.cfg.ChainName == clientcontroller.EVMConsumerChainName {
-		evmPk, err := fp.keyMan.CreateKeyPair(fp.passphrase)
-		if err != nil {
-			return fmt.Errorf("failed to create EVM key pair: %w", err)
+		if evmController, ok := fp.consumerCon.(*clientcontroller.EVMConsumerController); ok {
+			evmPk, err := evmController.CreateKeyPair(fp.passphrase)
+			if err != nil {
+				return fmt.Errorf("failed to create EVM key pair: %w", err)
+			}
+			fp.cfg.EVMConfig.SetAddress(evmPk)
+			fp.cfg.EVMConfig.SetPassphrase(fp.passphrase)
 		}
-		fp.cfg.EVMConfig.SetAddress(evmPk)
-		fp.cfg.EVMConfig.SetPassphrase(fp.passphrase)
 	}
 
 	fp.wg.Add(1)

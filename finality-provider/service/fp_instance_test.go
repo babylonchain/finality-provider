@@ -16,7 +16,6 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
-	"github.com/babylonchain/finality-provider/keymanager"
 	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/types"
@@ -96,8 +95,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 
 	// TODO: use mock metrics
 	m := metrics.NewFpMetrics()
-	var evmKey keymanager.KeyManager
-	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, consumerCon, evmKey, em, m, passphrase, make(chan *service.CriticalError), logger)
+	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, consumerCon, em, m, passphrase, make(chan *service.CriticalError), logger)
 	require.NoError(t, err)
 
 	cleanUp := func() {
