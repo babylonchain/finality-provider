@@ -135,17 +135,6 @@ func (fp *FinalityProviderInstance) Start() error {
 
 	fp.quit = make(chan struct{})
 
-	if fp.cfg.ChainName == clientcontroller.EVMConsumerChainName {
-		if evmController, ok := fp.consumerCon.(*clientcontroller.EVMConsumerController); ok {
-			evmPk, err := evmController.CreateKeyPair(fp.passphrase)
-			if err != nil {
-				return fmt.Errorf("failed to create EVM key pair: %w", err)
-			}
-			fp.cfg.EVMConfig.SetAddress(evmPk)
-			fp.cfg.EVMConfig.SetPassphrase(fp.passphrase)
-		}
-	}
-
 	fp.wg.Add(1)
 	go fp.finalitySigSubmissionLoop()
 	fp.wg.Add(1)

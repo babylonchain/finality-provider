@@ -5,7 +5,6 @@ import (
 
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/keymanager"
 	"github.com/babylonchain/finality-provider/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -20,7 +19,6 @@ var _ ConsumerController = &EVMConsumerController{}
 type EVMConsumerController struct {
 	evmClient *rpc.Client
 	cfg       *fpcfg.EVMConfig
-	evmKey    *keymanager.EVMKeyManager
 	btcParams *chaincfg.Params
 	logger    *zap.Logger
 }
@@ -34,22 +32,12 @@ func NewEVMConsumerController(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create EVM RPC client: %w", err)
 	}
-	evmKey := evmCfg.NewEVMKeyManager(logger)
 	return &EVMConsumerController{
 		ec,
 		evmCfg,
-		evmKey,
 		btcParams,
 		logger,
 	}, nil
-}
-
-func (ec *EVMConsumerController) CreateKeyPair(passphrase string) (string, error) {
-	return ec.evmKey.CreateKeyPair(passphrase)
-}
-
-func (ec *EVMConsumerController) GetPrivkey(addr, passphrase string) (string, error) {
-	return ec.evmKey.GetPrivkey(addr, passphrase)
 }
 
 // SubmitFinalitySig submits the finality signature
