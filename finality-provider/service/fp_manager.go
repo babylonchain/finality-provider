@@ -299,7 +299,7 @@ func (fpm *FinalityProviderManager) ListFinalityProviderInstancesForChain(chainI
 
 	fpisList := make([]*FinalityProviderInstance, 0, len(fpm.fpis))
 	for _, fpi := range fpm.fpis {
-		if fpi.GetChainID() == chainID {
+		if string(fpi.GetChainID()) == chainID {
 			fpisList = append(fpisList, fpi)
 		}
 	}

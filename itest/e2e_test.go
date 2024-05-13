@@ -190,7 +190,7 @@ func TestFastSync(t *testing.T) {
 
 // TestConsumerFinalityProviderRegistration tests finality-provider registration for a consumer chain
 func TestConsumerFinalityProviderRegistration(t *testing.T) {
-	tm, _ := StartManagerWithFinalityProvider(t, 1)
+	tm, _, _ := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
 	consumerChainID := "consumer-chain-test-1"
