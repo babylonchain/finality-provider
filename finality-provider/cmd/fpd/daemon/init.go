@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -7,18 +7,18 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 
-	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var initCommand = cli.Command{
+var InitCommand = cli.Command{
 	Name:  "init",
-	Usage: "Initialize the eotsd home directory.",
+	Usage: "Initialize a finality-provider home directory.",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
 			Usage: "Path to where the home directory will be initialized",
-			Value: eotscfg.DefaultEOTSDir,
+			Value: fpcfg.DefaultFpdDir,
 		},
 		cli.BoolFlag{
 			Name:     forceFlag,
@@ -46,18 +46,13 @@ func initHome(c *cli.Context) error {
 		return err
 	}
 	// Create log directory
-	logDir := eotscfg.LogDir(homePath)
+	logDir := fpcfg.LogDir(homePath)
 	if err := util.MakeDirectory(logDir); err != nil {
 		return err
 	}
-	// Create data directory
-	dataDir := eotscfg.DataDir(homePath)
-	if err := util.MakeDirectory(dataDir); err != nil {
-		return err
-	}
 
-	defaultConfig := eotscfg.DefaultConfig()
-	fileParser := flags.NewParser(defaultConfig, flags.Default)
+	defaultConfig := fpcfg.DefaultConfigWithHome(homePath)
+	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(eotscfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

@@ -120,3 +120,17 @@ func (c *FinalityProviderServiceGRpcClient) QueryFinalityProviderInfo(ctx contex
 
 	return res, nil
 }
+
+func (c *FinalityProviderServiceGRpcClient) SignMessageFromChainKey(
+	ctx context.Context,
+	keyName, passphrase, hdPath string,
+	rawMsgToSign []byte,
+) (*proto.SignMessageFromChainKeyResponse, error) {
+	req := &proto.SignMessageFromChainKeyRequest{
+		MsgToSign:  rawMsgToSign,
+		KeyName:    keyName,
+		Passphrase: passphrase,
+		HdPath:     hdPath,
+	}
+	return c.client.SignMessageFromChainKey(ctx, req)
+}

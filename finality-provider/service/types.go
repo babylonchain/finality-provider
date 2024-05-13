@@ -6,13 +6,13 @@ import (
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
+	"github.com/babylonchain/finality-provider/types"
 )
 
 type createFinalityProviderResponse struct {
@@ -38,6 +38,7 @@ type registerFinalityProviderRequest struct {
 	pop             *btcstakingtypes.ProofOfPossession
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
+	masterPubRand   string
 	errResponse     chan error
 	successResponse chan *RegisterFinalityProviderResponse
 }
@@ -46,13 +47,15 @@ type finalityProviderRegisteredEvent struct {
 	bbnPubKey       *secp256k1.PubKey
 	btcPubKey       *bbntypes.BIP340PubKey
 	txHash          string
+	registeredEpoch uint64
 	successResponse chan *RegisterFinalityProviderResponse
 }
 
 type RegisterFinalityProviderResponse struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
-	TxHash    string
+	bbnPubKey       *secp256k1.PubKey
+	btcPubKey       *bbntypes.BIP340PubKey
+	TxHash          string
+	RegisteredEpoch uint64
 }
 
 type CreateFinalityProviderResult struct {
@@ -121,8 +124,8 @@ func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
 	return fp.state.getStoreFinalityProvider().LastProcessedHeight
 }
 
-func (fp *FinalityProviderInstance) GetChainID() string {
-	return fp.state.getStoreFinalityProvider().ChainID
+func (fp *FinalityProviderInstance) GetChainID() []byte {
+	return types.MarshalChainID(fp.state.getStoreFinalityProvider().ChainID) //todo gurjot check here
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {
@@ -173,4 +176,9 @@ func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) 
 // only used for testing purposes
 func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
 	return fp.getEOTSPrivKey()
+}
+
+// only used for testing purposes
+func (fp *FinalityProviderInstance) RegisteredEpoch() uint64 {
+	return fp.state.fp.RegisteredEpoch
 }

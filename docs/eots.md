@@ -59,7 +59,103 @@ For different operating systems, those are:
 - **Linux** `~/.Eotsd`
 - **Windows** `C:\Users\<username>\AppData\Local\Eotsd`
 
-## 3. Starting the EOTS Daemon
+## 3. Keys Management
+
+Handles the keys for EOTS.
+
+### 3.1. Create EOTS Keys
+
+The binary `eotsd` has the option to add a new key to the keyring for
+later usage with signing EOTS and Schnorr signatures. Keep in mind
+that new keys can be created on demand by the GRPC call from `fpd`.
+But, if you would like to add a new EOTS keys manually, run `eotsd keys add`.
+
+This command has several flag options:
+
+- `--home` specifies the home directory of the `eotsd` in which
+the new key will be stored.
+- `--key-name` mandatory flag and identifies the name of the key to be generated.
+- `--passphrase` specifies the password used to encrypt the key, if such a
+passphrase is required.
+- `--hd-path` the hd derivation path of the private key.
+- `--keyring-backend` specifies the keyring backend, any of `[file, os, kwallet, test, pass, memory]`
+are available, by default `test` is used.
+- `--recover` indicates whether the user wants to provide a seed phrase to recover
+the existing key instead of randomly creating.
+
+```shell
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file
+
+Enter keyring passphrase (attempt 1/3):
+...
+
+2024-04-25T17:11:09.369163Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383"}
+New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
+{
+  "name": "my-key-name",
+  "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",
+  "mnemonic": "bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series"
+}
+```
+
+> Store the mnemonic in a safe place. With the mnemonic only it is possible to
+recover the generated keys by using the `--recover` flag.
+
+### 3.2. Recover Keys
+
+To recover the keys from a mnemonic, run:
+
+```shell
+eotsd keys add --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file --recover
+
+> Enter your mnemonic
+bad mnemonic private tilt wish bulb miss plate achieve manage feel word safe dash vanish little miss hockey connect tail certain spread urban series
+2024-04-25T17:13:29.681324Z     info    successfully created an EOTS key        {"key name": "my-key-name", "pk": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383"}
+New key for the BTC chain is created (mnemonic should be kept in a safe place for recovery):
+{
+  "name": "my-key-name",
+  "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",
+  "mnemonic": "noise measure tuition inform battle swallow slender bundle horn pigeon wage mule average bicycle claim solve home swamp banner idle chapter surround edit gossip"
+}
+```
+
+You will be prompted to provide the mnemonic on key creation.
+
+### 3.3. Sign Schnorr Signatures
+
+You can use your key to create a Schnorr signature over arbitrary data
+through the `eotsd sign-schnorr` command.
+The command takes as an argument the file path, hashes the file content using
+sha256, and signs the hash with the EOTS private key in Schnorr format by the
+given `key-name` or `btc-pk`. If both flags `--key-name` and `--btc-pk` are
+provided, `btc-pk` takes priority.
+
+```shell
+eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name
+{
+  "key_name": "my-key-name",
+  "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",
+  "signed_data_hash_hex": "b123ef5f69545cd07ad505c6d3b4931aa87b6adb361fb492275bb81374d98953",
+  "schnorr_signature_hex": "b91fc06b30b78c0ca66a7e033184d89b61cd6ab572329b20f6052411ab83502effb5c9a1173ed69f20f6502a741eeb5105519bb3f67d37612bc2bcce411f8d72"
+}
+```
+
+### 3.4. Verify Schnorr Signatures
+
+You can verify the Schnorr signature signed in the previous step through
+the `eptsd veify-schnorr-sig` command.
+The command takes as an argument the file path, hashes the file content using
+sha256 to generate the signed data, and verifies the signature from the `--signature`
+flag using the given public key from the `--btc-pk` flag.
+If the signature is valid, you will see `Verification is successful!` in the output.
+Otherwise, an error message will be printed out.
+
+```shell
+eotsd verify-schnorr-sig /path/to/data/file --btc-pk 50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383 \
+--signature b91fc06b30b78c0ca66a7e033184d89b61cd6ab572329b20f6052411ab83502effb5c9a1173ed69f20f6502a741eeb5105519bb3f67d37612bc2bcce411f8d72
+```
+
+## 4. Starting the EOTS Daemon
 
 You can start the EOTS daemon using the following command:
 
