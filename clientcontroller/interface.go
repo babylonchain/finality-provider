@@ -111,7 +111,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 	case EVMConsumerChainName:
 		ccc, err = NewEVMConsumerController(config.EVMConfig, &config.BTCNetParams, logger)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
+			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported consumer chain")
