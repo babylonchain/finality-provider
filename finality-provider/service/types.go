@@ -6,6 +6,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
@@ -31,9 +32,9 @@ type createFinalityProviderRequest struct {
 }
 
 type registerFinalityProviderRequest struct {
-	chainID   string
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
+	consumerID string
+	bbnPubKey  *secp256k1.PubKey
+	btcPubKey  *bbntypes.BIP340PubKey
 	// TODO we should have our own representation of PoP
 	pop             *btcstakingtypes.ProofOfPossession
 	description     *stakingtypes.Description

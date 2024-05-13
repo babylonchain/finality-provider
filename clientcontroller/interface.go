@@ -21,7 +21,7 @@ type ClientController interface {
 	// RegisterFinalityProvider registers a finality provider to the consumer chain
 	// it returns tx hash and error
 	RegisterFinalityProvider(
-		chainID string,
+		consumerID string,
 		chainPk []byte,
 		fpPk *btcec.PublicKey,
 		pop []byte,
