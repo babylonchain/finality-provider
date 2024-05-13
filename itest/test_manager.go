@@ -20,6 +20,7 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
@@ -151,23 +152,23 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance, uint64) {
 	tm := StartManager(t)
 
-	fpInsList := tm.CreateFinalityProviders(t, n)
+	fpInsList, registeredEpoch := tm.CreateFinalityProviders(t, n)
 
 	require.Equal(t, n, len(fpInsList))
 	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
 
 	// todo: gurjot check here
-	return tm, fpInsList
+	return tm, fpInsList, registeredEpoch
 }
 
-func (tm *TestManager) CreateFinalityProviders(t *testing.T, n int) []*service.FinalityProviderInstance {
+func (tm *TestManager) CreateFinalityProviders(t *testing.T, n int) ([]*service.FinalityProviderInstance, uint64) {
 	app := tm.Fpa
 	cfg := app.GetConfig()
 
 	return tm.CreateFinalityProvidersForChain(t, cfg.BabylonConfig.ChainID, n)
 }
 
-func (tm *TestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) []*service.FinalityProviderInstance {
+func (tm *TestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) ([]*service.FinalityProviderInstance, uint64) {
 	app := tm.Fpa
 	cfg := app.GetConfig()
 
@@ -207,7 +208,7 @@ func (tm *TestManager) CreateFinalityProvidersForChain(t *testing.T, chainID str
 	fpInsList := app.ListFinalityProviderInstancesForChain(chainID)
 	require.Equal(t, n, len(fpInsList))
 
-	return fpInsList
+	return fpInsList, registeredEpoch
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
