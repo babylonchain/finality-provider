@@ -156,8 +156,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 
 	require.Equal(t, n, len(fpInsList))
 	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
-
-	// todo: gurjot check here
+	
 	return tm, fpInsList, registeredEpoch
 }
 
