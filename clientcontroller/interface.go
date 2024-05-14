@@ -5,7 +5,6 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -13,8 +12,8 @@ import (
 )
 
 const (
-	babylonConsumerChainName = "babylon"
-	evmConsumerChainName     = "evm"
+	BabylonConsumerChainName = "babylon"
+	EVMConsumerChainName     = "evm"
 )
 
 type ClientController interface {
@@ -44,19 +43,10 @@ type ClientController interface {
 	Close() error
 }
 
-func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
-	var (
-		cc  ClientController
-		err error
-	)
-	switch chainName {
-	case babylonConsumerChainName:
-		cc, err = NewBabylonController(bbnConfig, netParams, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported consumer chain")
+func NewClientController(config *fpcfg.Config, logger *zap.Logger) (ClientController, error) {
+	cc, err := NewBabylonController(config.BabylonConfig, &config.BTCNetParams, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 	}
 
 	return cc, err
@@ -97,16 +87,21 @@ type ConsumerController interface {
 	Close() error
 }
 
-func NewConsumerController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ConsumerController, error) {
+func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerController, error) {
 	var (
 		ccc ConsumerController
 		err error
 	)
-	switch chainName {
-	case babylonConsumerChainName:
-		ccc, err = NewBabylonConsumerController(bbnConfig, netParams, logger)
+	switch config.ChainName {
+	case BabylonConsumerChainName:
+		ccc, err = NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
+		}
+	case EVMConsumerChainName:
+		ccc, err = NewEVMConsumerController(config.EVMConfig, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported consumer chain")
