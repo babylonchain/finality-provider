@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 )
 
@@ -19,23 +18,23 @@ var _ ConsumerController = &EVMConsumerController{}
 type EVMConsumerController struct {
 	evmClient *rpc.Client
 	cfg       *fpcfg.EVMConfig
-	btcParams *chaincfg.Params
 	logger    *zap.Logger
 }
 
 func NewEVMConsumerController(
 	evmCfg *fpcfg.EVMConfig,
-	btcParams *chaincfg.Params,
 	logger *zap.Logger,
 ) (*EVMConsumerController, error) {
+	if err := evmCfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for EVM RPC client: %w", err)
+	}
 	ec, err := rpc.Dial(evmCfg.RPCAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create EVM RPC client: %w", err)
+		return nil, fmt.Errorf("failed to connect to the EVM RPC server %s: %w", evmCfg.RPCAddr, err)
 	}
 	return &EVMConsumerController{
 		ec,
 		evmCfg,
-		btcParams,
 		logger,
 	}, nil
 }

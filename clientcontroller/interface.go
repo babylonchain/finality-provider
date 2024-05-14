@@ -5,7 +5,6 @@ import (
 
 	"cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -44,19 +43,10 @@ type ClientController interface {
 	Close() error
 }
 
-func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
-	var (
-		cc  ClientController
-		err error
-	)
-	switch chainName {
-	case BabylonConsumerChainName:
-		cc, err = NewBabylonController(bbnConfig, netParams, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported consumer chain")
+func NewClientController(config *fpcfg.Config, logger *zap.Logger) (ClientController, error) {
+	cc, err := NewBabylonController(config.BabylonConfig, &config.BTCNetParams, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 	}
 
 	return cc, err
@@ -109,7 +99,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
 	case EVMConsumerChainName:
-		ccc, err = NewEVMConsumerController(config.EVMConfig, &config.BTCNetParams, logger)
+		ccc, err = NewEVMConsumerController(config.EVMConfig, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
