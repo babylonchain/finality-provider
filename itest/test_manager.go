@@ -920,7 +920,12 @@ func (tm *TestManager) FinalizeUntilEpoch(t *testing.T, epoch uint64) {
 			opReturn1.SpvProof,
 			opReturn2.SpvProof,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			if strings.Contains(err.Error(), "Epoch already finalized") {
+				continue
+			}
+			require.NoError(t, err)
+		}
 
 		// wait until this checkpoint is submitted
 		require.Eventually(t, func() bool {
