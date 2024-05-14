@@ -832,3 +832,20 @@ func ParseRespBTCDelToBTCDel(resp *bstypes.BTCDelegationResponse) (btcDel *bstyp
 
 	return btcDel, nil
 }
+
+func (tm *TestManager) InsertWBTCHeaders(t *testing.T, r *rand.Rand) {
+	params, err := tm.BBNClient.QueryStakingParams()
+	require.NoError(t, err)
+	btcTipResp, err := tm.BBNClient.QueryBtcLightClientTip()
+	require.NoError(t, err)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(btcTipResp.HeaderHex)
+	require.NoError(t, err)
+	kHeaders := datagen.NewBTCHeaderChainFromParentInfo(r, &btclctypes.BTCHeaderInfo{
+		Header: &tipHeader,
+		Hash:   tipHeader.Hash(),
+		Height: btcTipResp.Height,
+		Work:   &btcTipResp.Work,
+	}, uint32(params.FinalizationTimeoutBlocks))
+	_, err = tm.BBNClient.InsertBtcBlockHeaders(kHeaders.ChainToBytes())
+	require.NoError(t, err)
+}
