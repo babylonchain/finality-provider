@@ -1,11 +1,15 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 
+	"github.com/babylonchain/finality-provider/metrics"
+
+	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/lightningnetwork/lnd/signal"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -24,17 +28,19 @@ type Server struct {
 	logger *zap.Logger
 
 	rpcServer   *rpcServer
+	db          kvdb.Backend
 	interceptor signal.Interceptor
 
 	quit chan struct{}
 }
 
 // NewEOTSManagerServer creates a new server with the given config.
-func NewEOTSManagerServer(cfg *config.Config, l *zap.Logger, em eotsmanager.EOTSManager, sig signal.Interceptor) *Server {
+func NewEOTSManagerServer(cfg *config.Config, l *zap.Logger, em eotsmanager.EOTSManager, db kvdb.Backend, sig signal.Interceptor) *Server {
 	return &Server{
 		cfg:         cfg,
 		logger:      l,
 		rpcServer:   newRPCServer(em),
+		db:          db,
 		interceptor: sig,
 		quit:        make(chan struct{}, 1),
 	}
@@ -47,8 +53,23 @@ func (s *Server) RunUntilShutdown() error {
 		return nil
 	}
 
+	// Start the metrics server.
+	promAddr, err := s.cfg.Metrics.Address()
+	if err != nil {
+		return fmt.Errorf("failed to get prometheus address: %w", err)
+	}
+	metricsServer := metrics.Start(promAddr, s.logger)
+
 	defer func() {
 		s.logger.Info("Shutdown complete")
+	}()
+
+	defer func() {
+		s.logger.Info("Closing database...")
+		s.db.Close()
+		s.logger.Info("Database closed")
+		metricsServer.Stop(context.Background())
+		s.logger.Info("Metrics server stopped")
 	}()
 
 	listenAddr := s.cfg.RpcListener

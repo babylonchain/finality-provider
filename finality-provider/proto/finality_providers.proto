@@ -16,12 +16,12 @@ service FinalityProviders {
     rpc CreateFinalityProvider (CreateFinalityProviderRequest)
         returns (CreateFinalityProviderResponse);
 
-    // RegisterFinalityProvider sends a transactions to Babylon to register a BTC
+    // RegisterFinalityProvider sends a transactions to the consumer chain to register a BTC
     // finality provider
     rpc RegisterFinalityProvider (RegisterFinalityProviderRequest)
         returns (RegisterFinalityProviderResponse);
 
-    // AddFinalitySignature sends a transactions to Babylon to add a Finality
+    // AddFinalitySignature sends a transactions to the consumer chain to add a Finality
     // signature for a block
     rpc AddFinalitySignature(AddFinalitySignatureRequest)
         returns (AddFinalitySignatureResponse);
@@ -32,6 +32,10 @@ service FinalityProviders {
     // QueryFinalityProviderList queries a list of finality providers
     rpc QueryFinalityProviderList (QueryFinalityProviderListRequest)
         returns (QueryFinalityProviderListResponse);
+
+    // SignMessageFromChainKey signs a message from the chain keyring.
+    rpc SignMessageFromChainKey (SignMessageFromChainKeyRequest)
+        returns (SignMessageFromChainKeyResponse);
 }
 
 message GetInfoRequest {
@@ -71,21 +75,21 @@ message RegisterFinalityProviderRequest {
 }
 
 message RegisterFinalityProviderResponse {
-    // hash of the successful Babylon registration transaction
+    // hash of the successful chain registration transaction
     string tx_hash = 1;
 }
 
 message AddFinalitySignatureRequest {
     // btc_pk is hex string of the BTC secp256k1 public key of the finality provider encoded in BIP-340 spec
     string btc_pk = 1;
-    // height is the height of the Babylon block
+    // height is the height of the chain block
     uint64 height = 2;
-    // app_hash is the AppHash of the Babylon block
+    // app_hash is the AppHash of the chain block
     bytes app_hash = 3;
 }
 
 message AddFinalitySignatureResponse {
-    // hash of the successful Babylon finality signature submission transaction
+    // hash of the successful chain finality signature submission transaction
     string tx_hash = 1;
     // the hex string of the extracted Bitcoin secp256k1 private key
     string extracted_sk_hex = 2;
@@ -111,9 +115,9 @@ message QueryFinalityProviderListResponse {
     // TODO add pagination in case the list gets large
 }
 
-message StoreFinalityProvider {
-    // babylon_pk is the Babylon secp256k1 PK of this finality provider
-    bytes babylon_pk = 1;
+message FinalityProvider {
+    // chain_pk is the chain secp256k1 PK of this finality provider
+    bytes chain_pk = 1;
     // btc_pk is the BTC secp256k1 PK of the finality provider encoded in BIP-340 spec
     bytes btc_pk = 2;
     // description defines the description terms for the finality provider
@@ -123,25 +127,30 @@ message StoreFinalityProvider {
         (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
         (gogoproto.nullable)   = false
     ];
-    // pop is the proof of possession of babylon_pk and btc_pk
+    // pop is the proof of possession of chain_pk and btc_pk
     ProofOfPossession pop = 5;
+    // master_pub_rand is the master public randomness of the finality provider
+    // encoded as a base58 string
+    string master_pub_rand = 6;
+    // registered_epoch is the epoch number when the finality provider is registered on Babylon
+    uint64 registered_epoch = 7;
     // key_name is the identifier of the keyring
-    string key_name = 6;
+    string key_name = 8;
     // chain_id is the identifier of the consumer chain that the finality provider connected to
-    string chain_id = 7;
-    // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 8;
+    string chain_id = 9;
+    // last_voted_height defines the height of the last voted chain block
+    uint64 last_voted_height = 10;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 9;
+    uint64 last_processed_height = 11;
     // status defines the current finality provider status
-    FinalityProviderStatus status = 10;
+    FinalityProviderStatus status = 12;
 }
 
 // FinalityProviderInfo is the basic information of a finality provider mainly for external usage
 message FinalityProviderInfo {
-    // babylon_pk_hex is the hex string of the Babylon secp256k1 PK of this finality provider
-    string babylon_pk_hex = 1;
+    // chain_pk_hex is the hex string of the chain secp256k1 PK of this finality provider
+    string chain_pk_hex = 1;
     // btc_pk_hex is the hex string of the BTC secp256k1 PK of the finality provider encoded in BIP-340 spec
     string btc_pk_hex = 2;
     // description defines the description terms for the finality provider
@@ -151,10 +160,19 @@ message FinalityProviderInfo {
         (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
         (gogoproto.nullable)   = false
     ];
-    // last_voted_height defines the height of the last voted Babylon block
-    uint64 last_voted_height = 5;
+    // registered_epoch is the epoch number when the finality provider is registered on Babylon
+    uint64 registered_epoch = 5;
+    // master_pub_rand is the master public randomness of the finality provider
+    // encoded as a base58 string
+    string master_pub_rand = 6;
+    // last_voted_height defines the height of the last voted chain block
+    uint64 last_voted_height = 7;
     // status defines the current finality provider status
-    string status = 6;
+    string status = 8;
+    // is_running shows whether the finality provider is running within the daemon
+    bool is_running = 9;
+    // pop is the proof of possession of chain_pk and btc_pk
+    ProofOfPossession pop = 10;
 }
 
 // Description defines description fields for a finality provider
@@ -166,13 +184,13 @@ message Description {
     string details = 5;
 }
 
-// ProofOfPossession is the proof of possession that a Babylon secp256k1
+// ProofOfPossession is the proof of possession that a chain secp256k1
 // secret key and a Bitcoin secp256k1 secret key are held by the same
 // person
 message ProofOfPossession {
-    // babylon_sig is the signature generated via sign(sk_babylon, pk_btc)
-    bytes babylon_sig = 1;
-    // btc_sig is the signature generated via sign(sk_btc, babylon_sig)
+    // chain_sig is the signature generated via sign(sk_chain, pk_btc)
+    bytes chain_sig = 1;
+    // btc_sig is the signature generated via sign(sk_btc, chain_sig)
     // the signature follows encoding in BIP-340 spec
     bytes btc_sig = 2;
 }
@@ -185,11 +203,11 @@ message SchnorrRandPair {
 // FinalityProviderStatus is the status of a finality provider
 // a FinalityProvider object has 4 states:
 //  - Created - created and managed by finality provider client, not registered to
-//  babylon yet
-//  - Registered - created and registered to Babylon, but not voting yet (No
+//  the consumer chain yet
+//  - Registered - created and registered to the consumer chain, but not voting yet (No
 //  delegated stake)
-//  - Active - created and registered to Babylon with stake to vote
-//  - Inactive - created and registered to Babylon with no stake to vote.
+//  - Active - created and registered to the consumer chain with stake to vote
+//  - Inactive - created and registered to the consumer chain with no stake to vote.
 //  Finality Provider was already active.
 // Valid State Transactions:
 //  - Created   -> Registered
@@ -202,7 +220,7 @@ enum FinalityProviderStatus {
     // CREATED defines a finality provider that is awaiting registration
     CREATED = 0 [(gogoproto.enumvalue_customname) = "CREATED"];
     // REGISTERED defines a finality provider that has been registered
-    // to Babylon but has no delegated stake
+    // to the consumer chain but has no delegated stake
     REGISTERED = 1 [(gogoproto.enumvalue_customname) = "REGISTERED"];
     // ACTIVE defines a finality provider that is delegated to vote
     ACTIVE = 2 [(gogoproto.enumvalue_customname) = "ACTIVE"];
@@ -210,4 +228,20 @@ enum FinalityProviderStatus {
     INACTIVE = 3 [(gogoproto.enumvalue_customname) = "INACTIVE"];
     // SLASHED defines a finality provider that has been slashed
     SLASHED = 4 [(gogoproto.enumvalue_customname) = "SLASHED"];
+}
+
+message SignMessageFromChainKeyRequest {
+    // msg_to_sign the raw bytes to sign using the private key.
+    bytes msg_to_sign = 1;
+    // key_name is the identifier key in keyring
+    string key_name = 2;
+    // passphrase is used to encrypt the keys
+    string passphrase = 3;
+    // hd_path is the hd path for private key derivation
+    string hd_path = 4;
+}
+
+// SignMessageFromChainKeyResponse contains the signed message from the chain keyring.
+message SignMessageFromChainKeyResponse {
+    bytes signature = 1;
 }

@@ -13,10 +13,6 @@ import (
 
 const TestPubRandNum = 25
 
-func EmptyDescription() []byte {
-	return []byte("empty description")
-}
-
 func ZeroCommissionRate() *sdkmath.LegacyDec {
 	zeroCom := sdkmath.LegacyZeroDec()
 	return &zeroCom

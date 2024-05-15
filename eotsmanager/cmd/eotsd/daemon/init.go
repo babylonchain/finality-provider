@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var initCommand = cli.Command{
+var InitCommand = cli.Command{
 	Name:  "init",
 	Usage: "Initialize the eotsd home directory.",
 	Flags: []cli.Flag{
@@ -57,7 +57,8 @@ func initHome(c *cli.Context) error {
 	}
 
 	defaultConfig := eotscfg.DefaultConfig()
-	fileParser := flags.NewParser(&defaultConfig, flags.Default)
+	defaultConfig.DatabaseConfig.DBPath = dataDir
+	fileParser := flags.NewParser(defaultConfig, flags.Default)
 
 	return flags.NewIniParser(fileParser).WriteFile(eotscfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

@@ -70,22 +70,24 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath string) (*types.ChainKeyInfo, error) {
+func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath, mnemonic string) (*types.ChainKeyInfo, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
 		return nil, err
 	}
 
-	// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
-	entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
-	if err != nil {
-		return nil, err
-	}
+	if len(mnemonic) == 0 {
+		// read entropy seed straight from tmcrypto.Rand and convert to mnemonic
+		entropySeed, err := bip39.NewEntropy(mnemonicEntropySize)
+		if err != nil {
+			return nil, err
+		}
 
-	mnemonic, err := bip39.NewMnemonic(entropySeed)
-	if err != nil {
-		return nil, err
+		mnemonic, err = bip39.NewMnemonic(entropySeed)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// we need to repeat the passphrase to mock the reentry

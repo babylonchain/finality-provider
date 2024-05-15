@@ -1,4 +1,4 @@
-package main
+package daemon
 
 import "github.com/cosmos/cosmos-sdk/crypto/keyring"
 
@@ -12,6 +12,7 @@ const (
 	chainIdFlag        = "chain-id"
 	keyringBackendFlag = "keyring-backend"
 	rpcListenerFlag    = "rpc-listener"
+	recoverFlag        = "recover"
 
 	defaultKeyringBackend = keyring.BackendTest
 	defaultHdPath         = ""

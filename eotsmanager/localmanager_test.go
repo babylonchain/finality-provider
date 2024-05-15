@@ -1,17 +1,20 @@
 package eotsmanager_test
 
 import (
-	"go.uber.org/zap"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/testutil/datagen"
+	bbn "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/finality-provider/eotsmanager"
+	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/eotsmanager/types"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 var (
@@ -27,13 +30,16 @@ func FuzzCreateKey(f *testing.F) {
 
 		fpName := testutil.GenRandomHexStr(r, 4)
 		homeDir := filepath.Join(t.TempDir(), "eots-home")
-		eotsCfg := testutil.GenEOTSConfig(r, t)
+		eotsCfg := eotscfg.DefaultConfigWithHomePath(homeDir)
+		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
+		require.NoError(t, err)
 		defer func() {
+			dbBackend.Close()
 			err := os.RemoveAll(homeDir)
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
+		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg.KeyringBackend, dbBackend, zap.NewNop())
 		require.NoError(t, err)
 
 		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
@@ -52,36 +58,53 @@ func FuzzCreateKey(f *testing.F) {
 	})
 }
 
-func FuzzCreateRandomnessPairList(f *testing.F) {
+func FuzzCreateMasterRandPair(f *testing.F) {
 	testutil.AddRandomSeedsToFuzzer(f, 10)
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
 		fpName := testutil.GenRandomHexStr(r, 4)
 		homeDir := filepath.Join(t.TempDir(), "eots-home")
-		eotsCfg := testutil.GenEOTSConfig(r, t)
+		eotsCfg := eotscfg.DefaultConfigWithHomePath(homeDir)
+		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
 		defer func() {
+			dbBackend.Close()
 			err := os.RemoveAll(homeDir)
 			require.NoError(t, err)
 		}()
-
-		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg, zap.NewNop())
+		require.NoError(t, err)
+		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg.KeyringBackend, dbBackend, zap.NewNop())
 		require.NoError(t, err)
 
 		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
 		require.NoError(t, err)
+		fpBTCPK, err := bbn.NewBIP340PubKey(fpPk)
+		require.NoError(t, err)
 
 		chainID := datagen.GenRandomByteArray(r, 10)
+
+		mprStr, err := lm.CreateMasterRandPair(fpPk, chainID, passphrase)
+		require.NoError(t, err)
+		mpr, err := eots.NewMasterPublicRandFromBase58(mprStr)
+		require.NoError(t, err)
+
 		startHeight := datagen.RandomInt(r, 100)
 		num := r.Intn(10) + 1
-		pubRandList, err := lm.CreateRandomnessPairList(fpPk, chainID, startHeight, uint32(num), passphrase)
-		require.NoError(t, err)
-		require.Len(t, pubRandList, num)
 
 		for i := 0; i < num; i++ {
-			sig, err := lm.SignEOTS(fpPk, chainID, datagen.GenRandomByteArray(r, 32), startHeight+uint64(i), passphrase)
+			height := startHeight + uint64(i)
+			msg := datagen.GenRandomByteArray(r, 32)
+
+			// sign EOTS signature at each height
+			sig, err := lm.SignEOTS(fpPk, chainID, msg, height, passphrase)
 			require.NoError(t, err)
 			require.NotNil(t, sig)
+
+			// verify using the master public randomness and height
+			pr, err := mpr.DerivePubRand(uint32(height))
+			require.NoError(t, err)
+			err = eots.Verify(fpBTCPK.MustToBTCPK(), pr, msg, sig)
+			require.NoError(t, err)
 		}
 	})
 }

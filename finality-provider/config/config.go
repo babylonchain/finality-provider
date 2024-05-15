@@ -1,4 +1,4 @@
-package fpcfg
+package config
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
 
-	"github.com/babylonchain/finality-provider/config"
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/util"
 )
 
@@ -36,7 +36,6 @@ const (
 	defaultMaxSubmissionRetries    = 20
 	defaultBitcoinNetwork          = "signet"
 	defaultDataDirname             = "data"
-	defaultDBPath                  = "bbolt-fpd.db"
 	defaultMaxNumFinalityProviders = 3
 )
 
@@ -49,6 +48,7 @@ var (
 	defaultBTCNetParams       = chaincfg.SigNetParams
 	defaultEOTSManagerAddress = "127.0.0.1:" + strconv.Itoa(eotscfg.DefaultRPCPort)
 	DefaultRpcListener        = "127.0.0.1:" + strconv.Itoa(DefaultRPCPort)
+	DefaultDataDir            = DataDir(DefaultFpdDir)
 )
 
 // Config is the main config for the fpd cli command
@@ -75,23 +75,24 @@ type Config struct {
 
 	PollerConfig *ChainPollerConfig `group:"chainpollerconfig" namespace:"chainpollerconfig"`
 
-	DatabaseConfig *config.DatabaseConfig `group:"databaseconfig" namespace:"databaseconfig"`
+	DatabaseConfig *DBConfig `group:"dbconfig" namespace:"dbconfig"`
 
-	BabylonConfig *config.BBNConfig `group:"babylon" namespace:"babylon"`
+	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
+
+	Metrics *metrics.Config `group:"metrics" namespace:"metrics"`
 }
 
 func DefaultConfigWithHome(homePath string) Config {
-	bbnCfg := config.DefaultBBNConfig()
+	bbnCfg := DefaultBBNConfig()
 	bbnCfg.Key = defaultFinalityProviderKeyName
 	bbnCfg.KeyDirectory = homePath
-	dbCfg := config.DefaultDatabaseConfig()
 	pollerCfg := DefaultChainPollerConfig()
 	cfg := Config{
 		ChainName:                defaultChainName,
 		LogLevel:                 defaultLogLevel,
-		DatabaseConfig:           &dbCfg,
+		DatabaseConfig:           DefaultDBConfigWithHomePath(homePath),
 		BabylonConfig:            &bbnCfg,
 		PollerConfig:             &pollerCfg,
 		NumPubRand:               defaultNumPubRand,
@@ -109,6 +110,7 @@ func DefaultConfigWithHome(homePath string) Config {
 		EOTSManagerAddress:       defaultEOTSManagerAddress,
 		RpcListener:              DefaultRpcListener,
 		MaxNumFinalityProviders:  defaultMaxNumFinalityProviders,
+		Metrics:                  metrics.DefaultFpConfig(),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -136,10 +138,6 @@ func LogFile(homePath string) string {
 
 func DataDir(homePath string) string {
 	return filepath.Join(homePath, defaultDataDirname)
-}
-
-func DBPath(homePath string) string {
-	return filepath.Join(DataDir(homePath), defaultDBPath)
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -203,6 +201,14 @@ func (cfg *Config) Validate() error {
 	_, err := net.ResolveTCPAddr("tcp", cfg.RpcListener)
 	if err != nil {
 		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
+	}
+
+	if cfg.Metrics == nil {
+		return fmt.Errorf("empty metrics config")
+	}
+
+	if err := cfg.Metrics.Validate(); err != nil {
+		return fmt.Errorf("invalid metrics config")
 	}
 
 	// All good, return the sanitized result.

@@ -12,6 +12,7 @@ import (
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/babylonchain/finality-provider/testutil/mocks"
 	"github.com/babylonchain/finality-provider/types"
@@ -45,9 +46,11 @@ func FuzzChainPoller_Start(f *testing.F) {
 			mockClientController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
 		}
 
+		// TODO: use mock metrics
+		m := metrics.NewFpMetrics()
 		pollerCfg := fpcfg.DefaultChainPollerConfig()
 		pollerCfg.PollInterval = 10 * time.Millisecond
-		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController)
+		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController, m)
 		err := poller.Start(startHeight)
 		require.NoError(t, err)
 		defer func() {
@@ -94,9 +97,11 @@ func FuzzChainPoller_SkipHeight(f *testing.F) {
 			mockClientController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
 		}
 
+		// TODO: use mock metrics
+		m := metrics.NewFpMetrics()
 		pollerCfg := fpcfg.DefaultChainPollerConfig()
 		pollerCfg.PollInterval = 1 * time.Second
-		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController)
+		poller := service.NewChainPoller(zap.NewNop(), &pollerCfg, mockClientController, m)
 		// should expect error if the poller is not started
 		err := poller.SkipToHeight(skipHeight)
 		require.Error(t, err)

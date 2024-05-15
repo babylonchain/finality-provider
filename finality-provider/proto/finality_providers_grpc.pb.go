@@ -25,6 +25,7 @@ const (
 	FinalityProviders_AddFinalitySignature_FullMethodName      = "/proto.FinalityProviders/AddFinalitySignature"
 	FinalityProviders_QueryFinalityProvider_FullMethodName     = "/proto.FinalityProviders/QueryFinalityProvider"
 	FinalityProviders_QueryFinalityProviderList_FullMethodName = "/proto.FinalityProviders/QueryFinalityProviderList"
+	FinalityProviders_SignMessageFromChainKey_FullMethodName   = "/proto.FinalityProviders/SignMessageFromChainKey"
 )
 
 // FinalityProvidersClient is the client API for FinalityProviders service.
@@ -35,16 +36,18 @@ type FinalityProvidersClient interface {
 	GetInfo(ctx context.Context, in *GetInfoRequest, opts ...grpc.CallOption) (*GetInfoResponse, error)
 	// CreateFinalityProvider generates and saves a finality provider object
 	CreateFinalityProvider(ctx context.Context, in *CreateFinalityProviderRequest, opts ...grpc.CallOption) (*CreateFinalityProviderResponse, error)
-	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
+	// RegisterFinalityProvider sends a transactions to the consumer chain to register a BTC
 	// finality provider
 	RegisterFinalityProvider(ctx context.Context, in *RegisterFinalityProviderRequest, opts ...grpc.CallOption) (*RegisterFinalityProviderResponse, error)
-	// AddFinalitySignature sends a transactions to Babylon to add a Finality
+	// AddFinalitySignature sends a transactions to the consumer chain to add a Finality
 	// signature for a block
 	AddFinalitySignature(ctx context.Context, in *AddFinalitySignatureRequest, opts ...grpc.CallOption) (*AddFinalitySignatureResponse, error)
 	// QueryFinalityProvider queries the finality provider
 	QueryFinalityProvider(ctx context.Context, in *QueryFinalityProviderRequest, opts ...grpc.CallOption) (*QueryFinalityProviderResponse, error)
 	// QueryFinalityProviderList queries a list of finality providers
 	QueryFinalityProviderList(ctx context.Context, in *QueryFinalityProviderListRequest, opts ...grpc.CallOption) (*QueryFinalityProviderListResponse, error)
+	// SignMessageFromChainKey signs a message from the chain keyring.
+	SignMessageFromChainKey(ctx context.Context, in *SignMessageFromChainKeyRequest, opts ...grpc.CallOption) (*SignMessageFromChainKeyResponse, error)
 }
 
 type finalityProvidersClient struct {
@@ -109,6 +112,15 @@ func (c *finalityProvidersClient) QueryFinalityProviderList(ctx context.Context,
 	return out, nil
 }
 
+func (c *finalityProvidersClient) SignMessageFromChainKey(ctx context.Context, in *SignMessageFromChainKeyRequest, opts ...grpc.CallOption) (*SignMessageFromChainKeyResponse, error) {
+	out := new(SignMessageFromChainKeyResponse)
+	err := c.cc.Invoke(ctx, FinalityProviders_SignMessageFromChainKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FinalityProvidersServer is the server API for FinalityProviders service.
 // All implementations must embed UnimplementedFinalityProvidersServer
 // for forward compatibility
@@ -117,16 +129,18 @@ type FinalityProvidersServer interface {
 	GetInfo(context.Context, *GetInfoRequest) (*GetInfoResponse, error)
 	// CreateFinalityProvider generates and saves a finality provider object
 	CreateFinalityProvider(context.Context, *CreateFinalityProviderRequest) (*CreateFinalityProviderResponse, error)
-	// RegisterFinalityProvider sends a transactions to Babylon to register a BTC
+	// RegisterFinalityProvider sends a transactions to the consumer chain to register a BTC
 	// finality provider
 	RegisterFinalityProvider(context.Context, *RegisterFinalityProviderRequest) (*RegisterFinalityProviderResponse, error)
-	// AddFinalitySignature sends a transactions to Babylon to add a Finality
+	// AddFinalitySignature sends a transactions to the consumer chain to add a Finality
 	// signature for a block
 	AddFinalitySignature(context.Context, *AddFinalitySignatureRequest) (*AddFinalitySignatureResponse, error)
 	// QueryFinalityProvider queries the finality provider
 	QueryFinalityProvider(context.Context, *QueryFinalityProviderRequest) (*QueryFinalityProviderResponse, error)
 	// QueryFinalityProviderList queries a list of finality providers
 	QueryFinalityProviderList(context.Context, *QueryFinalityProviderListRequest) (*QueryFinalityProviderListResponse, error)
+	// SignMessageFromChainKey signs a message from the chain keyring.
+	SignMessageFromChainKey(context.Context, *SignMessageFromChainKeyRequest) (*SignMessageFromChainKeyResponse, error)
 	mustEmbedUnimplementedFinalityProvidersServer()
 }
 
@@ -151,6 +165,9 @@ func (UnimplementedFinalityProvidersServer) QueryFinalityProvider(context.Contex
 }
 func (UnimplementedFinalityProvidersServer) QueryFinalityProviderList(context.Context, *QueryFinalityProviderListRequest) (*QueryFinalityProviderListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryFinalityProviderList not implemented")
+}
+func (UnimplementedFinalityProvidersServer) SignMessageFromChainKey(context.Context, *SignMessageFromChainKeyRequest) (*SignMessageFromChainKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignMessageFromChainKey not implemented")
 }
 func (UnimplementedFinalityProvidersServer) mustEmbedUnimplementedFinalityProvidersServer() {}
 
@@ -273,6 +290,24 @@ func _FinalityProviders_QueryFinalityProviderList_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FinalityProviders_SignMessageFromChainKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignMessageFromChainKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FinalityProvidersServer).SignMessageFromChainKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FinalityProviders_SignMessageFromChainKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FinalityProvidersServer).SignMessageFromChainKey(ctx, req.(*SignMessageFromChainKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FinalityProviders_ServiceDesc is the grpc.ServiceDesc for FinalityProviders service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -303,6 +338,10 @@ var FinalityProviders_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "QueryFinalityProviderList",
 			Handler:    _FinalityProviders_QueryFinalityProviderList_Handler,
+		},
+		{
+			MethodName: "SignMessageFromChainKey",
+			Handler:    _FinalityProviders_SignMessageFromChainKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -59,15 +59,8 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 				return nil, err
 			}
 			if !hasVp {
+				fp.metrics.IncrementFpTotalBlocksWithoutVotingPower(fp.GetBtcPkHex())
 				continue
-			}
-			// check whether the randomness has been committed
-			hasRand, err := fp.hasRandomness(b)
-			if err != nil {
-				return nil, err
-			}
-			if !hasRand {
-				break
 			}
 			// all good, add the block for catching up
 			catchUpBlocks = append(catchUpBlocks, b)
@@ -83,6 +76,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 		if err != nil {
 			return nil, err
 		}
+		fp.metrics.AddToFpTotalVotedBlocks(fp.GetBtcPkHex(), float64(len(catchUpBlocks)))
 
 		responses = append(responses, res)
 

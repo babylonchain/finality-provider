@@ -11,17 +11,17 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
-func (sfp *StoreFinalityProvider) GetBabylonPK() *secp256k1.PubKey {
+func (sfp *FinalityProvider) GetChainPK() *secp256k1.PubKey {
 	return &secp256k1.PubKey{
-		Key: sfp.BabylonPk,
+		Key: sfp.ChainPk,
 	}
 }
 
-func (sfp *StoreFinalityProvider) GetBabylonPkHexString() string {
-	return hex.EncodeToString(sfp.BabylonPk)
+func (sfp *FinalityProvider) GetChainPkHexString() string {
+	return hex.EncodeToString(sfp.ChainPk)
 }
 
-func (sfp *StoreFinalityProvider) MustGetBTCPK() *btcec.PublicKey {
+func (sfp *FinalityProvider) MustGetBTCPK() *btcec.PublicKey {
 	btcPubKey, err := schnorr.ParsePubKey(sfp.BtcPk)
 	if err != nil {
 		panic(fmt.Errorf("failed to parse BTC PK: %w", err))
@@ -29,19 +29,19 @@ func (sfp *StoreFinalityProvider) MustGetBTCPK() *btcec.PublicKey {
 	return btcPubKey
 }
 
-func (sfp *StoreFinalityProvider) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
+func (sfp *FinalityProvider) MustGetBIP340BTCPK() *bbn.BIP340PubKey {
 	btcPK := sfp.MustGetBTCPK()
 	return bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 }
 
-func NewFinalityProviderInfo(sfp *StoreFinalityProvider) (*FinalityProviderInfo, error) {
+func NewFinalityProviderInfo(sfp *FinalityProvider) (*FinalityProviderInfo, error) {
 	var des types.Description
 	if err := des.Unmarshal(sfp.Description); err != nil {
 		return nil, err
 	}
 	return &FinalityProviderInfo{
-		BabylonPkHex: sfp.GetBabylonPkHexString(),
-		BtcPkHex:     sfp.MustGetBIP340BTCPK().MarshalHex(),
+		ChainPkHex: sfp.GetChainPkHexString(),
+		BtcPkHex:   sfp.MustGetBIP340BTCPK().MarshalHex(),
 		Description: &Description{
 			Moniker:         des.Moniker,
 			Identity:        des.Identity,
@@ -49,6 +49,8 @@ func NewFinalityProviderInfo(sfp *StoreFinalityProvider) (*FinalityProviderInfo,
 			SecurityContact: des.SecurityContact,
 			Details:         des.Details,
 		},
+		RegisteredEpoch: sfp.RegisteredEpoch,
+		MasterPubRand:   sfp.MasterPubRand,
 		LastVotedHeight: sfp.LastVotedHeight,
 		Status:          sfp.Status.String(),
 	}, nil

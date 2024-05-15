@@ -9,6 +9,7 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"google.golang.org/grpc"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
@@ -89,12 +90,17 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 		return nil, err
 	}
 
+	var description stakingtypes.Description
+	if err := description.Unmarshal(req.Description); err != nil {
+		return nil, err
+	}
+
 	result, err := r.app.CreateFinalityProvider(
 		req.KeyName,
 		req.ChainId,
 		req.Passphrase,
 		req.HdPath,
-		req.Description,
+		&description,
 		&commissionRate,
 	)
 
@@ -102,12 +108,8 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 		return nil, err
 	}
 
-	fpInfo, err := proto.NewFinalityProviderInfo(result.StoreFp)
-	if err != nil {
-		return nil, err
-	}
 	return &proto.CreateFinalityProviderResponse{
-		FinalityProvider: fpInfo,
+		FinalityProvider: result.FpInfo,
 	}, nil
 
 }
@@ -188,33 +190,33 @@ func (r *rpcServer) QueryFinalityProvider(ctx context.Context, req *proto.QueryF
 	if err != nil {
 		return nil, err
 	}
-	fp, err := r.app.GetFinalityProviderInstance(fpPk)
+	fp, err := r.app.GetFinalityProviderInfo(fpPk)
 	if err != nil {
 		return nil, err
 	}
 
-	fpInfo, err := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
-	if err != nil {
-		return nil, err
-	}
-
-	return &proto.QueryFinalityProviderResponse{FinalityProvider: fpInfo}, nil
+	return &proto.QueryFinalityProviderResponse{FinalityProvider: fp}, nil
 }
 
 // QueryFinalityProviderList queries the information of a list of finality providers
 func (r *rpcServer) QueryFinalityProviderList(ctx context.Context, req *proto.QueryFinalityProviderListRequest) (
 	*proto.QueryFinalityProviderListResponse, error) {
 
-	fps := r.app.ListFinalityProviderInstances()
-
-	fpsInfo := make([]*proto.FinalityProviderInfo, len(fps))
-	for i, fp := range fps {
-		fpInfo, err := proto.NewFinalityProviderInfo(fp.GetStoreFinalityProvider())
-		if err != nil {
-			return nil, err
-		}
-		fpsInfo[i] = fpInfo
+	fps, err := r.app.ListAllFinalityProvidersInfo()
+	if err != nil {
+		return nil, err
 	}
 
-	return &proto.QueryFinalityProviderListResponse{FinalityProviders: fpsInfo}, nil
+	return &proto.QueryFinalityProviderListResponse{FinalityProviders: fps}, nil
+}
+
+// SignMessageFromChainKey signs a message from the chain keyring.
+func (r *rpcServer) SignMessageFromChainKey(ctx context.Context, req *proto.SignMessageFromChainKeyRequest) (
+	*proto.SignMessageFromChainKeyResponse, error) {
+	signature, err := r.app.SignRawMsg(req.KeyName, req.Passphrase, req.HdPath, req.MsgToSign)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.SignMessageFromChainKeyResponse{Signature: signature}, nil
 }
