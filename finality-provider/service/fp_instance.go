@@ -77,14 +77,13 @@ func NewFinalityProviderInstance(
 	}
 
 	registeredEpoch := sfp.RegisteredEpoch
-	fmt.Println("registeredEpoch", registeredEpoch)
-	//lastFinalizedEpoch, err := cc.QueryLastFinalizedEpoch()
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to get the last finalized epoch: %v", err)
-	//}
-	//if lastFinalizedEpoch < registeredEpoch {
-	//	return nil, fmt.Errorf("the registered epoch %d of the finality provider %s is not BTC timestamped yet (last finalized epoch: %d)", registeredEpoch, sfp.KeyName, lastFinalizedEpoch)
-	//}
+	lastFinalizedEpoch, err := cc.QueryLastFinalizedEpoch()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the last finalized epoch: %v", err)
+	}
+	if lastFinalizedEpoch < registeredEpoch {
+		return nil, fmt.Errorf("the registered epoch %d of the finality provider %s is not BTC timestamped yet (last finalized epoch: %d)", registeredEpoch, sfp.KeyName, lastFinalizedEpoch)
+	}
 
 	return &FinalityProviderInstance{
 		btcPk:   bbntypes.NewBIP340PubKeyFromBTCPK(sfp.BtcPk),
