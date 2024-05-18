@@ -60,6 +60,22 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, 
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+	/* TODO: implement
+
+	latest_committed_l2_height = read the last element from the l2Outputs[] array in the L2OutputOracle.sol contract
+
+	if blockHeight > latest_committed_l2_height:
+
+		query the VP from the L1 oracle contract using "latest" as the block tag
+
+	else:
+
+		1. query the L1 event `emit OutputProposed(_outputRoot, nextOutputIndex(), _l2BlockNumber, block.timestamp, block.number);`
+		  to find the first event where the `_l2BlockNumber` >= blockHeight
+		2. get the block.number from the event
+		3. query the VP from the L1 oracle contract using `block.number` as the block tag
+
+	*/
 
 	return 0, nil
 }
