@@ -13,6 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// TODO: rename the file name, class name and etc
+// This is not a simple EVM chain. It's a OP Stack L2 chain, which has many
+// implications. So we should rename to sth like e.g. OPStackL2Consumer
+// This helps distinguish from pure EVM sidechains e.g. Binance Chain
 var _ ConsumerController = &EVMConsumerController{}
 
 type EVMConsumerController struct {
@@ -52,11 +56,6 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, 
 	}
 
 	return &types.TxResponse{TxHash: "", Events: nil}, nil
-}
-
-func (ec *EVMConsumerController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
-
-	return false, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height

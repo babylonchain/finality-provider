@@ -692,7 +692,7 @@ func (fp *FinalityProviderInstance) GetFinalityProviderSlashedWithRetry() (bool,
 	)
 
 	if err := retry.Do(func() error {
-		slashed, err = fp.consumerCon.QueryFinalityProviderSlashed(fp.GetBtcPk())
+		slashed, err = fp.cc.QueryFinalityProviderSlashed(fp.GetBtcPk())
 		if err != nil {
 			return err
 		}

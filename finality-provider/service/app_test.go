@@ -48,11 +48,11 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		// Create mocked babylon client
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
+		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockConsumerController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
 			gomock.Any()).Return(uint64(0), nil).AnyTimes()
-		mockClientController.EXPECT().QueryLastFinalizedEpoch().Return(uint64(0), nil).AnyTimes()
+		mockBabylonController := testutil.PrepareMockedBabylonController(t, uint64(0))
 
 		// Create randomized config
 		fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
@@ -61,7 +61,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		fpCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
 		fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, mockClientController, em, fpdb, logger)
+		app, err := service.NewFinalityProviderApp(&fpCfg, mockBabylonController, mockConsumerController, em, fpdb, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = fpdb.Close()
@@ -98,7 +98,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		require.Equal(t, fpInfo.BtcPkHex, fpListInfo[0].BtcPkHex)
 
 		txHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().
+		mockBabylonController.EXPECT().
 			RegisterFinalityProvider(
 				fp.ChainPk.Key,
 				fp.BtcPk,
