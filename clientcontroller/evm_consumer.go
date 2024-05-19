@@ -120,7 +120,7 @@ func (ec *EVMConsumerController) QueryActivatedHeight() (uint64, error) {
 
 		else:
 
-				return output_event._l2BlockNumber + 1
+				return output_event._l2BlockNumber
 
 	*/
 
