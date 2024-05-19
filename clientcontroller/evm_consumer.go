@@ -105,6 +105,24 @@ func (ec *EVMConsumerController) QueryBlock(height uint64) (*types.BlockInfo, er
 }
 
 func (ec *EVMConsumerController) QueryActivatedHeight() (uint64, error) {
+	/* TODO: implement
+
+		oracle_event = query the event in the L1 oracle contract where the FP's voting power is firstly set
+
+		l1_activated_height = get the L1 block number from the `oracle_event`
+
+	  output_event = query the L1 event `emit OutputProposed(_outputRoot, nextOutputIndex(), _l2BlockNumber, block.timestamp, block.number);`
+				to find the first event where the `block.number` >= l1_activated_height
+
+		if output_event == nil:
+
+				read `nextBlockNumber()` from the L1 L2OutputOracle contract and return the result
+
+		else:
+
+				return output_event._l2BlockNumber + 1
+
+	*/
 
 	return 0, nil
 }
