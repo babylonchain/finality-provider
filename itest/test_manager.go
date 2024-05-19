@@ -369,18 +369,18 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 }
 
 func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
-	blockBeforeStop, err := tm.BBNConsumerClient.QueryBestBlock()
+	blockBeforeStopHeight, err := tm.BBNConsumerClient.QueryLatestBlockHeight()
 	require.NoError(t, err)
 	err = fpIns.Stop()
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
-		headerAfterStop, err := tm.BBNConsumerClient.QueryBestBlock()
+		headerAfterStopHeight, err := tm.BBNConsumerClient.QueryLatestBlockHeight()
 		if err != nil {
 			return false
 		}
 
-		return headerAfterStop.Height >= uint64(n)+blockBeforeStop.Height
+		return headerAfterStopHeight >= uint64(n)+blockBeforeStopHeight
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Log("restarting the finality-provider instance")

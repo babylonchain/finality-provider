@@ -35,10 +35,7 @@ func FuzzChainPoller_Start(f *testing.F) {
 		mockConsumerController := mocks.NewMockConsumerController(ctl)
 		mockConsumerController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
 
-		currentBlockRes := &types.BlockInfo{
-			Height: currentHeight,
-		}
-		mockConsumerController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLatestBlockHeight().Return(currentHeight, nil).AnyTimes()
 
 		for i := startHeight; i <= endHeight; i++ {
 			resBlock := &types.BlockInfo{
@@ -86,11 +83,7 @@ func FuzzChainPoller_SkipHeight(f *testing.F) {
 		mockConsumerController := mocks.NewMockConsumerController(ctl)
 		mockBabylonController.EXPECT().Close().Return(nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
-
-		currentBlockRes := &types.BlockInfo{
-			Height: currentHeight,
-		}
-		mockConsumerController.EXPECT().QueryBestBlock().Return(currentBlockRes, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLatestBlockHeight().Return(currentHeight, nil).AnyTimes()
 
 		for i := startHeight; i <= skipHeight; i++ {
 			resBlock := &types.BlockInfo{

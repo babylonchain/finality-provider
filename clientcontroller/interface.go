@@ -71,8 +71,8 @@ type ConsumerController interface {
 	// QueryBlocks returns a list of blocks from startHeight to endHeight
 	QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error)
 
-	// QueryBestBlock queries the tip block of the consumer chain
-	QueryBestBlock() (*types.BlockInfo, error)
+	// QueryBestBlock queries the tip block height of the consumer chain
+	QueryLatestBlockHeight() (uint64, error)
 
 	// QueryActivatedHeight returns the activated height of the consumer chain
 	// error will be returned if the consumer chain has not been activated

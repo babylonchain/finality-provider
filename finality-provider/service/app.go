@@ -231,7 +231,7 @@ func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, er
 
 // SyncFinalityProviderStatus syncs the status of the finality-providers
 func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
-	latestBlock, err := app.consumerCon.QueryBestBlock()
+	latestBlockHeight, err := app.consumerCon.QueryLatestBlockHeight()
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	}
 
 	for _, fp := range fps {
-		vp, err := app.consumerCon.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
+		vp, err := app.consumerCon.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlockHeight)
 		if err != nil {
 			// if error occured then the finality-provider is not registered in the Babylon chain yet
 			continue
