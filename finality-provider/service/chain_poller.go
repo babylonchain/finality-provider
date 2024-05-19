@@ -152,11 +152,11 @@ func (cp *ChainPoller) latestBlockHeightWithRetry() (uint64, error) {
 
 func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
 	var (
-		block *types.BlockInfo
-		err   error
+		blocks []*types.BlockInfo
+		err    error
 	)
 	if err := retry.Do(func() error {
-		block, err = cp.consumerCon.QueryBlock(height)
+		blocks, err = cp.consumerCon.QueryBlocks(height, height, 1)
 		if err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
 		return nil, err
 	}
 
-	return block, nil
+	return blocks[0], nil
 }
 
 func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {

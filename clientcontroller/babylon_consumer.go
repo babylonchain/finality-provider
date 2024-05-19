@@ -210,17 +210,13 @@ func getContextWithCancel(timeout time.Duration) (context.Context, context.Cance
 	return ctx, cancel
 }
 
-func (bc *BabylonConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+func (bc *BabylonConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
 	res, err := bc.bbnClient.QueryClient.Block(height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
+		return false, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
 	}
 
-	return &types.BlockInfo{
-		Height:    height,
-		Hash:      res.Block.AppHash,
-		Finalized: res.Block.Finalized,
-	}, nil
+	return res.Block.Finalized, nil
 }
 
 func (bc *BabylonConsumerController) QueryActivatedHeight() (uint64, error) {

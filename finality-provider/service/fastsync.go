@@ -50,11 +50,11 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 		catchUpBlocks := make([]*types.BlockInfo, 0, len(blocks))
 		for _, b := range blocks {
 			// check whether the block has been processed before
-			if fp.hasProcessed(b) {
+			if fp.hasProcessed(b.Height) {
 				continue
 			}
 			// check whether the finality provider has voting power
-			hasVp, err := fp.hasVotingPower(b)
+			hasVp, err := fp.hasVotingPower(b.Height)
 			if err != nil {
 				return nil, err
 			}

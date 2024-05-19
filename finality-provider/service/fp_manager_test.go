@@ -56,7 +56,7 @@ func FuzzStatusUpdate(f *testing.F) {
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryLatestBlockHeight().Return(currentHeight, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryBlock(gomock.Any()).Return(currentBlockRes, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryBlocks(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*types.BlockInfo{currentBlockRes}, nil).AnyTimes()
 
 		votingPower := uint64(r.Intn(2))
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), currentHeight).Return(votingPower, nil).AnyTimes()

@@ -27,7 +27,8 @@ func PrepareMockedConsumerController(t *testing.T, r *rand.Rand, startHeight, cu
 			Height: currentHeight,
 			Hash:   GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
+		// mockConsumerController.EXPECT().QueryBlock(i).Return(resBlock, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryBlocks(i, i, 1).Return([]*types.BlockInfo{resBlock}, nil).AnyTimes()
 	}
 
 	mockConsumerController.EXPECT().Close().Return(nil).AnyTimes()

@@ -317,12 +317,12 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
-		b, err := tm.BBNConsumerClient.QueryBlock(height)
+		finalized, err := tm.BBNConsumerClient.QueryIsBlockFinalized(height)
 		if err != nil {
 			t.Logf("failed to query block at height %v: %s", height, err.Error())
 			return false
 		}
-		return b.Finalized
+		return finalized
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
 
