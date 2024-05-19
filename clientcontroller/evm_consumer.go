@@ -62,7 +62,7 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, 
 func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	/* TODO: implement
 
-	latest_committed_l2_height = read the last element from the l2Outputs[] array in the L2OutputOracle.sol contract
+	latest_committed_l2_height = read `latestBlockNumber()` from the L1 L2OutputOracle contract and return the result
 
 	if blockHeight > latest_committed_l2_height:
 
