@@ -30,15 +30,14 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		// mock finalised BTC timestamped
-		mockClientController.EXPECT().QueryLastFinalizedEpoch().Return(randomRegiteredEpoch, nil).AnyTimes()
+		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockBabylonController := testutil.PrepareMockedBabylonController(t, randomRegiteredEpoch)
 
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, mockClientController, randomStartingHeight, randomRegiteredEpoch)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockBabylonController, mockConsumerController, randomStartingHeight, randomRegiteredEpoch)
 		defer cleanUp()
 
 		// mock voting power
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
+		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
 		// submit finality sig
@@ -47,7 +46,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 			Hash:   testutil.GenRandomByteArray(r, 32),
 		}
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().
+		mockConsumerController.EXPECT().
 			SubmitFinalitySig(fpIns.GetBtcPk(), nextBlock.Height, nextBlock.Hash, gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		providerRes, err := fpIns.SubmitFinalitySignature(nextBlock)

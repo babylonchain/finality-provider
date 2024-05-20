@@ -13,6 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// TODO: rename the file name, class name and etc
+// This is not a simple EVM chain. It's a OP Stack L2 chain, which has many
+// implications. So we should rename to sth like e.g. OPStackL2Consumer
+// This helps distinguish from pure EVM sidechains e.g. Binance Chain
 var _ ConsumerController = &EVMConsumerController{}
 
 type EVMConsumerController struct {
@@ -54,13 +58,24 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, 
 	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
-func (ec *EVMConsumerController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
-
-	return false, nil
-}
-
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+	/* TODO: implement
+
+	latest_committed_l2_height = read `latestBlockNumber()` from the L1 L2OutputOracle contract and return the result
+
+	if blockHeight > latest_committed_l2_height:
+
+		query the VP from the L1 oracle contract using "latest" as the block tag
+
+	else:
+
+		1. query the L1 event `emit OutputProposed(_outputRoot, nextOutputIndex(), _l2BlockNumber, block.timestamp, block.number);`
+		  to find the first event where the `_l2BlockNumber` >= blockHeight
+		2. get the block.number from the event
+		3. query the VP from the L1 oracle contract using `block.number` as the block tag
+
+	*/
 
 	return 0, nil
 }
@@ -90,11 +105,32 @@ func (ec *EVMConsumerController) QueryBlock(height uint64) (*types.BlockInfo, er
 }
 
 func (ec *EVMConsumerController) QueryActivatedHeight() (uint64, error) {
+	/* TODO: implement
+
+		oracle_event = query the event in the L1 oracle contract where the FP's voting power is firstly set
+
+		l1_activated_height = get the L1 block number from the `oracle_event`
+
+	  output_event = query the L1 event `emit OutputProposed(_outputRoot, nextOutputIndex(), _l2BlockNumber, block.timestamp, block.number);`
+				to find the first event where the `block.number` >= l1_activated_height
+
+		if output_event == nil:
+
+				read `nextBlockNumber()` from the L1 L2OutputOracle contract and return the result
+
+		else:
+
+				return output_event._l2BlockNumber
+
+	*/
 
 	return 0, nil
 }
 
 func (ec *EVMConsumerController) QueryBestBlock() (*types.BlockInfo, error) {
+	/* TODO: implement
+	get the latest L2 block number from a RPC call
+	*/
 
 	return &types.BlockInfo{
 		Height: uint64(0),
