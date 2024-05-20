@@ -18,7 +18,6 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/metrics"
-	"github.com/babylonchain/finality-provider/types"
 )
 
 const instanceTerminatingMsg = "terminating the finality-provider instance due to critical error"
@@ -134,7 +133,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 	for {
 		select {
 		case <-statusUpdateTicker.C:
-			latestBlock, err := fpm.getLatestBlockWithRetry()
+			latestBlockHeight, err := fpm.getLatestBlockHeightWithRetry()
 			if err != nil {
 				fpm.logger.Debug("failed to get the latest block", zap.Error(err))
 				continue
@@ -142,12 +141,12 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			fpis := fpm.ListFinalityProviderInstances()
 			for _, fpi := range fpis {
 				oldStatus := fpi.GetStatus()
-				power, err := fpi.GetVotingPowerWithRetry(latestBlock.Height)
+				power, err := fpi.GetVotingPowerWithRetry(latestBlockHeight)
 				if err != nil {
 					fpm.logger.Debug(
 						"failed to get the voting power",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
-						zap.Uint64("height", latestBlock.Height),
+						zap.Uint64("height", latestBlockHeight),
 						zap.Error(err),
 					)
 					continue
@@ -407,14 +406,14 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 	return nil
 }
 
-func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo, error) {
+func (fpm *FinalityProviderManager) getLatestBlockHeightWithRetry() (uint64, error) {
 	var (
-		latestBlock *types.BlockInfo
-		err         error
+		latestBlockHeight uint64
+		err               error
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = fpm.consumerCon.QueryBestBlock()
+		latestBlockHeight, err = fpm.consumerCon.QueryLatestBlockHeight()
 		if err != nil {
 			return err
 		}
@@ -427,8 +426,8 @@ func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo,
 			zap.Error(err),
 		)
 	})); err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return latestBlock, nil
+	return latestBlockHeight, nil
 }

@@ -127,15 +127,12 @@ func (ec *EVMConsumerController) QueryActivatedHeight() (uint64, error) {
 	return 0, nil
 }
 
-func (ec *EVMConsumerController) QueryBestBlock() (*types.BlockInfo, error) {
+func (ec *EVMConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	/* TODO: implement
 	get the latest L2 block number from a RPC call
 	*/
 
-	return &types.BlockInfo{
-		Height: uint64(0),
-		Hash:   nil,
-	}, nil
+	return uint64(0), nil
 }
 
 func (ec *EVMConsumerController) Close() error {

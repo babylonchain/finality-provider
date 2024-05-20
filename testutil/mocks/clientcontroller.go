@@ -148,21 +148,6 @@ func (mr *MockConsumerControllerMockRecorder) QueryActivatedHeight() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockConsumerController)(nil).QueryActivatedHeight))
 }
 
-// QueryBestBlock mocks base method.
-func (m *MockConsumerController) QueryBestBlock() (*types.BlockInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryBestBlock")
-	ret0, _ := ret[0].(*types.BlockInfo)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// QueryBestBlock indicates an expected call of QueryBestBlock.
-func (mr *MockConsumerControllerMockRecorder) QueryBestBlock() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBestBlock", reflect.TypeOf((*MockConsumerController)(nil).QueryBestBlock))
-}
-
 // QueryBlock mocks base method.
 func (m *MockConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
@@ -206,6 +191,21 @@ func (m *MockConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.Pu
 func (mr *MockConsumerControllerMockRecorder) QueryFinalityProviderVotingPower(fpPk, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryFinalityProviderVotingPower", reflect.TypeOf((*MockConsumerController)(nil).QueryFinalityProviderVotingPower), fpPk, blockHeight)
+}
+
+// QueryLatestBlockHeight mocks base method.
+func (m *MockConsumerController) QueryLatestBlockHeight() (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryLatestBlockHeight")
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryLatestBlockHeight indicates an expected call of QueryLatestBlockHeight.
+func (mr *MockConsumerControllerMockRecorder) QueryLatestBlockHeight() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestBlockHeight", reflect.TypeOf((*MockConsumerController)(nil).QueryLatestBlockHeight))
 }
 
 // QueryLatestFinalizedBlocks mocks base method.

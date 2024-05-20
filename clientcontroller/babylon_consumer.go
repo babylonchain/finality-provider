@@ -232,14 +232,15 @@ func (bc *BabylonConsumerController) QueryActivatedHeight() (uint64, error) {
 	return res.Height, nil
 }
 
-func (bc *BabylonConsumerController) QueryBestBlock() (*types.BlockInfo, error) {
+func (bc *BabylonConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	blocks, err := bc.queryLatestBlocks(nil, 1, finalitytypes.QueriedBlockStatus_ANY, true)
 	if err != nil || len(blocks) != 1 {
 		// try query comet block if the index block query is not available
-		return bc.queryCometBestBlock()
+		block, err := bc.queryCometBestBlock()
+		return block.Height, err
 	}
 
-	return blocks[0], nil
+	return blocks[0].Height, nil
 }
 
 func (bc *BabylonConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {

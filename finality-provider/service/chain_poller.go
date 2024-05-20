@@ -125,14 +125,14 @@ func (cp *ChainPoller) GetBlockInfoChan() <-chan *types.BlockInfo {
 	return cp.blockInfoChan
 }
 
-func (cp *ChainPoller) latestBlockWithRetry() (*types.BlockInfo, error) {
+func (cp *ChainPoller) latestBlockHeightWithRetry() (uint64, error) {
 	var (
-		latestBlock *types.BlockInfo
-		err         error
+		latestBlockHeight uint64
+		err               error
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = cp.consumerCon.QueryBestBlock()
+		latestBlockHeight, err = cp.consumerCon.QueryLatestBlockHeight()
 		if err != nil {
 			return err
 		}
@@ -145,9 +145,9 @@ func (cp *ChainPoller) latestBlockWithRetry() (*types.BlockInfo, error) {
 			zap.Error(err),
 		)
 	})); err != nil {
-		return nil, err
+		return 0, err
 	}
-	return latestBlock, nil
+	return latestBlockHeight, nil
 }
 
 func (cp *ChainPoller) blockWithRetry(height uint64) (*types.BlockInfo, error) {
@@ -186,13 +186,13 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 
 	var currentBestChainHeight uint64
 	for {
-		lastestBlock, err := cp.latestBlockWithRetry()
+		lastestBlockHeight, err := cp.latestBlockHeightWithRetry()
 		if err != nil {
 			cp.logger.Debug("failed to query babylon for the latest status", zap.Error(err))
 			continue
 		}
 
-		currentBestChainHeight = lastestBlock.Height
+		currentBestChainHeight = lastestBlockHeight
 		break
 	}
 
