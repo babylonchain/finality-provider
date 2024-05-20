@@ -67,6 +67,9 @@ type ConsumerController interface {
 	// QueryLatestFinalizedBlocks returns the latest finalized blocks
 	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
 
+	// QueryBlock queries the block at the given height
+	QueryBlock(height uint64) (*types.BlockInfo, error)
+
 	// QueryIsBlockFinalized queries if the block at the given height is finalized
 	QueryIsBlockFinalized(height uint64) (bool, error)
 

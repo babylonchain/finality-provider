@@ -148,6 +148,21 @@ func (mr *MockConsumerControllerMockRecorder) QueryActivatedHeight() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryActivatedHeight", reflect.TypeOf((*MockConsumerController)(nil).QueryActivatedHeight))
 }
 
+// QueryBlock mocks base method.
+func (m *MockConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryBlock", height)
+	ret0, _ := ret[0].(*types.BlockInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryBlock indicates an expected call of QueryBlock.
+func (mr *MockConsumerControllerMockRecorder) QueryBlock(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlock", reflect.TypeOf((*MockConsumerController)(nil).QueryBlock), height)
+}
+
 // QueryBlocks mocks base method.
 func (m *MockConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
 	m.ctrl.T.Helper()

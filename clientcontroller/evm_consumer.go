@@ -95,6 +95,14 @@ func (ec *EVMConsumerController) queryLatestBlocks(startKey []byte, count uint64
 	return blocks, nil
 }
 
+func (ec *EVMConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+
+	return &types.BlockInfo{
+		Height: height,
+		Hash:   nil,
+	}, nil
+}
+
 func (ec *EVMConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
 	/* TODO: implement
 	1. get the latest finalized block number from `latestBlockNumber()` in the L1 L2OutputOracle contract

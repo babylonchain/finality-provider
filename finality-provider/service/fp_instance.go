@@ -443,7 +443,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 		select {
 		case <-time.After(fp.cfg.SubmissionRetryInterval):
 			// periodically query the index block to be later checked whether it is Finalized
-			finalized, err := fp.checkBlockFinalization(targetBlock.Height)
+			finalized, err := fp.consumerCon.QueryIsBlockFinalized(targetBlock.Height)
 			if err != nil {
 				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}
@@ -463,15 +463,6 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			return nil, nil
 		}
 	}
-}
-
-func (fp *FinalityProviderInstance) checkBlockFinalization(height uint64) (bool, error) {
-	finalized, err := fp.consumerCon.QueryIsBlockFinalized(height)
-	if err != nil {
-		return false, err
-	}
-
-	return finalized, nil
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
