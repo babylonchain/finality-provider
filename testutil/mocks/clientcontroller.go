@@ -193,6 +193,21 @@ func (mr *MockConsumerControllerMockRecorder) QueryFinalityProviderVotingPower(f
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryFinalityProviderVotingPower", reflect.TypeOf((*MockConsumerController)(nil).QueryFinalityProviderVotingPower), fpPk, blockHeight)
 }
 
+// QueryIsBlockFinalized mocks base method.
+func (m *MockConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "QueryIsBlockFinalized", height)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryIsBlockFinalized indicates an expected call of QueryIsBlockFinalized.
+func (mr *MockConsumerControllerMockRecorder) QueryIsBlockFinalized(height interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryIsBlockFinalized", reflect.TypeOf((*MockConsumerController)(nil).QueryIsBlockFinalized), height)
+}
+
 // QueryLatestBlockHeight mocks base method.
 func (m *MockConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	m.ctrl.T.Helper()

@@ -200,11 +200,11 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			)
 
 			// check whether the block has been processed before
-			if fp.hasProcessed(b) {
+			if fp.hasProcessed(b.Height) {
 				continue
 			}
 			// check whether the finality provider has voting power
-			hasVp, err := fp.hasVotingPower(b)
+			hasVp, err := fp.hasVotingPower(b.Height)
 			if err != nil {
 				fp.reportCriticalErr(err)
 				continue
@@ -359,12 +359,12 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 	return fp.FastSync(startHeight, targetBlockHeight)
 }
 
-func (fp *FinalityProviderInstance) hasProcessed(b *types.BlockInfo) bool {
-	if b.Height <= fp.GetLastProcessedHeight() {
+func (fp *FinalityProviderInstance) hasProcessed(blockHeight uint64) bool {
+	if blockHeight <= fp.GetLastProcessedHeight() {
 		fp.logger.Debug(
 			"the block has been processed before, skip processing",
 			zap.String("pk", fp.GetBtcPkHex()),
-			zap.Uint64("block_height", b.Height),
+			zap.Uint64("block_height", blockHeight),
 			zap.Uint64("last_processed_height", fp.GetLastProcessedHeight()),
 		)
 		return true
@@ -374,8 +374,8 @@ func (fp *FinalityProviderInstance) hasProcessed(b *types.BlockInfo) bool {
 }
 
 // hasVotingPower checks whether the finality provider has voting power for the given block
-func (fp *FinalityProviderInstance) hasVotingPower(b *types.BlockInfo) (bool, error) {
-	power, err := fp.GetVotingPowerWithRetry(b.Height)
+func (fp *FinalityProviderInstance) hasVotingPower(blockHeight uint64) (bool, error) {
+	power, err := fp.GetVotingPowerWithRetry(blockHeight)
 	if err != nil {
 		return false, err
 	}
@@ -383,7 +383,7 @@ func (fp *FinalityProviderInstance) hasVotingPower(b *types.BlockInfo) (bool, er
 		fp.logger.Debug(
 			"the finality provider does not have voting power",
 			zap.String("pk", fp.GetBtcPkHex()),
-			zap.Uint64("block_height", b.Height),
+			zap.Uint64("block_height", blockHeight),
 		)
 
 		return false, nil
@@ -443,7 +443,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 		select {
 		case <-time.After(fp.cfg.SubmissionRetryInterval):
 			// periodically query the index block to be later checked whether it is Finalized
-			finalized, err := fp.checkBlockFinalization(targetBlock.Height)
+			finalized, err := fp.consumerCon.QueryIsBlockFinalized(targetBlock.Height)
 			if err != nil {
 				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
 			}
@@ -463,15 +463,6 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			return nil, nil
 		}
 	}
-}
-
-func (fp *FinalityProviderInstance) checkBlockFinalization(height uint64) (bool, error) {
-	b, err := fp.consumerCon.QueryBlock(height)
-	if err != nil {
-		return false, err
-	}
-
-	return b.Finalized, nil
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
