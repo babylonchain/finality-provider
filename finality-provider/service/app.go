@@ -141,6 +141,10 @@ func (app *FinalityProviderApp) ListFinalityProviderInstances() []*FinalityProvi
 	return app.fpManager.ListFinalityProviderInstances()
 }
 
+func (app *FinalityProviderApp) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+	return app.fpManager.ListFinalityProviderInstancesForChain(chainID)
+}
+
 func (app *FinalityProviderApp) ListAllFinalityProvidersInfo() ([]*proto.FinalityProviderInfo, error) {
 	return app.fpManager.AllFinalityProviders()
 }
@@ -181,6 +185,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 	}
 
 	request := &registerFinalityProviderRequest{
+		consumerID:      fp.ChainID,
 		bbnPubKey:       fp.ChainPk,
 		btcPubKey:       bbntypes.NewBIP340PubKeyFromBTCPK(fp.BtcPk),
 		pop:             pop,
@@ -534,7 +539,9 @@ func (app *FinalityProviderApp) registrationLoop() {
 				req.errResponse <- err
 				continue
 			}
+
 			res, registeredEpoch, err := app.cc.RegisterFinalityProvider(
+				req.consumerID,
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,

@@ -32,8 +32,9 @@ type createFinalityProviderRequest struct {
 }
 
 type registerFinalityProviderRequest struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
+	consumerID string
+	bbnPubKey  *secp256k1.PubKey
+	btcPubKey  *bbntypes.BIP340PubKey
 	// TODO we should have our own representation of PoP
 	pop             *btcstakingtypes.ProofOfPossession
 	description     *stakingtypes.Description
@@ -125,7 +126,7 @@ func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
 }
 
 func (fp *FinalityProviderInstance) GetChainID() []byte {
-	return types.MarshalChainID(fp.state.getStoreFinalityProvider().ChainID)
+	return types.MarshalChainID(fp.state.getStoreFinalityProvider().ChainID) //todo gurjot check here
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {
