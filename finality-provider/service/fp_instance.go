@@ -325,7 +325,7 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 	}
 
 	// get the last finalized height
-	lastFinalizedBlock, err := fp.consumerCon.QueryLatestFinalizedBlock()
+	lastFinalizedBlock, err := fp.latestFinalizedBlockWithRetry()
 	if err != nil {
 		return nil, err
 	}

@@ -79,13 +79,13 @@ func TestDoubleSigning(t *testing.T) {
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
+	finalizedBlockHeight := tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 
 	// attack: manually submit a finality vote over a conflicting block
 	// to trigger the extraction of finality-provider's private key
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
-		Height: finalizedBlocks[0].Height,
+		Height: finalizedBlockHeight,
 		Hash:   datagen.GenRandomByteArray(r, 32),
 	}
 	_, extractedKey, err := fpIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
@@ -137,7 +137,7 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	_ = tm.WaitForNActiveDels(t, n)
 
 	// check there's a block finalized
-	_ = tm.WaitForNFinalizedBlocks(t, 1)
+	_ = tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 }
 
 // TestFastSync tests the fast sync process where the finality-provider is terminated and restarted with fast sync
@@ -167,17 +167,16 @@ func TestFastSync(t *testing.T) {
 
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
-	var finalizedBlocks []*types.BlockInfo
-	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, 1)
+	var finalizedHeight uint64
+	finalizedHeight = tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 
-	n := 3
+	var n uint = 3
 	// stop the finality-provider for a few blocks then restart to trigger the fast sync
 	tm.FpConfig.FastSyncGap = uint64(n)
 	tm.StopAndRestartFpAfterNBlocks(t, n, fpIns)
 
 	// check there are n+1 blocks finalized
-	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, n+1)
-	finalizedHeight := finalizedBlocks[0].Height
+	finalizedHeight = tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, n+1)
 	t.Logf("the latest finalized block is at %v", finalizedHeight)
 
 	// check if the fast sync works by checking if the gap is not more than 1
