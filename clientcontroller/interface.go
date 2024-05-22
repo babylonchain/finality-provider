@@ -64,8 +64,8 @@ type ConsumerController interface {
 	// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
 
-	// QueryLatestFinalizedBlocks returns the latest finalized blocks
-	QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error)
+	// QueryLatestFinalizedBlock returns the latest finalized block
+	QueryLatestFinalizedBlock() (*types.BlockInfo, error)
 
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)
