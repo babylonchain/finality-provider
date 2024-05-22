@@ -168,6 +168,9 @@ func (bc *BabylonConsumerController) QueryFinalityProviderVotingPower(fpPk *btce
 
 func (bc *BabylonConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
 	blocks, err := bc.queryLatestBlocks(nil, 1, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+	if blocks == nil {
+		return nil, err
+	}
 	return blocks[0], err
 }
 

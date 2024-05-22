@@ -340,24 +340,22 @@ func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityPr
 	return lastVotedHeight
 }
 
-func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) *types.BlockInfo {
-	var (
-		block *types.BlockInfo
-		err   error
-	)
+func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
+	var blocks []*types.BlockInfo
 	require.Eventually(t, func() bool {
-		block, err = tm.BBNConsumerClient.QueryLatestFinalizedBlock()
+		var block, err = tm.BBNConsumerClient.QueryLatestFinalizedBlock()
 		if err != nil {
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
+		blocks = append(blocks, block)
 		n--
 		return n == 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("the block is finalized at %v", block.Height)
+	t.Logf("the block is finalized at %v", blocks[n-1].Height)
 
-	return block
+	return blocks
 }
 
 func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {

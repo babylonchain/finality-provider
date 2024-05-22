@@ -601,6 +601,7 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 	return initialBlockToGet, nil
 }
 
+// nil will be returned if the finalized block does not exist
 func (fp *FinalityProviderInstance) latestFinalizedBlockWithRetry() (*types.BlockInfo, error) {
 	var response *types.BlockInfo
 	if err := retry.Do(func() error {

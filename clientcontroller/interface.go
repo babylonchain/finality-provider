@@ -65,6 +65,7 @@ type ConsumerController interface {
 	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
 
 	// QueryLatestFinalizedBlock returns the latest finalized block
+	// Note: nil will be returned if the finalized block does not exist
 	QueryLatestFinalizedBlock() (*types.BlockInfo, error)
 
 	// QueryBlock queries the block at the given height
