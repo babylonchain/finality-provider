@@ -351,7 +351,8 @@ func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) *types.Block
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
-		return true
+		n--
+		return n == 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("the block is finalized at %v", block.Height)
