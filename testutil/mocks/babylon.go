@@ -215,26 +215,3 @@ func (mr *MockClientControllerMockRecorder) SubmitFinalitySig(fpPk, blockHeight,
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitFinalitySig", reflect.TypeOf((*MockClientController)(nil).SubmitFinalitySig), fpPk, blockHeight, blockHash, sig)
 }
-
-// MockConsumerController is a mock of ConsumerController interface.
-type MockConsumerController struct {
-	ctrl     *gomock.Controller
-	recorder *MockConsumerControllerMockRecorder
-}
-
-// MockConsumerControllerMockRecorder is the mock recorder for MockConsumerController.
-type MockConsumerControllerMockRecorder struct {
-	mock *MockConsumerController
-}
-
-// NewMockConsumerController creates a new mock instance.
-func NewMockConsumerController(ctrl *gomock.Controller) *MockConsumerController {
-	mock := &MockConsumerController{ctrl: ctrl}
-	mock.recorder = &MockConsumerControllerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockConsumerController) EXPECT() *MockConsumerControllerMockRecorder {
-	return m.recorder
-}
