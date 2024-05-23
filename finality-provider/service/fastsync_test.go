@@ -36,7 +36,7 @@ func FuzzFastSync(f *testing.F) {
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockConsumerController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(finalizedBlock, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
 		mockConsumerController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks, gomock.Any()).

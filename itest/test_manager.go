@@ -409,23 +409,31 @@ func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityPr
 	return lastVotedHeight
 }
 
-func (tm *TestManager) WaitForNFinalizedBlocks(t *testing.T, n int) []*types.BlockInfo {
+func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n uint) uint64 {
 	var (
-		blocks []*types.BlockInfo
-		err    error
+		firstFinalizedBlock *types.BlockInfo
+		err                 error
+		lastFinalizedBlock  *types.BlockInfo
 	)
+
 	require.Eventually(t, func() bool {
-		blocks, err = tm.BBNConsumerClient.QueryLatestFinalizedBlocks(uint64(n))
+		lastFinalizedBlock, err = tm.BBNConsumerClient.QueryLatestFinalizedBlock()
 		if err != nil {
 			t.Logf("failed to get the latest finalized block: %s", err.Error())
 			return false
 		}
-		return len(blocks) == n
+		if lastFinalizedBlock == nil {
+			return false
+		}
+		if firstFinalizedBlock == nil {
+			firstFinalizedBlock = lastFinalizedBlock
+		}
+		return lastFinalizedBlock.Height-firstFinalizedBlock.Height >= uint64(n-1)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("the block is finalized at %v", blocks[0].Height)
+	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
 
-	return blocks
+	return lastFinalizedBlock.Height
 }
 
 func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {
@@ -437,7 +445,7 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
 
-func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n int, fpIns *service.FinalityProviderInstance) {
+func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns *service.FinalityProviderInstance) {
 	blockBeforeStopHeight, err := tm.BBNConsumerClient.QueryLatestBlockHeight()
 	require.NoError(t, err)
 	err = fpIns.Stop()

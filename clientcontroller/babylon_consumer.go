@@ -166,8 +166,12 @@ func (bc *BabylonConsumerController) QueryFinalityProviderVotingPower(fpPk *btce
 	return res.VotingPower, nil
 }
 
-func (bc *BabylonConsumerController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
-	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+func (bc *BabylonConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+	blocks, err := bc.queryLatestBlocks(nil, 1, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+	if blocks == nil {
+		return nil, err
+	}
+	return blocks[0], err
 }
 
 func (bc *BabylonConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {

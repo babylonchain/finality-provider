@@ -80,8 +80,11 @@ func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.Pu
 	return 0, nil
 }
 
-func (ec *EVMConsumerController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
-	return ec.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+func (ec *EVMConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+	return &types.BlockInfo{
+		Height: 0,
+		Hash:   nil,
+	}, nil
 }
 
 func (ec *EVMConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {

@@ -223,19 +223,19 @@ func (mr *MockConsumerControllerMockRecorder) QueryLatestBlockHeight() *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestBlockHeight", reflect.TypeOf((*MockConsumerController)(nil).QueryLatestBlockHeight))
 }
 
-// QueryLatestFinalizedBlocks mocks base method.
-func (m *MockConsumerController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
+// QueryLatestFinalizedBlock mocks base method.
+func (m *MockConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryLatestFinalizedBlocks", count)
-	ret0, _ := ret[0].([]*types.BlockInfo)
+	ret := m.ctrl.Call(m, "QueryLatestFinalizedBlock")
+	ret0, _ := ret[0].(*types.BlockInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryLatestFinalizedBlocks indicates an expected call of QueryLatestFinalizedBlocks.
-func (mr *MockConsumerControllerMockRecorder) QueryLatestFinalizedBlocks(count interface{}) *gomock.Call {
+// QueryLatestFinalizedBlock indicates an expected call of QueryLatestFinalizedBlock.
+func (mr *MockConsumerControllerMockRecorder) QueryLatestFinalizedBlock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlocks", reflect.TypeOf((*MockConsumerController)(nil).QueryLatestFinalizedBlocks), count)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLatestFinalizedBlock", reflect.TypeOf((*MockConsumerController)(nil).QueryLatestFinalizedBlock))
 }
 
 // SubmitBatchFinalitySigs mocks base method.
