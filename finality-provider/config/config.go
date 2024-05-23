@@ -80,6 +80,8 @@ type Config struct {
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
+	EVMConfig *EVMConfig `group:"evm" namespace:"evm"`
+
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 
 	Metrics *metrics.Config `group:"metrics" namespace:"metrics"`
