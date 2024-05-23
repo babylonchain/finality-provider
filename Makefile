@@ -54,6 +54,7 @@ build-docker:
 
 .PHONY: build build-docker
 
+.PHONY: test
 test:
 	go test ./...
 
@@ -75,7 +76,7 @@ proto-gen:
 
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
-	$(MOCKGEN_CMD) -source=clientcontroller/interface.go -package mocks -destination $(MOCKS_DIR)/babylon.go
+	$(MOCKGEN_CMD) -source=clientcontroller/interface.go -package mocks -destination $(MOCKS_DIR)/clientcontroller.go
 
 .PHONY: mock-gen
 

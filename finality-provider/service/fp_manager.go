@@ -18,7 +18,6 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/metrics"
-	"github.com/babylonchain/finality-provider/types"
 )
 
 const instanceTerminatingMsg = "terminating the finality-provider instance due to critical error"
@@ -42,11 +41,12 @@ type FinalityProviderManager struct {
 	fpis map[string]*FinalityProviderInstance
 
 	// needed for initiating finality-provider instances
-	fps    *store.FinalityProviderStore
-	config *fpcfg.Config
-	cc     clientcontroller.ClientController
-	em     eotsmanager.EOTSManager
-	logger *zap.Logger
+	fps         *store.FinalityProviderStore
+	config      *fpcfg.Config
+	cc          clientcontroller.ClientController
+	consumerCon clientcontroller.ConsumerController
+	em          eotsmanager.EOTSManager
+	logger      *zap.Logger
 
 	metrics *metrics.FpMetrics
 
@@ -59,6 +59,7 @@ func NewFinalityProviderManager(
 	fps *store.FinalityProviderStore,
 	config *fpcfg.Config,
 	cc clientcontroller.ClientController,
+	consumerCon clientcontroller.ConsumerController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	logger *zap.Logger,
@@ -70,6 +71,7 @@ func NewFinalityProviderManager(
 		fps:             fps,
 		config:          config,
 		cc:              cc,
+		consumerCon:     consumerCon,
 		em:              em,
 		metrics:         metrics,
 		logger:          logger,
@@ -131,7 +133,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 	for {
 		select {
 		case <-statusUpdateTicker.C:
-			latestBlock, err := fpm.getLatestBlockWithRetry()
+			latestBlockHeight, err := fpm.getLatestBlockHeightWithRetry()
 			if err != nil {
 				fpm.logger.Debug("failed to get the latest block", zap.Error(err))
 				continue
@@ -139,12 +141,12 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			fpis := fpm.ListFinalityProviderInstances()
 			for _, fpi := range fpis {
 				oldStatus := fpi.GetStatus()
-				power, err := fpi.GetVotingPowerWithRetry(latestBlock.Height)
+				power, err := fpi.GetVotingPowerWithRetry(latestBlockHeight)
 				if err != nil {
 					fpm.logger.Debug(
 						"failed to get the voting power",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
-						zap.Uint64("height", latestBlock.Height),
+						zap.Uint64("height", latestBlockHeight),
 						zap.Error(err),
 					)
 					continue
@@ -403,7 +405,7 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 		return fmt.Errorf("finality-provider instance already exists")
 	}
 
-	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
+	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.cc, fpm.consumerCon, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider %s instance: %w", pkHex, err)
 	}
@@ -418,14 +420,14 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 	return nil
 }
 
-func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo, error) {
+func (fpm *FinalityProviderManager) getLatestBlockHeightWithRetry() (uint64, error) {
 	var (
-		latestBlock *types.BlockInfo
-		err         error
+		latestBlockHeight uint64
+		err               error
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = fpm.cc.QueryBestBlock()
+		latestBlockHeight, err = fpm.consumerCon.QueryLatestBlockHeight()
 		if err != nil {
 			return err
 		}
@@ -438,8 +440,8 @@ func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo,
 			zap.Error(err),
 		)
 	})); err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return latestBlock, nil
+	return latestBlockHeight, nil
 }
