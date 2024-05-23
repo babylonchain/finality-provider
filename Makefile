@@ -56,7 +56,6 @@ build-docker:
 
 .PHONY: test
 test:
-	make mock-gen
 	go test ./...
 
 test-e2e:
