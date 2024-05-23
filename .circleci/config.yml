@@ -6,14 +6,13 @@ orbs:
 
 jobs:
   check-mock-gen:
-    docker:
-      - image: circleci/golang:latest
+    machine:
+      image: ubuntu-2204:2024.01.1
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            go mod download
+      - go/install:
+          version: "1.21.4"
+      - go/mod-download
       - run:
           name: Run make mock-gen
           command: |
