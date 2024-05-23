@@ -49,7 +49,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
-		mockConsumerController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
 			gomock.Any()).Return(uint64(0), nil).AnyTimes()
 		mockBabylonController := testutil.PrepareMockedBabylonController(t)

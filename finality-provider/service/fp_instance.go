@@ -361,11 +361,11 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 	}
 
 	// get the last finalized height
-	lastFinalizedBlocks, err := fp.consumerCon.QueryLatestFinalizedBlocks(1)
+	lastFinalizedBlock, err := fp.latestFinalizedBlockWithRetry()
 	if err != nil {
 		return nil, err
 	}
-	if lastFinalizedBlocks == nil {
+	if lastFinalizedBlock == nil {
 		fp.logger.Debug(
 			"no finalized blocks yet, no need to catch up",
 			zap.String("pk", fp.GetBtcPkHex()),
@@ -374,7 +374,7 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 		return nil, nil
 	}
 
-	lastFinalizedHeight := lastFinalizedBlocks[0].Height
+	lastFinalizedHeight := lastFinalizedBlock.Height
 	lastProcessedHeight := fp.GetLastProcessedHeight()
 
 	// get the startHeight from the maximum of the lastVotedHeight and
@@ -856,13 +856,13 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 	//	(2) The finality providers do not submit signatures for any already
 	//	 finalised blocks.
 	initialBlockToGet := fp.GetLastProcessedHeight()
-	latestFinalisedBlock, err := fp.latestFinalizedBlocksWithRetry(1)
+	latestFinalisedBlock, err := fp.latestFinalizedBlockWithRetry()
 	if err != nil {
 		return 0, err
 	}
-	if len(latestFinalisedBlock) != 0 {
-		if latestFinalisedBlock[0].Height > initialBlockToGet {
-			initialBlockToGet = latestFinalisedBlock[0].Height
+	if latestFinalisedBlock != nil {
+		if latestFinalisedBlock.Height > initialBlockToGet {
+			initialBlockToGet = latestFinalisedBlock.Height
 		}
 	}
 
@@ -917,10 +917,11 @@ func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint6
 	return response, nil
 }
 
-func (fp *FinalityProviderInstance) latestFinalizedBlocksWithRetry(count uint64) ([]*types.BlockInfo, error) {
-	var response []*types.BlockInfo
+// nil will be returned if the finalized block does not exist
+func (fp *FinalityProviderInstance) latestFinalizedBlockWithRetry() (*types.BlockInfo, error) {
+	var response *types.BlockInfo
 	if err := retry.Do(func() error {
-		latestFinalisedBlock, err := fp.consumerCon.QueryLatestFinalizedBlocks(count)
+		latestFinalisedBlock, err := fp.consumerCon.QueryLatestFinalizedBlock()
 		if err != nil {
 			return err
 		}
