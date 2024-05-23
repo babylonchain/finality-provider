@@ -65,8 +65,6 @@ type ClientController interface {
 	Close() error
 }
 
-type ConsumerController interface{}
-
 func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams *chaincfg.Params, logger *zap.Logger) (ClientController, error) {
 	var (
 		cc  ClientController
