@@ -12,7 +12,12 @@ jobs:
       - checkout
       - go/install:
           version: "1.21.4"
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
       - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
       - run:
           name: Run make mock-gen
           command: |
