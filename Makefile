@@ -49,11 +49,12 @@ $(BUILDDIR)/:
 	mkdir -p $(BUILDDIR)/
 
 build-docker:
-	$(DOCKER) build --tag babylonchain/finality-provider -f Dockerfile \
+	$(DOCKER) build --secret id=sshKey,src=${BBN_PRIV_DEPLOY_KEY} --tag babylonchain/finality-provider -f Dockerfile \
 		$(shell git rev-parse --show-toplevel)
 
 .PHONY: build build-docker
 
+.PHONY: test
 test:
 	make mock-gen
 	go test ./...

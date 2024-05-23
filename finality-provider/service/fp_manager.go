@@ -295,6 +295,20 @@ func (fpm *FinalityProviderManager) ListFinalityProviderInstances() []*FinalityP
 	return fpisList
 }
 
+func (fpm *FinalityProviderManager) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+	fpm.mu.Lock()
+	defer fpm.mu.Unlock()
+
+	fpisList := make([]*FinalityProviderInstance, 0, len(fpm.fpis))
+	for _, fpi := range fpm.fpis {
+		if string(fpi.GetChainID()) == chainID {
+			fpisList = append(fpisList, fpi)
+		}
+	}
+
+	return fpisList
+}
+
 func (fpm *FinalityProviderManager) AllFinalityProviders() ([]*proto.FinalityProviderInfo, error) {
 	storedFps, err := fpm.fps.GetAllStoredFinalityProviders()
 	if err != nil {

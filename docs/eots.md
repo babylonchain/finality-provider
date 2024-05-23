@@ -131,7 +131,7 @@ given `key-name` or `btc-pk`. If both flags `--key-name` and `--btc-pk` are
 provided, `btc-pk` takes priority.
 
 ```shell
-eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name
+eotsd sign-schnorr /path/to/data/file --home /path/to/eotsd/home/ --key-name my-key-name --keyring-backend file
 {
   "key_name": "my-key-name",
   "pub_key_hex": "50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383",

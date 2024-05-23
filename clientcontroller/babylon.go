@@ -14,6 +14,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -110,6 +111,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sd
 // RegisterFinalityProvider registers a finality provider via a MsgCreateFinalityProvider to Babylon
 // it returns tx hash, registered epoch, and error
 func (bc *BabylonController) RegisterFinalityProvider(
+	chainID string,
 	chainPk []byte,
 	fpPk *btcec.PublicKey,
 	pop []byte,
@@ -135,6 +137,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Commission:    commission,
 		Description:   &sdkDescription,
 		MasterPubRand: masterPubRand,
+		ConsumerId:    chainID,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
@@ -398,4 +401,21 @@ func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctyp
 	}
 
 	return res, nil
+}
+
+// RegisterConsumerChain registers a consumer chain via a MsgRegisterChain to Babylon
+func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (*types.TxResponse, error) {
+	msg := &bsctypes.MsgRegisterConsumer{
+		Signer:              bc.mustGetTxSigner(),
+		ConsumerId:          id,
+		ConsumerName:        name,
+		ConsumerDescription: description,
+	}
+
+	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
