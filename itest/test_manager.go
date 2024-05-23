@@ -359,7 +359,7 @@ func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n
 		if firstFinalizedBlock == nil {
 			firstFinalizedBlock = lastFinalizedBlock
 		}
-		return lastFinalizedBlock.Height-firstFinalizedBlock.Height == uint64(n-1)
+		return lastFinalizedBlock.Height-firstFinalizedBlock.Height >= uint64(n-1)
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
