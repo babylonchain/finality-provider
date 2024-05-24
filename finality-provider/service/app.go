@@ -352,7 +352,7 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	chainSk, err := kr.GetChainPrivKey(req.passPhrase)
 	if err != nil {
 		// the chain key does not exist, should create the chain key first
-		keyInfo, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+		keyInfo, err := kr.CreateChainKey(req.passPhrase, req.hdPath, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create chain key %s: %w", req.keyName, err)
 		}
