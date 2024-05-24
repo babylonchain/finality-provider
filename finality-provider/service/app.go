@@ -468,13 +468,7 @@ func (app *FinalityProviderApp) StoreFinalityProvider(
 		return nil, fmt.Errorf("failed to create proof-of-possession of the finality provider: %w", err)
 	}
 
-	// 4. Create derive master public randomness
-	_, mpr, err := fpkr.GenerateMasterRandPair(fpRecord.PrivKey.Serialize(), types.MarshalChainID(chainID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get master public randomness of the finality provider: %w", err)
-	}
-
-	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), description, commission, mpr.MarshalBase58(), keyName, chainID, pop.BabylonSig, pop.BtcSig); err != nil {
+	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), description, commission, keyName, chainID, pop.BabylonSig, pop.BtcSig); err != nil {
 		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
 	}
 	app.fpManager.metrics.RecordFpStatus(fpPk.MarshalHex(), proto.FinalityProviderStatus_CREATED)
