@@ -677,7 +677,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	}
 
 	// get the message hash for signing
-	schnorrSig, err := fp.signSchnorrSig(startHeight, numPubRand, commitment)
+	schnorrSig, err := fp.signPubRandCommit(startHeight, numPubRand, commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -702,13 +702,13 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
 func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.TxResponse, error) {
-	eotsSig, err := fp.signEotsSig(b)
+	sig, err := fp.signFinalitySig(b)
 	if err != nil {
 		return nil, err
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, sig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -732,7 +732,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 
 	sigs := make([]*btcec.ModNScalar, 0, len(blocks))
 	for _, b := range blocks {
-		eotsSig, err := fp.signEotsSig(b)
+		eotsSig, err := fp.signFinalitySig(b)
 		if err != nil {
 			return nil, err
 		}
@@ -766,7 +766,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 			lastCommittedHeight, b.Height)
 	}
 
-	eotsSig, err := fp.signEotsSig(b)
+	eotsSig, err := fp.signFinalitySig(b)
 	if err != nil {
 		return nil, nil, err
 	}

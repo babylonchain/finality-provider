@@ -30,7 +30,22 @@ func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64) ([]bbn
 	return schnorrPubRandList, nil
 }
 
-func (fp *FinalityProviderInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
+func (fp *FinalityProviderInstance) signPubRandCommit(startHeight uint64, numPubRand uint64, commitment []byte) (*schnorr.Signature, error) {
+	msg := &ftypes.MsgCommitPubRandList{
+		StartHeight: startHeight,
+		NumPubRand:  numPubRand,
+		Commitment:  commitment,
+	}
+	hash, err := msg.HashToSign()
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign the commit public randomness message: %w", err)
+	}
+
+	// sign the message hash using the finality-provider's BTC private key
+	return fp.em.SignSchnorrSig(fp.btcPk.MustMarshal(), hash, fp.passphrase)
+}
+
+func (fp *FinalityProviderInstance) signFinalitySig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
 	// build proper finality signature request
 	msg := &ftypes.MsgAddFinalitySig{
 		FpBtcPk:      fp.btcPk,
@@ -46,20 +61,9 @@ func (fp *FinalityProviderInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.S
 	return bbntypes.NewSchnorrEOTSSigFromModNScalar(sig), nil
 }
 
-func (fp *FinalityProviderInstance) signSchnorrSig(startHeight uint64, numPubRand uint64, commitment []byte) (*schnorr.Signature, error) {
-	msg := &ftypes.MsgCommitPubRandList{
-		StartHeight: startHeight,
-		NumPubRand:  numPubRand,
-		Commitment:  commitment,
-	}
-	hash, err := msg.HashToSign()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign the commit public randomness message: %w", err)
-	}
-
-	// sign the message hash using the finality-provider's BTC private key
-	return fp.em.SignSchnorrSig(fp.btcPk.MustMarshal(), hash, fp.passphrase)
-}
+/*
+	below is only used for testing purposes
+*/
 
 func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
 	record, err := fp.em.KeyRecord(fp.btcPk.MustMarshal(), fp.passphrase)
@@ -70,7 +74,6 @@ func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) 
 	return record.PrivKey, nil
 }
 
-// only used for testing purposes
 func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
 	return fp.getEOTSPrivKey()
 }
