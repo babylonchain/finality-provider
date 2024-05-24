@@ -159,17 +159,3 @@ func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(he
 	fp.metrics.RecordFpLastVotedHeight(fp.GetBtcPkHex(), height)
 	fp.metrics.RecordFpLastProcessedHeight(fp.GetBtcPkHex(), height)
 }
-
-func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
-	record, err := fp.em.KeyRecord(fp.btcPk.MustMarshal(), fp.passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	return record.PrivKey, nil
-}
-
-// only used for testing purposes
-func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
-	return fp.getEOTSPrivKey()
-}

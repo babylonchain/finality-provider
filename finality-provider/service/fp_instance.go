@@ -651,8 +651,8 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	if lastCommittedHeight == uint64(0) {
 		// the finality-provider has never submitted public rand before
 		startHeight = tipBlock.Height + 1
-		// should not use subtraction because they are in the type of uint64
 	} else if lastCommittedHeight < fp.cfg.MinRandHeightGap+tipBlock.Height {
+		// (should not use subtraction because they are in the type of uint64)
 		// we are running out of the randomness
 		startHeight = lastCommittedHeight + 1
 	} else {
@@ -677,18 +677,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	}
 
 	// get the message hash for signing
-	msg := &ftypes.MsgCommitPubRandList{
-		FpBtcPk:     fp.btcPk,
-		StartHeight: startHeight,
-		PubRandList: pubRandList,
-	}
-	hash, err := msg.HashToSign()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign the commit public randomness message: %w", err)
-	}
-
-	// sign the message hash using the finality-provider's BTC private key
-	schnorrSig, err := fp.em.SignSchnorrSig(fp.btcPk.MustMarshal(), hash, fp.passphrase)
+	schnorrSig, err := fp.signSchnorrSig(startHeight, numPubRand, commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -709,26 +698,6 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	fp.metrics.AddToFpTotalCommittedRandomness(fp.GetBtcPkHex(), float64(len(pubRandList)))
 
 	return res, nil
-}
-
-func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64) ([]bbntypes.SchnorrPubRand, error) {
-	pubRandList, err := fp.em.CreateRandomnessPairList(
-		fp.btcPk.MustMarshal(),
-		fp.GetChainID(),
-		startHeight,
-		uint32(fp.cfg.NumPubRand),
-		fp.passphrase,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
-	for _, pr := range pubRandList {
-		schnorrPubRandList = append(schnorrPubRandList, *bbntypes.NewSchnorrPubRandFromFieldVal(pr))
-	}
-
-	return schnorrPubRandList, nil
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
@@ -781,22 +750,6 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	fp.MustUpdateStateAfterFinalitySigSubmission(highBlock.Height)
 
 	return res, nil
-}
-
-func (fp *FinalityProviderInstance) signEotsSig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
-	// build proper finality signature request
-	msg := &ftypes.MsgAddFinalitySig{
-		FpBtcPk:      fp.btcPk,
-		BlockHeight:  b.Height,
-		BlockAppHash: b.Hash,
-	}
-	msgToSign := msg.MsgToSign()
-	sig, err := fp.em.SignEOTS(fp.btcPk.MustMarshal(), fp.GetChainID(), msgToSign, b.Height, fp.passphrase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
-	}
-
-	return bbntypes.NewSchnorrEOTSSigFromModNScalar(sig), nil
 }
 
 // TestSubmitFinalitySignatureAndExtractPrivKey is exposed for presentation/testing purpose to allow manual sending finality signature
