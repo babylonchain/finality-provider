@@ -671,22 +671,24 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	// for safety reason as the same randomness must not be used twice
 	// TODO: should consider an implementation that deterministically create
 	//  randomness without saving it
-	pubRandList, err := fp.createPubRandList(startHeight)
+	pubRandList, err := fp.createPubRandList(startHeight, fp.cfg.NumPubRand)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)
 	}
+	numPubRand := uint64(len(pubRandList))
 
-	// get the message hash for signing
+	// generate commitment and proof for each public randomness
+	commitment, proofList := types.CommitPubRandList(pubRandList)
+
+	// TODO: store them to database
+
+	// sign the commitment
 	schnorrSig, err := fp.signPubRandCommit(startHeight, numPubRand, commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
 
-	pubRandByteList := make([]*btcec.FieldVal, 0, len(pubRandList))
-	for _, r := range pubRandList {
-		pubRandByteList = append(pubRandByteList, r.ToFieldVal())
-	}
-	res, err := fp.cc.CommitPubRandList(fp.GetBtcPk(), startHeight, pubRandByteList, schnorrSig)
+	res, err := fp.cc.CommitPubRandList(fp.GetBtcPk(), startHeight, numPubRand, commitment, schnorrSig)
 	if err != nil {
 		// TODO Add retry. check issue: https://github.com/babylonchain/finality-provider/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
@@ -707,8 +709,17 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 		return nil, err
 	}
 
+	// get public randomness at the height
+	prList, err := fp.createPubRandList(b.Height, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
+	}
+	pubRand := prList[0]
+
+	// TODO: get inclusion proof
+
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, sig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proof, sig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -730,17 +741,24 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 		return nil, fmt.Errorf("should not submit batch finality signature with zero block")
 	}
 
-	sigs := make([]*btcec.ModNScalar, 0, len(blocks))
+	// get public randomness list
+	prList, err := fp.createPubRandList(blocks[0].Height, uint64(len(blocks)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
+	}
+
+	// sign blocks
+	sigList := make([]*btcec.ModNScalar, 0, len(blocks))
 	for _, b := range blocks {
 		eotsSig, err := fp.signFinalitySig(b)
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, eotsSig.ToModNScalar())
+		sigList = append(sigList, eotsSig.ToModNScalar())
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, sigs)
+	res, err := fp.cc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, prList, proofList, sigList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
 	}
@@ -766,13 +784,23 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 			lastCommittedHeight, b.Height)
 	}
 
+	// get public randomness
+	prList, err := fp.createPubRandList(b.Height, 1)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get public randomness list: %v", err)
+	}
+	pubRand := prList[0]
+
+	// TODO: get proof
+
+	// sign block
 	eotsSig, err := fp.signFinalitySig(b)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b.Height, b.Hash, eotsSig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proof, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -831,35 +859,35 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 }
 
 func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
-	pubRandMap, err := fp.lastCommittedPublicRandWithRetry(1)
+	pubRandCommitMap, err := fp.lastCommittedPublicRandWithRetry(1)
 	if err != nil {
 		return 0, err
 	}
 
 	// no committed randomness yet
-	if len(pubRandMap) == 0 {
+	if len(pubRandCommitMap) == 0 {
 		return 0, nil
 	}
 
-	if len(pubRandMap) > 1 {
+	if len(pubRandCommitMap) > 1 {
 		return 0, fmt.Errorf("got more than one last committed public randomness")
 	}
-	heights := make([]uint64, 0, 1)
-	for k := range pubRandMap {
-		heights = append(heights, k)
+	var lastCommittedHeight uint64
+	for startHeight, resp := range pubRandCommitMap {
+		lastCommittedHeight = startHeight + resp.NumPubRand - 1
 	}
 
-	return heights[0], nil
+	return lastCommittedHeight, nil
 }
 
-func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*btcec.FieldVal, error) {
-	var response map[uint64]*btcec.FieldVal
+func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*ftypes.PubRandCommitResponse, error) {
+	var response map[uint64]*ftypes.PubRandCommitResponse
 	if err := retry.Do(func() error {
-		pubRandMap, err := fp.cc.QueryLastCommittedPublicRand(fp.GetBtcPk(), count)
+		resp, err := fp.cc.QueryLastCommittedPublicRand(fp.GetBtcPk(), count)
 		if err != nil {
 			return err
 		}
-		response = pubRandMap
+		response = resp
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		fp.logger.Debug(

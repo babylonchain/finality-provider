@@ -10,21 +10,21 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 )
 
-func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64) ([]bbntypes.SchnorrPubRand, error) {
+func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64, numPubRand uint64) ([]*btcec.FieldVal, error) {
 	pubRandList, err := fp.em.CreateRandomnessPairList(
 		fp.btcPk.MustMarshal(),
 		fp.GetChainID(),
 		startHeight,
-		uint32(fp.cfg.NumPubRand),
+		uint32(numPubRand),
 		fp.passphrase,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
+	schnorrPubRandList := make([]*btcec.FieldVal, 0, len(pubRandList))
 	for _, pr := range pubRandList {
-		schnorrPubRandList = append(schnorrPubRandList, *bbntypes.NewSchnorrPubRandFromFieldVal(pr))
+		schnorrPubRandList = append(schnorrPubRandList, pr)
 	}
 
 	return schnorrPubRandList, nil
