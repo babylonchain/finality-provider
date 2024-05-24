@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -13,7 +14,6 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
@@ -52,6 +52,12 @@ func AddRandomSeedsToFuzzer(f *testing.F, num uint) {
 	}
 }
 
+func GenPublicRand(r *rand.Rand, t *testing.T) *bbn.SchnorrPubRand {
+	_, eotsPR, err := eots.RandGen(r)
+	require.NoError(t, err)
+	return bbn.NewSchnorrPubRandFromFieldVal(eotsPR)
+}
+
 func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *store.StoredFinalityProvider {
 	// generate BTC key pair
 	btcSK, btcPK, err := datagen.GenRandomBTCKeyPair(r)
@@ -68,17 +74,13 @@ func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *store.StoredFinality
 	err = pop.Verify(chainPk, bip340PK, &chaincfg.SimNetParams)
 	require.NoError(t, err)
 
-	_, mpr, err := eots.NewMasterRandPair(r)
-	require.NoError(t, err)
-
 	return &store.StoredFinalityProvider{
-		KeyName:       GenRandomHexStr(r, 4),
-		ChainID:       "chain-test",
-		ChainPk:       &secp256k1.PubKey{Key: chainPk.Bytes()},
-		BtcPk:         bip340PK.MustToBTCPK(),
-		Description:   RandomDescription(r),
-		Commission:    ZeroCommissionRate(),
-		MasterPubRand: mpr.MarshalBase58(),
+		KeyName:     GenRandomHexStr(r, 4),
+		ChainID:     "chain-test",
+		ChainPk:     &secp256k1.PubKey{Key: chainPk.Bytes()},
+		BtcPk:       bip340PK.MustToBTCPK(),
+		Description: RandomDescription(r),
+		Commission:  ZeroCommissionRate(),
 		Pop: &proto.ProofOfPossession{
 			ChainSig: pop.BabylonSig,
 			BtcSig:   pop.BtcSig,

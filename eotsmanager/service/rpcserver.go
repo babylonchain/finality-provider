@@ -52,16 +52,23 @@ func (r *rpcServer) CreateKey(ctx context.Context, req *proto.CreateKeyRequest) 
 	return &proto.CreateKeyResponse{Pk: pk}, nil
 }
 
-// CreateMasterRandPair returns a list of Schnorr randomness pairs
-func (r *rpcServer) CreateMasterRandPair(ctx context.Context, req *proto.CreateMasterRandPairRequest) (*proto.CreateMasterRandPairResponse, error) {
+// CreateRandomnessPairList returns a list of Schnorr randomness pairs
+func (r *rpcServer) CreateRandomnessPairList(ctx context.Context, req *proto.CreateRandomnessPairListRequest) (
+	*proto.CreateRandomnessPairListResponse, error) {
 
-	mpr, err := r.em.CreateMasterRandPair(req.Uid, req.ChainId, req.Passphrase)
+	pubRandList, err := r.em.CreateRandomnessPairList(req.Uid, req.ChainId, req.StartHeight, req.Num, req.Passphrase)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &proto.CreateMasterRandPairResponse{
-		MasterPubRand: mpr,
+	pubRandBytesList := make([][]byte, 0, len(pubRandList))
+	for _, p := range pubRandList {
+		pubRandBytesList = append(pubRandBytesList, p.Bytes()[:])
+	}
+
+	return &proto.CreateRandomnessPairListResponse{
+		PubRandList: pubRandBytesList,
 	}, nil
 }
 

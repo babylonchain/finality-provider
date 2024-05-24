@@ -25,7 +25,6 @@ const (
 	FinalityProviders_AddFinalitySignature_FullMethodName      = "/proto.FinalityProviders/AddFinalitySignature"
 	FinalityProviders_QueryFinalityProvider_FullMethodName     = "/proto.FinalityProviders/QueryFinalityProvider"
 	FinalityProviders_QueryFinalityProviderList_FullMethodName = "/proto.FinalityProviders/QueryFinalityProviderList"
-	FinalityProviders_SignMessageFromChainKey_FullMethodName   = "/proto.FinalityProviders/SignMessageFromChainKey"
 )
 
 // FinalityProvidersClient is the client API for FinalityProviders service.
@@ -106,15 +105,6 @@ func (c *finalityProvidersClient) QueryFinalityProvider(ctx context.Context, in 
 func (c *finalityProvidersClient) QueryFinalityProviderList(ctx context.Context, in *QueryFinalityProviderListRequest, opts ...grpc.CallOption) (*QueryFinalityProviderListResponse, error) {
 	out := new(QueryFinalityProviderListResponse)
 	err := c.cc.Invoke(ctx, FinalityProviders_QueryFinalityProviderList_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *finalityProvidersClient) SignMessageFromChainKey(ctx context.Context, in *SignMessageFromChainKeyRequest, opts ...grpc.CallOption) (*SignMessageFromChainKeyResponse, error) {
-	out := new(SignMessageFromChainKeyResponse)
-	err := c.cc.Invoke(ctx, FinalityProviders_SignMessageFromChainKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}

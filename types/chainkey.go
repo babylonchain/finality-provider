@@ -12,7 +12,3 @@ type ChainKeyInfo struct {
 	PublicKey  *btcec.PublicKey
 	PrivateKey *btcec.PrivateKey
 }
-
-func MarshalChainID(chainID string) []byte {
-	return []byte(chainID)
-}

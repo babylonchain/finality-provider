@@ -129,22 +129,17 @@ message FinalityProvider {
     ];
     // pop is the proof of possession of chain_pk and btc_pk
     ProofOfPossession pop = 5;
-    // master_pub_rand is the master public randomness of the finality provider
-    // encoded as a base58 string
-    string master_pub_rand = 6;
-    // registered_epoch is the epoch number when the finality provider is registered on Babylon
-    uint64 registered_epoch = 7;
     // key_name is the identifier of the keyring
-    string key_name = 8;
+    string key_name = 6;
     // chain_id is the identifier of the consumer chain that the finality provider connected to
-    string chain_id = 9;
+    string chain_id = 7;
     // last_voted_height defines the height of the last voted chain block
-    uint64 last_voted_height = 10;
+    uint64 last_voted_height = 8;
     // last_processed_height defines the height of the last successfully processed block
     // even though the vote is not cast
-    uint64 last_processed_height = 11;
+    uint64 last_processed_height = 9;
     // status defines the current finality provider status
-    FinalityProviderStatus status = 12;
+    FinalityProviderStatus status = 10;
 }
 
 // FinalityProviderInfo is the basic information of a finality provider mainly for external usage
@@ -160,19 +155,12 @@ message FinalityProviderInfo {
         (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
         (gogoproto.nullable)   = false
     ];
-    // registered_epoch is the epoch number when the finality provider is registered on Babylon
-    uint64 registered_epoch = 5;
-    // master_pub_rand is the master public randomness of the finality provider
-    // encoded as a base58 string
-    string master_pub_rand = 6;
     // last_voted_height defines the height of the last voted chain block
-    uint64 last_voted_height = 7;
+    uint64 last_voted_height = 5;
     // status defines the current finality provider status
-    string status = 8;
+    string status = 6;
     // is_running shows whether the finality provider is running within the daemon
-    bool is_running = 9;
-    // pop is the proof of possession of chain_pk and btc_pk
-    ProofOfPossession pop = 10;
+    bool is_running = 7;
 }
 
 // Description defines description fields for a finality provider

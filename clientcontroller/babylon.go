@@ -15,7 +15,6 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -110,46 +109,78 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sd
 }
 
 // RegisterFinalityProvider registers a finality provider via a MsgCreateFinalityProvider to Babylon
-// it returns tx hash, registered epoch, and error
+// it returns tx hash and error
 func (bc *BabylonController) RegisterFinalityProvider(
 	chainPk []byte,
 	fpPk *btcec.PublicKey,
 	pop []byte,
 	commission *math.LegacyDec,
 	description []byte,
-	masterPubRand string,
-) (*types.TxResponse, uint64, error) {
+) (*types.TxResponse, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
-		return nil, 0, fmt.Errorf("invalid proof-of-possession: %w", err)
+		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
 	}
 
 	var sdkDescription sttypes.Description
 	if err := sdkDescription.Unmarshal(description); err != nil {
-		return nil, 0, fmt.Errorf("invalid description: %w", err)
+		return nil, fmt.Errorf("invalid description: %w", err)
 	}
 
 	msg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:        bc.mustGetTxSigner(),
-		BabylonPk:     &secp256k1.PubKey{Key: chainPk},
-		BtcPk:         bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
-		Pop:           &bbnPop,
-		Commission:    commission,
-		Description:   &sdkDescription,
-		MasterPubRand: masterPubRand,
+		Signer:      bc.mustGetTxSigner(),
+		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
+		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
+		Pop:         &bbnPop,
+		Commission:  commission,
+		Description: &sdkDescription,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	registeredEpoch, err := bc.QueryFinalityProviderRegisteredEpoch(fpPk)
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+}
+
+// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
+// it returns tx hash and error
+func (bc *BabylonController) CommitPubRandList(
+	fpPk *btcec.PublicKey,
+	startHeight uint64,
+	pubRandList []*btcec.FieldVal,
+	sig *schnorr.Signature,
+) (*types.TxResponse, error) {
+	schnorrPubRandList := make([]bbntypes.SchnorrPubRand, 0, len(pubRandList))
+	for _, r := range pubRandList {
+		schnorrPubRand := bbntypes.NewSchnorrPubRandFromFieldVal(r)
+		schnorrPubRandList = append(schnorrPubRandList, *schnorrPubRand)
+	}
+
+	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig)
+
+	msg := &finalitytypes.MsgCommitPubRandList{
+		Signer:      bc.mustGetTxSigner(),
+		FpBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
+		StartHeight: startHeight,
+		PubRandList: schnorrPubRandList,
+		Sig:         bip340Sig,
+	}
+
+	unrecoverableErrs := []*sdkErr.Error{
+		finalitytypes.ErrInvalidPubRand,
+		finalitytypes.ErrTooFewPubRand,
+		finalitytypes.ErrNoPubRandYet,
+		btcstakingtypes.ErrFpNotFound,
+	}
+
+	res, err := bc.reliablySendMsg(msg, emptyErrs, unrecoverableErrs)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, registeredEpoch, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
@@ -227,34 +258,41 @@ func (bc *BabylonController) QueryFinalityProviderVotingPower(fpPk *btcec.Public
 		blockHeight,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query the finality provider's voting power at height %d: %w", blockHeight, err)
+		return 0, fmt.Errorf("failed to query BTC delegations: %w", err)
 	}
 
 	return res.VotingPower, nil
-}
-
-// QueryFinalityProviderRegisteredEpoch queries the registered epoch of the finality provider
-func (bc *BabylonController) QueryFinalityProviderRegisteredEpoch(fpPk *btcec.PublicKey) (uint64, error) {
-	res, err := bc.bbnClient.QueryClient.FinalityProvider(
-		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to query finality provider registered epoch: %w", err)
-	}
-
-	return res.FinalityProvider.RegisteredEpoch, nil
 }
 
 func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
 	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
 }
 
-func (bc *BabylonController) QueryLastFinalizedEpoch() (uint64, error) {
-	resp, err := bc.bbnClient.LatestEpochFromStatus(ckpttypes.Finalized)
-	if err != nil {
-		return 0, err
+// QueryLastCommittedPublicRand returns the last committed public randomness
+// TODO update the implementation when rpc-client supports ListPublicRandomness
+func (bc *BabylonController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*btcec.FieldVal, error) {
+	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+
+	pagination := &sdkquery.PageRequest{
+		// NOTE: the count is limited by pagination queries
+		Limit:   count,
+		Reverse: true,
 	}
-	return resp.RawCheckpoint.EpochNum, nil
+
+	res, err := bc.bbnClient.QueryClient.ListPublicRandomness(fpBtcPk.MarshalHex(), pagination)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
+	}
+
+	committedPubRand := make(map[uint64]*btcec.FieldVal, len(res.PubRandMap))
+	for k, v := range res.PubRandMap {
+		if v == nil {
+			return nil, fmt.Errorf("invalid committed public randomness")
+		}
+		committedPubRand[k] = v.ToFieldVal()
+	}
+
+	return committedPubRand, nil
 }
 
 func (bc *BabylonController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
@@ -358,10 +396,6 @@ func (bc *BabylonController) Close() error {
 /*
 	Implementations for e2e tests only
 */
-
-func (bc *BabylonController) GetBBNClient() *bbnclient.Client {
-	return bc.bbnClient
-}
 
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,
@@ -549,18 +583,4 @@ func (bc *BabylonController) SubmitCovenantSigs(
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
-}
-
-func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctypes.BTCSpvProof) (*provider.RelayerTxResponse, error) {
-	msg := &btcctypes.MsgInsertBTCSpvProof{
-		Submitter: submitter,
-		Proofs:    proofs,
-	}
-
-	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
 }

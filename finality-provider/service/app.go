@@ -186,7 +186,6 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 		pop:             pop,
 		description:     fp.Description,
 		commission:      fp.Commission,
-		masterPubRand:   fp.MasterPubRand,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *RegisterFinalityProviderResponse, 1),
 	}
@@ -345,7 +344,54 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 }
 
 func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
-	storedFp, err := app.StoreFinalityProvider(req.keyName, req.passPhrase, req.hdPath, req.chainID, req.description, req.commission)
+	// 1. check if the chain key exists
+	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
+	if err != nil {
+		return nil, err
+	}
+	chainSk, err := kr.GetChainPrivKey(req.passPhrase)
+	if err != nil {
+		// the chain key does not exist, should create the chain key first
+		keyInfo, err := kr.CreateChainKey(req.passPhrase, req.hdPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create chain key %s: %w", req.keyName, err)
+		}
+		chainSk = &secp256k1.PrivKey{Key: keyInfo.PrivateKey.Serialize()}
+	}
+	chainPk := &secp256k1.PubKey{Key: chainSk.PubKey().Bytes()}
+
+	// 2. create EOTS key
+	fpPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
+	if err != nil {
+		return nil, err
+	}
+	fpPk, err := bbntypes.NewBIP340PubKey(fpPkBytes)
+	if err != nil {
+		return nil, err
+	}
+	fpRecord, err := app.eotsManager.KeyRecord(fpPk.MustMarshal(), req.passPhrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get finality-provider record: %w", err)
+	}
+
+	// 3. create proof-of-possession
+	pop, err := kr.CreatePop(fpRecord.PrivKey, req.passPhrase)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create proof-of-possession of the finality-provider: %w", err)
+	}
+
+	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
+		return nil, fmt.Errorf("failed to save finality-provider: %w", err)
+	}
+	app.fpManager.metrics.RecordFpStatus(fpPk.MarshalHex(), proto.FinalityProviderStatus_CREATED)
+
+	app.logger.Info("successfully created a finality-provider",
+		zap.String("btc_pk", fpPk.MarshalHex()),
+		zap.String("chain_pk", chainPk.String()),
+		zap.String("key_name", req.keyName),
+	)
+
+	storedFp, err := app.fps.GetFinalityProvider(fpPk.MustToBTCPK())
 	if err != nil {
 		return nil, err
 	}
@@ -483,17 +529,10 @@ func (app *FinalityProviderApp) eventLoop() {
 			req.successResponse <- &createFinalityProviderResponse{FpInfo: res.FpInfo}
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
-			btcPK := ev.btcPubKey.MustToBTCPK()
-			// set the finality provider's registered epoch
-			if err := app.fps.SetFpRegisteredEpoch(btcPK, ev.registeredEpoch); err != nil {
-				app.logger.Fatal("failed to set the finality provider's registered epoch",
-					zap.String("pk", ev.btcPubKey.MarshalHex()),
-					zap.Error(err),
-				)
-			}
 			// change the status of the finality-provider to registered
-			if err := app.fps.SetFpStatus(btcPK, proto.FinalityProviderStatus_REGISTERED); err != nil {
-				app.logger.Fatal("failed to set the finalityprovider's status to REGISTERED",
+			err := app.fps.SetFpStatus(ev.btcPubKey.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
+			if err != nil {
+				app.logger.Fatal("failed to set finality-provider status to REGISTERED",
 					zap.String("pk", ev.btcPubKey.MarshalHex()),
 					zap.Error(err),
 				)
@@ -502,10 +541,9 @@ func (app *FinalityProviderApp) eventLoop() {
 
 			// return to the caller
 			ev.successResponse <- &RegisterFinalityProviderResponse{
-				bbnPubKey:       ev.bbnPubKey,
-				btcPubKey:       ev.btcPubKey,
-				TxHash:          ev.txHash,
-				RegisteredEpoch: ev.registeredEpoch,
+				bbnPubKey: ev.bbnPubKey,
+				btcPubKey: ev.btcPubKey,
+				TxHash:    ev.txHash,
 			}
 
 		case <-app.quit:
@@ -534,13 +572,12 @@ func (app *FinalityProviderApp) registrationLoop() {
 				req.errResponse <- err
 				continue
 			}
-			res, registeredEpoch, err := app.cc.RegisterFinalityProvider(
+			res, err := app.cc.RegisterFinalityProvider(
 				req.bbnPubKey.Key,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
 				req.commission,
 				desBytes,
-				req.masterPubRand,
 			)
 
 			if err != nil {
@@ -561,10 +598,9 @@ func (app *FinalityProviderApp) registrationLoop() {
 			)
 
 			app.finalityProviderRegisteredEventChan <- &finalityProviderRegisteredEvent{
-				btcPubKey:       req.btcPubKey,
-				bbnPubKey:       req.bbnPubKey,
-				txHash:          res.TxHash,
-				registeredEpoch: registeredEpoch,
+				btcPubKey: req.btcPubKey,
+				bbnPubKey: req.bbnPubKey,
+				txHash:    res.TxHash,
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,
