@@ -22,12 +22,7 @@ func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64, numPub
 		return nil, err
 	}
 
-	schnorrPubRandList := make([]*btcec.FieldVal, 0, len(pubRandList))
-	for _, pr := range pubRandList {
-		schnorrPubRandList = append(schnorrPubRandList, pr)
-	}
-
-	return schnorrPubRandList, nil
+	return pubRandList, nil
 }
 
 func (fp *FinalityProviderInstance) signPubRandCommit(startHeight uint64, numPubRand uint64, commitment []byte) (*schnorr.Signature, error) {
