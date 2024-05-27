@@ -4,7 +4,8 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/babylonchain/babylon/testutil/datagen"
+	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -29,13 +30,22 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 
+		// commit pub rand
+		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).Times(1)
+		mockClientController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+		_, err := fpIns.CommitPubRand(randomStartingHeight)
+		require.NoError(t, err)
+
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
 		lastCommittedHeight := randomStartingHeight + testutil.TestPubRandNum
-		lastCommittedPubRandMap := make(map[uint64]*btcec.FieldVal)
-		lastCommittedPubRandMap[lastCommittedHeight] = testutil.GenPublicRand(r, t).ToFieldVal()
+		lastCommittedPubRandMap := make(map[uint64]*ftypes.PubRandCommitResponse)
+		lastCommittedPubRandMap[lastCommittedHeight] = &ftypes.PubRandCommitResponse{
+			NumPubRand: 1000,
+			Commitment: datagen.GenRandomByteArray(r, 32),
+		}
 		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
@@ -55,7 +65,7 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 	})
 }
 
-// FuzzFastSync_SufficientRandomness tests a case where we have insufficient
+// FuzzFastSync_NoRandomness tests a case where we have insufficient
 // randomness but with voting power when the finality provider enters fast-sync
 // it is expected that the finality provider could catch up to the last
 // committed height
@@ -64,7 +74,7 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		randomStartingHeight := uint64(r.Int63n(100) + 1)
+		randomStartingHeight := uint64(r.Int63n(100) + 100)
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
 		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
@@ -72,12 +82,21 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 
+		// commit pub rand
+		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).Times(1)
+		mockClientController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+		_, err := fpIns.CommitPubRand(randomStartingHeight)
+		require.NoError(t, err)
+
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
-		// the last committed height is set in [finalizedHeight+1, currentHeight]
-		lastCommittedHeight := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
-		lastCommittedPubRandMap := make(map[uint64]*btcec.FieldVal)
-		lastCommittedPubRandMap[lastCommittedHeight] = testutil.GenPublicRand(r, t).ToFieldVal()
+		// the last height with pub rand is a random value inside [finalizedHeight+1, currentHeight]
+		lastHeightWithPubRand := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
+		lastCommittedPubRandMap := make(map[uint64]*ftypes.PubRandCommitResponse)
+		lastCommittedPubRandMap[lastHeightWithPubRand-10] = &ftypes.PubRandCommitResponse{
+			NumPubRand: 10 + 1,
+			Commitment: datagen.GenRandomByteArray(r, 32),
+		}
 		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
@@ -86,13 +105,13 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		mockClientController.EXPECT().QueryLatestFinalizedBlocks(uint64(1)).Return([]*types.BlockInfo{finalizedBlock}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockClientController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks[:lastCommittedHeight-finalizedHeight], gomock.Any(), gomock.Any(), gomock.Any()).
+		mockClientController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks[:lastHeightWithPubRand-finalizedHeight], gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.Equal(t, expectedTxHash, result.Responses[0].TxHash)
-		require.Equal(t, lastCommittedHeight, fpIns.GetLastVotedHeight())
-		require.Equal(t, lastCommittedHeight, fpIns.GetLastProcessedHeight())
+		require.Equal(t, lastHeightWithPubRand, fpIns.GetLastVotedHeight())
+		require.Equal(t, lastHeightWithPubRand, fpIns.GetLastProcessedHeight())
 	})
 }

@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"github.com/babylonchain/babylon/testutil/datagen"
+	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
@@ -41,7 +42,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 			CommitPubRandList(fpIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
-		res, err := fpIns.CommitPubRand(startingBlock)
+		res, err := fpIns.CommitPubRand(startingBlock.Height)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
 	})
@@ -60,12 +61,21 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockClientController, randomStartingHeight)
 		defer cleanUp()
 
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		// commit pub rand
+		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).Times(1)
+		mockClientController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+		_, err := fpIns.CommitPubRand(startingBlock.Height)
+		require.NoError(t, err)
+
+		// mock committed pub rand
 		lastCommittedHeight := randomStartingHeight + 25
-		lastCommittedPubRandMap := make(map[uint64]*btcec.FieldVal)
-		lastCommittedPubRandMap[lastCommittedHeight] = testutil.GenPublicRand(r, t).ToFieldVal()
+		lastCommittedPubRandMap := make(map[uint64]*ftypes.PubRandCommitResponse)
+		lastCommittedPubRandMap[lastCommittedHeight] = &ftypes.PubRandCommitResponse{
+			NumPubRand: 1000,
+			Commitment: datagen.GenRandomByteArray(r, 32),
+		}
 		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		// mock voting power and commit pub rand
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
 
@@ -76,7 +86,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		}
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			SubmitFinalitySig(fpIns.GetBtcPk(), nextBlock.Height, gomock.Any(), gomock.Any(), gomock.Any()).
+			SubmitFinalitySig(fpIns.GetBtcPk(), nextBlock, gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		providerRes, err := fpIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)

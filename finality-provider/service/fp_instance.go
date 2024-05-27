@@ -592,7 +592,7 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
 	for {
 		// error will be returned if max retries have been reached
-		res, err := fp.CommitPubRand(targetBlock)
+		res, err := fp.CommitPubRand(targetBlock.Height)
 		if err != nil {
 			if clientcontroller.IsUnrecoverable(err) {
 				return nil, err
@@ -641,7 +641,7 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 // CommitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed finality providers,
 // and save the randomness pair to DB
-func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxResponse, error) {
 	lastCommittedHeight, err := fp.GetLastCommittedHeight()
 	if err != nil {
 		return nil, err
@@ -650,8 +650,8 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	var startHeight uint64
 	if lastCommittedHeight == uint64(0) {
 		// the finality-provider has never submitted public rand before
-		startHeight = tipBlock.Height + 1
-	} else if lastCommittedHeight < fp.cfg.MinRandHeightGap+tipBlock.Height {
+		startHeight = tipHeight + 1
+	} else if lastCommittedHeight < fp.cfg.MinRandHeightGap+tipHeight {
 		// (should not use subtraction because they are in the type of uint64)
 		// we are running out of the randomness
 		startHeight = lastCommittedHeight + 1
@@ -659,7 +659,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 		fp.logger.Debug(
 			"the finality-provider has sufficient public randomness, skip committing more",
 			zap.String("pk", fp.GetBtcPkHex()),
-			zap.Uint64("block_height", tipBlock.Height),
+			zap.Uint64("block_height", tipHeight),
 			zap.Uint64("last_committed_height", lastCommittedHeight),
 		)
 		return nil, nil
