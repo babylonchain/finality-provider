@@ -30,8 +30,9 @@ type FinalityProviderInstance struct {
 	chainPk *secp256k1.PubKey
 	btcPk   *bbntypes.BIP340PubKey
 
-	state *fpState
-	cfg   *fpcfg.Config
+	fpState      *fpState
+	pubRandState *pubRandState
+	cfg          *fpcfg.Config
 
 	logger  *zap.Logger
 	em      eotsmanager.EOTSManager
@@ -59,6 +60,7 @@ func NewFinalityProviderInstance(
 	fpPk *bbntypes.BIP340PubKey,
 	cfg *fpcfg.Config,
 	s *store.FinalityProviderStore,
+	prStore *store.PubRandProofStore,
 	cc clientcontroller.ClientController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
@@ -77,12 +79,10 @@ func NewFinalityProviderInstance(
 	}
 
 	return &FinalityProviderInstance{
-		btcPk:   bbntypes.NewBIP340PubKeyFromBTCPK(sfp.BtcPk),
-		chainPk: sfp.ChainPk,
-		state: &fpState{
-			fp: sfp,
-			s:  s,
-		},
+		btcPk:           bbntypes.NewBIP340PubKeyFromBTCPK(sfp.BtcPk),
+		chainPk:         sfp.ChainPk,
+		fpState:         NewFpState(sfp, s),
+		pubRandState:    NewPubRandState(prStore),
 		cfg:             cfg,
 		logger:          logger,
 		isStarted:       atomic.NewBool(false),
@@ -680,7 +680,10 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipBlock *types.BlockInfo) (*t
 	// generate commitment and proof for each public randomness
 	commitment, proofList := types.CommitPubRandList(pubRandList)
 
-	// TODO: store them to database
+	// store them to database
+	if err := fp.pubRandState.AddPubRandProofList(pubRandList, proofList); err != nil {
+		return nil, fmt.Errorf("failed to save public randomness to DB: %w", err)
+	}
 
 	// sign the commitment
 	schnorrSig, err := fp.signPubRandCommit(startHeight, numPubRand, commitment)
@@ -716,10 +719,14 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 	}
 	pubRand := prList[0]
 
-	// TODO: get inclusion proof
+	// get inclusion proof
+	proofBytes, err := fp.pubRandState.GetPubRandProof(pubRand)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inclusion proof of public randomness: %v", err)
+	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proof, sig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proofBytes, sig.ToModNScalar())
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -746,6 +753,11 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
+	// get proof list
+	proofBytesList, err := fp.pubRandState.GetPubRandProofList(prList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public randomness inclusion proof list: %v", err)
+	}
 
 	// sign blocks
 	sigList := make([]*btcec.ModNScalar, 0, len(blocks))
@@ -758,7 +770,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, prList, proofList, sigList)
+	res, err := fp.cc.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, prList, proofBytesList, sigList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
 	}
@@ -791,7 +803,11 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 	pubRand := prList[0]
 
-	// TODO: get proof
+	// get proof
+	proofBytes, err := fp.pubRandState.GetPubRandProof(pubRand)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get public randomness inclusion proof: %v", err)
+	}
 
 	// sign block
 	eotsSig, err := fp.signFinalitySig(b)
@@ -800,7 +816,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proof, eotsSig.ToModNScalar())
+	res, err := fp.cc.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proofBytes, eotsSig.ToModNScalar())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}

@@ -61,7 +61,7 @@ func FuzzStatusUpdate(f *testing.F) {
 
 		votingPower := uint64(r.Intn(2))
 		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), currentHeight).Return(votingPower, nil).AnyTimes()
-		mockClientController.EXPECT().SubmitFinalitySig(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.TxResponse{TxHash: ""}, nil).AnyTimes()
+		mockClientController.EXPECT().SubmitFinalitySig(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.TxResponse{TxHash: ""}, nil).AnyTimes()
 		var slashedHeight uint64
 		if votingPower == 0 {
 			mockClientController.EXPECT().QueryFinalityProviderSlashed(gomock.Any()).Return(true, nil).AnyTimes()
@@ -117,13 +117,15 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	err = util.MakeDirectory(fpcfg.DataDir(fpHomeDir))
 	require.NoError(t, err)
-	fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
+	db, err := fpCfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	fpStore, err := fpstore.NewFinalityProviderStore(fpdb)
+	fpStore, err := fpstore.NewFinalityProviderStore(db)
+	require.NoError(t, err)
+	pubRandStore, err := fpstore.NewPubRandProofStore(db)
 	require.NoError(t, err)
 
 	metricsCollectors := metrics.NewFpMetrics()
-	vm, err := service.NewFinalityProviderManager(fpStore, &fpCfg, cc, em, metricsCollectors, logger)
+	vm, err := service.NewFinalityProviderManager(fpStore, pubRandStore, &fpCfg, cc, em, metricsCollectors, logger)
 	require.NoError(t, err)
 
 	// create registered finality-provider
@@ -162,7 +164,7 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 		require.NoError(t, err)
 		err = eotsdb.Close()
 		require.NoError(t, err)
-		err = fpdb.Close()
+		err = db.Close()
 		require.NoError(t, err)
 		err = os.RemoveAll(eotsHomeDir)
 		require.NoError(t, err)

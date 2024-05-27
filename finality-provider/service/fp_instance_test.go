@@ -38,7 +38,7 @@ func FuzzCommitPubRandList(f *testing.F) {
 
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			CommitPubRandList(fpIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any()).
+			CommitPubRandList(fpIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
 		res, err := fpIns.CommitPubRand(startingBlock)
@@ -76,7 +76,7 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		}
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().
-			SubmitFinalitySig(fpIns.GetBtcPk(), nextBlock.Height, nextBlock.Hash, gomock.Any()).
+			SubmitFinalitySig(fpIns.GetBtcPk(), nextBlock.Height, gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		providerRes, err := fpIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
@@ -104,9 +104,9 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 	fpCfg.NumPubRand = testutil.TestPubRandNum
 	fpCfg.PollerConfig.AutoChainScanningMode = false
 	fpCfg.PollerConfig.StaticChainScanningStartHeight = startingHeight
-	fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
+	db, err := fpCfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	app, err := service.NewFinalityProviderApp(&fpCfg, cc, em, fpdb, logger)
+	app, err := service.NewFinalityProviderApp(&fpCfg, cc, em, db, logger)
 	require.NoError(t, err)
 	err = app.Start()
 	require.NoError(t, err)
@@ -115,11 +115,13 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 
 	// create registered finality-provider
 	fp := testutil.GenStoredFinalityProvider(r, t, app, passphrase, hdPath)
-	err = app.GetFinalityProviderStore().SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
+	pubRandProofStore := app.GetPubRandProofStore()
+	fpStore := app.GetFinalityProviderStore()
+	err = fpStore.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_REGISTERED)
 	require.NoError(t, err)
 	// TODO: use mock metrics
 	m := metrics.NewFpMetrics()
-	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, app.GetFinalityProviderStore(), cc, em, m, passphrase, make(chan *service.CriticalError), logger)
+	fpIns, err := service.NewFinalityProviderInstance(fp.GetBIP340BTCPK(), &fpCfg, fpStore, pubRandProofStore, cc, em, m, passphrase, make(chan *service.CriticalError), logger)
 	require.NoError(t, err)
 
 	cleanUp := func() {
@@ -127,7 +129,7 @@ func startFinalityProviderAppWithRegisteredFp(t *testing.T, r *rand.Rand, cc cli
 		require.NoError(t, err)
 		err = eotsdb.Close()
 		require.NoError(t, err)
-		err = fpdb.Close()
+		err = db.Close()
 		require.NoError(t, err)
 		err = os.RemoveAll(eotsHomeDir)
 		require.NoError(t, err)

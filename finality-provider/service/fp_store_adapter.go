@@ -64,6 +64,16 @@ type fpState struct {
 	s  *store.FinalityProviderStore
 }
 
+func NewFpState(
+	fp *store.StoredFinalityProvider,
+	s *store.FinalityProviderStore,
+) *fpState {
+	return &fpState{
+		fp: fp,
+		s:  s,
+	}
+}
+
 func (fps *fpState) getStoreFinalityProvider() *store.StoredFinalityProvider {
 	fps.mu.Lock()
 	defer fps.mu.Unlock()
@@ -93,15 +103,15 @@ func (fps *fpState) setLastProcessedAndVotedHeight(height uint64) error {
 }
 
 func (fp *FinalityProviderInstance) GetStoreFinalityProvider() *store.StoredFinalityProvider {
-	return fp.state.getStoreFinalityProvider()
+	return fp.fpState.getStoreFinalityProvider()
 }
 
 func (fp *FinalityProviderInstance) GetBtcPkBIP340() *bbntypes.BIP340PubKey {
-	return fp.state.getStoreFinalityProvider().GetBIP340BTCPK()
+	return fp.fpState.getStoreFinalityProvider().GetBIP340BTCPK()
 }
 
 func (fp *FinalityProviderInstance) GetBtcPk() *btcec.PublicKey {
-	return fp.state.getStoreFinalityProvider().BtcPk
+	return fp.fpState.getStoreFinalityProvider().BtcPk
 }
 
 func (fp *FinalityProviderInstance) GetBtcPkHex() string {
@@ -109,23 +119,23 @@ func (fp *FinalityProviderInstance) GetBtcPkHex() string {
 }
 
 func (fp *FinalityProviderInstance) GetStatus() proto.FinalityProviderStatus {
-	return fp.state.getStoreFinalityProvider().Status
+	return fp.fpState.getStoreFinalityProvider().Status
 }
 
 func (fp *FinalityProviderInstance) GetLastVotedHeight() uint64 {
-	return fp.state.getStoreFinalityProvider().LastVotedHeight
+	return fp.fpState.getStoreFinalityProvider().LastVotedHeight
 }
 
 func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
-	return fp.state.getStoreFinalityProvider().LastProcessedHeight
+	return fp.fpState.getStoreFinalityProvider().LastProcessedHeight
 }
 
 func (fp *FinalityProviderInstance) GetChainID() []byte {
-	return []byte(fp.state.getStoreFinalityProvider().ChainID)
+	return []byte(fp.fpState.getStoreFinalityProvider().ChainID)
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {
-	return fp.state.setStatus(s)
+	return fp.fpState.setStatus(s)
 }
 
 func (fp *FinalityProviderInstance) MustSetStatus(s proto.FinalityProviderStatus) {
@@ -136,7 +146,7 @@ func (fp *FinalityProviderInstance) MustSetStatus(s proto.FinalityProviderStatus
 }
 
 func (fp *FinalityProviderInstance) SetLastProcessedHeight(height uint64) error {
-	return fp.state.setLastProcessedHeight(height)
+	return fp.fpState.setLastProcessedHeight(height)
 }
 
 func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
@@ -148,7 +158,7 @@ func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
 }
 
 func (fp *FinalityProviderInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
-	return fp.state.setLastProcessedAndVotedHeight(height)
+	return fp.fpState.setLastProcessedAndVotedHeight(height)
 }
 
 func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(height uint64) {

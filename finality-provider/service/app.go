@@ -35,12 +35,13 @@ type FinalityProviderApp struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
-	cc     clientcontroller.ClientController
-	kr     keyring.Keyring
-	fps    *store.FinalityProviderStore
-	config *fpcfg.Config
-	logger *zap.Logger
-	input  *strings.Reader
+	cc           clientcontroller.ClientController
+	kr           keyring.Keyring
+	fps          *store.FinalityProviderStore
+	pubRandStore *store.PubRandProofStore
+	config       *fpcfg.Config
+	logger       *zap.Logger
+	input        *strings.Reader
 
 	fpManager   *FinalityProviderManager
 	eotsManager eotsmanager.EOTSManager
@@ -85,6 +86,10 @@ func NewFinalityProviderApp(
 	if err != nil {
 		return nil, fmt.Errorf("failed to initiate finality provider store: %w", err)
 	}
+	pubRandStore, err := store.NewPubRandProofStore(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initiate public randomness store: %w", err)
+	}
 
 	input := strings.NewReader("")
 	kr, err := fpkr.CreateKeyring(
@@ -99,7 +104,7 @@ func NewFinalityProviderApp(
 
 	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, config, cc, em, fpMetrics, logger)
+	fpm, err := NewFinalityProviderManager(fpStore, pubRandStore, config, cc, em, fpMetrics, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
@@ -107,6 +112,7 @@ func NewFinalityProviderApp(
 	return &FinalityProviderApp{
 		cc:                                  cc,
 		fps:                                 fpStore,
+		pubRandStore:                        pubRandStore,
 		kr:                                  kr,
 		config:                              config,
 		logger:                              logger,
@@ -127,6 +133,10 @@ func (app *FinalityProviderApp) GetConfig() *fpcfg.Config {
 
 func (app *FinalityProviderApp) GetFinalityProviderStore() *store.FinalityProviderStore {
 	return app.fps
+}
+
+func (app *FinalityProviderApp) GetPubRandProofStore() *store.PubRandProofStore {
+	return app.pubRandStore
 }
 
 func (app *FinalityProviderApp) GetKeyring() keyring.Keyring {
