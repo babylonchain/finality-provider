@@ -5,6 +5,31 @@ orbs:
   aws-ecr: circleci/aws-ecr@8.2.1
 
 jobs:
+  check-mock-gen:
+    machine:
+      image: ubuntu-2204:2024.01.1
+    steps:
+      - checkout
+      - go/install:
+          version: "1.21.4"
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
+      - run:
+          name: Run make mock-gen
+          command: |
+            make mock-gen
+      - run:
+          name: Check for uncommitted changes
+          command: |
+            if ! git diff --exit-code; then
+              echo "Uncommitted changes detected. Please run 'make mock-gen' before committing."
+              exit 1
+            fi
+
   build_lint_test:
     machine:
       image: ubuntu-2204:2024.01.1
@@ -88,6 +113,7 @@ jobs:
 workflows:
   CI:
     jobs:
+      - check-mock-gen
       - build_lint_test
       - build_docker:
           filters:
