@@ -19,4 +19,7 @@ const (
 	defaultKeyringBackend = keyring.BackendTest
 	defaultHdPath         = ""
 	defaultPassphrase     = ""
+
+	// falg for verifier
+	verifierFlag = "verifier"
 )

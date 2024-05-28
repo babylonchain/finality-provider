@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/babylonchain/btc-finality-provider/eotsverifier/proto";
+
+service EOTSVerifier {
+  // VerifyFinalitySig verifies that the finality signature is valid
+  rpc VerifyFinalitySig (VerifyFinalitySigRequest)
+      returns (VerifyFinalitySigResponse); 
+}
+
+message VerifyFinalitySigRequest {
+    // block_number is the block which need to be verified
+    uint64 block_number = 1;
+  }
+  
+  message VerifyFinalitySigResponse {
+    // result - true is valid, and false is invalid
+    bool result = 1;
+  }
