@@ -68,12 +68,6 @@ func startFn(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	if verifer := ctx.Bool(verifierFlag); verifer {
-		if err := cfg.Verifier.Validate(); err != nil {
-			return err
-		}
-	}
-
 	eotsManager, err := eotsmanager.NewLocalEOTSManager(homePath, cfg.KeyringBackend, dbBackend, logger)
 	if err != nil {
 		return fmt.Errorf("failed to create EOTS manager: %w", err)
@@ -86,6 +80,17 @@ func startFn(ctx *cli.Context) error {
 	}
 
 	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
+
+	if verifer := ctx.Bool(verifierFlag); verifer {
+		if err := cfg.Verifier.Validate(); err != nil {
+			return err
+		}
+		verifierRpcServer, err := eotsservice.NewVerifierRPCServer(cfg, logger)
+		if err != nil {
+			return err
+		}
+		eotsServer.VerifierRpcServer = verifierRpcServer
+	}
 
 	return eotsServer.RunUntilShutdown()
 }

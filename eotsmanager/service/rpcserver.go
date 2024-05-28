@@ -134,25 +134,24 @@ type verifierRpcServer struct {
 	eotsAggClient *eotsclient.EotsAggregatorGRpcClient
 }
 
-// newVerifierRPCServer creates a new RPC sever for EOTS verifier
-func newVerifierRPCServer(cfg *config.Config, zapLog *zap.Logger) *verifierRpcServer {
-	log := oplog.NewLogger(os.Stdout, oplog.DefaultCLIConfig())
-	ctx := context.Background()
-
+// NewVerifierRPCServer creates a new RPC sever for EOTS verifier
+func NewVerifierRPCServer(cfg *config.Config, zapLog *zap.Logger) (*verifierRpcServer, error) {
 	rollupRPC := cfg.Verifier.RollupRPC
 	bbnRPC := cfg.Verifier.BabylonRPC
 	eotsAggRPC := cfg.Verifier.EotsAggRPC
-	log.Info("running eots-verifier...", "RollupRPC", rollupRPC, "BabylonRPC", bbnRPC, "EotsAggRPC", eotsAggRPC)
+	zapLog.Info("Running EOTS verifier", zap.String("RollupRPC", rollupRPC), zap.String("BabylonRPC", bbnRPC), zap.String("EotsAggRPC", eotsAggRPC))
 
+	ctx := context.Background()
+	log := oplog.NewLogger(os.Stderr, oplog.DefaultCLIConfig())
 	rollupProvider, err := dial.NewStaticL2RollupProvider(ctx, log, rollupRPC)
 	if err != nil {
 		log.Error("eots-verifier unable to get rollup provider", "err", err)
-		return nil
+		return nil, err
 	}
 	rollupClient, err := rollupProvider.RollupClient(ctx)
 	if err != nil {
 		log.Error("eots-verifier unable to get rollup client", "err", err)
-		return nil
+		return nil, err
 	}
 
 	bbnConfig := bbncfg.DefaultBabylonConfig()
@@ -161,13 +160,13 @@ func newVerifierRPCServer(cfg *config.Config, zapLog *zap.Logger) *verifierRpcSe
 	bbnClient, err := bbnclient.New(&bbnConfig, zapLog)
 	if err != nil {
 		log.Error("eots-verifier failed to create Babylon client", "err", err)
-		return nil
+		return nil, err
 	}
 
 	eotsAggClient, err := eotsclient.NewEotsAggregatorGRpcClient(ctx, eotsAggRPC)
 	if err != nil {
 		log.Error("eots-verifier failed to create EOTS aggregator client", "err", err)
-		return nil
+		return nil, err
 	}
 
 	return &verifierRpcServer{
@@ -176,7 +175,7 @@ func newVerifierRPCServer(cfg *config.Config, zapLog *zap.Logger) *verifierRpcSe
 		rollupClient:  rollupClient,
 		bbnClient:     bbnClient,
 		eotsAggClient: eotsAggClient,
-	}
+	}, nil
 }
 
 // RegisterWithGrpcServer registers the rpcServer with the passed root gRPC
@@ -200,6 +199,10 @@ func (rpc *verifierRpcServer) VerifyFinalitySig(ctx context.Context, req *proto.
 	blockHash := output.BlockRef.Hash
 
 	rollupCfg, err := rpc.rollupClient.RollupConfig(ctx)
+	if err != nil {
+		rpc.log.Error("eots-verifier failed to fetch rollup config", "err", err)
+		return nil, err
+	}
 	consumerID := fmt.Sprintf("op-stack-l2-%s", rollupCfg.L2ChainID.String())
 	eotsInfos, err := rpc.eotsAggClient.GetEOTSInfos(ctx, int64(height), consumerID)
 	if err != nil {

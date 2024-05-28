@@ -27,7 +27,7 @@ type Server struct {
 	logger *zap.Logger
 
 	rpcServer         *rpcServer
-	verifierRpcServer *verifierRpcServer
+	VerifierRpcServer *verifierRpcServer
 	db                kvdb.Backend
 	interceptor       signal.Interceptor
 
@@ -37,13 +37,12 @@ type Server struct {
 // NewEOTSManagerServer creates a new server with the given config.
 func NewEOTSManagerServer(cfg *config.Config, l *zap.Logger, em eotsmanager.EOTSManager, db kvdb.Backend, sig signal.Interceptor) *Server {
 	return &Server{
-		cfg:               cfg,
-		logger:            l,
-		rpcServer:         newRPCServer(em),
-		verifierRpcServer: newVerifierRPCServer(cfg, l),
-		db:                db,
-		interceptor:       sig,
-		quit:              make(chan struct{}, 1),
+		cfg:         cfg,
+		logger:      l,
+		rpcServer:   newRPCServer(em),
+		db:          db,
+		interceptor: sig,
+		quit:        make(chan struct{}, 1),
 	}
 }
 
@@ -89,13 +88,19 @@ func (s *Server) RunUntilShutdown() error {
 		return fmt.Errorf("failed to register gRPC server: %w", err)
 	}
 
-	if err := s.verifierRpcServer.RegisterWithGrpcServer(grpcServer); err != nil {
-		return fmt.Errorf("failed to register verifier gRPC server: %w", err)
+	if s.VerifierRpcServer != nil {
+		if err := s.VerifierRpcServer.RegisterWithGrpcServer(grpcServer); err != nil {
+			return fmt.Errorf("failed to register verifier gRPC server: %w", err)
+		}
+		defer func() {
+			if s.VerifierRpcServer.rollupClient != nil {
+				s.VerifierRpcServer.rollupClient.Close()
+			}
+			if s.VerifierRpcServer.eotsAggClient != nil {
+				s.VerifierRpcServer.eotsAggClient.Close()
+			}
+		}()
 	}
-	defer func() {
-		s.verifierRpcServer.rollupClient.Close()
-		s.verifierRpcServer.eotsAggClient.Close()
-	}()
 
 	// All the necessary components have been registered, so we can
 	// actually start listening for requests.
