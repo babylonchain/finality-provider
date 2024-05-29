@@ -182,7 +182,7 @@ func (bc *BabylonController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
 	block *types.BlockInfo,
 	pubRand *btcec.FieldVal,
-	proof []byte,
+	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
 	cmtProof := cmtcrypto.Proof{}
