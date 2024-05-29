@@ -66,16 +66,3 @@ func (fp *FinalityProviderInstance) signFinalitySig(b *types.BlockInfo) (*bbntyp
 
 	return bbntypes.NewSchnorrEOTSSigFromModNScalar(sig), nil
 }
-
-/*
-	below is only used for testing purposes
-*/
-
-func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
-	record, err := fp.em.KeyRecord(fp.btcPk.MustMarshal(), fp.passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	return record.PrivKey, nil
-}
