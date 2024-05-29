@@ -6,9 +6,9 @@ import (
 	"github.com/cometbft/cometbft/crypto/merkle"
 )
 
-// CommitPubRandList commits a list of public randomness and returns
+// GetPubRandCommitAndProofs commits a list of public randomness and returns
 // the commitment (i.e., Merkle root) and all Merkle proofs
-func CommitPubRandList(pubRandList []*btcec.FieldVal) ([]byte, []*merkle.Proof) {
+func GetPubRandCommitAndProofs(pubRandList []*btcec.FieldVal) ([]byte, []*merkle.Proof) {
 	prBytesList := make([][]byte, 0, len(pubRandList))
 	for _, pr := range pubRandList {
 		prBytesList = append(prBytesList, bbn.NewSchnorrPubRandFromFieldVal(pr).MustMarshal())

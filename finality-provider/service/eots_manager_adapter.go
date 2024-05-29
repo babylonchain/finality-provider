@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	bbntypes "github.com/babylonchain/babylon/types"
-	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64, numPubRand uint64) ([]*btcec.FieldVal, error) {
+func (fp *FinalityProviderInstance) getPubRandList(startHeight uint64, numPubRand uint64) ([]*btcec.FieldVal, error) {
 	pubRandList, err := fp.em.CreateRandomnessPairList(
 		fp.btcPk.MustMarshal(),
 		fp.GetChainID(),
@@ -25,13 +26,23 @@ func (fp *FinalityProviderInstance) createPubRandList(startHeight uint64, numPub
 	return pubRandList, nil
 }
 
-func (fp *FinalityProviderInstance) signPubRandCommit(startHeight uint64, numPubRand uint64, commitment []byte) (*schnorr.Signature, error) {
-	msg := &ftypes.MsgCommitPubRandList{
-		StartHeight: startHeight,
-		NumPubRand:  numPubRand,
-		Commitment:  commitment,
+// TODO: have this function in Babylon side
+func getHashToSignForCommitPubRand(startHeight uint64, numPubRand uint64, commitment []byte) ([]byte, error) {
+	hasher := tmhash.New()
+	if _, err := hasher.Write(sdk.Uint64ToBigEndian(startHeight)); err != nil {
+		return nil, err
 	}
-	hash, err := msg.HashToSign()
+	if _, err := hasher.Write(sdk.Uint64ToBigEndian(numPubRand)); err != nil {
+		return nil, err
+	}
+	if _, err := hasher.Write(commitment); err != nil {
+		return nil, err
+	}
+	return hasher.Sum(nil), nil
+}
+
+func (fp *FinalityProviderInstance) signPubRandCommit(startHeight uint64, numPubRand uint64, commitment []byte) (*schnorr.Signature, error) {
+	hash, err := getHashToSignForCommitPubRand(startHeight, numPubRand, commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the commit public randomness message: %w", err)
 	}
@@ -40,14 +51,14 @@ func (fp *FinalityProviderInstance) signPubRandCommit(startHeight uint64, numPub
 	return fp.em.SignSchnorrSig(fp.btcPk.MustMarshal(), hash, fp.passphrase)
 }
 
+// TODO: have this function in Babylon side
+func getMsgToSignForVote(blockHeight uint64, blockHash []byte) []byte {
+	return append(sdk.Uint64ToBigEndian(blockHeight), blockHash...)
+}
+
 func (fp *FinalityProviderInstance) signFinalitySig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
 	// build proper finality signature request
-	msg := &ftypes.MsgAddFinalitySig{
-		FpBtcPk:      fp.btcPk,
-		BlockHeight:  b.Height,
-		BlockAppHash: b.Hash,
-	}
-	msgToSign := msg.MsgToSign()
+	msgToSign := getMsgToSignForVote(b.Height, b.Hash)
 	sig, err := fp.em.SignEOTS(fp.btcPk.MustMarshal(), fp.GetChainID(), msgToSign, b.Height, fp.passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
@@ -67,8 +78,4 @@ func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) 
 	}
 
 	return record.PrivKey, nil
-}
-
-func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
-	return fp.getEOTSPrivKey()
 }

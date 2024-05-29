@@ -17,7 +17,4 @@ var (
 
 	// ErrPubRandProofNotFound The finality provider we try update is not found in db
 	ErrPubRandProofNotFound = errors.New("public randomness proof not found")
-
-	// ErrDuplicatePubRand The public randomness proof we try to add already exists in db
-	ErrDuplicatePubRand = errors.New("public randomness proof already exists")
 )

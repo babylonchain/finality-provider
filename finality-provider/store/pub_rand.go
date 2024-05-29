@@ -61,9 +61,9 @@ func (s *PubRandProofStore) AddPubRandProofList(
 		}
 
 		for i := range pubRandBytesList {
-			// check public randomness first to avoid duplicates
+			// skip if already committed
 			if bucket.Get(pubRandBytesList[i]) != nil {
-				return ErrDuplicatePubRand
+				continue
 			}
 			// set to DB
 			if err := bucket.Put(pubRandBytesList[i], proofBytesList[i]); err != nil {

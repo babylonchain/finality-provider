@@ -592,6 +592,12 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 	// error will be returned if maximum retries have been reached or the query to the consumer chain fails
 	for {
 		// error will be returned if max retries have been reached
+		// TODO: CommitPubRand also includes saving all inclusion proofs of public randomness
+		// this part should not be retried here. We need to separate the function into
+		// 1) determining the starting height to commit, 2) generating pub rand and inclusion
+		//  proofs, and 3) committing public randomness.
+		// TODO: make 3) a part of `select` statement. The function terminates upon either the block
+		// is finalised or the pub rand is committed successfully
 		res, err := fp.CommitPubRand(targetBlock.Height)
 		if err != nil {
 			if clientcontroller.IsUnrecoverable(err) {
@@ -671,14 +677,14 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 	// for safety reason as the same randomness must not be used twice
 	// TODO: should consider an implementation that deterministically create
 	//  randomness without saving it
-	pubRandList, err := fp.createPubRandList(startHeight, fp.cfg.NumPubRand)
+	pubRandList, err := fp.getPubRandList(startHeight, fp.cfg.NumPubRand)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)
 	}
 	numPubRand := uint64(len(pubRandList))
 
 	// generate commitment and proof for each public randomness
-	commitment, proofList := types.CommitPubRandList(pubRandList)
+	commitment, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
 	// store them to database
 	if err := fp.pubRandState.AddPubRandProofList(pubRandList, proofList); err != nil {
@@ -693,7 +699,6 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 
 	res, err := fp.cc.CommitPubRandList(fp.GetBtcPk(), startHeight, numPubRand, commitment, schnorrSig)
 	if err != nil {
-		// TODO Add retry. check issue: https://github.com/babylonchain/finality-provider/issues/34
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
 
@@ -713,7 +718,7 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 	}
 
 	// get public randomness at the height
-	prList, err := fp.createPubRandList(b.Height, 1)
+	prList, err := fp.getPubRandList(b.Height, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
@@ -749,7 +754,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	}
 
 	// get public randomness list
-	prList, err := fp.createPubRandList(blocks[0].Height, uint64(len(blocks)))
+	prList, err := fp.getPubRandList(blocks[0].Height, uint64(len(blocks)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
@@ -797,7 +802,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// get public randomness
-	prList, err := fp.createPubRandList(b.Height, 1)
+	prList, err := fp.getPubRandList(b.Height, 1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
