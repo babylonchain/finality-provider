@@ -675,8 +675,6 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 	// NOTE: currently, calling this will create and save a list of randomness
 	// in case of failure, randomness that has been created will be overwritten
 	// for safety reason as the same randomness must not be used twice
-	// TODO: should consider an implementation that deterministically create
-	//  randomness without saving it
 	pubRandList, err := fp.getPubRandList(startHeight, fp.cfg.NumPubRand)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)
@@ -759,6 +757,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
 	// get proof list
+	// TODO: how to recover upon having an error in GetPubRandProofList?
 	proofBytesList, err := fp.pubRandState.GetPubRandProofList(prList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public randomness inclusion proof list: %v", err)
