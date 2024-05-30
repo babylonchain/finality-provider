@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-	"math"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -47,7 +46,6 @@ func (s *FinalityProviderStore) CreateFinalityProvider(
 	btcPk *btcec.PublicKey,
 	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
-	masterPubRand string,
 	keyName, chainId string,
 	chainSig, btcSig []byte,
 ) error {
@@ -64,11 +62,9 @@ func (s *FinalityProviderStore) CreateFinalityProvider(
 			ChainSig: chainSig,
 			BtcSig:   btcSig,
 		},
-		RegisteredEpoch: math.MaxUint64,
-		MasterPubRand:   masterPubRand,
-		KeyName:         keyName,
-		ChainId:         chainId,
-		Status:          proto.FinalityProviderStatus_CREATED,
+		KeyName: keyName,
+		ChainId: chainId,
+		Status:  proto.FinalityProviderStatus_CREATED,
 	}
 
 	return s.createFinalityProviderInternal(fp)
@@ -111,15 +107,6 @@ func saveFinalityProvider(
 func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto.FinalityProviderStatus) error {
 	setFpStatus := func(fp *proto.FinalityProvider) error {
 		fp.Status = status
-		return nil
-	}
-
-	return s.setFinalityProviderState(btcPk, setFpStatus)
-}
-
-func (s *FinalityProviderStore) SetFpRegisteredEpoch(btcPk *btcec.PublicKey, registeredEpoch uint64) error {
-	setFpStatus := func(fp *proto.FinalityProvider) error {
-		fp.RegisteredEpoch = registeredEpoch
 		return nil
 	}
 

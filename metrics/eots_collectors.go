@@ -7,10 +7,12 @@ import (
 )
 
 type EotsMetrics struct {
-	EotsCreatedKeysCounter        prometheus.Counter
-	EotsFpTotalEotsSignCounter    *prometheus.CounterVec
-	EotsFpLastEotsSignHeight      *prometheus.GaugeVec
-	EotsFpTotalSchnorrSignCounter *prometheus.CounterVec
+	EotsCreatedKeysCounter                prometheus.Counter
+	EotsFpTotalGeneratedRandomnessCounter *prometheus.CounterVec
+	EotsFpLastGeneratedRandomnessHeight   *prometheus.GaugeVec
+	EotsFpTotalEotsSignCounter            *prometheus.CounterVec
+	EotsFpLastEotsSignHeight              *prometheus.GaugeVec
+	EotsFpTotalSchnorrSignCounter         *prometheus.CounterVec
 }
 
 var eotsMetricsRegisterOnce sync.Once
@@ -24,6 +26,20 @@ func NewEotsMetrics() *EotsMetrics {
 				Name: "eots_created_keys_counter",
 				Help: "Total number of EOTS keys created",
 			}),
+			EotsFpTotalGeneratedRandomnessCounter: prometheus.NewCounterVec(
+				prometheus.CounterOpts{
+					Name: "eots_fp_total_generated_randomness_counter",
+					Help: "Total number of generated randomness pairs by EOTS",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
+			EotsFpLastGeneratedRandomnessHeight: prometheus.NewGaugeVec(
+				prometheus.GaugeOpts{
+					Name: "eots_fp_last_generated_randomness_height",
+					Help: "Height of the last generated randomness pair by EOTS",
+				},
+				[]string{"fp_btc_pk_hex"},
+			),
 			EotsFpTotalEotsSignCounter: prometheus.NewCounterVec(
 				prometheus.CounterOpts{
 					Name: "eots_fp_total_eots_sign_counter",
@@ -49,6 +65,8 @@ func NewEotsMetrics() *EotsMetrics {
 
 		// Register the EOTS metrics with Prometheus
 		prometheus.MustRegister(eotsMetricsInstance.EotsCreatedKeysCounter)
+		prometheus.MustRegister(eotsMetricsInstance.EotsFpTotalGeneratedRandomnessCounter)
+		prometheus.MustRegister(eotsMetricsInstance.EotsFpLastGeneratedRandomnessHeight)
 		prometheus.MustRegister(eotsMetricsInstance.EotsFpTotalEotsSignCounter)
 		prometheus.MustRegister(eotsMetricsInstance.EotsFpLastEotsSignHeight)
 		prometheus.MustRegister(eotsMetricsInstance.EotsFpTotalSchnorrSignCounter)
@@ -60,6 +78,16 @@ func NewEotsMetrics() *EotsMetrics {
 // IncrementEotsCreatedKeysCounter increments the EOTS created keys counter
 func (em *EotsMetrics) IncrementEotsCreatedKeysCounter() {
 	em.EotsCreatedKeysCounter.Inc()
+}
+
+// IncrementEotsFpTotalGeneratedRandomnessCounter increments the EOTS signature counter
+func (em *EotsMetrics) IncrementEotsFpTotalGeneratedRandomnessCounter(fpBtcPkHex string) {
+	em.EotsFpTotalGeneratedRandomnessCounter.WithLabelValues(fpBtcPkHex).Inc()
+}
+
+// SetEotsFpLastGeneratedRandomnessHeight sets the height of the last generated randomness pair by EOTS
+func (em *EotsMetrics) SetEotsFpLastGeneratedRandomnessHeight(fpBtcPkHex string, height float64) {
+	em.EotsFpLastGeneratedRandomnessHeight.WithLabelValues(fpBtcPkHex).Set(height)
 }
 
 // IncrementEotsFpTotalEotsSignCounter increments the EOTS signature counter
