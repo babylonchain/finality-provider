@@ -29,11 +29,6 @@ var StartCommand = cli.Command{
 			Name:  rpcListenerFlag,
 			Usage: "The address that the RPC server listens to",
 		},
-		cli.BoolFlag{
-			Name:     verifierFlag,
-			Usage:    "Enable the EOTS verifier function",
-			Required: false,
-		},
 	},
 	Action: startFn,
 }
@@ -80,17 +75,6 @@ func startFn(ctx *cli.Context) error {
 	}
 
 	eotsServer := eotsservice.NewEOTSManagerServer(cfg, logger, eotsManager, dbBackend, shutdownInterceptor)
-
-	if verifer := ctx.Bool(verifierFlag); verifer {
-		if err := cfg.Verifier.Validate(); err != nil {
-			return err
-		}
-		verifierRpcServer, err := eotsservice.NewVerifierRPCServer(cfg, logger)
-		if err != nil {
-			return err
-		}
-		eotsServer.VerifierRpcServer = verifierRpcServer
-	}
 
 	return eotsServer.RunUntilShutdown()
 }

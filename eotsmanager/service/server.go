@@ -9,12 +9,13 @@ import (
 
 	"github.com/babylonchain/finality-provider/metrics"
 
-	"github.com/babylonchain/finality-provider/eotsmanager"
-	"github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/lightningnetwork/lnd/signal"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"github.com/babylonchain/finality-provider/eotsmanager"
+	"github.com/babylonchain/finality-provider/eotsmanager/config"
 )
 
 // Server is the main daemon construct for the EOTS manager server. It handles
@@ -26,10 +27,9 @@ type Server struct {
 	cfg    *config.Config
 	logger *zap.Logger
 
-	rpcServer         *rpcServer
-	VerifierRpcServer *verifierRpcServer
-	db                kvdb.Backend
-	interceptor       signal.Interceptor
+	rpcServer   *rpcServer
+	db          kvdb.Backend
+	interceptor signal.Interceptor
 
 	quit chan struct{}
 }
@@ -86,20 +86,6 @@ func (s *Server) RunUntilShutdown() error {
 
 	if err := s.rpcServer.RegisterWithGrpcServer(grpcServer); err != nil {
 		return fmt.Errorf("failed to register gRPC server: %w", err)
-	}
-
-	if s.VerifierRpcServer != nil {
-		if err := s.VerifierRpcServer.RegisterWithGrpcServer(grpcServer); err != nil {
-			return fmt.Errorf("failed to register verifier gRPC server: %w", err)
-		}
-		defer func() {
-			if s.VerifierRpcServer.rollupClient != nil {
-				s.VerifierRpcServer.rollupClient.Close()
-			}
-			if s.VerifierRpcServer.eotsAggClient != nil {
-				s.VerifierRpcServer.eotsAggClient.Close()
-			}
-		}()
 	}
 
 	// All the necessary components have been registered, so we can

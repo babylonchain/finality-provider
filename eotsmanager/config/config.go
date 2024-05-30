@@ -40,8 +40,7 @@ type Config struct {
 	RpcListener    string          `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 	Metrics        *metrics.Config `group:"metrics" namespace:"metrics"`
 
-	DatabaseConfig *DBConfig       `group:"dbconfig" namespace:"dbconfig"`
-	Verifier       *VerifierConfig `group:"verifier" namespace:"verifier"`
+	DatabaseConfig *DBConfig `group:"dbconfig" namespace:"dbconfig"`
 }
 
 // LoadConfig initializes and parses the config using a config file and command
@@ -128,7 +127,6 @@ func DefaultConfigWithHomePath(homePath string) *Config {
 		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
 		RpcListener:    defaultRpcListener,
 		Metrics:        metrics.DefaultEotsConfig(),
-		Verifier:       DefaultVerifierConfig(),
 	}
 	if err := cfg.Validate(); err != nil {
 		panic(err)
