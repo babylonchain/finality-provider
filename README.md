@@ -80,6 +80,10 @@ export PATH=$HOME/go/bin:$PATH
 echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
 ```
 
+### Running in Docker
+
+The Dockerfile provided [here](./Dockerfile) can be used for developement of Finality Provider whereas a modifed version of the same Dockerfile, which is [this one](./docs/fp.Dockerfile)(exports with `eotsd`, `fpd`, `fpcli` preinstalled) can be used by the users to run a FP container locally or in Kubernetes. Users can paralley run 3 containers of this image  for all the three tools and run their commands inside them respectively.
+
 ## 3. Setting up a finality provider
 
 ### 3.1. Setting up a Babylon Full Node
