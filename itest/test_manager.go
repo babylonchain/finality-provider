@@ -126,8 +126,8 @@ func StartManager(t *testing.T) *TestManager {
 
 	// 5. create consumer wasmd node
 	wh := NewWasmdNodeHandler(t)
-	//err = wh.Start()
-	//require.NoError(t, err)
+	err = wh.Start()
+	require.NoError(t, err)
 
 	tm := &TestManager{
 		BabylonHandler:    bh,
