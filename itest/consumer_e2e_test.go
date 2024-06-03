@@ -11,7 +11,7 @@ import (
 func TestConsumer(t *testing.T) {
 	tm := StartManager(t)
 	defer tm.Stop(t)
-	codeID, _, err := tm.WasmdHandler.StoreWasmCode()
+	codeID, _, err := tm.WasmdHandler.StoreWasmCode("/Users/gusin/Github/finality-provider/itest/wasmd_contracts/babylon_contract.wasm")
 	require.NoError(t, err)
 	fmt.Println(codeID)
 

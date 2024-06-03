@@ -8,9 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type wasmdNode struct {
@@ -21,7 +22,7 @@ type wasmdNode struct {
 
 func newWasmdNode(dataDir string, cmd *exec.Cmd) *wasmdNode {
 	return &wasmdNode{
-		dataDir: "",
+		dataDir: dataDir,
 		cmd:     cmd,
 	}
 }
@@ -59,9 +60,6 @@ func (n *wasmdNode) stop() (err error) {
 		err = n.cmd.Wait()
 	}()
 
-	if runtime.GOOS == "windows" {
-		return n.cmd.Process.Signal(os.Kill)
-	}
 	return n.cmd.Process.Signal(os.Interrupt)
 }
 
@@ -72,15 +70,15 @@ func (n *wasmdNode) cleanup() error {
 		}
 	}
 
-	//dirs := []string{
-	//	n.dataDir,
-	//}
-	//var err error
-	//for _, dir := range dirs {
-	//	if err = os.RemoveAll(dir); err != nil {
-	//		log.Printf("Cannot remove dir %s: %v", dir, err)
-	//	}
-	//}
+	dirs := []string{
+		n.dataDir,
+	}
+	var err error
+	for _, dir := range dirs {
+		if err = os.RemoveAll(dir); err != nil {
+			log.Printf("Cannot remove dir %s: %v", dir, err)
+		}
+	}
 	return nil
 }
 
@@ -99,35 +97,29 @@ type WasmdNodeHandler struct {
 }
 
 func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
-	// TODO: utilize testDir, not used anywhere right now cc gurjot
-	//testDir, err := baseDir("ZWasmdTest")
-	//require.NoError(t, err)
-	//defer func() {
-	//	if err != nil {
-	//		err := os.RemoveAll(testDir)
-	//		require.NoError(t, err)
-	//	}
-	//}()
-
-	//nodeDataDir := filepath.Join(testDir, "wasmd")
+	testDir, err := baseDir("ZWasmdTest")
+	require.NoError(t, err)
+	defer func() {
+		if err != nil {
+			err := os.RemoveAll(testDir)
+			require.NoError(t, err)
+		}
+	}()
 
 	setupScript := filepath.Join("wasmd_scripts", "setup_wasmd.sh")
 	startNodeScript := filepath.Join("wasmd_scripts", "start_node.sh")
-	accountsScript := filepath.Join("wasmd_scripts", "01-accounts.sh")
 
 	var stderr bytes.Buffer
 	initTestnetCmd := exec.Command("/bin/sh", "-c", setupScript)
 	initTestnetCmd.Stderr = &stderr
 
-	err := initTestnetCmd.Run()
+	err = initTestnetCmd.Run()
 	if err != nil {
 		fmt.Printf("setup wasmd failed: %s \n", stderr.String())
 	}
-	if err != nil {
-		log.Fatalf("Error running setup script: %s\nOutput: %s", setupScript, stderr.String())
-	}
+	require.NoError(t, err)
 
-	time.Sleep(5 * time.Second) // Adjust the delay as needed
+	time.Sleep(5 * time.Second)
 
 	startCmd := exec.Command("/bin/sh", "-c", startNodeScript)
 	//startCmd.Dir = nodeDataDir
@@ -139,17 +131,10 @@ func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
 		log.Fatalf("Error starting wasmd node: %v", err)
 	}
 
-	time.Sleep(10 * time.Second) // Adjust the delay as needed
-
-	accountsCmd := exec.Command("/bin/sh", "-c", accountsScript)
-	//accountsCmd.Dir = nodeDataDir
-	err = accountsCmd.Run()
-	if err != nil {
-		log.Fatalf("Error running accounts script: %v", err)
-	}
+	time.Sleep(5 * time.Second)
 
 	return &WasmdNodeHandler{
-		wasmdNode: newWasmdNode("", startCmd),
+		wasmdNode: newWasmdNode(testDir, startCmd),
 	}
 }
 
@@ -181,9 +166,8 @@ type TxResponse struct {
 	} `json:"events"`
 }
 
-func (w *WasmdNodeHandler) StoreWasmCode() (string, string, error) {
-	dir := "/Users/gusin/Github/finality-provider/itest/wasmd_contracts"
-	cmd := exec.Command("wasmd", "tx", "wasm", "store", fmt.Sprintf("%s/babylon_contract.wasm", dir),
+func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
+	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
 		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id=testing",
 		"--node=http://localhost:26657", "-b", "sync", "-o", "json", "--keyring-backend=test")
 
