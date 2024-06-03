@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -167,4 +168,78 @@ func (w *WasmdNodeHandler) Stop() error {
 	}
 
 	return nil
+}
+
+type TxResponse struct {
+	TxHash string `json:"txhash"`
+	Events []struct {
+		Type       string `json:"type"`
+		Attributes []struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"attributes"`
+	} `json:"events"`
+}
+
+func (w *WasmdNodeHandler) StoreWasmCode() (string, string, error) {
+	dir := "/Users/gusin/Github/finality-provider/itest/wasmd_contracts"
+	cmd := exec.Command("wasmd", "tx", "wasm", "store", fmt.Sprintf("%s/babylon_contract.wasm", dir),
+		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id=testing",
+		"--node=http://localhost:26657", "-b", "sync", "-o", "json", "--keyring-backend=test")
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", "", fmt.Errorf("error running wasmd store command: %v", err)
+	}
+
+	var txResp TxResponse
+	resp := out.String()
+	err = json.Unmarshal([]byte(resp), &txResp)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling store wasm response: %v", err)
+	}
+
+	// Wait for a few seconds to ensure the transaction is processed
+	time.Sleep(6 * time.Second)
+
+	txhash := txResp.TxHash
+	queryCmd := exec.Command("wasmd", "q", "tx", txhash, "-o", "json")
+
+	var queryOut bytes.Buffer
+	queryCmd.Stdout = &queryOut
+	queryCmd.Stderr = os.Stderr
+
+	err = queryCmd.Run()
+	if err != nil {
+		return "", "", fmt.Errorf("error querying transaction: %v", err)
+	}
+
+	var queryResp TxResponse
+	err = json.Unmarshal(queryOut.Bytes(), &queryResp)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
+	}
+
+	var codeID, codeHash string
+	for _, event := range queryResp.Events {
+		if event.Type == "store_code" {
+			for _, attr := range event.Attributes {
+				if attr.Key == "code_id" {
+					codeID = attr.Value
+				} else if attr.Key == "code_checksum" {
+					codeHash = attr.Value
+				}
+			}
+		}
+	}
+
+	if codeID == "" || codeHash == "" {
+		return "", "", fmt.Errorf("code ID or code checksum not found in transaction events")
+	}
+
+	return codeID, codeHash, nil
 }
