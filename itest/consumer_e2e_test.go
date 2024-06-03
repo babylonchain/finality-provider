@@ -1,15 +1,14 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
+	"fmt"
 	"testing"
 )
 
 // TestConsumerFinalityProviderRegistration tests finality-provider registration for a consumer chain
 func TestConsumer(t *testing.T) {
-	_ = e2etest.StartConsumerManager(t)
+	_ = StartManager(t)
+	fmt.Println("TestConsumer")
 
 	//consumerChainID := "consumer-chain-test-1"
 	//

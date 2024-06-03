@@ -57,7 +57,7 @@ type TestManager struct {
 	Wg                sync.WaitGroup
 	BabylonHandler    *BabylonNodeHandler
 	EOTSServerHandler *EOTSServerHandler
-	WasmdHandler      *WasmdHandler
+	WasmdHandler      *WasmdNodeHandler
 	FpConfig          *fpcfg.Config
 	EOTSConfig        *eotsconfig.Config
 	Fpa               *service.FinalityProviderApp
@@ -99,8 +99,8 @@ func StartManager(t *testing.T) *TestManager {
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
-	err = bh.Start()
-	require.NoError(t, err)
+	//err = bh.Start()
+	//require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -124,9 +124,15 @@ func StartManager(t *testing.T) *TestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
+	// 5. create consumer wasmd node
+	wh := NewWasmdNodeHandler(t)
+	//err = wh.Start()
+	//require.NoError(t, err)
+
 	tm := &TestManager{
 		BabylonHandler:    bh,
 		EOTSServerHandler: eh,
+		WasmdHandler:      wh,
 		FpConfig:          cfg,
 		EOTSConfig:        eotsCfg,
 		Fpa:               fpApp,
@@ -137,7 +143,7 @@ func StartManager(t *testing.T) *TestManager {
 		baseDir:           testDir,
 	}
 
-	tm.WaitForServicesStart(t)
+	//tm.WaitForServicesStart(t)
 
 	return tm
 }
