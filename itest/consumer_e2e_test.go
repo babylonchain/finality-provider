@@ -9,7 +9,7 @@ import (
 
 // TestConsumerFinalityProviderRegistration tests finality-provider registration for a consumer chain
 func TestConsumer(t *testing.T) {
-	_ = StartConsumerManager(t)
+	_ = e2etest.StartConsumerManager(t)
 
 	//consumerChainID := "consumer-chain-test-1"
 	//

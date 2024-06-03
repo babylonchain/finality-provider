@@ -57,25 +57,13 @@ type TestManager struct {
 	Wg                sync.WaitGroup
 	BabylonHandler    *BabylonNodeHandler
 	EOTSServerHandler *EOTSServerHandler
+	WasmdHandler      *WasmdHandler
 	FpConfig          *fpcfg.Config
 	EOTSConfig        *eotsconfig.Config
 	Fpa               *service.FinalityProviderApp
 	EOTSClient        *client.EOTSManagerGRpcClient
 	BBNClient         *fpcc.BabylonController
 	BBNConsumerClient *fpcc.BabylonConsumerController
-	StakingParams     *types.StakingParams
-	CovenantPrivKeys  []*btcec.PrivateKey
-	baseDir           string
-}
-
-type ConsumerTestManager struct {
-	Wg                sync.WaitGroup
-	WasmdHandler      *WasmdNodeHandler
-	EOTSServerHandler *EOTSServerHandler
-	FpConfig          *fpcfg.Config
-	EOTSConfig        *eotsconfig.Config
-	Fpa               *service.FinalityProviderApp
-	EOTSClient        *client.EOTSManagerGRpcClient
 	StakingParams     *types.StakingParams
 	CovenantPrivKeys  []*btcec.PrivateKey
 	baseDir           string
@@ -150,52 +138,6 @@ func StartManager(t *testing.T) *TestManager {
 	}
 
 	tm.WaitForServicesStart(t)
-
-	return tm
-}
-
-func StartConsumerManager(t *testing.T) *ConsumerTestManager {
-	testDir, err := tempDirWithName("wasmtest")
-	require.NoError(t, err)
-
-	logger := zap.NewNop()
-
-	// 2. prepare Wasmd node
-	wasmdHandler := StartWasmdNode(t, "wasmd-test", testDir, "./babylon_contract.wasm", "./btc_staking_contract.wasm", `{"btc_confirmation_depth":1,"checkpoint_finalization_timeout":2,"network":"regtest","babylon_tag":"01020304", "notify_cosmos_zone":false, "btc_staking_code_id":2}`)
-	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := defaultFpConfig(wasmdHandler.GetNodeDataDir(), fpHomeDir)
-	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
-	require.NoError(t, err)
-	bcc, err := fpcc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
-	require.NoError(t, err)
-
-	// 3. prepare EOTS manager
-	eotsHomeDir := filepath.Join(testDir, "eots-home")
-	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
-	eotsHandler := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
-	eotsHandler.Start()
-	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
-	require.NoError(t, err)
-
-	// 4. prepare finality-provider
-	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
-	require.NoError(t, err)
-	fpApp, err := service.NewFinalityProviderApp(cfg, bc, bcc, eotsCli, fpdb, logger)
-	require.NoError(t, err)
-	err = fpApp.Start()
-	require.NoError(t, err)
-
-	tm := &ConsumerTestManager{
-		WasmdHandler:      wasmdHandler,
-		EOTSServerHandler: eotsHandler,
-		FpConfig:          cfg,
-		EOTSConfig:        eotsCfg,
-		Fpa:               fpApp,
-		EOTSClient:        eotsCli,
-		baseDir:           testDir,
-	}
-
-	//tm.WaitForServicesStart(t)
 
 	return tm
 }
