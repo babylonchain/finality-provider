@@ -99,8 +99,8 @@ func StartManager(t *testing.T) *TestManager {
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
-	//err = bh.Start()
-	//require.NoError(t, err)
+	err = bh.Start()
+	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -144,7 +144,7 @@ func StartManager(t *testing.T) *TestManager {
 		baseDir:           testDir,
 	}
 
-	//tm.WaitForServicesStart(t)
+	tm.WaitForServicesStart(t)
 
 	return tm
 }

@@ -147,11 +147,11 @@ type TxResponse struct {
 	} `json:"events"`
 }
 
-func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
+func (w *WasmdNodeHandler) StoreWasmCode(t *testing.T, wasmFile string) (string, string, error) {
 	homeDir := w.GetHomeDir()
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
 		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
-		"--node=http://localhost:26657", "--home", homeDir, "-b", "sync", "-o", "json", "--keyring-backend=test")
+		"--node=http://localhost:2990", "--home", homeDir, "-b", "sync", "-o", "json", "--keyring-backend=test")
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -173,7 +173,7 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 	time.Sleep(6 * time.Second)
 
 	txhash := txResp.TxHash
-	queryCmd := exec.Command("wasmd", "q", "tx", txhash, "-o", "json")
+	queryCmd := exec.Command("wasmd", "--node=http://localhost:2990", "q", "tx", txhash, "-o", "json")
 
 	var queryOut bytes.Buffer
 	queryCmd.Stdout = &queryOut
@@ -297,7 +297,8 @@ func startWasmd(homeDir string) (*exec.Cmd, error) {
 	args := []string{
 		"start",
 		"--home", homeDir,
-		"--rpc.laddr", "tcp://0.0.0.0:26657",
+		"--rpc.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", 2990),
+		"--p2p.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", 2991),
 		"--log_level=info",
 		"--trace",
 	}
