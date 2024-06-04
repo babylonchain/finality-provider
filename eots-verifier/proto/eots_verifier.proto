@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/babylonchain/finality-provider/eots-verifier/proto";
+
+service EOTSVerifier {
+  // VerifyFinalitySig verifies that the finality signature is valid
+  rpc VerifyFinalitySig (VerifyFinalitySigRequest)
+      returns (VerifyFinalitySigResponse); 
+}
+
+message VerifyFinalitySigRequest {
+    // tx_hash is that the user wants to confirm fast finality
+    string tx_hash = 1;
+  }
+  
+  message VerifyFinalitySigResponse {
+    // result - true is valid, and false is invalid
+    bool result = 1;
+  }
