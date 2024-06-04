@@ -128,6 +128,7 @@ func StartManager(t *testing.T) *TestManager {
 	wh := NewWasmdNodeHandler(t)
 	err = wh.Start()
 	require.NoError(t, err)
+	time.Sleep(10 * time.Second)
 
 	tm := &TestManager{
 		BabylonHandler:    bh,

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -110,34 +109,6 @@ func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
 	setupWasmd(testDir)
 	wh, err := startWasmd(testDir)
 	require.NoError(t, err)
-	time.Sleep(5 * time.Second)
-
-	//setupScript := filepath.Join("wasmd_scripts", "setup_wasmd.sh")
-	//startNodeScript := filepath.Join("wasmd_scripts", "start_node.sh")
-	//
-	////var stderr bytes.Buffer
-	////initTestnetCmd := exec.Command("/bin/sh", "-c", setupScript)
-	////initTestnetCmd.Stderr = &stderr
-	////
-	////err = initTestnetCmd.Run()
-	////if err != nil {
-	////	fmt.Printf("setup wasmd failed: %s \n", stderr.String())
-	////}
-	////require.NoError(t, err)
-	//
-	//time.Sleep(5 * time.Second)
-	//
-	//startCmd := exec.Command("/bin/sh", "-c", startNodeScript)
-	////startCmd.Dir = nodeDataDir
-	//startCmd.Stdout = os.Stdout
-	//startCmd.Stderr = os.Stderr
-	//
-	//err = startCmd.Start()
-	//if err != nil {
-	//	log.Fatalf("Error starting wasmd node: %v", err)
-	//}
-	//
-	//time.Sleep(5 * time.Second)
 
 	return &WasmdNodeHandler{
 		wasmdNode: newWasmdNode(testDir, wh),
@@ -240,10 +211,9 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 }
 
 const (
-	password = "1234567890" // Default password, can be replaced with an environment variable or parameter
-	stake    = "ustake"     // Default staking token
-	fee      = "ucosm"      // Default fee token
-	moniker  = "node001"    // Default moniker
+	stake   = "ustake"  // Default staking token
+	fee     = "ucosm"   // Default fee token
+	moniker = "node001" // Default moniker
 )
 
 func runCommand(name string, args ...string) error {
@@ -266,25 +236,15 @@ func updateGenesisFile(homeDir string) error {
 	return cmd.Run()
 }
 
-func wasmdKeysShow(homeDir string) error {
-	return runCommand("wasmd", "keys", "show", "validator", "--home", homeDir, "--keyring-backend=test")
-}
-
 func wasmdKeysAdd(homeDir string) error {
 	cmd := exec.Command("wasmd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
-	cmd.Stdin = strings.NewReader(fmt.Sprintf("%s\n%s\n", password, password))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
-func addGenesisAccount(homeDir, address string) error {
-	return runCommand("wasmd", "genesis", "add-genesis-account", address, fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
-}
-
 func addValidatorGenesisAccount(homeDir string) error {
 	cmd := exec.Command("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
-	cmd.Stdin = strings.NewReader(password)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -292,7 +252,6 @@ func addValidatorGenesisAccount(homeDir string) error {
 
 func gentxValidator(homeDir string) error {
 	cmd := exec.Command("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+chainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
-	cmd.Stdin = strings.NewReader(fmt.Sprintf("%s\n%s\n%s\n", password, password, password))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -348,14 +307,4 @@ func startWasmd(homeDir string) (*exec.Cmd, error) {
 	cmd.Stderr = os.Stderr
 
 	return cmd, nil
-
-	//if err := cmd.Start(); err != nil {
-	//	return fmt.Errorf("failed to start wasmd: %v", err)
-	//}
-	//
-	//if err := cmd.Wait(); err != nil {
-	//	return fmt.Errorf("wasmd exited with error: %v", err)
-	//}
-	//
-	//return nil
 }
