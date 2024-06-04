@@ -2,7 +2,7 @@ BUILDDIR ?= $(CURDIR)/build
 TOOLS_DIR := tools
 
 BABYLON_PKG := github.com/babylonchain/babylon/cmd/babylond
-WASMD_PKG   := github.com/CosmWasm/wasmd/tree/main/cmd/wasmd
+WASMD_PKG   := github.com/CosmWasm/wasmd/cmd/wasmd
 
 GO_BIN := ${GOPATH}/bin
 BTCD_BIN := $(GO_BIN)/btcd
