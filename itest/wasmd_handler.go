@@ -40,8 +40,8 @@ func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
 		}
 	}()
 
-	setupWasmd(testDir)
-	cmd, err := startWasmd(testDir)
+	setupWasmd(t, testDir)
+	cmd := wasmdStartCmd(t, testDir)
 	require.NoError(t, err)
 
 	return &WasmdNodeHandler{
@@ -181,53 +181,44 @@ func collectGentxs(homeDir string) error {
 	return runCommand("wasmd", "genesis", "collect-gentxs", "--home", homeDir)
 }
 
-func setupWasmd(homeDir string) {
-	if err := wasmdInit(homeDir); err != nil {
-		fmt.Printf("Error initializing wasmd: %v\n", err)
-		return
-	}
+func setupWasmd(t *testing.T, testDir string) {
+	err := wasmdInit(testDir)
+	require.NoError(t, err)
 
-	if err := updateGenesisFile(homeDir); err != nil {
-		fmt.Printf("Error updating genesis file: %v\n", err)
-		return
-	}
+	err = updateGenesisFile(testDir)
+	require.NoError(t, err)
 
-	if err := wasmdKeysAdd(homeDir); err != nil {
-		fmt.Printf("Error adding validator key: %v\n", err)
-		return
-	}
+	err = wasmdKeysAdd(testDir)
+	require.NoError(t, err)
 
-	if err := addValidatorGenesisAccount(homeDir); err != nil {
-		fmt.Printf("Error adding validator genesis account: %v\n", err)
-		return
-	}
+	err = addValidatorGenesisAccount(testDir)
+	require.NoError(t, err)
 
-	if err := gentxValidator(homeDir); err != nil {
-		fmt.Printf("Error creating gentx for validator: %v\n", err)
-		return
-	}
+	err = gentxValidator(testDir)
+	require.NoError(t, err)
 
-	if err := collectGentxs(homeDir); err != nil {
-		fmt.Printf("Error collecting gentxs: %v\n", err)
-		return
-	}
+	err = collectGentxs(testDir)
+	require.NoError(t, err)
 }
 
-func startWasmd(homeDir string) (*exec.Cmd, error) {
+func wasmdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 	args := []string{
 		"start",
-		"--home", homeDir,
+		"--home", testDir,
 		"--rpc.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", wasmdRpcPort),
 		"--p2p.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", wasmdP2pPort),
 		"--log_level=info",
 		"--trace",
 	}
 
-	cmd := exec.Command("wasmd", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	f, err := os.Create(filepath.Join(testDir, "wasmd.log"))
+	require.NoError(t, err)
 
-	return cmd, nil
+	cmd := exec.Command("wasmd", args...)
+	cmd.Stdout = f
+	cmd.Stderr = f
+
+	return cmd
 }
 
 type TxResponse struct {
@@ -241,7 +232,7 @@ type TxResponse struct {
 	} `json:"events"`
 }
 
-func (w *WasmdNodeHandler) StoreWasmCode(t *testing.T, wasmFile string) (string, string, error) {
+func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
 		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
 		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
