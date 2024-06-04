@@ -78,7 +78,6 @@ func (n *WasmdNodeHandler) GetHomeDir() string {
 	return n.dataDir
 }
 
-// internal function to start the wasmd node
 func (n *WasmdNodeHandler) start() error {
 	if err := n.cmd.Start(); err != nil {
 		return err
@@ -101,7 +100,6 @@ func (n *WasmdNodeHandler) start() error {
 	return nil
 }
 
-// internal function to stop the wasmd node
 func (n *WasmdNodeHandler) stop() (err error) {
 	if n.cmd == nil || n.cmd.Process == nil {
 		// return if not properly initialized
@@ -116,7 +114,6 @@ func (n *WasmdNodeHandler) stop() (err error) {
 	return n.cmd.Process.Signal(os.Interrupt)
 }
 
-// internal function to cleanup the process and data directories
 func (n *WasmdNodeHandler) cleanup() error {
 	if n.pidFile != "" {
 		if err := os.Remove(n.pidFile); err != nil {
@@ -249,23 +246,14 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 		return "", "", fmt.Errorf("error unmarshalling store wasm response: %v", err)
 	}
 
-	// Wait for a few seconds to ensure the transaction is processed
 	time.Sleep(6 * time.Second)
-
-	txhash := txResp.TxHash
-	queryCmd := exec.Command("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txhash, "-o", "json")
-
-	var queryOut bytes.Buffer
-	queryCmd.Stdout = &queryOut
-	queryCmd.Stderr = os.Stderr
-
-	err = queryCmd.Run()
+	queryOutput, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txResp.TxHash, "-o", "json")
 	if err != nil {
 		return "", "", fmt.Errorf("error querying transaction: %v", err)
 	}
 
 	var queryResp TxResponse
-	err = json.Unmarshal(queryOut.Bytes(), &queryResp)
+	err = json.Unmarshal(queryOutput, &queryResp)
 	if err != nil {
 		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
 	}
@@ -301,15 +289,6 @@ func (w *WasmdNodeHandler) GetLatestBlockHeight() (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error running wasmd status command: %v", err)
 	}
-
-	//var out bytes.Buffer
-	//cmd.Stdout = &out
-	//cmd.Stderr = os.Stderr
-	//
-	//err := cmd.Run()
-	//if err != nil {
-	//	return 0, fmt.Errorf("error running wasmd status command: %v", err)
-	//}
 
 	var statusResp StatusResponse
 	err = json.Unmarshal(out, &statusResp)
