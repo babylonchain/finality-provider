@@ -18,6 +18,7 @@ import (
 const (
 	wasmdRpcPort int = 2990
 	wasmdP2pPort int = 2991
+	wasmdChainID     = "wasmd-test"
 	stake            = "ustake"  // Default staking token
 	fee              = "ucosm"   // Default fee token
 	moniker          = "node001" // Default moniker
@@ -143,7 +144,7 @@ func runCommand(name string, args ...string) ([]byte, error) {
 }
 
 func wasmdInit(homeDir string) error {
-	_, err := runCommand("wasmd", "init", "--home", homeDir, "--chain-id", chainID, moniker)
+	_, err := runCommand("wasmd", "init", "--home", homeDir, "--chain-id", wasmdChainID, moniker)
 	return err
 }
 
@@ -165,7 +166,7 @@ func addValidatorGenesisAccount(homeDir string) error {
 }
 
 func gentxValidator(homeDir string) error {
-	_, err := runCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+chainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
+	_, err := runCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+wasmdChainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
@@ -227,7 +228,7 @@ type TxResponse struct {
 
 func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
-		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
+		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", wasmdChainID,
 		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
 
 	var out bytes.Buffer
