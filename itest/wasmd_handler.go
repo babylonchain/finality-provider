@@ -136,49 +136,45 @@ func (n *WasmdNodeHandler) cleanup() error {
 	return nil
 }
 
-func runCommand(name string, args ...string) error {
+func runCommand(name string, args ...string) ([]byte, error) {
 	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("error running command: %v", err)
+	}
+	return output, nil
 }
 
 func wasmdInit(homeDir string) error {
-	return runCommand("wasmd", "init", "--home", homeDir, "--chain-id", chainID, moniker)
+	_, err := runCommand("wasmd", "init", "--home", homeDir, "--chain-id", chainID, moniker)
+	return err
 }
 
 func updateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
 	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", stake, genesisPath)
-	cmd := exec.Command("sh", "-c", sedCmd)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_, err := runCommand("sh", "-c", sedCmd)
+	return err
 }
 
 func wasmdKeysAdd(homeDir string) error {
-	cmd := exec.Command("wasmd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_, err := runCommand("wasmd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
+	return err
 }
 
 func addValidatorGenesisAccount(homeDir string) error {
-	cmd := exec.Command("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_, err := runCommand("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
+	return err
 }
 
 func gentxValidator(homeDir string) error {
-	cmd := exec.Command("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+chainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_, err := runCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+chainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
+	return err
 }
 
 func collectGentxs(homeDir string) error {
-	return runCommand("wasmd", "genesis", "collect-gentxs", "--home", homeDir)
+	_, err := runCommand("wasmd", "genesis", "collect-gentxs", "--home", homeDir)
+	return err
 }
 
 func setupWasmd(t *testing.T, testDir string) {
@@ -301,19 +297,22 @@ type StatusResponse struct {
 }
 
 func (w *WasmdNodeHandler) GetLatestBlockHeight() (int, error) {
-	cmd := exec.Command("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-o", "json")
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
+	out, err := runCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-o", "json")
 	if err != nil {
 		return 0, fmt.Errorf("error running wasmd status command: %v", err)
 	}
 
+	//var out bytes.Buffer
+	//cmd.Stdout = &out
+	//cmd.Stderr = os.Stderr
+	//
+	//err := cmd.Run()
+	//if err != nil {
+	//	return 0, fmt.Errorf("error running wasmd status command: %v", err)
+	//}
+
 	var statusResp StatusResponse
-	err = json.Unmarshal(out.Bytes(), &statusResp)
+	err = json.Unmarshal(out, &statusResp)
 	if err != nil {
 		return 0, fmt.Errorf("error unmarshalling status response: %v", err)
 	}
