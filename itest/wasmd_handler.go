@@ -14,20 +14,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type wasmdNode struct {
+const (
+	wasmdRpcPort int = 2990
+	wasmdP2pPort int = 2991
+)
+
+type WasmdNodeHandler struct {
 	cmd     *exec.Cmd
 	pidFile string
 	dataDir string
+	rpcUrl  string
 }
 
-func newWasmdNode(dataDir string, cmd *exec.Cmd) *wasmdNode {
-	return &wasmdNode{
-		dataDir: dataDir,
+func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
+	testDir, err := baseDir("ZWasmdTest")
+	require.NoError(t, err)
+	defer func() {
+		if err != nil {
+			err := os.RemoveAll(testDir)
+			require.NoError(t, err)
+		}
+	}()
+
+	setupWasmd(testDir)
+	cmd, err := startWasmd(testDir)
+	require.NoError(t, err)
+
+	return &WasmdNodeHandler{
 		cmd:     cmd,
+		pidFile: "", // empty for now, will be set after start
+		dataDir: testDir,
 	}
 }
 
-func (n *wasmdNode) start() error {
+func (n *WasmdNodeHandler) Start() error {
+	if err := n.start(); err != nil {
+		// try to cleanup after start error, but return original error
+		_ = n.cleanup()
+		return err
+	}
+	return nil
+}
+
+func (n *WasmdNodeHandler) Shutdown() error {
+	if err := n.stop(); err != nil {
+		return err
+	}
+	if err := n.cleanup(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *WasmdNodeHandler) GetRpcUrl() string {
+	return fmt.Sprintf("http://localhost:%d", wasmdRpcPort)
+}
+
+func (n *WasmdNodeHandler) GetHomeDir() string {
+	return n.dataDir
+}
+
+// internal function to start the wasmd node
+func (n *WasmdNodeHandler) start() error {
 	if err := n.cmd.Start(); err != nil {
 		return err
 	}
@@ -49,7 +97,8 @@ func (n *wasmdNode) start() error {
 	return nil
 }
 
-func (n *wasmdNode) stop() (err error) {
+// internal function to stop the wasmd node
+func (n *WasmdNodeHandler) stop() (err error) {
 	if n.cmd == nil || n.cmd.Process == nil {
 		// return if not properly initialized
 		// or error starting the process
@@ -63,7 +112,8 @@ func (n *wasmdNode) stop() (err error) {
 	return n.cmd.Process.Signal(os.Interrupt)
 }
 
-func (n *wasmdNode) cleanup() error {
+// internal function to cleanup the process and data directories
+func (n *WasmdNodeHandler) cleanup() error {
 	if n.pidFile != "" {
 		if err := os.Remove(n.pidFile); err != nil {
 			log.Printf("unable to remove file %s: %v", n.pidFile, err)
@@ -82,60 +132,6 @@ func (n *wasmdNode) cleanup() error {
 	return nil
 }
 
-func (n *wasmdNode) shutdown() error {
-	if err := n.stop(); err != nil {
-		return err
-	}
-	if err := n.cleanup(); err != nil {
-		return err
-	}
-	return nil
-}
-
-type WasmdNodeHandler struct {
-	wasmdNode *wasmdNode
-}
-
-func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
-	testDir, err := baseDir("ZWasmdTest")
-	require.NoError(t, err)
-	defer func() {
-		if err != nil {
-			err := os.RemoveAll(testDir)
-			require.NoError(t, err)
-		}
-	}()
-
-	setupWasmd(testDir)
-	wh, err := startWasmd(testDir)
-	require.NoError(t, err)
-
-	return &WasmdNodeHandler{
-		wasmdNode: newWasmdNode(testDir, wh),
-	}
-}
-
-func (w *WasmdNodeHandler) Start() error {
-	if err := w.wasmdNode.start(); err != nil {
-		// try to cleanup after start error, but return original error
-		_ = w.wasmdNode.cleanup()
-		return err
-	}
-	return nil
-}
-
-func (w *WasmdNodeHandler) Stop() error {
-	if err := w.wasmdNode.shutdown(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (w *WasmdNodeHandler) GetHomeDir() string {
-	return w.wasmdNode.dataDir
-}
-
 type TxResponse struct {
 	TxHash string `json:"txhash"`
 	Events []struct {
@@ -148,10 +144,9 @@ type TxResponse struct {
 }
 
 func (w *WasmdNodeHandler) StoreWasmCode(t *testing.T, wasmFile string) (string, string, error) {
-	homeDir := w.GetHomeDir()
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
 		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
-		"--node=http://localhost:2990", "--home", homeDir, "-b", "sync", "-o", "json", "--keyring-backend=test")
+		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -173,7 +168,7 @@ func (w *WasmdNodeHandler) StoreWasmCode(t *testing.T, wasmFile string) (string,
 	time.Sleep(6 * time.Second)
 
 	txhash := txResp.TxHash
-	queryCmd := exec.Command("wasmd", "--node=http://localhost:2990", "q", "tx", txhash, "-o", "json")
+	queryCmd := exec.Command("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txhash, "-o", "json")
 
 	var queryOut bytes.Buffer
 	queryCmd.Stdout = &queryOut
@@ -297,8 +292,8 @@ func startWasmd(homeDir string) (*exec.Cmd, error) {
 	args := []string{
 		"start",
 		"--home", homeDir,
-		"--rpc.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", 2990),
-		"--p2p.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", 2991),
+		"--rpc.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", wasmdRpcPort),
+		"--p2p.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", wasmdP2pPort),
 		"--log_level=info",
 		"--trace",
 	}
