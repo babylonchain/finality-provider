@@ -166,7 +166,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return blockHeight > 5
+		return blockHeight > 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	t.Logf("Wasmd node is started")
 }

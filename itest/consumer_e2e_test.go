@@ -1,24 +1,17 @@
 package e2etest
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-// TestConsumerFinalityProviderRegistration tests finality-provider registration for a consumer chain
-func TestConsumer(t *testing.T) {
-	tm := StartManager(t)
+// TestConsumerStoreContract stores a contract in the consumer chain
+func TestConsumerStoreContract(t *testing.T) {
+	tm, _, _ := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
-	codeID, _, err := tm.WasmdHandler.StoreWasmCode("/Users/gusin/Github/finality-provider/itest/wasmd_contracts/babylon_contract.wasm")
-	require.NoError(t, err)
-	fmt.Println(codeID)
 
-	//consumerChainID := "consumer-chain-test-1"
-	//
-	//_, err := tm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-	//require.NoError(t, err)
-	//
-	//tm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
+	babylonContractPath := "wasmd_contracts/babylon_contract.wasm"
+	_, _, err := tm.WasmdHandler.StoreWasmCode(babylonContractPath)
+	require.NoError(t, err)
 }
