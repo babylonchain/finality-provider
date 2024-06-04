@@ -161,6 +161,10 @@ func (w *WasmdNodeHandler) Stop() error {
 	return nil
 }
 
+func (w *WasmdNodeHandler) GetHomeDir() string {
+	return w.wasmdNode.dataDir
+}
+
 type TxResponse struct {
 	TxHash string `json:"txhash"`
 	Events []struct {
@@ -172,10 +176,11 @@ type TxResponse struct {
 	} `json:"events"`
 }
 
-func (w *WasmdNodeHandler) StoreWasmCode(homeDir, wasmFile string) (string, string, error) {
+func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
+	homeDir := w.GetHomeDir()
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
-		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id=testing",
-		"--node=http://localhost:26657", "-b", "sync", "-o", "json", "--keyring-backend=test")
+		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
+		"--node=http://localhost:26657", "--home", homeDir, "-b", "sync", "-o", "json", "--keyring-backend=test")
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
