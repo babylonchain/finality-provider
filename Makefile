@@ -2,6 +2,7 @@ BUILDDIR ?= $(CURDIR)/build
 TOOLS_DIR := tools
 
 BABYLON_PKG := github.com/babylonchain/babylon/cmd/babylond
+WASMD_PKG   := github.com/CosmWasm/wasmd/tree/main/cmd/wasmd
 
 GO_BIN := ${GOPATH}/bin
 BTCD_BIN := $(GO_BIN)/btcd
@@ -58,8 +59,15 @@ build-docker:
 test:
 	go test ./...
 
-test-e2e:
-	cd $(TOOLS_DIR); go install -trimpath $(BABYLON_PKG)
+install-babylond:
+	cd $(TOOLS_DIR); \
+	go install -trimpath $(BABYLON_PKG)
+
+install-wasmd:
+	cd $(TOOLS_DIR); \
+	go install -trimpath $(WASMD_PKG)
+
+test-e2e: install-babylond install-wasmd
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
 
 ###############################################################################
