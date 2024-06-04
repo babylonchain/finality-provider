@@ -159,8 +159,17 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 		tm.StakingParams = params
 		return true
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
 	t.Logf("Babylon node is started")
+
+	// wait for wasmd to start
+	require.Eventually(t, func() bool {
+		blockHeight, err := tm.WasmdHandler.GetLatestBlockHeight()
+		if err != nil {
+			return false
+		}
+		return blockHeight > 5
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	t.Logf("Wasmd node is started")
 }
 
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance, uint64) {

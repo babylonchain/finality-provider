@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,6 +18,9 @@ import (
 const (
 	wasmdRpcPort int = 2990
 	wasmdP2pPort int = 2991
+	stake            = "ustake"  // Default staking token
+	fee              = "ucosm"   // Default fee token
+	moniker          = "node001" // Default moniker
 )
 
 type WasmdNodeHandler struct {
@@ -132,85 +136,6 @@ func (n *WasmdNodeHandler) cleanup() error {
 	return nil
 }
 
-type TxResponse struct {
-	TxHash string `json:"txhash"`
-	Events []struct {
-		Type       string `json:"type"`
-		Attributes []struct {
-			Key   string `json:"key"`
-			Value string `json:"value"`
-		} `json:"attributes"`
-	} `json:"events"`
-}
-
-func (w *WasmdNodeHandler) StoreWasmCode(t *testing.T, wasmFile string) (string, string, error) {
-	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
-		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
-		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return "", "", fmt.Errorf("error running wasmd store command: %v", err)
-	}
-
-	var txResp TxResponse
-	resp := out.String()
-	err = json.Unmarshal([]byte(resp), &txResp)
-	if err != nil {
-		return "", "", fmt.Errorf("error unmarshalling store wasm response: %v", err)
-	}
-
-	// Wait for a few seconds to ensure the transaction is processed
-	time.Sleep(6 * time.Second)
-
-	txhash := txResp.TxHash
-	queryCmd := exec.Command("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txhash, "-o", "json")
-
-	var queryOut bytes.Buffer
-	queryCmd.Stdout = &queryOut
-	queryCmd.Stderr = os.Stderr
-
-	err = queryCmd.Run()
-	if err != nil {
-		return "", "", fmt.Errorf("error querying transaction: %v", err)
-	}
-
-	var queryResp TxResponse
-	err = json.Unmarshal(queryOut.Bytes(), &queryResp)
-	if err != nil {
-		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
-	}
-
-	var codeID, codeHash string
-	for _, event := range queryResp.Events {
-		if event.Type == "store_code" {
-			for _, attr := range event.Attributes {
-				if attr.Key == "code_id" {
-					codeID = attr.Value
-				} else if attr.Key == "code_checksum" {
-					codeHash = attr.Value
-				}
-			}
-		}
-	}
-
-	if codeID == "" || codeHash == "" {
-		return "", "", fmt.Errorf("code ID or code checksum not found in transaction events")
-	}
-
-	return codeID, codeHash, nil
-}
-
-const (
-	stake   = "ustake"  // Default staking token
-	fee     = "ucosm"   // Default fee token
-	moniker = "node001" // Default moniker
-)
-
 func runCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
@@ -303,4 +228,109 @@ func startWasmd(homeDir string) (*exec.Cmd, error) {
 	cmd.Stderr = os.Stderr
 
 	return cmd, nil
+}
+
+type TxResponse struct {
+	TxHash string `json:"txhash"`
+	Events []struct {
+		Type       string `json:"type"`
+		Attributes []struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"attributes"`
+	} `json:"events"`
+}
+
+func (w *WasmdNodeHandler) StoreWasmCode(t *testing.T, wasmFile string) (string, string, error) {
+	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
+		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", chainID,
+		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", "", fmt.Errorf("error running wasmd store command: %v", err)
+	}
+
+	var txResp TxResponse
+	resp := out.String()
+	err = json.Unmarshal([]byte(resp), &txResp)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling store wasm response: %v", err)
+	}
+
+	// Wait for a few seconds to ensure the transaction is processed
+	time.Sleep(6 * time.Second)
+
+	txhash := txResp.TxHash
+	queryCmd := exec.Command("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txhash, "-o", "json")
+
+	var queryOut bytes.Buffer
+	queryCmd.Stdout = &queryOut
+	queryCmd.Stderr = os.Stderr
+
+	err = queryCmd.Run()
+	if err != nil {
+		return "", "", fmt.Errorf("error querying transaction: %v", err)
+	}
+
+	var queryResp TxResponse
+	err = json.Unmarshal(queryOut.Bytes(), &queryResp)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
+	}
+
+	var codeID, codeHash string
+	for _, event := range queryResp.Events {
+		if event.Type == "store_code" {
+			for _, attr := range event.Attributes {
+				if attr.Key == "code_id" {
+					codeID = attr.Value
+				} else if attr.Key == "code_checksum" {
+					codeHash = attr.Value
+				}
+			}
+		}
+	}
+
+	if codeID == "" || codeHash == "" {
+		return "", "", fmt.Errorf("code ID or code checksum not found in transaction events")
+	}
+
+	return codeID, codeHash, nil
+}
+
+type StatusResponse struct {
+	SyncInfo struct {
+		LatestBlockHeight string `json:"latest_block_height"`
+	} `json:"sync_info"`
+}
+
+func (w *WasmdNodeHandler) GetLatestBlockHeight() (int, error) {
+	cmd := exec.Command("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-o", "json")
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return 0, fmt.Errorf("error running wasmd status command: %v", err)
+	}
+
+	var statusResp StatusResponse
+	err = json.Unmarshal(out.Bytes(), &statusResp)
+	if err != nil {
+		return 0, fmt.Errorf("error unmarshalling status response: %v", err)
+	}
+
+	height, err := strconv.Atoi(statusResp.SyncInfo.LatestBlockHeight)
+	if err != nil {
+		return 0, fmt.Errorf("error converting latest block height to integer: %v", err)
+	}
+
+	return height, nil
 }
