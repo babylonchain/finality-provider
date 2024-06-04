@@ -28,7 +28,6 @@ type WasmdNodeHandler struct {
 	cmd     *exec.Cmd
 	pidFile string
 	dataDir string
-	rpcUrl  string
 }
 
 func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
