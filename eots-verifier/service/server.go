@@ -2,21 +2,20 @@ package service
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
-	"math/big"
 	"net"
-	"sync"
 	"sync/atomic"
 
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/crypto/eots"
-	bbntypes "github.com/babylonchain/babylon/types"
 	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	eotsservice "github.com/babylonchain/eots-aggregator/service"
 	eotsclient "github.com/babylonchain/eots-aggregator/service/client"
 	"github.com/babylonchain/finality-provider/eots-verifier/config"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/lightningnetwork/lnd/signal"
 
@@ -39,32 +38,33 @@ type Server struct {
 	cfg    *config.Config
 	logger *zap.Logger
 
-	rollupClient  *ethclient.Client
-	bbnClient     *bbnclient.Client
-	eotsAggClient *eotsclient.EotsAggregatorGRpcClient
+	// Need to ensure that the consumer is an Ethereum client
+	consumerClient *ethclient.Client
+	bbnClient      *bbnclient.Client
+	eotsAggClient  *eotsclient.EotsAggregatorGRpcClient
 }
 
 // NewServer creates a new RPC sever for EOTS verifier
 func NewServer(ctx context.Context, logger *zap.Logger, cfg *config.Config, shutdown signal.Interceptor) (*Server, error) {
 	logger.Info("New EOTS verifier server")
 
-	rollupRPC := cfg.RollupRPC
+	consumerRPC := cfg.ConsumerRPC
 	bbnRPC := cfg.BabylonRPC
 	eotsAggRPC := cfg.EotsAggRPC
 
-	rollupClient, err := ethclient.DialContext(ctx, rollupRPC)
+	consumerClient, err := ethclient.DialContext(ctx, consumerRPC)
 	if err != nil {
-		logger.Error("Failed to dial rollup RPC", zap.Error(err))
+		logger.Error("Failed to dial consumer RPC", zap.Error(err))
 		return nil, err
 	}
-	chainID, err := rollupClient.ChainID(ctx)
+	chainID, err := consumerClient.ChainID(ctx)
 	if err != nil {
-		logger.Error("Failed to fetch rollup ChainID", zap.Error(err))
+		logger.Error("Failed to fetch consumer ChainID", zap.Error(err))
 		return nil, err
 	}
 	chainIDStr := chainID.Text(10)
-	logger.Info("Rollup", zap.String("ChainID", chainIDStr))
-	cfg.RollupChainID = chainIDStr
+	logger.Info("Consumer", zap.String("ChainID", chainIDStr))
+	cfg.ChainID = chainIDStr
 
 	bbnConfig := bbncfg.DefaultBabylonConfig()
 	bbnConfig.RPCAddr = bbnRPC
@@ -95,9 +95,9 @@ func NewServer(ctx context.Context, logger *zap.Logger, cfg *config.Config, shut
 		cfg:    cfg,
 		logger: logger,
 
-		rollupClient:  rollupClient,
-		bbnClient:     bbnClient,
-		eotsAggClient: eotsAggClient,
+		consumerClient: consumerClient,
+		bbnClient:      bbnClient,
+		eotsAggClient:  eotsAggClient,
 	}, nil
 }
 
@@ -109,8 +109,8 @@ func (s *Server) Run() error {
 	}
 
 	defer func() {
-		if s.rollupClient != nil {
-			s.rollupClient.Close()
+		if s.consumerClient != nil {
+			s.consumerClient.Close()
 		}
 		if s.eotsAggClient != nil {
 			s.eotsAggClient.Close()
@@ -119,21 +119,24 @@ func (s *Server) Run() error {
 	}()
 
 	listenAddr := s.cfg.RpcListener
-	lis, err := net.Listen("tcp", listenAddr)
+	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", listenAddr, err)
 	}
-	defer lis.Close()
+	defer listener.Close()
 
 	grpcServer := grpc.NewServer()
 	defer grpcServer.GracefulStop()
 
-	if err := s.RegisterWithGrpcServer(grpcServer); err != nil {
-		return fmt.Errorf("failed to register gRPC server: %w", err)
-	}
-	if err := s.startGrpcListen(grpcServer, []net.Listener{lis}); err != nil {
-		s.logger.Error("Failed to start gRPC listener", zap.Error(err))
-	}
+	// Register the verifier RPC server.
+	proto.RegisterEOTSVerifierServer(grpcServer, s)
+
+	go func() {
+		s.logger.Info("gRPC server listening", zap.String("address", listener.Addr().String()))
+		if err := grpcServer.Serve(listener); err != nil {
+			s.logger.Error("failed to serve gRPC server", zap.Error(err))
+		}
+	}()
 
 	s.logger.Info("EOTS Verifier Daemon is fully active!")
 
@@ -143,39 +146,16 @@ func (s *Server) Run() error {
 	return nil
 }
 
-// RegisterWithGrpcServer registers the rpcServer with the passed root gRPC server.
-func (s *Server) RegisterWithGrpcServer(grpcServer *grpc.Server) error {
-	// Register the verifier RPC server.
-	proto.RegisterEOTSVerifierServer(grpcServer, s)
-	return nil
-}
-
-// startGrpcListen starts the GRPC server on the passed listeners.
-func (s *Server) startGrpcListen(grpcServer *grpc.Server, listeners []net.Listener) error {
-	var wg sync.WaitGroup
-
-	for _, lis := range listeners {
-		wg.Add(1)
-		go func(lis net.Listener) {
-			s.logger.Info("RPC server listening", zap.String("address", lis.Addr().String()))
-
-			defer lis.Close()
-
-			wg.Done()
-			_ = grpcServer.Serve(lis)
-		}(lis)
-	}
-
-	wg.Wait()
-
-	return nil
-}
-
 // VerifyFinalitySig verifies that the finality signature is valid
 func (s *Server) VerifyFinalitySig(ctx context.Context, req *proto.VerifyFinalitySigRequest) (
 	*proto.VerifyFinalitySigResponse, error) {
-	height := req.BlockNumber
-	l2Block, err := s.rollupClient.BlockByNumber(ctx, new(big.Int).SetUint64(height))
+	txHash := common.HexToHash(req.TxHash)
+	txReceipt, err := s.consumerClient.TransactionReceipt(ctx, txHash)
+	if err != nil {
+		return nil, err
+	}
+	l2BlockNumber := txReceipt.BlockNumber
+	l2Block, err := s.consumerClient.BlockByNumber(ctx, l2BlockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -194,10 +174,16 @@ func (s *Server) VerifyFinalitySig(ctx context.Context, req *proto.VerifyFinalit
 	// sign (parent_hash ++ transaction_list)
 	sigMsg := append(parentHash.Bytes(), txList...)
 
-	consumerID := fmt.Sprintf("op-stack-l2-%s", s.cfg.RollupChainID)
-	eotsInfos, err := s.eotsAggClient.GetEOTSInfos(ctx, int64(height), consumerID)
+	consumerID := fmt.Sprintf("op-stack-l2-%s", s.cfg.ChainID)
+	eotsInfos, err := s.eotsAggClient.GetEOTSInfos(ctx, l2BlockNumber.Uint64(), consumerID)
 	if err != nil {
 		return nil, err
+	}
+	eotsInfoMap := make(map[string]*eotsservice.EOTSInfoResponse)
+	for _, info := range eotsInfos {
+		// Convert the [32]byte key to a hex string for the map
+		key := hex.EncodeToString(info.FpBtcPk[:])
+		eotsInfoMap[key] = info
 	}
 
 	fpList, totalPower, err := s.getFinalityProvidersWithPower(ctx, consumerID)
@@ -205,7 +191,7 @@ func (s *Server) VerifyFinalitySig(ctx context.Context, req *proto.VerifyFinalit
 		return nil, err
 	}
 
-	validPower, err := s.calculateValidPower(ctx, sigMsg, fpList, eotsInfos)
+	validPower, err := s.calculateTotalPowerFromEotsVerifiedFps(ctx, sigMsg, fpList, eotsInfoMap)
 	if err != nil {
 		return nil, err
 	}
@@ -235,34 +221,36 @@ func (s *Server) getFinalityProvidersWithPower(ctx context.Context, consumerID s
 	return bbnRes.FinalityProviders, totalPower, nil
 }
 
-func (s *Server) calculateValidPower(ctx context.Context, msg []byte, fpList []*bsctypes.FinalityProviderResponse, eotsInfos []*eotsservice.EOTSInfoResponse) (uint64, error) {
+func (s *Server) calculateTotalPowerFromEotsVerifiedFps(
+	ctx context.Context,
+	msg []byte,
+	fpList []*bsctypes.FinalityProviderResponse,
+	eotsInfoMap map[string]*eotsservice.EOTSInfoResponse,
+) (uint64, error) {
 	validPower := uint64(0)
 	for _, fp := range fpList {
-		for _, info := range eotsInfos {
-			dbFpBtcPk, err := bbntypes.NewBIP340PubKey(info.FpBtcPk[:])
+		fpBtcPkStr := fp.BtcPk.MarshalHex()
+		if info, exists := eotsInfoMap[fpBtcPkStr]; exists {
+			fpBTCPK, err := fp.BtcPk.ToBTCPK()
 			if err != nil {
 				return uint64(0), err
 			}
-			if dbFpBtcPk.Equals(fp.BtcPk) {
-				fpBTCPK, err := fp.BtcPk.ToBTCPK()
-				if err != nil {
-					return uint64(0), err
-				}
-				var pubRand *secp256k1.FieldVal
-				if pOverflow := pubRand.SetBytes(&info.PubRand); pOverflow != 0 {
-					return uint64(0), err
-				}
-				// finalitySig is the `s` part of the Schnorr signature.
-				var finalitySig *btcec.ModNScalar
-				if sOverflow := finalitySig.SetBytes(&info.FinalitySig); sOverflow != 0 {
-					return uint64(0), err
-				}
+			var pubRand *secp256k1.FieldVal
+			// TODO: fetch the public randomness from the verifier contract
+			// if pOverflow := pubRand.SetBytes(); pOverflow != 0 {
+			// 	return uint64(0), err
+			// }
 
-				if err := eots.Verify(fpBTCPK, pubRand, msg, finalitySig); err != nil {
-					return uint64(0), err
-				}
-				validPower += fp.VotingPower
+			// finalitySig is the `s` part of the Schnorr signature.
+			var finalitySig *btcec.ModNScalar
+			if sOverflow := finalitySig.SetBytes(&info.FinalitySig); sOverflow != 0 {
+				return uint64(0), err
 			}
+
+			if err := eots.Verify(fpBTCPK, pubRand, msg, finalitySig); err != nil {
+				return uint64(0), err
+			}
+			validPower += fp.VotingPower
 		}
 	}
 	return validPower, nil

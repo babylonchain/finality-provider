@@ -14,12 +14,6 @@ const (
 	defaultLogLevel       = "debug"
 	defaultLogFilename    = "eots-verifier.log"
 	defaultConfigFileName = "eots-verifier.conf"
-
-	defaultRpcListener   = "127.0.0.1:9528"
-	defaultBabylonRPC    = "http://127.0.0.1:26657"
-	defaultEotsAggRPC    = "http://127.0.0.1:9527"
-	defaultRollupRPC     = "http://127.0.0.1:8545"
-	defaultRollupChainId = "42069"
 )
 
 var (
@@ -32,12 +26,12 @@ var (
 
 // Config is used to configure the EOTS verifier
 type Config struct {
-	LogLevel      string `long:"loglevel" description:"logging level"`
-	RpcListener   string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
-	BabylonRPC    string `long:"babylon_rpc" description:"connect to the Babylon RPC service"`
-	EotsAggRPC    string `long:"eots_agg_rpc" description:"connect to the EOTS Aggregator RPC service"`
-	RollupRPC     string `long:"rollup_rpc" description:"connect to the Rollup RPC service"`
-	RollupChainID string
+	LogLevel    string `long:"loglevel" description:"logging level"`
+	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
+	BabylonRPC  string `long:"babylon_rpc" description:"connect to the Babylon RPC service"`
+	EotsAggRPC  string `long:"eots_agg_rpc" description:"connect to the EOTS Aggregator RPC service"`
+	ConsumerRPC string `long:"consumer_rpc" description:"connect to the Consumer RPC service"`
+	ChainID     string
 }
 
 // LoadConfig loads the `conf.toml` config file from a given path
@@ -67,7 +61,7 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("invalid RPC listener address %s, %w", cfg.RpcListener, err)
 	}
 
-	if cfg.RollupRPC == "" || cfg.EotsAggRPC == "" || cfg.BabylonRPC == "" {
+	if cfg.ConsumerRPC == "" || cfg.EotsAggRPC == "" || cfg.BabylonRPC == "" {
 		return fmt.Errorf("missing needed RPC URL for the verifier")
 	}
 
@@ -88,11 +82,7 @@ func DefaultConfig() *Config {
 
 func DefaultConfigWithHomePath(homePath string) *Config {
 	cfg := &Config{
-		LogLevel:    defaultLogLevel,
-		RpcListener: defaultRpcListener,
-		BabylonRPC:  defaultBabylonRPC,
-		EotsAggRPC:  defaultEotsAggRPC,
-		RollupRPC:   defaultRollupRPC,
+		LogLevel: defaultLogLevel,
 	}
 	if err := cfg.Validate(); err != nil {
 		panic(err)
