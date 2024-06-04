@@ -51,45 +51,45 @@ func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
 	}
 }
 
-func (n *WasmdNodeHandler) Start() error {
-	if err := n.start(); err != nil {
+func (w *WasmdNodeHandler) Start() error {
+	if err := w.start(); err != nil {
 		// try to cleanup after start error, but return original error
-		_ = n.cleanup()
+		_ = w.cleanup()
 		return err
 	}
 	return nil
 }
 
-func (n *WasmdNodeHandler) Shutdown() error {
-	if err := n.stop(); err != nil {
+func (w *WasmdNodeHandler) Shutdown() error {
+	if err := w.stop(); err != nil {
 		return err
 	}
-	if err := n.cleanup(); err != nil {
+	if err := w.cleanup(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (n *WasmdNodeHandler) GetRpcUrl() string {
+func (w *WasmdNodeHandler) GetRpcUrl() string {
 	return fmt.Sprintf("http://localhost:%d", wasmdRpcPort)
 }
 
-func (n *WasmdNodeHandler) GetHomeDir() string {
-	return n.dataDir
+func (w *WasmdNodeHandler) GetHomeDir() string {
+	return w.dataDir
 }
 
-func (n *WasmdNodeHandler) start() error {
-	if err := n.cmd.Start(); err != nil {
+func (w *WasmdNodeHandler) start() error {
+	if err := w.cmd.Start(); err != nil {
 		return err
 	}
 
-	pid, err := os.Create(filepath.Join(n.dataDir, fmt.Sprintf("%s.pid", "wasmd")))
+	pid, err := os.Create(filepath.Join(w.dataDir, fmt.Sprintf("%s.pid", "wasmd")))
 	if err != nil {
 		return err
 	}
 
-	n.pidFile = pid.Name()
-	if _, err = fmt.Fprintf(pid, "%d\n", n.cmd.Process.Pid); err != nil {
+	w.pidFile = pid.Name()
+	if _, err = fmt.Fprintf(pid, "%d\n", w.cmd.Process.Pid); err != nil {
 		return err
 	}
 
@@ -100,29 +100,29 @@ func (n *WasmdNodeHandler) start() error {
 	return nil
 }
 
-func (n *WasmdNodeHandler) stop() (err error) {
-	if n.cmd == nil || n.cmd.Process == nil {
+func (w *WasmdNodeHandler) stop() (err error) {
+	if w.cmd == nil || w.cmd.Process == nil {
 		// return if not properly initialized
 		// or error starting the process
 		return nil
 	}
 
 	defer func() {
-		err = n.cmd.Wait()
+		err = w.cmd.Wait()
 	}()
 
-	return n.cmd.Process.Signal(os.Interrupt)
+	return w.cmd.Process.Signal(os.Interrupt)
 }
 
-func (n *WasmdNodeHandler) cleanup() error {
-	if n.pidFile != "" {
-		if err := os.Remove(n.pidFile); err != nil {
-			log.Printf("unable to remove file %s: %v", n.pidFile, err)
+func (w *WasmdNodeHandler) cleanup() error {
+	if w.pidFile != "" {
+		if err := os.Remove(w.pidFile); err != nil {
+			log.Printf("unable to remove file %s: %v", w.pidFile, err)
 		}
 	}
 
 	dirs := []string{
-		n.dataDir,
+		w.dataDir,
 	}
 	var err error
 	for _, dir := range dirs {
@@ -302,4 +302,34 @@ func (w *WasmdNodeHandler) GetLatestBlockHeight() (int, error) {
 	}
 
 	return height, nil
+}
+
+type ListResponse struct {
+	CodeInfos []CodeInfo `json:"code_infos"`
+}
+
+type CodeInfo struct {
+	CodeID string `json:"code_id"`
+}
+
+func (w *WasmdNodeHandler) GetLatestCodeID() (string, error) {
+	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
+	if err != nil {
+		return "", fmt.Errorf("error running wasmd list-code command: %v", err)
+	}
+
+	// Unmarshal JSON response
+	var listResp ListResponse
+	err = json.Unmarshal(output, &listResp)
+	if err != nil {
+		return "", fmt.Errorf("error unmarshalling list-code response: %v", err)
+	}
+
+	// Get the latest code ID from the list
+	if len(listResp.CodeInfos) == 0 {
+		return "", fmt.Errorf("no code info found in list-code response")
+	}
+
+	latestCodeID := listResp.CodeInfos[0].CodeID
+	return latestCodeID, nil
 }
