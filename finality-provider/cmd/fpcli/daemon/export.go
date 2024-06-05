@@ -108,14 +108,6 @@ func exportFp(ctx *cli.Context) error {
 
 	desc := fpInfo.Description
 	fp := btcstktypes.FinalityProvider{
-		BtcPk:         fpPk,
-		MasterPubRand: fpInfo.MasterPubRand,
-		Pop: &btcstktypes.ProofOfPossession{
-			BtcSigType: btcstktypes.BTCSigType_BIP340,
-			BabylonSig: fpInfo.Pop.ChainSig,
-			BtcSig:     fpInfo.Pop.BtcSig,
-		},
-		BabylonPk: cosmosPubKey,
 		Description: &types.Description{
 			Moniker:         desc.Moniker,
 			Identity:        desc.Identity,
@@ -124,6 +116,9 @@ func exportFp(ctx *cli.Context) error {
 			Details:         desc.Details,
 		},
 		Commission: &comm,
+		BtcPk:      fpPk,
+		BabylonPk:  cosmosPubKey,
+		Pop:        nil, // TODO: fill PoP?
 	}
 
 	if !ctx.Bool(signedFlag) {

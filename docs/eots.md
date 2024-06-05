@@ -152,7 +152,8 @@ Otherwise, an error message will be printed out.
 
 ```shell
 eotsd verify-schnorr-sig /path/to/data/file --btc-pk 50b106208c921b5e8a1c45494306fe1fc2cf68f33b8996420867dc7667fde383 \
---signature b91fc06b30b78c0ca66a7e033184d89b61cd6ab572329b20f6052411ab83502effb5c9a1173ed69f20f6502a741eeb5105519bb3f67d37612bc2bcce411f8d72
+--signature b91fc06b30b78c0ca66a7e033184d89b61cd6ab572329b20f6052411ab83502effb5c9a1173ed69f20f6502a741eeb5105519bb3f67d37612bc2bcce411f8d72 \
+--keyring-backend file
 ```
 
 ## 4. Starting the EOTS Daemon

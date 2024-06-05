@@ -11,9 +11,9 @@ service EOTSManager {
   rpc CreateKey (CreateKeyRequest)
       returns (CreateKeyResponse);
 
-  // CreateMasterRandPair creates a pair of master secret/public randomness
-  rpc CreateMasterRandPair (CreateMasterRandPairRequest)
-      returns (CreateMasterRandPairResponse);
+  // CreateRandomnessPairList returns a list of Schnorr randomness pairs
+  rpc CreateRandomnessPairList (CreateRandomnessPairListRequest)
+      returns (CreateRandomnessPairListResponse);
 
   // KeyRecord returns the key record
   rpc KeyRecord(KeyRecordRequest)
@@ -46,18 +46,22 @@ message CreateKeyResponse {
   bytes pk = 1;
 }
 
-message CreateMasterRandPairRequest {
+message CreateRandomnessPairListRequest {
   // uid is the identifier of an EOTS key, i.e., public key following BIP-340 spec
   bytes uid = 1;
   // chain_id is the identifier of the consumer chain that the randomness is committed to
   bytes chain_id = 2;
+  // start_height is the start height of the randomness pair list
+  uint64 start_height = 3;
+  // num is the number of randomness pair list
+  uint32 num = 4;
   // passphrase is used to decrypt the EOTS key
-  string passphrase = 3;
+  string passphrase = 5;
 }
 
-message CreateMasterRandPairResponse {
-  // master_pub_rand is a master public randomness in base58 format
-  string master_pub_rand = 1;
+message CreateRandomnessPairListResponse {
+  // pub_rand_list is a list of Schnorr public randomness
+  repeated bytes pub_rand_list = 1;
 }
 
 message KeyRecordRequest {

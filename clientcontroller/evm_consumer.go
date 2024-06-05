@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"go.uber.org/zap"
 )
 
@@ -43,14 +44,39 @@ func NewEVMConsumerController(
 	}, nil
 }
 
-// SubmitFinalitySig submits the finality signature
-func (ec *EVMConsumerController) SubmitFinalitySig(fpPk *btcec.PublicKey, blockHeight uint64, blockHash []byte, sig *btcec.ModNScalar) (*types.TxResponse, error) {
+// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
+// it returns tx hash and error
+func (ec *EVMConsumerController) CommitPubRandList(
+	fpPk *btcec.PublicKey,
+	startHeight uint64,
+	numPubRand uint64,
+	commitment []byte,
+	sig *schnorr.Signature,
+) (*types.TxResponse, error) {
 
 	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
+// SubmitFinalitySig submits the finality signature
+// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
+func (ec *EVMConsumerController) SubmitFinalitySig(
+	fpPk *btcec.PublicKey,
+	block *types.BlockInfo,
+	pubRand *btcec.FieldVal,
+	proof []byte, // TODO: have a type for proof
+	sig *btcec.ModNScalar,
+) (*types.TxResponse, error) {
+	return &types.TxResponse{TxHash: "", Events: nil}, nil
+}
+
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
-func (ec *EVMConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types.BlockInfo, sigs []*btcec.ModNScalar) (*types.TxResponse, error) {
+func (ec *EVMConsumerController) SubmitBatchFinalitySigs(
+	fpPk *btcec.PublicKey,
+	blocks []*types.BlockInfo,
+	pubRandList []*btcec.FieldVal,
+	proofList [][]byte,
+	sigs []*btcec.ModNScalar,
+) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
@@ -143,6 +169,12 @@ func (ec *EVMConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	*/
 
 	return uint64(0), nil
+}
+
+// QueryLastCommittedPublicRand returns the last public randomness commitments
+func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+
+	return nil, nil
 }
 
 func (ec *EVMConsumerController) Close() error {

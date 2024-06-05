@@ -52,7 +52,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
 			gomock.Any()).Return(uint64(0), nil).AnyTimes()
-		mockBabylonController := testutil.PrepareMockedBabylonController(t, uint64(0))
+		mockBabylonController := testutil.PrepareMockedBabylonController(t)
 
 		// Create randomized config
 		fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
@@ -106,13 +106,13 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 				popBytes,
 				testutil.ZeroCommissionRate(),
 				gomock.Any(),
-				fp.MasterPubRand,
-			).Return(&types.TxResponse{TxHash: txHash}, uint64(0), nil).AnyTimes()
+			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, err := app.RegisterFinalityProvider(fp.GetBIP340BTCPK().MarshalHex())
 		require.NoError(t, err)
 		require.Equal(t, txHash, res.TxHash)
 
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
 		err = app.StartHandlingFinalityProvider(fp.GetBIP340BTCPK(), passphrase)
 		require.NoError(t, err)
 

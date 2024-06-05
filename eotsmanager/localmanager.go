@@ -18,9 +18,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/codec"
+	"github.com/babylonchain/finality-provider/eotsmanager/randgenerator"
 	"github.com/babylonchain/finality-provider/eotsmanager/store"
 	eotstypes "github.com/babylonchain/finality-provider/eotsmanager/types"
-	fpkeyring "github.com/babylonchain/finality-provider/keyring"
 )
 
 const (
@@ -161,30 +161,32 @@ func loadBIP340PubKeyFromKeyringRecord(record *keyring.Record) (*bbntypes.BIP340
 	}
 }
 
-// CreateMasterRandPair creates a pair of master secret/public randomness deterministically
-// from the finality provider's secret key and chain ID
-func (lm *LocalEOTSManager) CreateMasterRandPair(fpPk []byte, chainID []byte, passphrase string) (string, error) {
-	_, mpr, err := lm.getMasterRandPair(fpPk, chainID, passphrase)
-	if err != nil {
-		return "", err
-	}
+// TODO the current implementation is a PoC, which does not contain any anti-slasher mechanism
+//
+//	a simple anti-slasher mechanism could be that the manager remembers the tuple (fpPk, chainID, height) or
+//	the hash of each generated randomness and return error if the same randomness is requested tweice
+func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
+	prList := make([]*btcec.FieldVal, 0, num)
 
-	return mpr.MarshalBase58(), nil
+	for i := uint32(0); i < num; i++ {
+		height := startHeight + uint64(i)
+		_, pubRand, err := lm.getRandomnessPair(fpPk, chainID, height, passphrase)
+		if err != nil {
+			return nil, err
+		}
+
+		prList = append(prList, pubRand)
+	}
+	lm.metrics.IncrementEotsFpTotalGeneratedRandomnessCounter(hex.EncodeToString(fpPk))
+	lm.metrics.SetEotsFpLastGeneratedRandomnessHeight(hex.EncodeToString(fpPk), float64(startHeight))
+
+	return prList, nil
 }
 
 func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
-	// get master secret randomness
-	// TODO: instead of calculating master secret randomness everytime, is it possible
-	// to manage it in the keyring?
-	msr, _, err := lm.getMasterRandPair(fpPk, chainID, passphrase)
+	privRand, _, err := lm.getRandomnessPair(fpPk, chainID, height, passphrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get master secret randomness: %w", err)
-	}
-
-	// derive secret randomness
-	sr, _, err := msr.DeriveRandPair(uint32(height)) // TODO: generalise to uint64
-	if err != nil {
-		return nil, fmt.Errorf("failed to get secret randomness: %w", err)
+		return nil, fmt.Errorf("failed to get private randomness: %w", err)
 	}
 
 	privKey, err := lm.getEOTSPrivKey(fpPk, passphrase)
@@ -196,7 +198,7 @@ func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, he
 	lm.metrics.IncrementEotsFpTotalEotsSignCounter(hex.EncodeToString(fpPk))
 	lm.metrics.SetEotsFpLastEotsSignHeight(hex.EncodeToString(fpPk), float64(height))
 
-	return eots.Sign(privKey, sr, msg)
+	return eots.Sign(privKey, privRand, msg)
 }
 
 func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase string) (*schnorr.Signature, error) {
@@ -243,13 +245,14 @@ func (lm *LocalEOTSManager) Close() error {
 	return nil
 }
 
-// getMasterRandPair returns a randomness pair generated based on the given finality provider key, chainID and height
-func (lm *LocalEOTSManager) getMasterRandPair(fpPk []byte, chainID []byte, passphrase string) (*eots.MasterSecretRand, *eots.MasterPublicRand, error) {
+// getRandomnessPair returns a randomness pair generated based on the given finality provider key, chainID and height
+func (lm *LocalEOTSManager) getRandomnessPair(fpPk []byte, chainID []byte, height uint64, passphrase string) (*eots.PrivateRand, *eots.PublicRand, error) {
 	record, err := lm.KeyRecord(fpPk, passphrase)
 	if err != nil {
 		return nil, nil, err
 	}
-	return fpkeyring.GenerateMasterRandPair(record.PrivKey.Serialize(), chainID)
+	privRand, pubRand := randgenerator.GenerateRandomness(record.PrivKey.Serialize(), chainID, height)
+	return privRand, pubRand, nil
 }
 
 // TODO: we ignore passPhrase in local implementation for now

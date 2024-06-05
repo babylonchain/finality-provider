@@ -5,9 +5,6 @@ import (
 	"fmt"
 
 	sdkErr "cosmossdk.io/errors"
-	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil"
-
 	"cosmossdk.io/math"
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -15,8 +12,10 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
-	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -109,7 +108,7 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sd
 }
 
 // RegisterFinalityProvider registers a finality provider via a MsgCreateFinalityProvider to Babylon
-// it returns tx hash, registered epoch, and error
+// it returns tx hash and error
 func (bc *BabylonController) RegisterFinalityProvider(
 	chainID string,
 	chainPk []byte,
@@ -117,40 +116,33 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	pop []byte,
 	commission *math.LegacyDec,
 	description []byte,
-	masterPubRand string,
-) (*types.TxResponse, uint64, error) {
+) (*types.TxResponse, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
-		return nil, 0, fmt.Errorf("invalid proof-of-possession: %w", err)
+		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
 	}
 
 	var sdkDescription sttypes.Description
 	if err := sdkDescription.Unmarshal(description); err != nil {
-		return nil, 0, fmt.Errorf("invalid description: %w", err)
+		return nil, fmt.Errorf("invalid description: %w", err)
 	}
 
 	msg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:        bc.mustGetTxSigner(),
-		BabylonPk:     &secp256k1.PubKey{Key: chainPk},
-		BtcPk:         bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
-		Pop:           &bbnPop,
-		Commission:    commission,
-		Description:   &sdkDescription,
-		MasterPubRand: masterPubRand,
-		ConsumerId:    chainID,
+		Signer:      bc.mustGetTxSigner(),
+		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
+		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
+		Pop:         &bbnPop,
+		Commission:  commission,
+		Description: &sdkDescription,
+		ConsumerId:  chainID,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	registeredEpoch, err := bc.QueryFinalityProviderRegisteredEpoch(fpPk)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, registeredEpoch, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
@@ -165,24 +157,56 @@ func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey)
 	return slashed, nil
 }
 
-// QueryFinalityProviderRegisteredEpoch queries the registered epoch of the finality provider
-func (bc *BabylonController) QueryFinalityProviderRegisteredEpoch(fpPk *btcec.PublicKey) (uint64, error) {
-	res, err := bc.bbnClient.QueryClient.FinalityProvider(
+// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+func (bc *BabylonController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+	res, err := bc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
 		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+		blockHeight,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query finality provider registered epoch: %w", err)
+		return 0, fmt.Errorf("failed to query BTC delegations: %w", err)
 	}
 
-	return res.FinalityProvider.RegisteredEpoch, nil
+	return res.VotingPower, nil
 }
 
-func (bc *BabylonController) QueryLastFinalizedEpoch() (uint64, error) {
-	resp, err := bc.bbnClient.LatestEpochFromStatus(ckpttypes.Finalized)
-	if err != nil {
-		return 0, err
+func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {
+	return bc.queryLatestBlocks(nil, count, finalitytypes.QueriedBlockStatus_FINALIZED, true)
+}
+
+func (bc *BabylonController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+	if endHeight < startHeight {
+		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
 	}
-	return resp.RawCheckpoint.EpochNum, nil
+	count := endHeight - startHeight + 1
+	if count > limit {
+		count = limit
+	}
+	return bc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), count, finalitytypes.QueriedBlockStatus_ANY, false)
+}
+
+func (bc *BabylonController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
+	var blocks []*types.BlockInfo
+	pagination := &sdkquery.PageRequest{
+		Limit:   count,
+		Reverse: reverse,
+		Key:     startKey,
+	}
+
+	res, err := bc.bbnClient.QueryClient.ListBlocks(status, pagination)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
+	}
+
+	for _, b := range res.Blocks {
+		ib := &types.BlockInfo{
+			Height: b.Height,
+			Hash:   b.AppHash,
+		}
+		blocks = append(blocks, ib)
+	}
+
+	return blocks, nil
 }
 
 func (bc *BabylonController) Close() error {
@@ -196,10 +220,6 @@ func (bc *BabylonController) Close() error {
 /*
 	Implementations for e2e tests only
 */
-
-func (bc *BabylonController) GetBBNClient() *bbnclient.Client {
-	return bc.bbnClient
-}
 
 func (bc *BabylonController) CreateBTCDelegation(
 	delBabylonPk *secp256k1.PubKey,

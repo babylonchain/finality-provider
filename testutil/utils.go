@@ -37,11 +37,9 @@ func PrepareMockedConsumerController(t *testing.T, r *rand.Rand, startHeight, cu
 	return mockConsumerController
 }
 
-func PrepareMockedBabylonController(t *testing.T, randomRegiteredEpoch uint64) *mocks.MockClientController {
+func PrepareMockedBabylonController(t *testing.T) *mocks.MockClientController {
 	ctl := gomock.NewController(t)
 	mockBabylonController := mocks.NewMockClientController(ctl)
-	// mock finalised BTC timestamped
-	mockBabylonController.EXPECT().QueryLastFinalizedEpoch().Return(randomRegiteredEpoch, nil).AnyTimes()
 	mockBabylonController.EXPECT().Close().Return(nil).AnyTimes()
 
 	return mockBabylonController
