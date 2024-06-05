@@ -27,7 +27,7 @@ func TestConsumerStoreContract(t *testing.T) {
 	defer ctm.Stop(t)
 
 	// Store the Babylon contract in the consumer chain
-	babylonContractPath := "wasmd_contracts/babylon_contract.wasm"
+	babylonContractPath := "bytecode/babylon_contract.wasm"
 	storedCodeID, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
 	require.NoError(t, err)
 	// Query the latest code ID from "wasmd q wasm list-code"
