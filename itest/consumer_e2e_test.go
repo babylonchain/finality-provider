@@ -4,6 +4,7 @@
 package e2etest
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,11 +29,13 @@ func TestConsumerStoreContract(t *testing.T) {
 
 	// Store the Babylon contract in the consumer chain
 	babylonContractPath := "bytecode/babylon_contract.wasm"
-	storedCodeID, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
+	storedCodeIDStr, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
+	require.NoError(t, err)
+	storedCodeID, err := strconv.ParseUint(storedCodeIDStr, 10, 64)
 	require.NoError(t, err)
 	// Query the latest code ID from "wasmd q wasm list-code"
-	latestCodeId, err := ctm.WasmdHandler.GetLatestCodeID()
+	latestCodeID, err := ctm.WasmdHandler.GetLatestCodeID()
 	require.NoError(t, err)
 	// Assert that the code id returned from store-code and list-code is the same
-	require.Equal(t, storedCodeID, latestCodeId)
+	require.Equal(t, storedCodeID, latestCodeID)
 }

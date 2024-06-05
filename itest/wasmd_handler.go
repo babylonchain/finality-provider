@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -214,17 +216,6 @@ func wasmdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 	return cmd
 }
 
-type TxResponse struct {
-	TxHash string `json:"txhash"`
-	Events []struct {
-		Type       string `json:"type"`
-		Attributes []struct {
-			Key   string `json:"key"`
-			Value string `json:"value"`
-		} `json:"attributes"`
-	} `json:"events"`
-}
-
 func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
 		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", wasmdChainID,
@@ -239,7 +230,7 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 		return "", "", fmt.Errorf("error running wasmd store command: %v", err)
 	}
 
-	var txResp TxResponse
+	var txResp sdk.TxResponse
 	resp := out.String()
 	err = json.Unmarshal([]byte(resp), &txResp)
 	if err != nil {
@@ -252,7 +243,7 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 		return "", "", fmt.Errorf("error querying transaction: %v", err)
 	}
 
-	var queryResp TxResponse
+	var queryResp sdk.TxResponse
 	err = json.Unmarshal(queryOutput, &queryResp)
 	if err != nil {
 		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
@@ -312,24 +303,24 @@ type CodeInfo struct {
 	CodeID string `json:"code_id"`
 }
 
-func (w *WasmdNodeHandler) GetLatestCodeID() (string, error) {
+func (w *WasmdNodeHandler) GetLatestCodeID() (uint64, error) {
 	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
 	if err != nil {
-		return "", fmt.Errorf("error running wasmd list-code command: %v", err)
+		return 0, fmt.Errorf("error running wasmd list-code command: %v", err)
 	}
 
 	// Unmarshal JSON response
-	var listResp ListResponse
-	err = json.Unmarshal(output, &listResp)
+	var listCodesResp wasmtypes.QueryCodesResponse
+	err = json.Unmarshal(output, &listCodesResp)
 	if err != nil {
-		return "", fmt.Errorf("error unmarshalling list-code response: %v", err)
+		return 0, fmt.Errorf("error unmarshalling list-code response: %v", err)
 	}
 
 	// Get the latest code ID from the list
-	if len(listResp.CodeInfos) == 0 {
-		return "", fmt.Errorf("no code info found in list-code response")
+	if len(listCodesResp.CodeInfos) == 0 {
+		return 0, fmt.Errorf("no code info found in list-code response")
 	}
 
-	latestCodeID := listResp.CodeInfos[0].CodeID
+	latestCodeID := listCodesResp.CodeInfos[0].CodeID
 	return latestCodeID, nil
 }
