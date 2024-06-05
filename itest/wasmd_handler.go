@@ -295,14 +295,6 @@ func (w *WasmdNodeHandler) GetLatestBlockHeight() (int, error) {
 	return height, nil
 }
 
-type ListResponse struct {
-	CodeInfos []CodeInfo `json:"code_infos"`
-}
-
-type CodeInfo struct {
-	CodeID string `json:"code_id"`
-}
-
 func (w *WasmdNodeHandler) GetLatestCodeID() (uint64, error) {
 	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
 	if err != nil {
