@@ -9,16 +9,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestConsumerFinalityProviderRegistration tests finality-provider registration for a consumer chain
+func TestConsumerFinalityProviderRegistration(t *testing.T) {
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
+	defer ctm.Stop(t)
+
+	consumerChainID := "consumer-chain-test-1"
+	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
+	require.NoError(t, err)
+
+	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
+}
+
 // TestConsumerStoreContract stores a contract in the consumer chain
 func TestConsumerStoreContract(t *testing.T) {
-	tm, _, _ := StartManagerWithFinalityProvider(t, 1)
-	defer tm.Stop(t)
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
+	defer ctm.Stop(t)
+
 	// Store the Babylon contract in the consumer chain
 	babylonContractPath := "wasmd_contracts/babylon_contract.wasm"
-	storedCodeID, _, err := tm.WasmdHandler.StoreWasmCode(babylonContractPath)
+	storedCodeID, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
 	require.NoError(t, err)
 	// Query the latest code ID from "wasmd q wasm list-code"
-	latestCodeId, err := tm.WasmdHandler.GetLatestCodeID()
+	latestCodeId, err := ctm.WasmdHandler.GetLatestCodeID()
 	require.NoError(t, err)
 	// Assert that the code id returned from store-code and list-code is the same
 	require.Equal(t, storedCodeID, latestCodeId)

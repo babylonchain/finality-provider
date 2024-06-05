@@ -60,7 +60,7 @@ func (w *WasmdNodeHandler) Start() error {
 	return nil
 }
 
-func (w *WasmdNodeHandler) Shutdown() error {
+func (w *WasmdNodeHandler) Stop() error {
 	if err := w.stop(); err != nil {
 		return err
 	}
