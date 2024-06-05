@@ -66,6 +66,7 @@ func (ec *EVMConsumerController) SubmitFinalitySig(
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
+
 	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
