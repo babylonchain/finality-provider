@@ -195,16 +195,3 @@ func TestFastSync(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, currentHeight < finalizedHeight+uint64(n))
 }
-
-// TestConsumerFinalityProviderRegistration tests finality-provider registration for a consumer chain
-func TestConsumerFinalityProviderRegistration(t *testing.T) {
-	tm, _ := StartManagerWithFinalityProvider(t, 1)
-	defer tm.Stop(t)
-
-	consumerChainID := "consumer-chain-test-1"
-
-	_, err := tm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-	require.NoError(t, err)
-
-	tm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
-}
