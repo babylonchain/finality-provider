@@ -65,6 +65,9 @@ func (w *WasmdNodeHandler) Stop(t *testing.T) {
 	err := w.stop()
 	// require.NoError(t, err)
 	// TODO: investigate why stopping the wasmd process is failing
+	if err != nil {
+		log.Printf("error stopping wasmd process: %v", err)
+	}
 
 	err = w.cleanup()
 	require.NoError(t, err)
