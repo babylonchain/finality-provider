@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -122,17 +121,12 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	defer tm.Stop(t)
 
 	// submit BTC delegations for each finality-provider
-	for _, fpIns := range fpInstances {
-		tm.Wg.Add(1)
-		go func(fpi *service.FinalityProviderInstance) {
-			defer tm.Wg.Done()
-			// check the public randomness is committed
-			tm.WaitForFpPubRandCommitted(t, fpi)
-			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, stakingTime, stakingAmount)
-		}(fpIns)
+	for _, fpi := range fpInstances {
+		// check the public randomness is committed
+		tm.WaitForFpPubRandCommitted(t, fpi)
+		// send a BTC delegation
+		_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, stakingTime, stakingAmount)
 	}
-	tm.Wg.Wait()
 
 	// check the BTC delegations are pending
 	delsResp := tm.WaitForNPendingDels(t, n)
