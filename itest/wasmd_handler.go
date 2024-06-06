@@ -8,12 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
-	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -216,6 +214,17 @@ func wasmdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 	return cmd
 }
 
+type TxResponse struct {
+	TxHash string `json:"txhash"`
+	Events []struct {
+		Type       string `json:"type"`
+		Attributes []struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"attributes"`
+	} `json:"events"`
+}
+
 func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
 	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
 		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", wasmdChainID,
@@ -230,20 +239,21 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 		return "", "", fmt.Errorf("error running wasmd store command: %v", err)
 	}
 
-	var txResp sdk.TxResponse
+	// TODO: using struct from cometbft/sdk gives unmarshal error, investigate
+	var txResp TxResponse
 	resp := out.String()
 	err = json.Unmarshal([]byte(resp), &txResp)
 	if err != nil {
 		return "", "", fmt.Errorf("error unmarshalling store wasm response: %v", err)
 	}
 
-	time.Sleep(6 * time.Second)
+	time.Sleep(3 * time.Second)
 	queryOutput, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txResp.TxHash, "-o", "json")
 	if err != nil {
 		return "", "", fmt.Errorf("error querying transaction: %v", err)
 	}
 
-	var queryResp sdk.TxResponse
+	var queryResp TxResponse
 	err = json.Unmarshal(queryOutput, &queryResp)
 	if err != nil {
 		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
@@ -269,37 +279,57 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 	return codeID, codeHash, nil
 }
 
+type StatusResponse struct {
+	SyncInfo struct {
+		LatestBlockHeight string `json:"latest_block_height"`
+	} `json:"sync_info"`
+}
+
 func (w *WasmdNodeHandler) GetLatestBlockHeight() (int64, error) {
-	out, err := runCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-o", "json")
+	out, err := runCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir())
 	if err != nil {
 		return 0, fmt.Errorf("error running wasmd status command: %v", err)
 	}
 
-	var statusResp coretypes.ResultStatus
+	// TODO: using struct from cometbft/sdk gives unmarshal error, investigate
+	var statusResp StatusResponse
 	err = json.Unmarshal(out, &statusResp)
 	if err != nil {
 		return 0, fmt.Errorf("error unmarshalling status response: %v", err)
 	}
 
-	return statusResp.SyncInfo.LatestBlockHeight, nil
-}
-
-func (w *WasmdNodeHandler) GetLatestCodeID() (uint64, error) {
-	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
+	height, err := strconv.ParseInt(statusResp.SyncInfo.LatestBlockHeight, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("error running wasmd list-code command: %v", err)
+		return 0, fmt.Errorf("error parsing block height: %v", err)
 	}
 
-	// Unmarshal JSON response
-	var listCodesResp wasmtypes.QueryCodesResponse
+	return height, nil
+}
+
+type ListResponse struct {
+	CodeInfos []CodeInfo `json:"code_infos"`
+}
+
+type CodeInfo struct {
+	CodeID string `json:"code_id"`
+}
+
+func (w *WasmdNodeHandler) GetLatestCodeID() (string, error) {
+	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
+	if err != nil {
+		return "", fmt.Errorf("error running wasmd list-code command: %v", err)
+	}
+
+	// TODO: using struct from cometbft/sdk gives unmarshal error, investigate
+	var listCodesResp ListResponse
 	err = json.Unmarshal(output, &listCodesResp)
 	if err != nil {
-		return 0, fmt.Errorf("error unmarshalling list-code response: %v", err)
+		return "", fmt.Errorf("error unmarshalling list-code response: %v", err)
 	}
 
 	// Get the latest code ID from the list
 	if len(listCodesResp.CodeInfos) == 0 {
-		return 0, fmt.Errorf("no code info found in list-code response")
+		return "", fmt.Errorf("no code info found in list-code response")
 	}
 
 	latestCodeID := listCodesResp.CodeInfos[0].CodeID

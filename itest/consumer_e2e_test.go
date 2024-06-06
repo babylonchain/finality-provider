@@ -4,7 +4,6 @@
 package e2etest
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,9 +28,7 @@ func TestConsumerStoreContract(t *testing.T) {
 
 	// Store the Babylon contract in the consumer chain
 	babylonContractPath := "bytecode/babylon_contract.wasm"
-	storedCodeIDStr, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
-	require.NoError(t, err)
-	storedCodeID, err := strconv.ParseUint(storedCodeIDStr, 10, 64)
+	storedCodeID, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
 	require.NoError(t, err)
 	// Query the latest code ID from "wasmd q wasm list-code"
 	latestCodeID, err := ctm.WasmdHandler.GetLatestCodeID()

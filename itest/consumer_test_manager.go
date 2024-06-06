@@ -33,13 +33,11 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 }
 
 func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
-	// wait for babylond to start
-	ctm.TestManager.WaitForServicesStart(t)
-
 	// wait for wasmd to start
 	require.Eventually(t, func() bool {
 		blockHeight, err := ctm.WasmdHandler.GetLatestBlockHeight()
 		if err != nil {
+			t.Logf("failed to get latest block height from wasmd %s", err.Error())
 			return false
 		}
 		return blockHeight > 2
