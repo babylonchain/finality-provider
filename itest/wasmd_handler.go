@@ -122,6 +122,7 @@ func (w *WasmdNodeHandler) stop(t *testing.T) (err error) {
 	if runtime.GOOS == "windows" {
 		return w.cmd.Process.Signal(os.Kill)
 	}
+	t.Logf("sending interrupt signal to wasmd process")
 	return w.cmd.Process.Signal(os.Interrupt)
 }
 
