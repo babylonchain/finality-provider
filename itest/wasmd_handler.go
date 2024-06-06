@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -115,12 +116,10 @@ func (w *WasmdNodeHandler) stop() (err error) {
 		err = w.cmd.Wait()
 	}()
 
-	return w.cmd.Process.Signal(os.Kill)
-
-	//if runtime.GOOS == "windows" {
-	//	return w.cmd.Process.Signal(os.Kill)
-	//}
-	//return w.cmd.Process.Signal(os.Interrupt)
+	if runtime.GOOS == "windows" {
+		return w.cmd.Process.Signal(os.Kill)
+	}
+	return w.cmd.Process.Signal(os.Interrupt)
 }
 
 func (w *WasmdNodeHandler) cleanup() error {
