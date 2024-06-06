@@ -46,8 +46,8 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (ctm *ConsumerTestManager) Stop(t *testing.T) {
-	ctm.TestManager.Stop(t)
 	ctm.WasmdHandler.Stop(t)
+	ctm.TestManager.Stop(t)
 }
 
 func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*service.FinalityProviderInstance) {
