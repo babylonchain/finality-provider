@@ -8,11 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 )
@@ -269,30 +269,19 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 	return codeID, codeHash, nil
 }
 
-type StatusResponse struct {
-	SyncInfo struct {
-		LatestBlockHeight string `json:"latest_block_height"`
-	} `json:"sync_info"`
-}
-
-func (w *WasmdNodeHandler) GetLatestBlockHeight() (int, error) {
+func (w *WasmdNodeHandler) GetLatestBlockHeight() (int64, error) {
 	out, err := runCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-o", "json")
 	if err != nil {
 		return 0, fmt.Errorf("error running wasmd status command: %v", err)
 	}
 
-	var statusResp StatusResponse
+	var statusResp coretypes.ResultStatus
 	err = json.Unmarshal(out, &statusResp)
 	if err != nil {
 		return 0, fmt.Errorf("error unmarshalling status response: %v", err)
 	}
 
-	height, err := strconv.Atoi(statusResp.SyncInfo.LatestBlockHeight)
-	if err != nil {
-		return 0, fmt.Errorf("error converting latest block height to integer: %v", err)
-	}
-
-	return height, nil
+	return statusResp.SyncInfo.LatestBlockHeight, nil
 }
 
 func (w *WasmdNodeHandler) GetLatestCodeID() (uint64, error) {
