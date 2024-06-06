@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -111,6 +112,9 @@ func (w *WasmdNodeHandler) stop() (err error) {
 		err = w.cmd.Wait()
 	}()
 
+	if runtime.GOOS == "windows" {
+		return w.cmd.Process.Signal(os.Kill)
+	}
 	return w.cmd.Process.Signal(os.Interrupt)
 }
 
@@ -118,7 +122,6 @@ func (w *WasmdNodeHandler) cleanup() error {
 	if w.pidFile != "" {
 		if err := os.Remove(w.pidFile); err != nil {
 			log.Printf("unable to remove file %s: %v", w.pidFile, err)
-			return err
 		}
 	}
 
@@ -129,7 +132,6 @@ func (w *WasmdNodeHandler) cleanup() error {
 	for _, dir := range dirs {
 		if err = os.RemoveAll(dir); err != nil {
 			log.Printf("Cannot remove dir %s: %v", dir, err)
-			return err
 		}
 	}
 	return nil
