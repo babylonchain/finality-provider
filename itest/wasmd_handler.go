@@ -118,6 +118,7 @@ func (w *WasmdNodeHandler) cleanup() error {
 	if w.pidFile != "" {
 		if err := os.Remove(w.pidFile); err != nil {
 			log.Printf("unable to remove file %s: %v", w.pidFile, err)
+			return err
 		}
 	}
 
@@ -128,6 +129,7 @@ func (w *WasmdNodeHandler) cleanup() error {
 	for _, dir := range dirs {
 		if err = os.RemoveAll(dir); err != nil {
 			log.Printf("Cannot remove dir %s: %v", dir, err)
+			return err
 		}
 	}
 	return nil

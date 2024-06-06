@@ -48,6 +48,9 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 func (ctm *ConsumerTestManager) Stop(t *testing.T) {
 	ctm.TestManager.Stop(t)
 	err := ctm.WasmdHandler.Stop()
+	if err != nil {
+		t.Logf("failed to stop wasmd %s", err.Error())
+	}
 	require.NoError(t, err)
 }
 
@@ -104,7 +107,7 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
+	t.Logf("the consumer test manager is running with %v finality-provider(s)", len(fpInsList))
 
 	return ctm, fpInsList
 }
@@ -168,7 +171,7 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 	fpInsList := app.ListFinalityProviderInstancesForChain(chainID)
 	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
+	t.Logf("the consumer test manager is running with %v finality-provider(s)", len(fpInsList))
 
 	return fpInsList
 }
