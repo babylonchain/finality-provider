@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -61,14 +60,18 @@ func (w *WasmdNodeHandler) Start() error {
 	return nil
 }
 
-func (w *WasmdNodeHandler) Stop() error {
-	if err := w.stop(); err != nil {
-		return err
+func (w *WasmdNodeHandler) Stop(t *testing.T) {
+	err := w.stop()
+	if err != nil {
+		log.Printf("error stopping wasmd: %v", err)
 	}
-	if err := w.cleanup(); err != nil {
-		return err
+	require.NoError(t, err)
+
+	err = w.cleanup()
+	if err != nil {
+		log.Printf("error cleaning up wasmd: %v", err)
 	}
-	return nil
+	require.NoError(t, err)
 }
 
 func (w *WasmdNodeHandler) GetRpcUrl() string {
@@ -112,10 +115,12 @@ func (w *WasmdNodeHandler) stop() (err error) {
 		err = w.cmd.Wait()
 	}()
 
-	if runtime.GOOS == "windows" {
-		return w.cmd.Process.Signal(os.Kill)
-	}
-	return w.cmd.Process.Signal(os.Interrupt)
+	return w.cmd.Process.Signal(os.Kill)
+
+	//if runtime.GOOS == "windows" {
+	//	return w.cmd.Process.Signal(os.Kill)
+	//}
+	//return w.cmd.Process.Signal(os.Interrupt)
 }
 
 func (w *WasmdNodeHandler) cleanup() error {

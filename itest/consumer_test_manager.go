@@ -47,11 +47,7 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 
 func (ctm *ConsumerTestManager) Stop(t *testing.T) {
 	ctm.TestManager.Stop(t)
-	err := ctm.WasmdHandler.Stop()
-	if err != nil {
-		t.Logf("failed to stop wasmd %s", err.Error())
-	}
-	require.NoError(t, err)
+	ctm.WasmdHandler.Stop(t)
 }
 
 func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*service.FinalityProviderInstance) {
