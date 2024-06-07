@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"os"
 	"time"
 
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
@@ -53,6 +54,15 @@ func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdpa
 
 	cp := provider.(*cosmos.CosmosProvider)
 	cp.PCfg.KeyDirectory = cfg.KeyDirectory
+	//encodingConfig := wasmdparams.MakeEncodingConfig()
+
+	//tempApp := wasmdapp.NewWasmApp(log.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(tempDir()), []wasmkeeper.Option{})
+	//encodingConfig := wasmdparams.EncodingConfig{
+	//	InterfaceRegistry: tempApp.InterfaceRegistry(),
+	//	Codec:             tempApp.AppCodec(),
+	//	TxConfig:          tempApp.TxConfig(),
+	//	Amino:             tempApp.LegacyAmino(),
+	//}
 
 	// Create tmp Babylon app to retrieve and register codecs
 	// Need to override this manually as otherwise option from config is ignored
@@ -97,4 +107,14 @@ func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdpa
 
 func (c *Client) GetConfig() *config.CosmosChainConfig {
 	return c.cfg
+}
+
+var tempDir = func() string {
+	dir, err := os.MkdirTemp("", "wasmd")
+	if err != nil {
+		panic("failed to create temp dir: " + err.Error())
+	}
+	defer os.RemoveAll(dir)
+
+	return dir
 }
