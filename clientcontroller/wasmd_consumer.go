@@ -6,16 +6,12 @@ import (
 
 	sdkErr "cosmossdk.io/errors"
 	bbnclient "github.com/babylonchain/babylon/client/client"
-	bbntypes "github.com/babylonchain/babylon/types"
-	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 )
@@ -103,28 +99,8 @@ func (wc *WasmdConsumerController) CommitPubRandList(
 	commitment []byte,
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
-	msg := &finalitytypes.MsgCommitPubRandList{
-		Signer:      wc.mustGetTxSigner(),
-		FpBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
-		StartHeight: startHeight,
-		NumPubRand:  numPubRand,
-		Commitment:  commitment,
-		Sig:         bbntypes.NewBIP340SignatureFromBTCSig(sig),
-	}
-
-	unrecoverableErrs := []*sdkErr.Error{
-		finalitytypes.ErrInvalidPubRand,
-		finalitytypes.ErrTooFewPubRand,
-		finalitytypes.ErrNoPubRandYet,
-		btcstakingtypes.ErrFpNotFound,
-	}
-
-	res, err := wc.reliablySendMsg(msg, emptyErrs, unrecoverableErrs)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	// empty response
+	return nil, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
@@ -135,33 +111,8 @@ func (wc *WasmdConsumerController) SubmitFinalitySig(
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
-	cmtProof := cmtcrypto.Proof{}
-	if err := cmtProof.Unmarshal(proof); err != nil {
-		return nil, err
-	}
-
-	msg := &finalitytypes.MsgAddFinalitySig{
-		Signer:       wc.mustGetTxSigner(),
-		FpBtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
-		BlockHeight:  block.Height,
-		PubRand:      bbntypes.NewSchnorrPubRandFromFieldVal(pubRand),
-		Proof:        &cmtProof,
-		BlockAppHash: block.Hash,
-		FinalitySig:  bbntypes.NewSchnorrEOTSSigFromModNScalar(sig),
-	}
-
-	unrecoverableErrs := []*sdkErr.Error{
-		finalitytypes.ErrInvalidFinalitySig,
-		finalitytypes.ErrPubRandNotFound,
-		btcstakingtypes.ErrFpAlreadySlashed,
-	}
-
-	res, err := wc.reliablySendMsg(msg, emptyErrs, unrecoverableErrs)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	// empty response
+	return nil, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
@@ -172,150 +123,50 @@ func (wc *WasmdConsumerController) SubmitBatchFinalitySigs(
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
 ) (*types.TxResponse, error) {
-	if len(blocks) != len(sigs) {
-		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
-	}
-
-	msgs := make([]sdk.Msg, 0, len(blocks))
-	for i, b := range blocks {
-		cmtProof := cmtcrypto.Proof{}
-		if err := cmtProof.Unmarshal(proofList[i]); err != nil {
-			return nil, err
-		}
-
-		msg := &finalitytypes.MsgAddFinalitySig{
-			Signer:       wc.mustGetTxSigner(),
-			FpBtcPk:      bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
-			BlockHeight:  b.Height,
-			PubRand:      bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]),
-			Proof:        &cmtProof,
-			BlockAppHash: b.Hash,
-			FinalitySig:  bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]),
-		}
-		msgs = append(msgs, msg)
-	}
-
-	unrecoverableErrs := []*sdkErr.Error{
-		finalitytypes.ErrInvalidFinalitySig,
-		finalitytypes.ErrPubRandNotFound,
-		btcstakingtypes.ErrFpAlreadySlashed,
-	}
-
-	res, err := wc.reliablySendMsgs(msgs, emptyErrs, unrecoverableErrs)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	// empty response
+	return nil, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (wc *WasmdConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	res, err := wc.wasmdClient.QueryClient.FinalityProviderPowerAtHeight(
-		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
-		blockHeight,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to query the finality provider's voting power at height %d: %w", blockHeight, err)
-	}
-
-	return res.VotingPower, nil
+	// empty response
+	return 0, nil
 }
 
 func (wc *WasmdConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
-	blocks, err := wc.queryLatestBlocks(nil, 1, finalitytypes.QueriedBlockStatus_FINALIZED, true)
-	if blocks == nil {
-		return nil, err
-	}
-	return blocks[0], err
+	// empty response
+	return nil, nil
 }
 
 func (wc *WasmdConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
-	if endHeight < startHeight {
-		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
-	}
-	count := endHeight - startHeight + 1
-	if count > limit {
-		count = limit
-	}
-	return wc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), count, finalitytypes.QueriedBlockStatus_ANY, false)
+	// empty response
+	return nil, nil
 }
 
 func (wc *WasmdConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
-	var blocks []*types.BlockInfo
-	pagination := &sdkquery.PageRequest{
-		Limit:   count,
-		Reverse: reverse,
-		Key:     startKey,
-	}
-
-	res, err := wc.wasmdClient.QueryClient.ListBlocks(status, pagination)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
-	}
-
-	for _, b := range res.Blocks {
-		ib := &types.BlockInfo{
-			Height: b.Height,
-			Hash:   b.AppHash,
-		}
-		blocks = append(blocks, ib)
-	}
-
-	return blocks, nil
+	// empty response
+	return nil, nil
 }
 
-//func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
-//	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-//	return ctx, cancel
-//}
-
 func (wc *WasmdConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	res, err := wc.wasmdClient.QueryClient.Block(height)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
-	}
-
-	return &types.BlockInfo{
-		Height: height,
-		Hash:   res.Block.AppHash,
-	}, nil
+	// empty response
+	return nil, nil
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
 func (wc *WasmdConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
-	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
-
-	pagination := &sdkquery.PageRequest{
-		// NOTE: the count is limited by pagination queries
-		Limit:   count,
-		Reverse: true,
-	}
-
-	res, err := wc.wasmdClient.QueryClient.ListPubRandCommit(fpBtcPk.MarshalHex(), pagination)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
-	}
-
-	return res.PubRandCommitMap, nil
+	// empty response
+	return nil, nil
 }
 
 func (wc *WasmdConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	res, err := wc.wasmdClient.QueryClient.Block(height)
-	if err != nil {
-		return false, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
-	}
-
-	return res.Block.Finalized, nil
+	// empty response
+	return false, nil
 }
 
 func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
-	res, err := wc.wasmdClient.QueryClient.ActivatedHeight()
-	if err != nil {
-		return 0, fmt.Errorf("failed to query activated height: %w", err)
-	}
-
-	return res.Height, nil
+	// empty response
+	return 0, nil
 }
 
 func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
