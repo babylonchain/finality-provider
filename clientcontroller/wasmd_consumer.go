@@ -28,7 +28,6 @@ func NewWasmdConsumerController(
 	cfg *fpcfg.BBNConfig,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
-
 	bbnConfig := fpcfg.BBNConfigToBabylonConfig(cfg)
 
 	if err := bbnConfig.Validate(); err != nil {

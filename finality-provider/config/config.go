@@ -81,6 +81,8 @@ type Config struct {
 
 	EVMConfig *EVMConfig `group:"evm" namespace:"evm"`
 
+	WasmdConfig *WasmdConfig `group:"wasmd" namespace:"wasmd"`
+
 	RpcListener string `long:"rpclistener" description:"the listener for RPC connections, e.g., 127.0.0.1:1234"`
 
 	Metrics *metrics.Config `group:"metrics" namespace:"metrics"`
