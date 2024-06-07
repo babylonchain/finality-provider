@@ -25,15 +25,16 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// Setup test manager
 	tm := StartManager(t)
 
+	// Start wasmd node
+	wh := NewWasmdNodeHandler(t)
+	err := wh.Start()
+	require.NoError(t, err)
+
 	// Setup wasmd consumer client
 	logger := zap.NewNop()
 	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
+	tm.FpConfig.WasmdConfig.KeyDirectory = wh.dataDir
 	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, logger)
-	require.NoError(t, err)
-
-	// Start wasmd node
-	wh := NewWasmdNodeHandler(t)
-	err = wh.Start()
 	require.NoError(t, err)
 
 	ctm := &ConsumerTestManager{

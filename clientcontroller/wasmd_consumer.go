@@ -20,7 +20,7 @@ import (
 var _ ConsumerController = &BabylonConsumerController{}
 
 type WasmdConsumerController struct {
-	wasmdClient *cosmosclient.Client
+	WasmdClient *cosmosclient.Client
 	cfg         *config.CosmosChainConfig
 	logger      *zap.Logger
 }
@@ -63,7 +63,7 @@ func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
 	// and we should panic.
 	// This is checked at the start of BabylonConsumerController, so if it fails something is really wrong
 
-	keyRec, err := wc.wasmdClient.GetKeyring().Key(wc.cfg.Key)
+	keyRec, err := wc.WasmdClient.GetKeyring().Key(wc.cfg.Key)
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
@@ -78,12 +78,12 @@ func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (wc *WasmdConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (wc *WasmdConsumerController) ReliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return wc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
 func (wc *WasmdConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return wc.wasmdClient.ReliablySendMsgs(
+	return wc.WasmdClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -178,7 +178,7 @@ func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
 func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := wc.wasmdClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	chainInfo, err := wc.WasmdClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
 	if err != nil {
@@ -194,9 +194,9 @@ func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, erro
 }
 
 func (wc *WasmdConsumerController) Close() error {
-	if !wc.wasmdClient.IsRunning() {
+	if !wc.WasmdClient.IsRunning() {
 		return nil
 	}
 
-	return wc.wasmdClient.Stop()
+	return wc.WasmdClient.Stop()
 }

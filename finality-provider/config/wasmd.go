@@ -30,7 +30,7 @@ func DefaultWasmdConfig() *WasmdConfig {
 		ChainID:        "wasmd-test",
 		RPCAddr:        "http://localhost:2990",
 		GRPCAddr:       "https://localhost:9090",
-		AccountPrefix:  "ustake",
+		AccountPrefix:  "wasm",
 		KeyringBackend: "test",
 		GasAdjustment:  1.3,
 		GasPrices:      "1ustake",
