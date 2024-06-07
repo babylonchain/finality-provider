@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
+	wasmdapp "github.com/CosmWasm/wasmd/app"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
@@ -34,7 +35,8 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	logger := zap.NewNop()
 	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
 	tm.FpConfig.WasmdConfig.KeyDirectory = wh.dataDir
-	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, logger)
+	encodingConfig := wasmdapp.MakeEncodingConfig(t)
+	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, encodingConfig, logger)
 	require.NoError(t, err)
 
 	ctm := &ConsumerTestManager{

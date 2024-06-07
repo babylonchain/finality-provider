@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	sdkErr "cosmossdk.io/errors"
+	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	cosmosclient "github.com/babylonchain/finality-provider/cosmoschainrpcclient/client"
 	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
@@ -27,6 +28,7 @@ type WasmdConsumerController struct {
 
 func NewWasmdConsumerController(
 	cfg *fpcfg.WasmdConfig,
+	encodingConfig wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
 	wasmdConfig := fpcfg.WasmdConfigToQueryClientConfig(cfg)
@@ -38,6 +40,7 @@ func NewWasmdConsumerController(
 	wc, err := cosmosclient.New(
 		wasmdConfig,
 		"wasmd",
+		encodingConfig,
 		logger,
 	)
 	if err != nil {

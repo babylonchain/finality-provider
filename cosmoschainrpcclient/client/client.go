@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	"github.com/babylonchain/babylon/client/query"
 	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
@@ -20,7 +21,7 @@ type Client struct {
 	cfg      *config.CosmosChainConfig
 }
 
-func New(cfg *config.CosmosChainConfig, chainName string, logger *zap.Logger) (*Client, error) {
+func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
 	var (
 		zapLogger *zap.Logger
 		err       error
@@ -56,12 +57,12 @@ func New(cfg *config.CosmosChainConfig, chainName string, logger *zap.Logger) (*
 	// Create tmp Babylon app to retrieve and register codecs
 	// Need to override this manually as otherwise option from config is ignored
 	//encCfg := bbn.GetEncodingConfig()
-	//cp.Cdc = cosmos.Codec{
-	//	InterfaceRegistry: encCfg.InterfaceRegistry,
-	//	Marshaler:         encCfg.Codec,
-	//	TxConfig:          encCfg.TxConfig,
-	//	Amino:             encCfg.Amino,
-	//}
+	cp.Cdc = cosmos.Codec{
+		InterfaceRegistry: encodingConfig.InterfaceRegistry,
+		Marshaler:         encodingConfig.Codec,
+		TxConfig:          encodingConfig.TxConfig,
+		Amino:             encodingConfig.Amino,
+	}
 
 	// initialise Cosmos provider
 	// NOTE: this will create a RPC client. The RPC client will be used for

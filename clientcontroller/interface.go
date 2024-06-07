@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"cosmossdk.io/math"
+	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"go.uber.org/zap"
@@ -110,7 +111,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	case WasmdConsumerChainName:
-		ccc, err = NewWasmdConsumerController(config.WasmdConfig, logger)
+		ccc, err = NewWasmdConsumerController(config.WasmdConfig, wasmdparams.EncodingConfig{}, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
 		}
