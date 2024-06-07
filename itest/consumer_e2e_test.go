@@ -4,6 +4,7 @@
 package e2etest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,4 +36,7 @@ func TestConsumerStoreContract(t *testing.T) {
 	require.NoError(t, err)
 	// Assert that the code id returned from store-code and list-code is the same
 	require.Equal(t, storedCodeID, latestCodeID)
+
+	bb, _ := ctm.WasmdConsumerClient.QueryCometBestBlock()
+	fmt.Print(bb.Height)
 }

@@ -7,25 +7,39 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 type ConsumerTestManager struct {
 	*TestManager
-	WasmdHandler *WasmdNodeHandler
+	WasmdHandler        *WasmdNodeHandler
+	WasmdConsumerClient *fpcc.WasmdConsumerController
 }
 
 func StartConsumerManager(t *testing.T) *ConsumerTestManager {
+	// Setup test manager
 	tm := StartManager(t)
+
+	// Setup wasmd query client
+	logger := zap.NewNop()
+	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
+	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, logger)
+	require.NoError(t, err)
+
+	// Start wasmd node
 	wh := NewWasmdNodeHandler(t)
-	err := wh.Start()
+	err = wh.Start()
 	require.NoError(t, err)
 
 	ctm := &ConsumerTestManager{
-		TestManager:  tm,
-		WasmdHandler: wh,
+		TestManager:         tm,
+		WasmdHandler:        wh,
+		WasmdConsumerClient: wcc,
 	}
 
 	ctm.WaitForServicesStart(t)

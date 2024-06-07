@@ -43,8 +43,6 @@ func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
 
 	setupWasmd(t, testDir)
 	cmd := wasmdStartCmd(t, testDir)
-	require.NoError(t, err)
-
 	return &WasmdNodeHandler{
 		cmd:     cmd,
 		pidFile: "", // empty for now, will be set after start

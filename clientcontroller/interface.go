@@ -110,7 +110,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	case WasmdConsumerChainName:
-		ccc, err = NewWasmdConsumerController(config.BabylonConfig, logger)
+		ccc, err = NewWasmdConsumerController(config.WasmdConfig, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
 		}

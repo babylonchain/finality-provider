@@ -23,27 +23,27 @@ type WasmdConfig struct {
 	SignModeStr    string        `long:"sign-mode" description:"sign mode to use"`
 }
 
-//	func DefaultWasmdConfig() WasmdConfig {
-//		dc := bbncfg.DefaultBabylonConfig()
-//		// fill up the config from dc config
-//		return WasmdConfig{
-//			Key:            dc.Key,
-//			ChainID:        dc.ChainID,
-//			RPCAddr:        dc.RPCAddr,
-//			GRPCAddr:       dc.GRPCAddr,
-//			AccountPrefix:  dc.AccountPrefix,
-//			KeyringBackend: dc.KeyringBackend,
-//			GasAdjustment:  1.5,
-//			GasPrices:      "0.002ubbn",
-//			Debug:          dc.Debug,
-//			Timeout:        dc.Timeout,
-//			// Setting this to relatively low value, out currnet babylon client (lens) will
-//			// block for this amout of time to wait for transaction inclusion in block
-//			BlockTimeout: 1 * time.Minute,
-//			OutputFormat: dc.OutputFormat,
-//			SignModeStr:  dc.SignModeStr,
-//		}
-//	}
+func DefaultWasmdConfig() *WasmdConfig {
+	// fill up the config from dc config
+	return &WasmdConfig{
+		Key:            "validator",
+		ChainID:        "wasmd-test",
+		RPCAddr:        "http://localhost:2990",
+		GRPCAddr:       "https://localhost:9090",
+		AccountPrefix:  "ustake",
+		KeyringBackend: "test",
+		GasAdjustment:  1.3,
+		GasPrices:      "1ustake",
+		Debug:          true,
+		Timeout:        20 * time.Second,
+		// Setting this to relatively low value, out currnet babylon client (lens) will
+		// block for this amout of time to wait for transaction inclusion in block
+		BlockTimeout: 1 * time.Minute,
+		OutputFormat: "direct",
+		SignModeStr:  "",
+	}
+}
+
 func WasmdConfigToQueryClientConfig(wc *WasmdConfig) *config.CosmosChainConfig {
 	return &config.CosmosChainConfig{
 		Key:              wc.Key,
