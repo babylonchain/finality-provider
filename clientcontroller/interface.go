@@ -16,6 +16,7 @@ import (
 const (
 	BabylonConsumerChainName = "babylon"
 	EVMConsumerChainName     = "evm"
+	WasmdConsumerChainName   = "wasmd"
 )
 
 type ClientController interface {
@@ -107,6 +108,11 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 		ccc, err = NewEVMConsumerController(config.EVMConfig, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
+		}
+	case WasmdConsumerChainName:
+		ccc, err = NewWasmdConsumerController(config.BabylonConfig, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported consumer chain")

@@ -13,7 +13,6 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/chaincfg"
 	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
@@ -24,15 +23,13 @@ import (
 var _ ConsumerController = &BabylonConsumerController{}
 
 type WasmdConsumerController struct {
-	bbnClient *bbnclient.Client
-	cfg       *fpcfg.BBNConfig
-	btcParams *chaincfg.Params
-	logger    *zap.Logger
+	wasmdClient *bbnclient.Client
+	cfg         *fpcfg.BBNConfig
+	logger      *zap.Logger
 }
 
 func NewWasmdConsumerController(
 	cfg *fpcfg.BBNConfig,
-	btcParams *chaincfg.Params,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
 
@@ -53,7 +50,6 @@ func NewWasmdConsumerController(
 	return &WasmdConsumerController{
 		bc,
 		cfg,
-		btcParams,
 		logger,
 	}, nil
 }
@@ -70,7 +66,7 @@ func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
 	// and we should panic.
 	// This is checked at the start of BabylonConsumerController, so if it fails something is really wrong
 
-	keyRec, err := wc.bbnClient.GetKeyring().Key(wc.cfg.Key)
+	keyRec, err := wc.wasmdClient.GetKeyring().Key(wc.cfg.Key)
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
@@ -90,7 +86,7 @@ func (wc *WasmdConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*
 }
 
 func (wc *WasmdConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return wc.bbnClient.ReliablySendMsgs(
+	return wc.wasmdClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -215,7 +211,7 @@ func (wc *WasmdConsumerController) SubmitBatchFinalitySigs(
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (wc *WasmdConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	res, err := wc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
+	res, err := wc.wasmdClient.QueryClient.FinalityProviderPowerAtHeight(
 		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 		blockHeight,
 	)
@@ -253,7 +249,7 @@ func (wc *WasmdConsumerController) queryLatestBlocks(startKey []byte, count uint
 		Key:     startKey,
 	}
 
-	res, err := wc.bbnClient.QueryClient.ListBlocks(status, pagination)
+	res, err := wc.wasmdClient.QueryClient.ListBlocks(status, pagination)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query finalized blocks: %v", err)
 	}
@@ -275,7 +271,7 @@ func (wc *WasmdConsumerController) queryLatestBlocks(startKey []byte, count uint
 //}
 
 func (wc *WasmdConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	res, err := wc.bbnClient.QueryClient.Block(height)
+	res, err := wc.wasmdClient.QueryClient.Block(height)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
 	}
@@ -296,7 +292,7 @@ func (wc *WasmdConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Publ
 		Reverse: true,
 	}
 
-	res, err := wc.bbnClient.QueryClient.ListPubRandCommit(fpBtcPk.MarshalHex(), pagination)
+	res, err := wc.wasmdClient.QueryClient.ListPubRandCommit(fpBtcPk.MarshalHex(), pagination)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
 	}
@@ -305,7 +301,7 @@ func (wc *WasmdConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Publ
 }
 
 func (wc *WasmdConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	res, err := wc.bbnClient.QueryClient.Block(height)
+	res, err := wc.wasmdClient.QueryClient.Block(height)
 	if err != nil {
 		return false, fmt.Errorf("failed to query indexed block at height %v: %w", height, err)
 	}
@@ -314,7 +310,7 @@ func (wc *WasmdConsumerController) QueryIsBlockFinalized(height uint64) (bool, e
 }
 
 func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
-	res, err := wc.bbnClient.QueryClient.ActivatedHeight()
+	res, err := wc.wasmdClient.QueryClient.ActivatedHeight()
 	if err != nil {
 		return 0, fmt.Errorf("failed to query activated height: %w", err)
 	}
@@ -336,7 +332,7 @@ func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
 func (wc *WasmdConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := wc.bbnClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	chainInfo, err := wc.wasmdClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
 	if err != nil {
@@ -352,9 +348,9 @@ func (wc *WasmdConsumerController) queryCometBestBlock() (*types.BlockInfo, erro
 }
 
 func (wc *WasmdConsumerController) Close() error {
-	if !wc.bbnClient.IsRunning() {
+	if !wc.wasmdClient.IsRunning() {
 		return nil
 	}
 
-	return wc.bbnClient.Stop()
+	return wc.wasmdClient.Stop()
 }
