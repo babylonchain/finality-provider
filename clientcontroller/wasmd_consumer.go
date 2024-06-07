@@ -170,17 +170,11 @@ func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	blocks, err := wc.queryLatestBlocks(nil, 1, finalitytypes.QueriedBlockStatus_ANY, true)
-	if err != nil || len(blocks) != 1 {
-		// try query comet block if the index block query is not available
-		block, err := wc.queryCometBestBlock()
-		return block.Height, err
-	}
-
-	return blocks[0].Height, nil
+	// empty response
+	return 0, nil
 }
 
-func (wc *WasmdConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
+func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.wasmdClient.RPCClient.BlockchainInfo(ctx, 0, 0)
