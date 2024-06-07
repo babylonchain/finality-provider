@@ -2,16 +2,17 @@ package config
 
 import (
 	"fmt"
-	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"net/url"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
-// BabylonConfig defines configuration for the Babylon client
+// CosmosChainConfig defines configuration for the Babylon client
 // adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
-type BabylonConfig struct {
+type CosmosChainConfig struct {
 	Key              string        `mapstructure:"key"`
 	ChainID          string        `mapstructure:"chain-id"`
 	RPCAddr          string        `mapstructure:"rpc-addr"`
@@ -29,7 +30,7 @@ type BabylonConfig struct {
 	SubmitterAddress string        `mapstructure:"submitter-address"`
 }
 
-func (cfg *BabylonConfig) Validate() error {
+func (cfg *CosmosChainConfig) Validate() error {
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("rpc-addr is not correctly formatted: %w", err)
 	}
@@ -42,7 +43,7 @@ func (cfg *BabylonConfig) Validate() error {
 	return nil
 }
 
-func (cfg *BabylonConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
+func (cfg *CosmosChainConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
 	return cosmos.CosmosProviderConfig{
 		Key:            cfg.Key,
 		ChainID:        cfg.ChainID,
@@ -60,8 +61,8 @@ func (cfg *BabylonConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
 	}
 }
 
-func DefaultBabylonConfig() BabylonConfig {
-	return BabylonConfig{
+func DefaultCosmosChainConfig() CosmosChainConfig {
+	return CosmosChainConfig{
 		Key:     "node0",
 		ChainID: "chain-test",
 		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
@@ -74,7 +75,7 @@ func DefaultBabylonConfig() BabylonConfig {
 		KeyringBackend:   "test",
 		GasAdjustment:    1.2,
 		GasPrices:        "0.01ubbn",
-		KeyDirectory:     defaultBabylonHome(),
+		KeyDirectory:     defaultCosmosChainHome(),
 		Debug:            true,
 		Timeout:          20 * time.Second,
 		OutputFormat:     "json",
@@ -83,9 +84,9 @@ func DefaultBabylonConfig() BabylonConfig {
 	}
 }
 
-// defaultBabylonHome returns the default Babylon node directory, which is $HOME/.babylond
+// defaultCosmosChainHome returns the default Babylon node directory, which is $HOME/.babylond
 // copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
-func defaultBabylonHome() string {
+func defaultCosmosChainHome() string {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)

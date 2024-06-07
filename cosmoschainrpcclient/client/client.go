@@ -4,9 +4,8 @@ import (
 	"context"
 	"time"
 
-	bbn "github.com/babylonchain/babylon/app"
-	"github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/client/query"
+	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"go.uber.org/zap"
@@ -18,10 +17,10 @@ type Client struct {
 	provider *cosmos.CosmosProvider
 	timeout  time.Duration
 	logger   *zap.Logger
-	cfg      *config.BabylonConfig
+	cfg      *config.CosmosChainConfig
 }
 
-func New(cfg *config.BabylonConfig, logger *zap.Logger) (*Client, error) {
+func New(cfg *config.CosmosChainConfig, chainName string, logger *zap.Logger) (*Client, error) {
 	var (
 		zapLogger *zap.Logger
 		err       error
@@ -45,7 +44,7 @@ func New(cfg *config.BabylonConfig, logger *zap.Logger) (*Client, error) {
 		zapLogger,
 		"", // TODO: set home path
 		true,
-		"babylon",
+		chainName,
 	)
 	if err != nil {
 		return nil, err
@@ -56,13 +55,13 @@ func New(cfg *config.BabylonConfig, logger *zap.Logger) (*Client, error) {
 
 	// Create tmp Babylon app to retrieve and register codecs
 	// Need to override this manually as otherwise option from config is ignored
-	encCfg := bbn.GetEncodingConfig()
-	cp.Cdc = cosmos.Codec{
-		InterfaceRegistry: encCfg.InterfaceRegistry,
-		Marshaler:         encCfg.Codec,
-		TxConfig:          encCfg.TxConfig,
-		Amino:             encCfg.Amino,
-	}
+	//encCfg := bbn.GetEncodingConfig()
+	//cp.Cdc = cosmos.Codec{
+	//	InterfaceRegistry: encCfg.InterfaceRegistry,
+	//	Marshaler:         encCfg.Codec,
+	//	TxConfig:          encCfg.TxConfig,
+	//	Amino:             encCfg.Amino,
+	//}
 
 	// initialise Cosmos provider
 	// NOTE: this will create a RPC client. The RPC client will be used for
@@ -95,6 +94,6 @@ func New(cfg *config.BabylonConfig, logger *zap.Logger) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) GetConfig() *config.BabylonConfig {
+func (c *Client) GetConfig() *config.CosmosChainConfig {
 	return c.cfg
 }

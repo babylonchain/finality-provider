@@ -7,8 +7,6 @@ import (
 
 	"cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
-	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
-	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	pv "github.com/cosmos/relayer/v2/relayer/provider"
@@ -133,19 +131,3 @@ func (c *Client) ReliablySendMsgs(ctx context.Context, msgs []sdk.Msg, expectedE
 
 	return rlyResp, nil
 }
-
-// We do not expose ctx in our client calls, which means:
-// - we do not support cancellation of submitting messages
-// - the only timeout is the block inclusion timeout i.e block-timeout
-// TODO: To properly support cancellation we need to expose ctx in our client calls
-func (c *Client) InsertBTCSpvProof(ctx context.Context, msg *btcctypes.MsgInsertBTCSpvProof) (*pv.RelayerTxResponse, error) {
-	return c.ReliablySendMsg(ctx, msg, []*errors.Error{}, []*errors.Error{})
-}
-
-func (c *Client) InsertHeaders(ctx context.Context, msg *btclctypes.MsgInsertHeaders) (*pv.RelayerTxResponse, error) {
-	return c.ReliablySendMsg(ctx, msg, []*errors.Error{}, []*errors.Error{})
-}
-
-// TODO: implement necessary message invocations here
-// - MsgInconsistencyEvidence
-// - MsgStallingEvidence

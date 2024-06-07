@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// BabylonConfig defines configuration for the Babylon query client
-type BabylonQueryConfig struct {
+// CosmosChainConfig defines configuration for the Babylon query client
+type CosmosChainQueryConfig struct {
 	RPCAddr string        `mapstructure:"rpc-addr"`
 	Timeout time.Duration `mapstructure:"timeout"`
 }
 
-func (cfg *BabylonQueryConfig) Validate() error {
+func (cfg *CosmosChainQueryConfig) Validate() error {
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("cfg.RPCAddr is not correctly formatted: %w", err)
 	}
@@ -22,8 +22,8 @@ func (cfg *BabylonQueryConfig) Validate() error {
 	return nil
 }
 
-func DefaultBabylonQueryConfig() BabylonQueryConfig {
-	return BabylonQueryConfig{
+func DefaultBabylonQueryConfig() CosmosChainQueryConfig {
+	return CosmosChainQueryConfig{
 		RPCAddr: "http://localhost:26657",
 		Timeout: 20 * time.Second,
 	}
