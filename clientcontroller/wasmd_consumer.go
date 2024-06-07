@@ -36,19 +36,19 @@ func NewWasmdConsumerController(
 	bbnConfig := fpcfg.BBNConfigToBabylonConfig(cfg)
 
 	if err := bbnConfig.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
+		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)
 	}
 
-	bc, err := bbnclient.New(
+	wc, err := bbnclient.New(
 		&bbnConfig,
 		logger,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
+		return nil, fmt.Errorf("failed to create Wasmd client: %w", err)
 	}
 
 	return &WasmdConsumerController{
-		bc,
+		wc,
 		cfg,
 		logger,
 	}, nil
