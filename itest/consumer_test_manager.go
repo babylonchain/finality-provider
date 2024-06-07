@@ -25,7 +25,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// Setup test manager
 	tm := StartManager(t)
 
-	// Setup wasmd query client
+	// Setup wasmd consumer client
 	logger := zap.NewNop()
 	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
 	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, logger)
