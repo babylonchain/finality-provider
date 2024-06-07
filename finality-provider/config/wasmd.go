@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	bbncfg "github.com/babylonchain/babylon/client/config"
+	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
 )
 
 type WasmdConfig struct {
@@ -23,53 +23,29 @@ type WasmdConfig struct {
 	SignModeStr    string        `long:"sign-mode" description:"sign mode to use"`
 }
 
-func DefaultWasmdConfig() WasmdConfig {
-	dc := bbncfg.DefaultBabylonConfig()
-	// fill up the config from dc config
-	return WasmdConfig{
-		Key:            dc.Key,
-		ChainID:        dc.ChainID,
-		RPCAddr:        dc.RPCAddr,
-		GRPCAddr:       dc.GRPCAddr,
-		AccountPrefix:  dc.AccountPrefix,
-		KeyringBackend: dc.KeyringBackend,
-		GasAdjustment:  1.5,
-		GasPrices:      "0.002ubbn",
-		Debug:          dc.Debug,
-		Timeout:        dc.Timeout,
-		// Setting this to relatively low value, out currnet babylon client (lens) will
-		// block for this amout of time to wait for transaction inclusion in block
-		BlockTimeout: 1 * time.Minute,
-		OutputFormat: dc.OutputFormat,
-		SignModeStr:  dc.SignModeStr,
-	}
-}
-
-func DefaultWasmdConfig() BabylonConfig {
-	return BabylonConfig{
-		Key:     "node0",
-		ChainID: "chain-test",
-		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
-		// TODO: configure HTTPS for Babylon's RPC server
-		// TODO: how to use Cosmos SDK's RPC server (port 1317) rather than Tendermint's RPC server (port 26657)?
-		RPCAddr: "http://localhost:26657",
-		// TODO: how to support GRPC in the Babylon client?
-		GRPCAddr:         "https://localhost:9090",
-		AccountPrefix:    "bbn",
-		KeyringBackend:   "test",
-		GasAdjustment:    1.2,
-		GasPrices:        "0.01ubbn",
-		KeyDirectory:     defaultBabylonHome(),
-		Debug:            true,
-		Timeout:          20 * time.Second,
-		OutputFormat:     "json",
-		SignModeStr:      "direct",
-		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon
-	}
-}
-
-func WasmdConfigToQueryClientConfig(wc *WasmdConfig) bbncfg.BabylonConfig {
-	return bbncfg.BabylonConfig{
+//	func DefaultWasmdConfig() WasmdConfig {
+//		dc := bbncfg.DefaultBabylonConfig()
+//		// fill up the config from dc config
+//		return WasmdConfig{
+//			Key:            dc.Key,
+//			ChainID:        dc.ChainID,
+//			RPCAddr:        dc.RPCAddr,
+//			GRPCAddr:       dc.GRPCAddr,
+//			AccountPrefix:  dc.AccountPrefix,
+//			KeyringBackend: dc.KeyringBackend,
+//			GasAdjustment:  1.5,
+//			GasPrices:      "0.002ubbn",
+//			Debug:          dc.Debug,
+//			Timeout:        dc.Timeout,
+//			// Setting this to relatively low value, out currnet babylon client (lens) will
+//			// block for this amout of time to wait for transaction inclusion in block
+//			BlockTimeout: 1 * time.Minute,
+//			OutputFormat: dc.OutputFormat,
+//			SignModeStr:  dc.SignModeStr,
+//		}
+//	}
+func WasmdConfigToQueryClientConfig(wc *WasmdConfig) *config.CosmosChainConfig {
+	return &config.CosmosChainConfig{
 		Key:              wc.Key,
 		ChainID:          wc.ChainID,
 		RPCAddr:          wc.RPCAddr,

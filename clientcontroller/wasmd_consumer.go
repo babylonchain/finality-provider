@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	sdkErr "cosmossdk.io/errors"
-	bbnclient "github.com/babylonchain/babylon/client/client"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	cosmosclient "github.com/babylonchain/finality-provider/cosmoschainrpcclient/client"
+	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -19,23 +20,24 @@ import (
 var _ ConsumerController = &BabylonConsumerController{}
 
 type WasmdConsumerController struct {
-	wasmdClient *bbnclient.Client
-	cfg         *fpcfg.BBNConfig
+	wasmdClient *cosmosclient.Client
+	cfg         *config.CosmosChainConfig
 	logger      *zap.Logger
 }
 
 func NewWasmdConsumerController(
-	cfg *fpcfg.BBNConfig,
+	cfg *fpcfg.WasmdConfig,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
-	bbnConfig := fpcfg.BBNConfigToBabylonConfig(cfg)
+	wasmdConfig := fpcfg.WasmdConfigToQueryClientConfig(cfg)
 
-	if err := bbnConfig.Validate(); err != nil {
+	if err := wasmdConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)
 	}
 
-	wc, err := bbnclient.New(
-		&bbnConfig,
+	wc, err := cosmosclient.New(
+		wasmdConfig,
+		"wasmd",
 		logger,
 	)
 	if err != nil {
@@ -44,7 +46,7 @@ func NewWasmdConsumerController(
 
 	return &WasmdConsumerController{
 		wc,
-		cfg,
+		wasmdConfig,
 		logger,
 	}, nil
 }
