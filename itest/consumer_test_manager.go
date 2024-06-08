@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,6 +13,8 @@ import (
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	"github.com/babylonchain/finality-provider/eotsmanager/client"
+	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	dbm "github.com/cosmos/cosmos-db"
@@ -29,15 +32,62 @@ type ConsumerTestManager struct {
 
 func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// Setup test manager
-	tm := StartManager(t)
+	testDir, err := tempDirWithName("fpe2etest")
+	require.NoError(t, err)
+
+	logger := zap.NewNop()
+
+	// 1. generate covenant committee
+	covenantQuorum := 2
+	numCovenants := 3
+	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+
+	// 2. prepare Babylon node
+	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
+	err = bh.Start()
+	require.NoError(t, err)
+	fpHomeDir := filepath.Join(testDir, "fp-home")
+	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	require.NoError(t, err)
+	bcc, err := fpcc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	require.NoError(t, err)
+
+	// 3. prepare EOTS manager
+	eotsHomeDir := filepath.Join(testDir, "eots-home")
+	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
+	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh.Start()
+	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
+	require.NoError(t, err)
+
+	// 4. prepare finality-provider
+	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, bcc, eotsCli, fpdb, logger)
+	require.NoError(t, err)
+	err = fpApp.Start()
+	require.NoError(t, err)
+
+	tm := &TestManager{
+		BabylonHandler:    bh,
+		EOTSServerHandler: eh,
+		FpConfig:          cfg,
+		EOTSConfig:        eotsCfg,
+		Fpa:               fpApp,
+		EOTSClient:        eotsCli,
+		BBNClient:         bc,
+		BBNConsumerClient: bcc,
+		CovenantPrivKeys:  covenantPrivKeys,
+		baseDir:           testDir,
+	}
 
 	// Start wasmd node
 	wh := NewWasmdNodeHandler(t)
-	err := wh.Start()
+	err = wh.Start()
 	require.NoError(t, err)
 
 	// Setup wasmd consumer client
-	logger := zap.NewNop()
 	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
 	tm.FpConfig.WasmdConfig.KeyDirectory = wh.dataDir
 	//encodingConfig := wasmapp.MakeEncodingConfig(t)
@@ -62,6 +112,16 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 }
 
 func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
+	require.Eventually(t, func() bool {
+		params, err := ctm.BBNClient.QueryStakingParams()
+		if err != nil {
+			return false
+		}
+		ctm.StakingParams = params
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	t.Logf("Babylon node is started")
+
 	// wait for wasmd to start
 	require.Eventually(t, func() bool {
 		blockHeight, err := ctm.WasmdHandler.GetLatestBlockHeight()
