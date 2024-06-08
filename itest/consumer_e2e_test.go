@@ -59,11 +59,6 @@ func TestConsumerStoreContract2(t *testing.T) {
 	res, err := ctm.WasmdConsumerClient.ReliablySendMsg(storeMsg, nil, nil)
 	require.NoError(t, err)
 	fmt.Print(res)
-	//ctm.WasmdConsumerClient.WasmdClient.ReliablySendMsgs()
-	//
-	//storedCodeID, _, err := ctm.WasmdHandler.StoreWasmCode(babylonContractPath)
-	//require.NoError(t, err)
-	//// Query the latest code ID from "wasmd q wasm list-code"
 	//latestCodeID, err := ctm.WasmdHandler.GetLatestCodeID()
 	//require.NoError(t, err)
 	//// Assert that the code id returned from store-code and list-code is the same
@@ -88,18 +83,12 @@ func WasmCodeFileToBytes(t *testing.T, filename string) []byte {
 	return wasmCode
 }
 
-//func StoreCode(byteCode []byte) types.MsgStoreCodeResponse {
-//	storeMsg := &types.MsgStoreCode{
-//		Sender:       chain.SenderAccount.GetAddress().String(),
-//		WASMByteCode: byteCode,
-//	}
-//	r, err := chain.SendMsgs(storeMsg)
-//	require.NoError(chain.t, err)
+//// UnwrapExecTXResult is a helper to unpack execution result from proto any type
+//func UnwrapExecTXResult(r *abci.ExecTxResult, target proto.Message) {
+//	var wrappedRsp sdk.TxMsgData
+//	require.NoError(chain.t, chain.Codec.Unmarshal(r.Data, &wrappedRsp))
 //
-//	var pInstResp types.MsgStoreCodeResponse
-//	chain.UnwrapExecTXResult(r, &pInstResp)
-//
-//	require.NotEmpty(chain.t, pInstResp.CodeID)
-//	require.NotEmpty(chain.t, pInstResp.Checksum)
-//	return pInstResp
+//	// unmarshal protobuf response from data
+//	require.Len(chain.t, wrappedRsp.MsgResponses, 1)
+//	require.NoError(chain.t, proto.Unmarshal(wrappedRsp.MsgResponses[0].Value, target))
 //}

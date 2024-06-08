@@ -5,13 +5,18 @@ import (
 	"strings"
 	"testing"
 
+	sdklogs "cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
-	wasmdapp "github.com/CosmWasm/wasmd/app"
+	wasmapp "github.com/CosmWasm/wasmd/app"
+	wasmparams "github.com/CosmWasm/wasmd/app/params"
+	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -35,7 +40,14 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	logger := zap.NewNop()
 	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
 	tm.FpConfig.WasmdConfig.KeyDirectory = wh.dataDir
-	encodingConfig := wasmdapp.MakeEncodingConfig(t)
+	//encodingConfig := wasmapp.MakeEncodingConfig(t)
+	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	encodingConfig := wasmparams.EncodingConfig{
+		InterfaceRegistry: tempApp.InterfaceRegistry(),
+		Codec:             tempApp.AppCodec(),
+		TxConfig:          tempApp.TxConfig(),
+		Amino:             tempApp.LegacyAmino(),
+	}
 	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, encodingConfig, logger)
 	require.NoError(t, err)
 

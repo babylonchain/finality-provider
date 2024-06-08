@@ -196,6 +196,47 @@ func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, erro
 	}, nil
 }
 
+//func (c *QueryClient) getQueryContext() (context.Context, context.CancelFunc) {
+//	defaultOptions := DefaultQueryOptions()
+//	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+//	strHeight := strconv.Itoa(int(defaultOptions.Height))
+//	ctx = metadata.AppendToOutgoingContext(ctx, grpctypes.GRPCBlockHeightHeader, strHeight)
+//	return ctx, cancel
+//}
+//
+//func (wc *WasmdConsumerController) QueryLatestWasmCodeID() (*wasmtypes.CodeInfoResponse, error) {
+//	ctx, cancel := wc.WasmdClient.getQueryContext()
+//	defer cancel()
+//
+//	// Create a QueryClient
+//	queryClient := wasmtypes.NewQueryClient(ctx)
+//
+//	// Create a QueryCodesRequest with pagination to limit to 1 item
+//	pageReq := &query.PageRequest{
+//		Limit:      1,
+//		CountTotal: true,
+//	}
+//
+//	// Query the codes
+//	res, err := queryClient.Codes(
+//		ctx,
+//		&wasmtypes.QueryCodesRequest{
+//			Pagination: pageReq,
+//		},
+//	)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	// Check if there are any codes
+//	if len(res.CodeInfos) == 0 {
+//		return nil, nil
+//	}
+//
+//	// Return the latest code info (first item in the list)
+//	return res.CodeInfos[0], nil
+//}
+
 func (wc *WasmdConsumerController) Close() error {
 	if !wc.WasmdClient.IsRunning() {
 		return nil
