@@ -90,6 +90,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// Setup wasmd consumer client
 	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
 	tm.FpConfig.WasmdConfig.KeyDirectory = wh.dataDir
+	tm.FpConfig.ChainName = fpcc.WasmdConsumerChainName
 	//encodingConfig := wasmapp.MakeEncodingConfig(t)
 	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingConfig := wasmparams.EncodingConfig{

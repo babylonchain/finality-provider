@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,6 +67,43 @@ func TestConsumerStoreContract2(t *testing.T) {
 	//
 	//bb, _ := ctm.WasmdConsumerClient.QueryCometBestBlock()
 	//fmt.Print(bb.Height)
+}
+
+var (
+	stakingTime   = uint16(100)
+	stakingAmount = int64(20000)
+)
+
+// something wrong here this test shouldn't pass
+func Test3FinalityProviderLifeCycle(t *testing.T) {
+	ctm, fpInsList := StartConsumerManagerWithFps(t, 1)
+	defer ctm.Stop(t)
+	//tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
+	//defer tm.Stop(t)
+
+	fpIns := fpInsList[0]
+
+	// check the public randomness is committed
+	ctm.WaitForFpPubRandCommitted(t, fpIns)
+
+	// send a BTC delegation
+	_ = ctm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+
+	// check the BTC delegation is pending
+	delsResp := ctm.WaitForNPendingDels(t, 1)
+	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	require.NoError(t, err)
+
+	// send covenant sigs
+	ctm.InsertCovenantSigForDelegation(t, del)
+
+	// check the BTC delegation is active
+	_ = ctm.WaitForNActiveDels(t, 1)
+
+	// check the last voted block is finalized
+	lastVotedHeight := ctm.WaitForFpVoteCast(t, fpIns)
+	ctm.CheckBlockFinalization(t, lastVotedHeight, 1)
+	t.Logf("the block at height %v is finalized", lastVotedHeight)
 }
 
 func WasmCodeFileToBytes(t *testing.T, filename string) []byte {

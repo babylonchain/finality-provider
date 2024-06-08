@@ -116,6 +116,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	case WasmdConsumerChainName:
+		fmt.Print("i reached wasmd consumer chain")
 		tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(tempDir()), []wasmkeeper.Option{})
 		encodingConfig := wasmdparams.EncodingConfig{
 			InterfaceRegistry: tempApp.InterfaceRegistry(),
