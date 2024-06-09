@@ -68,7 +68,7 @@ Handles the keys for EOTS.
 The binary `eotsd` has the option to add a new key to the keyring for
 later usage with signing EOTS and Schnorr signatures. Keep in mind
 that new keys can be created on demand by the GRPC call from `fpd`.
-But, if you would like to add a new EOTS keys manually, run `eotsd keys add`.
+But, if you would like to add a new EOTS key manually, run `eotsd keys add`.
 
 This command has several flag options:
 
