@@ -1,12 +1,16 @@
 package clientcontroller
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	cosmosclient "github.com/babylonchain/finality-provider/cosmoschainrpcclient/client"
 	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
@@ -15,6 +19,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 )
@@ -82,7 +87,7 @@ func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (wc *WasmdConsumerController) ReliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (wc *WasmdConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return wc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
@@ -181,6 +186,55 @@ func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	return 0, nil
 }
 
+func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
+	wasmCode, err := os.ReadFile(wasmFile)
+	if err != nil {
+		return err
+	}
+	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		_, err = gz.Write(wasmCode)
+		if err != nil {
+			return err
+		}
+		err = gz.Close()
+		if err != nil {
+			return err
+		}
+		wasmCode = buf.Bytes()
+	}
+
+	storeMsg := &wasmtypes.MsgStoreCode{
+		Sender:       wc.WasmdClient.MustGetAddr(),
+		WASMByteCode: wasmCode,
+	}
+	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (wc *WasmdConsumerController) GetLatestCodeID() (uint64, error) {
+	pagination := &sdkquerytypes.PageRequest{
+		Limit:   1,
+		Reverse: true,
+	}
+	resp, err := wc.WasmdClient.ListCodes(pagination)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(resp.CodeInfos) == 0 {
+		return 0, fmt.Errorf("no codes found")
+	}
+
+	// Return the highest code ID
+	return resp.CodeInfos[0].CodeID, nil
+}
+
 func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
@@ -198,47 +252,6 @@ func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, erro
 		Hash:   chainInfo.BlockMetas[0].Header.AppHash,
 	}, nil
 }
-
-//func (c *QueryClient) getQueryContext() (context.Context, context.CancelFunc) {
-//	defaultOptions := DefaultQueryOptions()
-//	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
-//	strHeight := strconv.Itoa(int(defaultOptions.Height))
-//	ctx = metadata.AppendToOutgoingContext(ctx, grpctypes.GRPCBlockHeightHeader, strHeight)
-//	return ctx, cancel
-//}
-//
-//func (wc *WasmdConsumerController) QueryLatestWasmCodeID() (*wasmtypes.CodeInfoResponse, error) {
-//	ctx, cancel := wc.WasmdClient.getQueryContext()
-//	defer cancel()
-//
-//	// Create a QueryClient
-//	queryClient := wasmtypes.NewQueryClient(ctx)
-//
-//	// Create a QueryCodesRequest with pagination to limit to 1 item
-//	pageReq := &query.PageRequest{
-//		Limit:      1,
-//		CountTotal: true,
-//	}
-//
-//	// Query the codes
-//	res, err := queryClient.Codes(
-//		ctx,
-//		&wasmtypes.QueryCodesRequest{
-//			Pagination: pageReq,
-//		},
-//	)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// Check if there are any codes
-//	if len(res.CodeInfos) == 0 {
-//		return nil, nil
-//	}
-//
-//	// Return the latest code info (first item in the list)
-//	return res.CodeInfos[0], nil
-//}
 
 func (wc *WasmdConsumerController) Close() error {
 	if !wc.WasmdClient.IsRunning() {
