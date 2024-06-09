@@ -104,8 +104,10 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 		ccc ConsumerController
 		err error
 	)
+	fmt.Println(" i am deciding new consumer controller now", config.ChainName)
 	switch config.ChainName {
 	case BabylonConsumerChainName:
+		fmt.Print("i reached babylon consumer chain")
 		ccc, err = NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)

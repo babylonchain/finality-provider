@@ -16,6 +16,7 @@ import (
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
+	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -26,6 +27,9 @@ import (
 
 type ConsumerTestManager struct {
 	*TestManager
+	BabylonHandler      *BabylonNodeHandler
+	FpConfig            *fpcfg.Config
+	BBNClient           *fpcc.BabylonController
 	WasmdHandler        *WasmdNodeHandler
 	WasmdConsumerClient *fpcc.WasmdConsumerController
 }
@@ -53,6 +57,24 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	bcc, err := fpcc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
+	wh := NewWasmdNodeHandler(t)
+	err = wh.Start()
+	require.NoError(t, err)
+	// Setup wasmd consumer client
+	cfg.WasmdConfig = config.DefaultWasmdConfig()
+	cfg.WasmdConfig.KeyDirectory = wh.dataDir
+	cfg.ChainName = fpcc.WasmdConsumerChainName
+	//encodingConfig := wasmapp.MakeEncodingConfig(t)
+	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	encodingConfig := wasmparams.EncodingConfig{
+		InterfaceRegistry: tempApp.InterfaceRegistry(),
+		Codec:             tempApp.AppCodec(),
+		TxConfig:          tempApp.TxConfig(),
+		Amino:             tempApp.LegacyAmino(),
+	}
+	wcc, err := fpcc.NewWasmdConsumerController(cfg.WasmdConfig, encodingConfig, logger)
+	require.NoError(t, err)
+
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
@@ -64,7 +86,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// 4. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
-	fpApp, err := service.NewFinalityProviderApp(cfg, bc, bcc, eotsCli, fpdb, logger)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, wcc, eotsCli, fpdb, logger)
 	require.NoError(t, err)
 	err = fpApp.Start()
 	require.NoError(t, err)
@@ -83,24 +105,9 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	}
 
 	// Start wasmd node
-	wh := NewWasmdNodeHandler(t)
-	err = wh.Start()
-	require.NoError(t, err)
 
-	// Setup wasmd consumer client
-	tm.FpConfig.WasmdConfig = config.DefaultWasmdConfig()
-	tm.FpConfig.WasmdConfig.KeyDirectory = wh.dataDir
-	tm.FpConfig.ChainName = fpcc.WasmdConsumerChainName
-	//encodingConfig := wasmapp.MakeEncodingConfig(t)
-	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
-	encodingConfig := wasmparams.EncodingConfig{
-		InterfaceRegistry: tempApp.InterfaceRegistry(),
-		Codec:             tempApp.AppCodec(),
-		TxConfig:          tempApp.TxConfig(),
-		Amino:             tempApp.LegacyAmino(),
-	}
-	wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, encodingConfig, logger)
-	require.NoError(t, err)
+	//wcc, err := fpcc.NewWasmdConsumerController(tm.FpConfig.WasmdConfig, encodingConfig, logger)
+	//require.NoError(t, err)
 
 	ctm := &ConsumerTestManager{
 		TestManager:         tm,

@@ -116,6 +116,7 @@ func (wc *WasmdConsumerController) SubmitFinalitySig(
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
+	fmt.Println("SubmitFinalitySig for wasmd")
 	// empty response
 	return nil, nil
 }
@@ -175,6 +176,7 @@ func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
+	fmt.Print("QueryLatestBlockHeight for wasmd")
 	// empty response
 	return 0, nil
 }

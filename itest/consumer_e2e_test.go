@@ -69,11 +69,6 @@ func TestConsumerStoreContract2(t *testing.T) {
 	//fmt.Print(bb.Height)
 }
 
-var (
-	stakingTime   = uint16(100)
-	stakingAmount = int64(20000)
-)
-
 // something wrong here this test shouldn't pass
 func Test3FinalityProviderLifeCycle(t *testing.T) {
 	ctm, fpInsList := StartConsumerManagerWithFps(t, 1)
@@ -87,7 +82,7 @@ func Test3FinalityProviderLifeCycle(t *testing.T) {
 	ctm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = ctm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = ctm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, uint16(100), int64(20000))
 
 	// check the BTC delegation is pending
 	delsResp := ctm.WaitForNPendingDels(t, 1)
