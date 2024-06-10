@@ -3,7 +3,6 @@ package clientcontroller
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"time"
 
 	sdkErr "cosmossdk.io/errors"
@@ -133,20 +132,6 @@ func (bc *BabylonConsumerController) CommitPubRandList(
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
-func printCallStack() {
-	pc := make([]uintptr, 10) // at most 10 levels of stack trace
-	n := runtime.Callers(2, pc)
-	frames := runtime.CallersFrames(pc[:n])
-
-	for {
-		frame, more := frames.Next()
-		fmt.Printf("%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
-		if !more {
-			break
-		}
-	}
-}
-
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 func (bc *BabylonConsumerController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
@@ -155,9 +140,6 @@ func (bc *BabylonConsumerController) SubmitFinalitySig(
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
-	fmt.Println("SubmitFinalitySig for babylon")
-	printCallStack() // print the call stack
-
 	cmtProof := cmtcrypto.Proof{}
 	if err := cmtProof.Unmarshal(proof); err != nil {
 		return nil, err
@@ -195,7 +177,6 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
 ) (*types.TxResponse, error) {
-	fmt.Println("SubmitBatchFinalitySigs for babylon")
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
