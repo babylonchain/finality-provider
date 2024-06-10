@@ -24,7 +24,6 @@ type WasmdConfig struct {
 }
 
 func DefaultWasmdConfig() *WasmdConfig {
-	// fill up the config from dc config
 	return &WasmdConfig{
 		Key:            "validator",
 		ChainID:        "wasmd-test",
@@ -36,11 +35,9 @@ func DefaultWasmdConfig() *WasmdConfig {
 		GasPrices:      "1ustake",
 		Debug:          true,
 		Timeout:        20 * time.Second,
-		// Setting this to relatively low value, out currnet babylon client (lens) will
-		// block for this amout of time to wait for transaction inclusion in block
-		BlockTimeout: 1 * time.Minute,
-		OutputFormat: "direct",
-		SignModeStr:  "",
+		BlockTimeout:   1 * time.Minute,
+		OutputFormat:   "direct",
+		SignModeStr:    "",
 	}
 }
 
