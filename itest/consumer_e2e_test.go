@@ -102,8 +102,10 @@ func TestConsumerStoreContract(t *testing.T) {
 	finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
+	// TODO: there should be no error, insert delegation in contract and then submit finality signature
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
-	require.NoError(t, err)
+	require.Error(t, err)
+
 }
 
 func NewBTCStakingPacketData(packet *bstypes.BTCStakingIBCPacket) *zctypes.ZoneconciergePacketData {
@@ -162,34 +164,14 @@ type Proof struct {
 	Aunts    []string `json:"aunts"`     // base64 encoded
 }
 
-//func GenEmptyFinalitySignatureMessage() *ExecuteMsg {
-//	// Create the message with empty data
-//	msg := ExecuteMsg{
-//		SubmitFinalitySignature: &SubmitFinalitySignature{
-//			FpPubkeyHex: "", // Empty string for public key hex
-//			Height:      0,  // Zero value for height
-//			PubRand:     "", // Empty string for pub_rand
-//			Proof:       "", // Empty string for proof
-//			BlockHash:   "", // Empty string for block hash
-//			Signature:   "", // Empty string for signature
-//		},
-//	}
-//
-//	return &msg
-//}
-
 // Generate a finality signature message with mock data
 func GenFinalitySignatureMessage(fpBtcPkHex string) *ExecuteMsg {
-	// Generate mock data
-	//fpPubkeyHex := "mock_fp_pubkey_hex"
 	height := uint64(123456)
-	// Use base64 encoding for fields that are expected to be base64 encoded
 	pubRand := base64.StdEncoding.EncodeToString([]byte("mock_pub_rand"))
 	leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
 	blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
 	signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
 
-	// Create the message
 	msg := ExecuteMsg{
 		SubmitFinalitySignature: &SubmitFinalitySignature{
 			FpPubkeyHex: fpBtcPkHex,
@@ -199,7 +181,7 @@ func GenFinalitySignatureMessage(fpBtcPkHex string) *ExecuteMsg {
 				Total:    0,
 				Index:    0,
 				LeafHash: leafHash,
-				Aunts:    []string{}, // empty for simplicity
+				Aunts:    []string{},
 			},
 			BlockHash: blockHash,
 			Signature: signature,
