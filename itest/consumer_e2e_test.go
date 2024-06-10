@@ -40,7 +40,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	babylonContractPath := "bytecode/babylon_contract.wasm"
 	err := ctm.WasmdConsumerClient.StoreWasmCode(babylonContractPath)
 	require.NoError(t, err)
-	babylonContractWasmId, err := ctm.WasmdConsumerClient.GetLatestCodeID()
+	babylonContractWasmId, err := ctm.WasmdConsumerClient.GetLatestCodeId()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), babylonContractWasmId)
 
@@ -48,7 +48,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	btcStakingContractPath := "bytecode/btc_staking.wasm"
 	err = ctm.WasmdConsumerClient.StoreWasmCode(btcStakingContractPath)
 	require.NoError(t, err)
-	btcStakingContractWasmId, err := ctm.WasmdConsumerClient.GetLatestCodeID()
+	btcStakingContractWasmId, err := ctm.WasmdConsumerClient.GetLatestCodeId()
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), btcStakingContractWasmId)
 

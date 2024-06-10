@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerController = &BabylonConsumerController{}
+var _ ConsumerController = &WasmdConsumerController{}
 
 type WasmdConsumerController struct {
 	WasmdClient *cosmosclient.Client
@@ -121,7 +121,6 @@ func (wc *WasmdConsumerController) SubmitFinalitySig(
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
-	fmt.Println("SubmitFinalitySig for wasmd")
 	// empty response
 	return nil, nil
 }
@@ -181,7 +180,6 @@ func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	fmt.Print("QueryLatestBlockHeight for wasmd")
 	// empty response
 	return 0, nil
 }
@@ -258,7 +256,7 @@ func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte)
 	return nil
 }
 
-func (wc *WasmdConsumerController) GetLatestCodeID() (uint64, error) {
+func (wc *WasmdConsumerController) GetLatestCodeId() (uint64, error) {
 	pagination := &sdkquerytypes.PageRequest{
 		Limit:   1,
 		Reverse: true,

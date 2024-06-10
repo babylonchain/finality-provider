@@ -104,10 +104,9 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 		ccc ConsumerController
 		err error
 	)
-	fmt.Println(" i am deciding new consumer controller now", config.ChainName)
+
 	switch config.ChainName {
 	case BabylonConsumerChainName:
-		fmt.Print("i reached babylon consumer chain")
 		ccc, err = NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
@@ -118,7 +117,6 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	case WasmdConsumerChainName:
-		fmt.Print("i reached wasmd consumer chain")
 		tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(tempDir()), []wasmkeeper.Option{})
 		encodingConfig := wasmdparams.EncodingConfig{
 			InterfaceRegistry: tempApp.InterfaceRegistry(),
