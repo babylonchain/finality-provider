@@ -54,19 +54,6 @@ func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdpa
 
 	cp := provider.(*cosmos.CosmosProvider)
 	cp.PCfg.KeyDirectory = cfg.KeyDirectory
-	//encodingConfig := wasmdparams.MakeEncodingConfig()
-
-	//tempApp := wasmdapp.NewWasmApp(log.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(tempDir()), []wasmkeeper.Option{})
-	//encodingConfig := wasmdparams.EncodingConfig{
-	//	InterfaceRegistry: tempApp.InterfaceRegistry(),
-	//	Codec:             tempApp.AppCodec(),
-	//	TxConfig:          tempApp.TxConfig(),
-	//	Amino:             tempApp.LegacyAmino(),
-	//}
-
-	// Create tmp Babylon app to retrieve and register codecs
-	// Need to override this manually as otherwise option from config is ignored
-	//encCfg := bbn.GetEncodingConfig()
 	cp.Cdc = cosmos.Codec{
 		InterfaceRegistry: encodingConfig.InterfaceRegistry,
 		Marshaler:         encodingConfig.Codec,
