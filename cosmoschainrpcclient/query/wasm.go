@@ -31,3 +31,18 @@ func (c *QueryClient) ListCodes(pagination *sdkquerytypes.PageRequest) (*wasmtyp
 
 	return resp, err
 }
+
+func (c *QueryClient) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmtypes.QueryContractsByCodeResponse, error) {
+	var resp *wasmtypes.QueryContractsByCodeResponse
+	err := c.QueryWasm(func(ctx context.Context, queryClient wasmtypes.QueryClient) error {
+		var err error
+		req := &wasmtypes.QueryContractsByCodeRequest{
+			CodeId:     codeID,
+			Pagination: pagination,
+		}
+		resp, err = queryClient.ContractsByCode(ctx, req)
+		return err
+	})
+
+	return resp, err
+}

@@ -217,6 +217,28 @@ func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
 	return nil
 }
 
+func (wc *WasmdConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
+	instantiateMsg := &wasmtypes.MsgInstantiateContract{
+		Sender: wc.WasmdClient.MustGetAddr(),
+		Admin:  wc.WasmdClient.MustGetAddr(),
+		CodeID: codeID,
+		Label:  "ibc-test",
+		Msg:    initMsg,
+		Funds:  nil,
+	}
+
+	_, err := wc.reliablySendMsg(instantiateMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmtypes.QueryContractsByCodeResponse, error) {
+	return wc.WasmdClient.ListContractsByCode(codeID, pagination)
+}
+
 func (wc *WasmdConsumerController) GetLatestCodeID() (uint64, error) {
 	pagination := &sdkquerytypes.PageRequest{
 		Limit:   1,
