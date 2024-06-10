@@ -12,10 +12,10 @@ import (
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	cosmosclient "github.com/babylonchain/finality-provider/cosmoschainrpcclient/client"
-	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
+	wasmdclient "github.com/babylonchain/finality-provider/wasmdclient/client"
+	"github.com/babylonchain/finality-provider/wasmdclient/config"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -27,7 +27,7 @@ import (
 var _ ConsumerController = &WasmdConsumerController{}
 
 type WasmdConsumerController struct {
-	WasmdClient *cosmosclient.Client
+	WasmdClient *wasmdclient.Client
 	cfg         *config.CosmosChainConfig
 	logger      *zap.Logger
 }
@@ -43,7 +43,7 @@ func NewWasmdConsumerController(
 		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)
 	}
 
-	wc, err := cosmosclient.New(
+	wc, err := wasmdclient.New(
 		wasmdConfig,
 		"wasmd",
 		encodingConfig,

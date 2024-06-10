@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	"github.com/babylonchain/finality-provider/cosmoschainrpcclient/config"
+	"github.com/babylonchain/finality-provider/wasmdclient/config"
 )
 
 type WasmdConfig struct {
