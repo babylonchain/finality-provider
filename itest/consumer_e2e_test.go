@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: uncomment after the fpd/eotsd is working for consumer
-//     currently the queries are not implemented on contract so poller/fpd/eotsd are not working
+// TODO: currently fp app is not started in consumer manager, so the following tests are commented out
+//  uncomment after contract is ready and fp app is working
 //func TestConsumerFinalityProviderRegistration(t *testing.T) {
 //	ctm, _ := StartConsumerManagerWithFps(t, 1)
 //	defer ctm.Stop(t)
