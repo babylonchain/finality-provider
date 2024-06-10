@@ -15,22 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type ConsumerFpsResponse struct {
-	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
-}
-
-// SingleConsumerFpResponse represents the finality provider data returned by the contract query.
-// For more details, refer to the following links:
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/packages/apis/src/btc_staking_api.rs
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/src/msg.rs
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/schema/btc-staking.json
-type SingleConsumerFpResponse struct {
-	BtcPkHex             string `json:"btc_pk_hex"`
-	SlashedBabylonHeight uint64 `json:"slashed_babylon_height"`
-	SlashedBtcHeight     uint64 `json:"slashed_btc_height"`
-	ConsumerId           string `json:"consumer_id"`
-}
-
 // TODO: uncomment after the fpd/eotsd is working for consumer
 //     currently the queries are not implemented on contract so poller/fpd/eotsd are not working
 //func TestConsumerFinalityProviderRegistration(t *testing.T) {
@@ -157,6 +141,22 @@ func GenIBCPacket(t *testing.T, r *rand.Rand) *zctypes.ZoneconciergePacketData {
 	return NewBTCStakingPacketData(packet)
 }
 
+type ConsumerFpsResponse struct {
+	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
+}
+
+// SingleConsumerFpResponse represents the finality provider data returned by the contract query.
+// For more details, refer to the following links:
+// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/packages/apis/src/btc_staking_api.rs
+// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/src/msg.rs
+// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/schema/btc-staking.json
+type SingleConsumerFpResponse struct {
+	BtcPkHex             string `json:"btc_pk_hex"`
+	SlashedBabylonHeight uint64 `json:"slashed_babylon_height"`
+	SlashedBtcHeight     uint64 `json:"slashed_btc_height"`
+	ConsumerId           string `json:"consumer_id"`
+}
+
 type SubmitFinalitySignature struct {
 	FpPubkeyHex string `json:"fp_pubkey_hex"`
 	Height      uint64 `json:"height"`
@@ -173,8 +173,8 @@ type ExecuteMsg struct {
 type Proof struct {
 	Total    uint64   `json:"total"`
 	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"` // base64 encoded
-	Aunts    []string `json:"aunts"`     // base64 encoded
+	LeafHash string   `json:"leaf_hash"`
+	Aunts    []string `json:"aunts"`
 }
 
 // Generate a finality signature message with mock data
