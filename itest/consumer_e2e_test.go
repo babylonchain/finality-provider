@@ -31,8 +31,8 @@ type SingleConsumerFpResponse struct {
 	ConsumerId           string `json:"consumer_id"`
 }
 
-// TestConsumerStoreContract stores a contract in the consumer chain
-func TestConsumerStoreContract(t *testing.T) {
+// TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
+func TestSubmitFinalitySignature(t *testing.T) {
 	ctm := StartConsumerManager(t)
 	defer ctm.Stop(t)
 
@@ -102,8 +102,8 @@ func TestConsumerStoreContract(t *testing.T) {
 	finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
-	// TODO: there should be no error, insert delegation in contract and then submit finality signature
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
+	// TODO: insert delegation and pub randomness to fix the error
 	require.Error(t, err)
 
 }
