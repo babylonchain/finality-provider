@@ -31,6 +31,19 @@ type SingleConsumerFpResponse struct {
 	ConsumerId           string `json:"consumer_id"`
 }
 
+// TODO: uncomment after the fpd/eotsd is working for consumer
+//     currently the queries are not implemented on contract so poller/fpd/eotsd are not working
+//func TestConsumerFinalityProviderRegistration(t *testing.T) {
+//	ctm, _ := StartConsumerManagerWithFps(t, 1)
+//	defer ctm.Stop(t)
+//
+//	consumerChainID := "consumer-chain-test-1"
+//	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
+//	require.NoError(t, err)
+//
+//	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
+//}
+
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
 	ctm := StartConsumerManager(t)
