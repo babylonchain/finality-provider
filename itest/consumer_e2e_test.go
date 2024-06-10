@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"math/rand"
 	"testing"
@@ -96,6 +97,13 @@ func TestConsumerStoreContract(t *testing.T) {
 	require.Len(t, consumerFps.ConsumerFps, 1)
 	require.Equal(t, msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].ConsumerId, consumerFps.ConsumerFps[0].ConsumerId)
 	require.Equal(t, msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex, consumerFps.ConsumerFps[0].BtcPkHex)
+
+	// submit finality signature to the btc staking contract using admin
+	finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
+	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
+	require.NoError(t, err)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
+	require.NoError(t, err)
 }
 
 func NewBTCStakingPacketData(packet *bstypes.BTCStakingIBCPacket) *zctypes.ZoneconciergePacketData {
@@ -132,4 +140,71 @@ func GenIBCPacket(t *testing.T, r *rand.Rand) *zctypes.ZoneconciergePacketData {
 		UnbondedDel: []*bstypes.UnbondedBTCDelegation{},
 	}
 	return NewBTCStakingPacketData(packet)
+}
+
+type SubmitFinalitySignature struct {
+	FpPubkeyHex string `json:"fp_pubkey_hex"`
+	Height      uint64 `json:"height"`
+	PubRand     string `json:"pub_rand"`   // base64 encoded
+	Proof       Proof  `json:"proof"`      // nested struct
+	BlockHash   string `json:"block_hash"` // base64 encoded
+	Signature   string `json:"signature"`  // base64 encoded
+}
+
+type ExecuteMsg struct {
+	SubmitFinalitySignature *SubmitFinalitySignature `json:"submit_finality_signature"`
+}
+
+type Proof struct {
+	Total    uint64   `json:"total"`
+	Index    uint64   `json:"index"`
+	LeafHash string   `json:"leaf_hash"` // base64 encoded
+	Aunts    []string `json:"aunts"`     // base64 encoded
+}
+
+//func GenEmptyFinalitySignatureMessage() *ExecuteMsg {
+//	// Create the message with empty data
+//	msg := ExecuteMsg{
+//		SubmitFinalitySignature: &SubmitFinalitySignature{
+//			FpPubkeyHex: "", // Empty string for public key hex
+//			Height:      0,  // Zero value for height
+//			PubRand:     "", // Empty string for pub_rand
+//			Proof:       "", // Empty string for proof
+//			BlockHash:   "", // Empty string for block hash
+//			Signature:   "", // Empty string for signature
+//		},
+//	}
+//
+//	return &msg
+//}
+
+// Generate a finality signature message with mock data
+func GenFinalitySignatureMessage(fpBtcPkHex string) *ExecuteMsg {
+	// Generate mock data
+	//fpPubkeyHex := "mock_fp_pubkey_hex"
+	height := uint64(123456)
+	// Use base64 encoding for fields that are expected to be base64 encoded
+	pubRand := base64.StdEncoding.EncodeToString([]byte("mock_pub_rand"))
+	leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
+	blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
+	signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
+
+	// Create the message
+	msg := ExecuteMsg{
+		SubmitFinalitySignature: &SubmitFinalitySignature{
+			FpPubkeyHex: fpBtcPkHex,
+			Height:      height,
+			PubRand:     pubRand,
+			Proof: Proof{
+				Total:    0,
+				Index:    0,
+				LeafHash: leafHash,
+				Aunts:    []string{}, // empty for simplicity
+			},
+			BlockHash: blockHash,
+			Signature: signature,
+		},
+	}
+
+	return &msg
 }
