@@ -63,10 +63,10 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
+	// 3. setup wasmd node
 	wh := NewWasmdNodeHandler(t)
 	err = wh.Start()
 	require.NoError(t, err)
-	// Setup wasmd consumer client
 	cfg.WasmdConfig = config.DefaultWasmdConfig()
 	cfg.WasmdConfig.KeyDirectory = wh.dataDir
 	cfg.ChainName = fpcc.WasmdConsumerChainName
@@ -81,6 +81,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	require.NoError(t, err)
 
 	// TODO: setup fp app after contract supports relevant queries
+
 	ctm := &ConsumerTestManager{
 		BabylonHandler:      bh,
 		FpConfig:            cfg,
