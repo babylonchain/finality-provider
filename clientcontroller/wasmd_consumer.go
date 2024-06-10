@@ -239,6 +239,25 @@ func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination
 	return wc.WasmdClient.ListContractsByCode(codeID, pagination)
 }
 
+func (wc *WasmdConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+	return wc.WasmdClient.QuerySmartContractState(contractAddress, queryData)
+}
+
+func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
+	execMsg := &wasmtypes.MsgExecuteContract{
+		Sender:   wc.WasmdClient.MustGetAddr(),
+		Contract: contract.String(),
+		Msg:      payload,
+	}
+
+	_, err := wc.reliablySendMsg(execMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (wc *WasmdConsumerController) GetLatestCodeID() (uint64, error) {
 	pagination := &sdkquerytypes.PageRequest{
 		Limit:   1,

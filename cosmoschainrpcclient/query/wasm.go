@@ -46,3 +46,18 @@ func (c *QueryClient) ListContractsByCode(codeID uint64, pagination *sdkquerytyp
 
 	return resp, err
 }
+
+func (c *QueryClient) QuerySmartContractState(contractAddress string, queryData string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+	var resp *wasmtypes.QuerySmartContractStateResponse
+	err := c.QueryWasm(func(ctx context.Context, queryClient wasmtypes.QueryClient) error {
+		var err error
+		req := &wasmtypes.QuerySmartContractStateRequest{
+			Address:   contractAddress,
+			QueryData: wasmtypes.RawContractMessage(queryData),
+		}
+		resp, err = queryClient.SmartContractState(ctx, req)
+		return err
+	})
+
+	return resp, err
+}
