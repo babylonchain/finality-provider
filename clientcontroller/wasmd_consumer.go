@@ -12,10 +12,10 @@ import (
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
+	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
-	wasmclient "github.com/babylonchain/finality-provider/wasmclient/client"
-	"github.com/babylonchain/finality-provider/wasmclient/config"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -27,13 +27,13 @@ import (
 var _ ConsumerController = &WasmdConsumerController{}
 
 type WasmdConsumerController struct {
-	WasmdClient *wasmclient.Client
-	cfg         *config.WasmConfig
+	WasmdClient *cosmwasmclient.Client
+	cfg         *config.CosmwasmConfig
 	logger      *zap.Logger
 }
 
 func NewWasmdConsumerController(
-	cfg *fpcfg.WasmConfig,
+	cfg *fpcfg.CosmwasmConfig,
 	encodingConfig wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
@@ -43,7 +43,7 @@ func NewWasmdConsumerController(
 		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)
 	}
 
-	wc, err := wasmclient.New(
+	wc, err := cosmwasmclient.New(
 		wasmdConfig,
 		"wasmd",
 		encodingConfig,

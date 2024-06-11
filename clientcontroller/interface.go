@@ -125,7 +125,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			TxConfig:          tempApp.TxConfig(),
 			Amino:             tempApp.LegacyAmino(),
 		}
-		ccc, err = NewWasmdConsumerController(config.WasmConfig, encodingConfig, logger)
+		ccc, err = NewWasmdConsumerController(config.CosmwasmConfig, encodingConfig, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
 		}

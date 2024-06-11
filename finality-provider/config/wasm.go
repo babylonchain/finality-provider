@@ -3,10 +3,10 @@ package config
 import (
 	"time"
 
-	"github.com/babylonchain/finality-provider/wasmclient/config"
+	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 )
 
-type WasmConfig struct {
+type CosmwasmConfig struct {
 	Key            string        `long:"key" description:"name of the key to sign transactions with"`
 	ChainID        string        `long:"chain-id" description:"chain id of the chain to connect to"`
 	RPCAddr        string        `long:"rpc-address" description:"address of the rpc server to connect to"`
@@ -23,8 +23,8 @@ type WasmConfig struct {
 	SignModeStr    string        `long:"sign-mode" description:"sign mode to use"`
 }
 
-func DefaultWasmConfig() *WasmConfig {
-	return &WasmConfig{
+func DefaultCosmwasmConfig() *CosmwasmConfig {
+	return &CosmwasmConfig{
 		Key:            "validator",
 		ChainID:        "wasmd-test",
 		RPCAddr:        "http://localhost:2990",
@@ -41,8 +41,8 @@ func DefaultWasmConfig() *WasmConfig {
 	}
 }
 
-func ToQueryClientConfig(wc *WasmConfig) *config.WasmConfig {
-	return &config.WasmConfig{
+func ToQueryClientConfig(wc *CosmwasmConfig) *config.CosmwasmConfig {
+	return &config.CosmwasmConfig{
 		Key:              wc.Key,
 		ChainID:          wc.ChainID,
 		RPCAddr:          wc.RPCAddr,

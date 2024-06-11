@@ -10,9 +10,9 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
-// WasmConfig defines configuration for the Babylon client
+// CosmwasmConfig defines configuration for the Babylon client
 // adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
-type WasmConfig struct {
+type CosmwasmConfig struct {
 	Key              string        `mapstructure:"key"`
 	ChainID          string        `mapstructure:"chain-id"`
 	RPCAddr          string        `mapstructure:"rpc-addr"`
@@ -30,7 +30,7 @@ type WasmConfig struct {
 	SubmitterAddress string        `mapstructure:"submitter-address"`
 }
 
-func (cfg *WasmConfig) Validate() error {
+func (cfg *CosmwasmConfig) Validate() error {
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("rpc-addr is not correctly formatted: %w", err)
 	}
@@ -43,7 +43,7 @@ func (cfg *WasmConfig) Validate() error {
 	return nil
 }
 
-func (cfg *WasmConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
+func (cfg *CosmwasmConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
 	return cosmos.CosmosProviderConfig{
 		Key:            cfg.Key,
 		ChainID:        cfg.ChainID,
@@ -61,8 +61,8 @@ func (cfg *WasmConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
 	}
 }
 
-func DefaultWasmConfig() WasmConfig {
-	return WasmConfig{
+func DefaultWasmConfig() CosmwasmConfig {
+	return CosmwasmConfig{
 		Key:     "node0",
 		ChainID: "chain-test",
 		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports

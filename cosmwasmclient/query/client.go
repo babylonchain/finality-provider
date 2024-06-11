@@ -8,7 +8,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types/query"
 
-	"github.com/babylonchain/finality-provider/wasmclient/config"
+	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"

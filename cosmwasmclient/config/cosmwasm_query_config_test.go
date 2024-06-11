@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/babylonchain/finality-provider/wasmclient/config"
+	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	"github.com/stretchr/testify/require"
 )
 
