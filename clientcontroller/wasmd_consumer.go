@@ -37,7 +37,7 @@ func NewWasmdConsumerController(
 	encodingConfig wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
-	wasmdConfig := fpcfg.WasmdConfigToQueryClientConfig(cfg)
+	wasmdConfig := fpcfg.ToQueryClientConfig(cfg)
 
 	if err := wasmdConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)

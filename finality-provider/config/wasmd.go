@@ -41,7 +41,7 @@ func DefaultWasmdConfig() *WasmdConfig {
 	}
 }
 
-func WasmdConfigToQueryClientConfig(wc *WasmdConfig) *config.WasmdConfig {
+func ToQueryClientConfig(wc *WasmdConfig) *config.WasmdConfig {
 	return &config.WasmdConfig{
 		Key:              wc.Key,
 		ChainID:          wc.ChainID,
