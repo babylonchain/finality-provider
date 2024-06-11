@@ -156,13 +156,21 @@ func (wc *WasmdConsumerController) QueryBlocks(startHeight, endHeight, limit uin
 
 //nolint:unused
 func (wc *WasmdConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
-	// empty response
+	// TODO: not used right now, will be used to return latest indexed blocks once implemented in the smart contract
 	return nil, nil
 }
 
 func (wc *WasmdConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	// empty response
-	return nil, nil
+	// TODO: dummy response, fetch actual block from the smart contract
+	block, err := wc.queryCometBestBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.BlockInfo{
+		Height: height,
+		Hash:   block.Hash,
+	}, nil
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
@@ -172,111 +180,26 @@ func (wc *WasmdConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Publ
 }
 
 func (wc *WasmdConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	// empty response
-	return false, nil
+	// TODO: dummy response, fetch actual finalized block from the smart contract
+	return true, nil
 }
 
 func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
-	// empty response
-	return 0, nil
+	// TODO: dummy response, fetch actual activated height from the smart contract
+	return 1, nil
 }
 
 func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	// empty response
-	return 0, nil
-}
-
-func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
-	wasmCode, err := os.ReadFile(wasmFile)
-	if err != nil {
-		return err
-	}
-	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		_, err = gz.Write(wasmCode)
-		if err != nil {
-			return err
-		}
-		err = gz.Close()
-		if err != nil {
-			return err
-		}
-		wasmCode = buf.Bytes()
-	}
-
-	storeMsg := &wasmtypes.MsgStoreCode{
-		Sender:       wc.WasmdClient.MustGetAddr(),
-		WASMByteCode: wasmCode,
-	}
-	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (wc *WasmdConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
-	instantiateMsg := &wasmtypes.MsgInstantiateContract{
-		Sender: wc.WasmdClient.MustGetAddr(),
-		Admin:  wc.WasmdClient.MustGetAddr(),
-		CodeID: codeID,
-		Label:  "ibc-test",
-		Msg:    initMsg,
-		Funds:  nil,
-	}
-
-	_, err := wc.reliablySendMsg(instantiateMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmtypes.QueryContractsByCodeResponse, error) {
-	return wc.WasmdClient.ListContractsByCode(codeID, pagination)
-}
-
-func (wc *WasmdConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmtypes.QuerySmartContractStateResponse, error) {
-	return wc.WasmdClient.QuerySmartContractState(contractAddress, queryData)
-}
-
-func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
-	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   wc.WasmdClient.MustGetAddr(),
-		Contract: contract.String(),
-		Msg:      payload,
-	}
-
-	_, err := wc.reliablySendMsg(execMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (wc *WasmdConsumerController) GetLatestCodeId() (uint64, error) {
-	pagination := &sdkquerytypes.PageRequest{
-		Limit:   1,
-		Reverse: true,
-	}
-	resp, err := wc.WasmdClient.ListCodes(pagination)
+	// TODO: dummy response, fetch actual latest indexed block from the smart contract
+	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
 	}
 
-	if len(resp.CodeInfos) == 0 {
-		return 0, fmt.Errorf("no codes found")
-	}
-
-	// Return the highest code ID
-	return resp.CodeInfos[0].CodeID, nil
+	return block.Height, nil
 }
 
-func (wc *WasmdConsumerController) QueryCometBestBlock() (*types.BlockInfo, error) {
+func (wc *WasmdConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.WasmdClient.RPCClient.BlockchainInfo(ctx, 0, 0)
@@ -310,4 +233,103 @@ var tempDir = func() string {
 	defer os.RemoveAll(dir)
 
 	return dir
+}
+
+func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
+	execMsg := &wasmtypes.MsgExecuteContract{
+		Sender:   wc.WasmdClient.MustGetAddr(),
+		Contract: contract.String(),
+		Msg:      payload,
+	}
+
+	_, err := wc.reliablySendMsg(execMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// QuerySmartContractState queries the smart contract state
+// NOTE: this function is only meant to be used in tests.
+func (wc *WasmdConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+	return wc.WasmdClient.QuerySmartContractState(contractAddress, queryData)
+}
+
+// StoreWasmCode stores the wasm code on the consumer chain
+// NOTE: this function is only meant to be used in tests.
+func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
+	wasmCode, err := os.ReadFile(wasmFile)
+	if err != nil {
+		return err
+	}
+	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		_, err = gz.Write(wasmCode)
+		if err != nil {
+			return err
+		}
+		err = gz.Close()
+		if err != nil {
+			return err
+		}
+		wasmCode = buf.Bytes()
+	}
+
+	storeMsg := &wasmtypes.MsgStoreCode{
+		Sender:       wc.WasmdClient.MustGetAddr(),
+		WASMByteCode: wasmCode,
+	}
+	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InstantiateContract instantiates a contract with the given code id and init msg
+// NOTE: this function is only meant to be used in tests.
+func (wc *WasmdConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
+	instantiateMsg := &wasmtypes.MsgInstantiateContract{
+		Sender: wc.WasmdClient.MustGetAddr(),
+		Admin:  wc.WasmdClient.MustGetAddr(),
+		CodeID: codeID,
+		Label:  "ibc-test",
+		Msg:    initMsg,
+		Funds:  nil,
+	}
+
+	_, err := wc.reliablySendMsg(instantiateMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetLatestCodeId returns the latest wasm code id.
+// NOTE: this function is only meant to be used in tests.
+func (wc *WasmdConsumerController) GetLatestCodeId() (uint64, error) {
+	pagination := &sdkquerytypes.PageRequest{
+		Limit:   1,
+		Reverse: true,
+	}
+	resp, err := wc.WasmdClient.ListCodes(pagination)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(resp.CodeInfos) == 0 {
+		return 0, fmt.Errorf("no codes found")
+	}
+
+	return resp.CodeInfos[0].CodeID, nil
+}
+
+// ListContractsByCode lists all contracts by wasm code id
+// NOTE: this function is only meant to be used in tests.
+func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmtypes.QueryContractsByCodeResponse, error) {
+	return wc.WasmdClient.ListContractsByCode(codeID, pagination)
 }

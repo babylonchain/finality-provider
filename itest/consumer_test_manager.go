@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -52,7 +53,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	_, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
@@ -80,6 +81,22 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	wcc, err := fpcc.NewWasmdConsumerController(cfg.WasmdConfig, encodingConfig, logger)
 	require.NoError(t, err)
 
+	// 4. prepare EOTS manager
+	eotsHomeDir := filepath.Join(testDir, "eots-home")
+	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
+	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh.Start()
+	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
+	require.NoError(t, err)
+
+	// 5. prepare finality-provider
+	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, wcc, eotsCli, fpdb, logger)
+	require.NoError(t, err)
+	err = fpApp.Start()
+	require.NoError(t, err)
+
 	// TODO: setup fp app after contract supports relevant queries
 
 	ctm := &ConsumerTestManager{
@@ -88,6 +105,11 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 		BBNClient:           bc,
 		WasmdHandler:        wh,
 		WasmdConsumerClient: wcc,
+		EOTSServerHandler:   eh,
+		EOTSConfig:          eotsCfg,
+		Fpa:                 fpApp,
+		EOTSClient:          eotsCli,
+		CovenantPrivKeys:    covenantPrivKeys,
 		baseDir:             testDir,
 	}
 
@@ -119,8 +141,13 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (ctm *ConsumerTestManager) Stop(t *testing.T) {
+	err := ctm.Fpa.Stop()
+	require.Error(t, err) // TODO: error is expected here, as the fp manager is not started and we are trying to stop it
+	err = ctm.BabylonHandler.Stop()
+	require.NoError(t, err)
+	ctm.EOTSServerHandler.Stop()
 	ctm.WasmdHandler.Stop(t)
-	err := ctm.BabylonHandler.Stop()
+	err = os.RemoveAll(ctm.baseDir)
 	require.NoError(t, err)
 }
 
