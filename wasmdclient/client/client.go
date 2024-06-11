@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"os"
 	"time"
 
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
@@ -94,14 +93,4 @@ func New(cfg *config.WasmdConfig, chainName string, encodingConfig wasmdparams.E
 
 func (c *Client) GetConfig() *config.WasmdConfig {
 	return c.cfg
-}
-
-var tempDir = func() string {
-	dir, err := os.MkdirTemp("", "wasmd")
-	if err != nil {
-		panic("failed to create temp dir: " + err.Error())
-	}
-	defer os.RemoveAll(dir)
-
-	return dir
 }
