@@ -31,6 +31,7 @@ import (
 //	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
 //}
 
+// TODO: make a test suite for the wasmd <-> babylon e2e tests
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
 	ctm := StartConsumerManager(t)
