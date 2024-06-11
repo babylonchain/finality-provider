@@ -72,13 +72,13 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
 	cfg.ChainName = fpcc.WasmdConsumerChainName
 	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
-	encodingConfig := wasmparams.EncodingConfig{
+	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),
 		TxConfig:          tempApp.TxConfig(),
 		Amino:             tempApp.LegacyAmino(),
 	}
-	wcc, err := fpcc.NewCosmwasmConsumerController(cfg.CosmwasmConfig, encodingConfig, logger)
+	wcc, err := fpcc.NewCosmwasmConsumerController(cfg.CosmwasmConfig, encodingCfg, logger)
 	require.NoError(t, err)
 
 	// 4. prepare EOTS manager

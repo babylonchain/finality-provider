@@ -21,7 +21,7 @@ type Client struct {
 	cfg      *config.CosmwasmConfig
 }
 
-func New(cfg *config.CosmwasmConfig, chainName string, encodingConfig wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
+func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
 	var (
 		zapLogger *zap.Logger
 		err       error
@@ -54,10 +54,10 @@ func New(cfg *config.CosmwasmConfig, chainName string, encodingConfig wasmdparam
 	cp := provider.(*cosmos.CosmosProvider)
 	cp.PCfg.KeyDirectory = cfg.KeyDirectory
 	cp.Cdc = cosmos.Codec{
-		InterfaceRegistry: encodingConfig.InterfaceRegistry,
-		Marshaler:         encodingConfig.Codec,
-		TxConfig:          encodingConfig.TxConfig,
-		Amino:             encodingConfig.Amino,
+		InterfaceRegistry: encodingCfg.InterfaceRegistry,
+		Marshaler:         encodingCfg.Codec,
+		TxConfig:          encodingCfg.TxConfig,
+		Amino:             encodingCfg.Amino,
 	}
 
 	// initialise Cosmos provider

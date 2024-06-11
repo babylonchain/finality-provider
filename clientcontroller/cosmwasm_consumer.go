@@ -34,7 +34,7 @@ type CosmwasmConsumerController struct {
 
 func NewCosmwasmConsumerController(
 	cfg *fpcfg.CosmwasmConfig,
-	encodingConfig wasmdparams.EncodingConfig,
+	encodingCfg wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*CosmwasmConsumerController, error) {
 	wasmdConfig := fpcfg.ToQueryClientConfig(cfg)
@@ -46,7 +46,7 @@ func NewCosmwasmConsumerController(
 	wc, err := cosmwasmclient.New(
 		wasmdConfig,
 		"wasmd",
-		encodingConfig,
+		encodingCfg,
 		logger,
 	)
 	if err != nil {
