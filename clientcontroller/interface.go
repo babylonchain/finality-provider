@@ -48,6 +48,7 @@ type ClientController interface {
 	Close() error
 }
 
+// NewClientController TODO: this is always going to be babylon so rename accordingly
 func NewClientController(config *fpcfg.Config, logger *zap.Logger) (ClientController, error) {
 	cc, err := NewBabylonController(config.BabylonConfig, &config.BTCNetParams, logger)
 	if err != nil {
