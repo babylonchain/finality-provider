@@ -5,8 +5,8 @@ import (
 	"time"
 
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
-	"github.com/babylonchain/finality-provider/wasmdclient/config"
-	"github.com/babylonchain/finality-provider/wasmdclient/query"
+	"github.com/babylonchain/finality-provider/wasmclient/config"
+	"github.com/babylonchain/finality-provider/wasmclient/query"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"go.uber.org/zap"
@@ -18,10 +18,10 @@ type Client struct {
 	provider *cosmos.CosmosProvider
 	timeout  time.Duration
 	logger   *zap.Logger
-	cfg      *config.WasmdConfig
+	cfg      *config.WasmConfig
 }
 
-func New(cfg *config.WasmdConfig, chainName string, encodingConfig wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
+func New(cfg *config.WasmConfig, chainName string, encodingConfig wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
 	var (
 		zapLogger *zap.Logger
 		err       error
@@ -91,6 +91,6 @@ func New(cfg *config.WasmdConfig, chainName string, encodingConfig wasmdparams.E
 	}, nil
 }
 
-func (c *Client) GetConfig() *config.WasmdConfig {
+func (c *Client) GetConfig() *config.WasmConfig {
 	return c.cfg
 }

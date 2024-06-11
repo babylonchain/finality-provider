@@ -3,7 +3,7 @@ package config
 import (
 	"time"
 
-	"github.com/babylonchain/finality-provider/wasmdclient/config"
+	"github.com/babylonchain/finality-provider/wasmclient/config"
 )
 
 type WasmdConfig struct {
@@ -41,8 +41,8 @@ func DefaultWasmdConfig() *WasmdConfig {
 	}
 }
 
-func ToQueryClientConfig(wc *WasmdConfig) *config.WasmdConfig {
-	return &config.WasmdConfig{
+func ToQueryClientConfig(wc *WasmdConfig) *config.WasmConfig {
+	return &config.WasmConfig{
 		Key:              wc.Key,
 		ChainID:          wc.ChainID,
 		RPCAddr:          wc.RPCAddr,

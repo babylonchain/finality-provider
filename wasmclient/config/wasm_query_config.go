@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// WasmdConfig defines configuration for the Babylon query client
-type WasmdQueryConfig struct {
+// WasmQueryConfig defines configuration for the Babylon query client
+type WasmQueryConfig struct {
 	RPCAddr string        `mapstructure:"rpc-addr"`
 	Timeout time.Duration `mapstructure:"timeout"`
 }
 
-func (cfg *WasmdQueryConfig) Validate() error {
+func (cfg *WasmQueryConfig) Validate() error {
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("cfg.RPCAddr is not correctly formatted: %w", err)
 	}
@@ -22,8 +22,8 @@ func (cfg *WasmdQueryConfig) Validate() error {
 	return nil
 }
 
-func DefaultWasmdQueryConfig() WasmdQueryConfig {
-	return WasmdQueryConfig{
+func DefaultWasmQueryConfig() WasmQueryConfig {
+	return WasmQueryConfig{
 		RPCAddr: "http://localhost:26657",
 		Timeout: 20 * time.Second,
 	}

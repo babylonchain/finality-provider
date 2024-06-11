@@ -14,8 +14,8 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
-	wasmdclient "github.com/babylonchain/finality-provider/wasmdclient/client"
-	"github.com/babylonchain/finality-provider/wasmdclient/config"
+	wasmdclient "github.com/babylonchain/finality-provider/wasmclient/client"
+	"github.com/babylonchain/finality-provider/wasmclient/config"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -28,7 +28,7 @@ var _ ConsumerController = &WasmdConsumerController{}
 
 type WasmdConsumerController struct {
 	WasmdClient *wasmdclient.Client
-	cfg         *config.WasmdConfig
+	cfg         *config.WasmConfig
 	logger      *zap.Logger
 }
 
