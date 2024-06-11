@@ -80,7 +80,7 @@ func NewFinalityProviderAppFromConfig(
 
 func NewFinalityProviderApp(
 	config *fpcfg.Config,
-	cc clientcontroller.ClientController,
+	cc clientcontroller.ClientController, // TODO: this should be renamed as client controller is always going to be babylon
 	consumerCon clientcontroller.ConsumerController,
 	em eotsmanager.EOTSManager,
 	db kvdb.Backend,
