@@ -6,7 +6,7 @@ import (
 	"github.com/babylonchain/finality-provider/wasmclient/config"
 )
 
-type WasmdConfig struct {
+type WasmConfig struct {
 	Key            string        `long:"key" description:"name of the key to sign transactions with"`
 	ChainID        string        `long:"chain-id" description:"chain id of the chain to connect to"`
 	RPCAddr        string        `long:"rpc-address" description:"address of the rpc server to connect to"`
@@ -23,8 +23,8 @@ type WasmdConfig struct {
 	SignModeStr    string        `long:"sign-mode" description:"sign mode to use"`
 }
 
-func DefaultWasmdConfig() *WasmdConfig {
-	return &WasmdConfig{
+func DefaultWasmConfig() *WasmConfig {
+	return &WasmConfig{
 		Key:            "validator",
 		ChainID:        "wasmd-test",
 		RPCAddr:        "http://localhost:2990",
@@ -41,7 +41,7 @@ func DefaultWasmdConfig() *WasmdConfig {
 	}
 }
 
-func ToQueryClientConfig(wc *WasmdConfig) *config.WasmConfig {
+func ToQueryClientConfig(wc *WasmConfig) *config.WasmConfig {
 	return &config.WasmConfig{
 		Key:              wc.Key,
 		ChainID:          wc.ChainID,

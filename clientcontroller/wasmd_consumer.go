@@ -10,11 +10,11 @@ import (
 
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
-	wasmdclient "github.com/babylonchain/finality-provider/wasmclient/client"
+	wasmclient "github.com/babylonchain/finality-provider/wasmclient/client"
 	"github.com/babylonchain/finality-provider/wasmclient/config"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -27,13 +27,13 @@ import (
 var _ ConsumerController = &WasmdConsumerController{}
 
 type WasmdConsumerController struct {
-	WasmdClient *wasmdclient.Client
+	WasmdClient *wasmclient.Client
 	cfg         *config.WasmConfig
 	logger      *zap.Logger
 }
 
 func NewWasmdConsumerController(
-	cfg *fpcfg.WasmdConfig,
+	cfg *fpcfg.WasmConfig,
 	encodingConfig wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*WasmdConsumerController, error) {
@@ -43,7 +43,7 @@ func NewWasmdConsumerController(
 		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)
 	}
 
-	wc, err := wasmdclient.New(
+	wc, err := wasmclient.New(
 		wasmdConfig,
 		"wasmd",
 		encodingConfig,
@@ -236,7 +236,7 @@ var tempDir = func() string {
 }
 
 func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
-	execMsg := &wasmtypes.MsgExecuteContract{
+	execMsg := &wasmdtypes.MsgExecuteContract{
 		Sender:   wc.WasmdClient.MustGetAddr(),
 		Contract: contract.String(),
 		Msg:      payload,
@@ -252,7 +252,7 @@ func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte)
 
 // QuerySmartContractState queries the smart contract state
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmtypes.QuerySmartContractStateResponse, error) {
+func (wc *WasmdConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmdtypes.QuerySmartContractStateResponse, error) {
 	return wc.WasmdClient.QuerySmartContractState(contractAddress, queryData)
 }
 
@@ -277,7 +277,7 @@ func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
 		wasmCode = buf.Bytes()
 	}
 
-	storeMsg := &wasmtypes.MsgStoreCode{
+	storeMsg := &wasmdtypes.MsgStoreCode{
 		Sender:       wc.WasmdClient.MustGetAddr(),
 		WASMByteCode: wasmCode,
 	}
@@ -292,7 +292,7 @@ func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
 // InstantiateContract instantiates a contract with the given code id and init msg
 // NOTE: this function is only meant to be used in tests.
 func (wc *WasmdConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
-	instantiateMsg := &wasmtypes.MsgInstantiateContract{
+	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
 		Sender: wc.WasmdClient.MustGetAddr(),
 		Admin:  wc.WasmdClient.MustGetAddr(),
 		CodeID: codeID,
@@ -330,6 +330,6 @@ func (wc *WasmdConsumerController) GetLatestCodeId() (uint64, error) {
 
 // ListContractsByCode lists all contracts by wasm code id
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmtypes.QueryContractsByCodeResponse, error) {
+func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmdtypes.QueryContractsByCodeResponse, error) {
 	return wc.WasmdClient.ListContractsByCode(codeID, pagination)
 }
