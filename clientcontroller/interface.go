@@ -3,18 +3,13 @@ package clientcontroller
 import (
 	"fmt"
 
-	sdklogs "cosmossdk.io/log"
 	"cosmossdk.io/math"
-	wasmapp "github.com/CosmWasm/wasmd/app"
-	wasmdparams "github.com/CosmWasm/wasmd/app/params"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	dbm "github.com/cosmos/cosmos-db"
-	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"go.uber.org/zap"
 
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	cosmwasmcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 )
@@ -118,14 +113,8 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
 		}
 	case WasmdConsumerChainName:
-		tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(tempDir()), []wasmkeeper.Option{})
-		encodingConfig := wasmdparams.EncodingConfig{
-			InterfaceRegistry: tempApp.InterfaceRegistry(),
-			Codec:             tempApp.AppCodec(),
-			TxConfig:          tempApp.TxConfig(),
-			Amino:             tempApp.LegacyAmino(),
-		}
-		ccc, err = NewCosmwasmConsumerController(config.CosmwasmConfig, encodingConfig, logger)
+		wasmdEncodingConfig := cosmwasmcfg.GetWasmdEncodingConfig()
+		ccc, err = NewCosmwasmConsumerController(config.CosmwasmConfig, wasmdEncodingConfig, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
 		}
