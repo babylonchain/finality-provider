@@ -118,6 +118,12 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Wasmd node is started")
 }
 
+func (ctm *ConsumerTestManager) Stop(t *testing.T) {
+	ctm.WasmdHandler.Stop(t)
+	err := ctm.BabylonHandler.Stop()
+	require.NoError(t, err)
+}
+
 func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*service.FinalityProviderInstance) {
 	ctm := StartConsumerManager(t)
 	app := ctm.Fpa
@@ -238,10 +244,4 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 	t.Logf("the consumer test manager is running with %v finality-provider(s)", len(fpInsList))
 
 	return fpInsList
-}
-
-func (ctm *ConsumerTestManager) Stop(t *testing.T) {
-	ctm.WasmdHandler.Stop(t)
-	err := ctm.BabylonHandler.Stop()
-	require.NoError(t, err)
 }
