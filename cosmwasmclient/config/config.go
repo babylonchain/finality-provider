@@ -28,6 +28,7 @@ type CosmwasmConfig struct {
 	OutputFormat     string        `mapstructure:"output-format"`
 	SignModeStr      string        `mapstructure:"sign-mode"`
 	SubmitterAddress string        `mapstructure:"submitter-address"`
+	// TODO: add contract address so fp can query the contract
 }
 
 func (cfg *CosmwasmConfig) Validate() error {
