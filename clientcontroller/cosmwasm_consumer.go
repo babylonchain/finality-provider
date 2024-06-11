@@ -225,16 +225,6 @@ func (wc *CosmwasmConsumerController) Close() error {
 	return wc.CosmwasmClient.Stop()
 }
 
-var tempDir = func() string {
-	dir, err := os.MkdirTemp("", "wasmd")
-	if err != nil {
-		panic("failed to create temp dir: " + err.Error())
-	}
-	defer os.RemoveAll(dir)
-
-	return dir
-}
-
 func (wc *CosmwasmConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
 	execMsg := &wasmdtypes.MsgExecuteContract{
 		Sender:   wc.CosmwasmClient.MustGetAddr(),
