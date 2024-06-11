@@ -8,7 +8,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types/query"
 
-	"github.com/babylonchain/babylon/client/config"
+	"github.com/babylonchain/finality-provider/wasmdclient/config"
 	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
@@ -24,7 +24,7 @@ type QueryClient struct {
 }
 
 // New creates a new QueryClient according to the given config
-func New(cfg *config.BabylonQueryConfig) (*QueryClient, error) {
+func New(cfg *config.WasmdQueryConfig) (*QueryClient, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

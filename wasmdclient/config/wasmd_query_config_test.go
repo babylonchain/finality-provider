@@ -3,13 +3,13 @@ package config_test
 import (
 	"testing"
 
-	"github.com/babylonchain/babylon/client/config"
+	"github.com/babylonchain/finality-provider/wasmdclient/config"
 	"github.com/stretchr/testify/require"
 )
 
-// TestCosmosChainQueryConfig ensures that the default Babylon query config is valid
-func TestCosmosChainQueryConfig(t *testing.T) {
-	defaultConfig := config.DefaultBabylonQueryConfig()
+// TestWasmdQueryConfig ensures that the default Babylon query config is valid
+func TestWasmdQueryConfig(t *testing.T) {
+	defaultConfig := config.DefaultWasmdQueryConfig()
 	err := defaultConfig.Validate()
 	require.NoError(t, err)
 }

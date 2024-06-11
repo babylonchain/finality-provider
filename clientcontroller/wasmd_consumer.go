@@ -28,7 +28,7 @@ var _ ConsumerController = &WasmdConsumerController{}
 
 type WasmdConsumerController struct {
 	WasmdClient *wasmdclient.Client
-	cfg         *config.CosmosChainConfig
+	cfg         *config.WasmdConfig
 	logger      *zap.Logger
 }
 

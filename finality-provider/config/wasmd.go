@@ -41,8 +41,8 @@ func DefaultWasmdConfig() *WasmdConfig {
 	}
 }
 
-func WasmdConfigToQueryClientConfig(wc *WasmdConfig) *config.CosmosChainConfig {
-	return &config.CosmosChainConfig{
+func WasmdConfigToQueryClientConfig(wc *WasmdConfig) *config.WasmdConfig {
+	return &config.WasmdConfig{
 		Key:              wc.Key,
 		ChainID:          wc.ChainID,
 		RPCAddr:          wc.RPCAddr,

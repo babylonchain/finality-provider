@@ -10,9 +10,9 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
-// CosmosChainConfig defines configuration for the Babylon client
+// WasmdConfig defines configuration for the Babylon client
 // adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
-type CosmosChainConfig struct {
+type WasmdConfig struct {
 	Key              string        `mapstructure:"key"`
 	ChainID          string        `mapstructure:"chain-id"`
 	RPCAddr          string        `mapstructure:"rpc-addr"`
@@ -30,7 +30,7 @@ type CosmosChainConfig struct {
 	SubmitterAddress string        `mapstructure:"submitter-address"`
 }
 
-func (cfg *CosmosChainConfig) Validate() error {
+func (cfg *WasmdConfig) Validate() error {
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("rpc-addr is not correctly formatted: %w", err)
 	}
@@ -43,7 +43,7 @@ func (cfg *CosmosChainConfig) Validate() error {
 	return nil
 }
 
-func (cfg *CosmosChainConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
+func (cfg *WasmdConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig {
 	return cosmos.CosmosProviderConfig{
 		Key:            cfg.Key,
 		ChainID:        cfg.ChainID,
@@ -61,8 +61,8 @@ func (cfg *CosmosChainConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConf
 	}
 }
 
-func DefaultCosmosChainConfig() CosmosChainConfig {
-	return CosmosChainConfig{
+func DefaultWasmdConfig() WasmdConfig {
+	return WasmdConfig{
 		Key:     "node0",
 		ChainID: "chain-test",
 		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
@@ -75,7 +75,7 @@ func DefaultCosmosChainConfig() CosmosChainConfig {
 		KeyringBackend:   "test",
 		GasAdjustment:    1.2,
 		GasPrices:        "0.01ubbn",
-		KeyDirectory:     defaultCosmosChainHome(),
+		KeyDirectory:     defaultWasmdHome(),
 		Debug:            true,
 		Timeout:          20 * time.Second,
 		OutputFormat:     "json",
@@ -84,13 +84,13 @@ func DefaultCosmosChainConfig() CosmosChainConfig {
 	}
 }
 
-// defaultCosmosChainHome returns the default Babylon node directory, which is $HOME/.babylond
+// defaultWasmdHome returns the default Babylon node directory, which is $HOME/.babylond
 // copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
-func defaultCosmosChainHome() string {
+func defaultWasmdHome() string {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
 
-	return filepath.Join(userHomeDir, ".babylond")
+	return filepath.Join(userHomeDir, ".wasmd")
 }

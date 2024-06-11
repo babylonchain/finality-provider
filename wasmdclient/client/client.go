@@ -19,10 +19,10 @@ type Client struct {
 	provider *cosmos.CosmosProvider
 	timeout  time.Duration
 	logger   *zap.Logger
-	cfg      *config.CosmosChainConfig
+	cfg      *config.WasmdConfig
 }
 
-func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
+func New(cfg *config.WasmdConfig, chainName string, encodingConfig wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
 	var (
 		zapLogger *zap.Logger
 		err       error
@@ -64,7 +64,7 @@ func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdpa
 	// initialise Cosmos provider
 	// NOTE: this will create a RPC client. The RPC client will be used for
 	// submitting txs and making ad hoc queries. It won't create WebSocket
-	// connection with Babylon node
+	// connection with wasmd node
 	err = cp.Init(context.Background())
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func New(cfg *config.CosmosChainConfig, chainName string, encodingConfig wasmdpa
 	}, nil
 }
 
-func (c *Client) GetConfig() *config.CosmosChainConfig {
+func (c *Client) GetConfig() *config.WasmdConfig {
 	return c.cfg
 }
 
