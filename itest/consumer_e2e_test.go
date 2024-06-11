@@ -54,7 +54,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 
 	// instantiate babylon contract with admin
 	btcStakingInitMsg := map[string]interface{}{
-		"admin": ctm.WasmdConsumerClient.WasmdClient.MustGetAddr(),
+		"admin": ctm.WasmdConsumerClient.CosmwasmClient.MustGetAddr(),
 	}
 	btcStakingInitMsgBytes, err := json.Marshal(btcStakingInitMsg)
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 		"notify_cosmos_zone":              false,
 		"btc_staking_code_id":             btcStakingContractWasmId,
 		"btc_staking_msg":                 btcStakingInitMsgBytes,
-		"admin":                           ctm.WasmdConsumerClient.WasmdClient.MustGetAddr(),
+		"admin":                           ctm.WasmdConsumerClient.CosmwasmClient.MustGetAddr(),
 	}
 	initMsgBytes, err := json.Marshal(initMsg)
 	require.NoError(t, err)

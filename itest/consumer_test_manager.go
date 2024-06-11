@@ -33,7 +33,7 @@ type ConsumerTestManager struct {
 	FpConfig            *fpcfg.Config
 	BBNClient           *fpcc.BabylonController
 	WasmdHandler        *WasmdNodeHandler
-	WasmdConsumerClient *fpcc.WasmdConsumerController
+	WasmdConsumerClient *fpcc.CosmwasmConsumerController
 	StakingParams       *types.StakingParams
 	EOTSServerHandler   *EOTSServerHandler
 	EOTSConfig          *eotsconfig.Config
@@ -78,7 +78,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 		TxConfig:          tempApp.TxConfig(),
 		Amino:             tempApp.LegacyAmino(),
 	}
-	wcc, err := fpcc.NewWasmdConsumerController(cfg.CosmwasmConfig, encodingConfig, logger)
+	wcc, err := fpcc.NewCosmwasmConsumerController(cfg.CosmwasmConfig, encodingConfig, logger)
 	require.NoError(t, err)
 
 	// 4. prepare EOTS manager

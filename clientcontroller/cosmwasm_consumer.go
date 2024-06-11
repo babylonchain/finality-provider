@@ -24,19 +24,19 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerController = &WasmdConsumerController{}
+var _ ConsumerController = &CosmwasmConsumerController{}
 
-type WasmdConsumerController struct {
-	WasmdClient *cosmwasmclient.Client
-	cfg         *config.CosmwasmConfig
-	logger      *zap.Logger
+type CosmwasmConsumerController struct {
+	CosmwasmClient *cosmwasmclient.Client
+	cfg            *config.CosmwasmConfig
+	logger         *zap.Logger
 }
 
-func NewWasmdConsumerController(
+func NewCosmwasmConsumerController(
 	cfg *fpcfg.CosmwasmConfig,
 	encodingConfig wasmdparams.EncodingConfig,
 	logger *zap.Logger,
-) (*WasmdConsumerController, error) {
+) (*CosmwasmConsumerController, error) {
 	wasmdConfig := fpcfg.ToQueryClientConfig(cfg)
 
 	if err := wasmdConfig.Validate(); err != nil {
@@ -53,7 +53,7 @@ func NewWasmdConsumerController(
 		return nil, fmt.Errorf("failed to create Wasmd client: %w", err)
 	}
 
-	return &WasmdConsumerController{
+	return &CosmwasmConsumerController{
 		wc,
 		wasmdConfig,
 		logger,
@@ -61,19 +61,19 @@ func NewWasmdConsumerController(
 }
 
 //nolint:unused
-func (wc *WasmdConsumerController) mustGetTxSigner() string {
+func (wc *CosmwasmConsumerController) mustGetTxSigner() string {
 	signer := wc.GetKeyAddress()
 	prefix := wc.cfg.AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
-func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
+func (wc *CosmwasmConsumerController) GetKeyAddress() sdk.AccAddress {
 	// get key address, retrieves address based on key name which is configured in
 	// cfg *stakercfg.BBNConfig. If this fails, it means we have misconfiguration problem
 	// and we should panic.
 	// This is checked at the start of BabylonConsumerController, so if it fails something is really wrong
 
-	keyRec, err := wc.WasmdClient.GetKeyring().Key(wc.cfg.Key)
+	keyRec, err := wc.CosmwasmClient.GetKeyring().Key(wc.cfg.Key)
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
@@ -88,12 +88,12 @@ func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (wc *WasmdConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (wc *CosmwasmConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return wc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
-func (wc *WasmdConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return wc.WasmdClient.ReliablySendMsgs(
+func (wc *CosmwasmConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	return wc.CosmwasmClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -103,7 +103,7 @@ func (wc *WasmdConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs
 
 // CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
 // it returns tx hash and error
-func (wc *WasmdConsumerController) CommitPubRandList(
+func (wc *CosmwasmConsumerController) CommitPubRandList(
 	fpPk *btcec.PublicKey,
 	startHeight uint64,
 	numPubRand uint64,
@@ -115,7 +115,7 @@ func (wc *WasmdConsumerController) CommitPubRandList(
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
-func (wc *WasmdConsumerController) SubmitFinalitySig(
+func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
 	block *types.BlockInfo,
 	pubRand *btcec.FieldVal,
@@ -127,7 +127,7 @@ func (wc *WasmdConsumerController) SubmitFinalitySig(
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
-func (wc *WasmdConsumerController) SubmitBatchFinalitySigs(
+func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 	fpPk *btcec.PublicKey,
 	blocks []*types.BlockInfo,
 	pubRandList []*btcec.FieldVal,
@@ -139,28 +139,28 @@ func (wc *WasmdConsumerController) SubmitBatchFinalitySigs(
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-func (wc *WasmdConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	// empty response
 	return 0, nil
 }
 
-func (wc *WasmdConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
 	// empty response
 	return nil, nil
 }
 
-func (wc *WasmdConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
 	// empty response
 	return nil, nil
 }
 
 //nolint:unused
-func (wc *WasmdConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
 	// TODO: not used right now, will be used to return latest indexed blocks once implemented in the smart contract
 	return nil, nil
 }
 
-func (wc *WasmdConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	// TODO: dummy response, fetch actual block from the smart contract
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
@@ -174,22 +174,22 @@ func (wc *WasmdConsumerController) QueryBlock(height uint64) (*types.BlockInfo, 
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (wc *WasmdConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
 	// empty response
 	return nil, nil
 }
 
-func (wc *WasmdConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
+func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
 	// TODO: dummy response, fetch actual finalized block from the smart contract
 	return true, nil
 }
 
-func (wc *WasmdConsumerController) QueryActivatedHeight() (uint64, error) {
+func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 	// TODO: dummy response, fetch actual activated height from the smart contract
 	return 1, nil
 }
 
-func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
+func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	// TODO: dummy response, fetch actual latest indexed block from the smart contract
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
@@ -199,10 +199,10 @@ func (wc *WasmdConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	return block.Height, nil
 }
 
-func (wc *WasmdConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := wc.WasmdClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	chainInfo, err := wc.CosmwasmClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
 	if err != nil {
@@ -217,12 +217,12 @@ func (wc *WasmdConsumerController) queryCometBestBlock() (*types.BlockInfo, erro
 	}, nil
 }
 
-func (wc *WasmdConsumerController) Close() error {
-	if !wc.WasmdClient.IsRunning() {
+func (wc *CosmwasmConsumerController) Close() error {
+	if !wc.CosmwasmClient.IsRunning() {
 		return nil
 	}
 
-	return wc.WasmdClient.Stop()
+	return wc.CosmwasmClient.Stop()
 }
 
 var tempDir = func() string {
@@ -235,9 +235,9 @@ var tempDir = func() string {
 	return dir
 }
 
-func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
+func (wc *CosmwasmConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
 	execMsg := &wasmdtypes.MsgExecuteContract{
-		Sender:   wc.WasmdClient.MustGetAddr(),
+		Sender:   wc.CosmwasmClient.MustGetAddr(),
 		Contract: contract.String(),
 		Msg:      payload,
 	}
@@ -252,13 +252,13 @@ func (wc *WasmdConsumerController) Exec(contract sdk.AccAddress, payload []byte)
 
 // QuerySmartContractState queries the smart contract state
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmdtypes.QuerySmartContractStateResponse, error) {
-	return wc.WasmdClient.QuerySmartContractState(contractAddress, queryData)
+func (wc *CosmwasmConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmdtypes.QuerySmartContractStateResponse, error) {
+	return wc.CosmwasmClient.QuerySmartContractState(contractAddress, queryData)
 }
 
 // StoreWasmCode stores the wasm code on the consumer chain
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
+func (wc *CosmwasmConsumerController) StoreWasmCode(wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
 		return err
@@ -278,7 +278,7 @@ func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
 	}
 
 	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       wc.WasmdClient.MustGetAddr(),
+		Sender:       wc.CosmwasmClient.MustGetAddr(),
 		WASMByteCode: wasmCode,
 	}
 	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
@@ -291,10 +291,10 @@ func (wc *WasmdConsumerController) StoreWasmCode(wasmFile string) error {
 
 // InstantiateContract instantiates a contract with the given code id and init msg
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
+func (wc *CosmwasmConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
 	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: wc.WasmdClient.MustGetAddr(),
-		Admin:  wc.WasmdClient.MustGetAddr(),
+		Sender: wc.CosmwasmClient.MustGetAddr(),
+		Admin:  wc.CosmwasmClient.MustGetAddr(),
 		CodeID: codeID,
 		Label:  "ibc-test",
 		Msg:    initMsg,
@@ -311,12 +311,12 @@ func (wc *WasmdConsumerController) InstantiateContract(codeID uint64, initMsg []
 
 // GetLatestCodeId returns the latest wasm code id.
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) GetLatestCodeId() (uint64, error) {
+func (wc *CosmwasmConsumerController) GetLatestCodeId() (uint64, error) {
 	pagination := &sdkquerytypes.PageRequest{
 		Limit:   1,
 		Reverse: true,
 	}
-	resp, err := wc.WasmdClient.ListCodes(pagination)
+	resp, err := wc.CosmwasmClient.ListCodes(pagination)
 	if err != nil {
 		return 0, err
 	}
@@ -330,6 +330,6 @@ func (wc *WasmdConsumerController) GetLatestCodeId() (uint64, error) {
 
 // ListContractsByCode lists all contracts by wasm code id
 // NOTE: this function is only meant to be used in tests.
-func (wc *WasmdConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmdtypes.QueryContractsByCodeResponse, error) {
-	return wc.WasmdClient.ListContractsByCode(codeID, pagination)
+func (wc *CosmwasmConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmdtypes.QueryContractsByCodeResponse, error) {
+	return wc.CosmwasmClient.ListContractsByCode(codeID, pagination)
 }
