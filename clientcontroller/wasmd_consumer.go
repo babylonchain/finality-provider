@@ -60,11 +60,12 @@ func NewWasmdConsumerController(
 	}, nil
 }
 
+//nolint:unused
 func (wc *WasmdConsumerController) mustGetTxSigner() string {
 	signer := wc.GetKeyAddress()
 	prefix := wc.cfg.AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
-} // nolint:unused
+}
 
 func (wc *WasmdConsumerController) GetKeyAddress() sdk.AccAddress {
 	// get key address, retrieves address based on key name which is configured in
@@ -153,10 +154,11 @@ func (wc *WasmdConsumerController) QueryBlocks(startHeight, endHeight, limit uin
 	return nil, nil
 }
 
+//nolint:unused
 func (wc *WasmdConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
 	// empty response
 	return nil, nil
-} // nolint:unused
+}
 
 func (wc *WasmdConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	// empty response
