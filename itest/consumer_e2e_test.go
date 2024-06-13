@@ -80,7 +80,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	//msg := GenIBCPacket(t, r)
 	//msgBytes, err := zctypes.ModuleCdc.MarshalJSON(msg)
 	//require.NoError(t, err)
-	_, _, _, msgPub := e2etypes.GenCommitPubRandListMsg(100, 10, 1)
+	randList, fpPrivKey, msgPub := e2etypes.GenCommitPubRandListMsg(1, 1000)
 
 	msg := e2etypes.GenExecMessage(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
@@ -143,7 +143,8 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
 
 	// submit finality signature to the btc staking contract using admin
-	finalitySigMsg := e2etypes.GenFinalitySignatureMessage(msg.BtcStaking.NewFP[0].BTCPKHex, uint64(cometLatestHeight))
+	finalitySigMsg := e2etypes.GenFinalitySignatureMessage2(uint64(1), uint64(cometLatestHeight), randList, fpPrivKey)
+	//finalitySigMsg := e2etypes.GenFinalitySignatureMessage(msg.BtcStaking.NewFP[0].BTCPKHex, randList.PRList[cometLatestHeight], uint64(cometLatestHeight))
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)

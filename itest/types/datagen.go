@@ -369,8 +369,8 @@ type Proof struct {
 }
 
 // Generate a finality signature message with mock data
-func GenFinalitySignatureMessage(fpBtcPkHex string, height uint64) *ExecuteMsg {
-	pubRand := base64.StdEncoding.EncodeToString([]byte("mock_pub_rand"))
+func GenFinalitySignatureMessage(fpBtcPkHex string, pubRandValue bbn.SchnorrPubRand, height uint64) *ExecuteMsg {
+	pubRand := base64.StdEncoding.EncodeToString(pubRandValue.MustMarshal())
 	leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
 	blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
 	signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
@@ -388,6 +388,39 @@ func GenFinalitySignatureMessage(fpBtcPkHex string, height uint64) *ExecuteMsg {
 			},
 			BlockHash: blockHash,
 			Signature: signature,
+		},
+	}
+
+	return &msg
+}
+
+func GenFinalitySignatureMessage2(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ExecuteMsg {
+	fmsg := GenAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
+
+	//pubRand := base64.StdEncoding.EncodeToString(pubRandValue.MustMarshal())
+	//leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
+	//blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
+	//signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
+
+	// iterate proof.aunts and convert them to base64 encoded strings
+	var aunts []string
+	for _, aunt := range fmsg.Proof.Aunts {
+		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
+	}
+
+	msg := ExecuteMsg{
+		SubmitFinalitySignature: &SubmitFinalitySignature{
+			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
+			Height:      fmsg.BlockHeight,
+			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
+			Proof: Proof{
+				Total:    uint64(fmsg.Proof.Total),
+				Index:    uint64(fmsg.Proof.Index),
+				LeafHash: base64.StdEncoding.EncodeToString(fmsg.Proof.LeafHash),
+				Aunts:    aunts,
+			},
+			BlockHash: base64.StdEncoding.EncodeToString(fmsg.BlockAppHash),
+			Signature: base64.StdEncoding.EncodeToString(fmsg.FinalitySig.MustMarshal()),
 		},
 	}
 
@@ -423,7 +456,7 @@ type ConsumerFpsByPowerResponse struct {
 	Fps []ConsumerFpInfo `json:"fps"`
 }
 
-func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex uint64) (*datagen.RandListInfo, *btcec.PrivateKey, bbn.SchnorrPubRand, *ftypes.MsgCommitPubRandList) {
+func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *btcec.PrivateKey, *ftypes.MsgCommitPubRandList) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	sk, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -453,8 +486,8 @@ func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64, pubRandIndex
 	}
 	msg.Sig = bbn.NewBIP340SignatureFromBTCSig(schnorrSig)
 
-	pubRandValue := randListInfo.PRList[pubRandIndex]
-	return randListInfo, sk, pubRandValue, msg
+	//pubRandValue := randListInfo.PRList[pubRandIndex]
+	return randListInfo, sk, msg
 }
 
 func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
@@ -480,4 +513,48 @@ func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 	commitment, proofList := merkle.ProofsFromByteSlices(prByteList)
 
 	return &datagen.RandListInfo{SRList: srList, PRList: prList, Commitment: commitment, ProofList: proofList}, nil
+}
+
+func GenAddFinalitySig(startHeight uint64, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ftypes.MsgAddFinalitySig {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	//blockHeight := startHeight + index
+	blockHash := datagen.GenRandomByteArray(r, 32)
+
+	signer := datagen.GenRandomAccount().Address
+	msg, err := NewMsgAddFinalitySig(signer, sk, startHeight, blockHeight, randListInfo, blockHash)
+	if err != nil {
+		panic(err)
+	}
+
+	return msg
+}
+
+func NewMsgAddFinalitySig(
+	signer string,
+	sk *btcec.PrivateKey,
+	startHeight uint64,
+	blockHeight uint64,
+	randListInfo *datagen.RandListInfo,
+	blockAppHash []byte,
+) (*ftypes.MsgAddFinalitySig, error) {
+	idx := blockHeight - startHeight
+
+	msg := &ftypes.MsgAddFinalitySig{
+		Signer:       signer,
+		FpBtcPk:      bbn.NewBIP340PubKeyFromBTCPK(sk.PubKey()),
+		PubRand:      &randListInfo.PRList[idx],
+		Proof:        randListInfo.ProofList[idx].ToProto(),
+		BlockHeight:  blockHeight,
+		BlockAppHash: blockAppHash,
+		FinalitySig:  nil,
+	}
+	msgToSign := msg.MsgToSign()
+	sig, err := eots.Sign(sk, randListInfo.SRList[idx], msgToSign)
+	if err != nil {
+		return nil, err
+	}
+	msg.FinalitySig = bbn.NewSchnorrEOTSSigFromModNScalar(sig)
+
+	return msg, nil
 }
