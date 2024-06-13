@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
@@ -19,17 +16,18 @@ import (
 )
 
 // TODO: currently fp app is not started in consumer manager, so the following tests are commented out
-//  uncomment after contract is ready and fp app is working
-//func TestConsumerFinalityProviderRegistration(t *testing.T) {
-//	ctm, _ := StartConsumerManagerWithFps(t, 1)
-//	defer ctm.Stop(t)
 //
-//	consumerChainID := "consumer-chain-test-1"
-//	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-//	require.NoError(t, err)
-//
-//	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
-//}
+//	uncomment after contract is ready and fp app is working
+func TestConsumerFinalityProviderRegistration(t *testing.T) {
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
+	defer ctm.Stop(t)
+
+	consumerChainID := "consumer-chain-test-1"
+	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
+	require.NoError(t, err)
+
+	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
+}
 
 // TODO: make a test suite for the wasmd <-> babylon e2e tests
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
@@ -106,7 +104,6 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
 	// TODO: insert delegation and pub randomness to fix the error
 	require.Error(t, err)
-
 }
 
 func NewBTCStakingPacketData(packet *bstypes.BTCStakingIBCPacket) *zctypes.ZoneconciergePacketData {
@@ -129,7 +126,7 @@ func GenIBCPacket(t *testing.T, r *rand.Rand) *zctypes.ZoneconciergePacketData {
 	packet := &bstypes.BTCStakingIBCPacket{
 		NewFp: []*bstypes.NewFinalityProvider{
 			// TODO: fill empty data
-			&bstypes.NewFinalityProvider{
+			{
 				// Description: fp.Description,
 				Commission: fp.Commission.String(),
 				// BabylonPk:  fp.BabylonPk,
