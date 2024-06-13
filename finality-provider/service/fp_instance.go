@@ -218,6 +218,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			}
 			// the block is finalized, no need to submit finality signature
 			if isFinalized {
+				fp.MustSetLastProcessedHeight(b.Height)
 				continue
 			}
 
