@@ -376,3 +376,12 @@ type SingleConsumerDelegationResponse struct {
 	UndelegationInfo     *BtcUndelegationInfo        `json:"undelegation_info"`
 	ParamsVersion        uint32                      `json:"params_version"`
 }
+
+type ConsumerFpInfo struct {
+	BtcPkHex string `json:"btc_pk_hex"`
+	Power    uint64 `json:"power"`
+}
+
+type ConsumerFpsByPowerResponse struct {
+	Fps []ConsumerFpInfo `json:"fps"`
+}

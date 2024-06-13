@@ -113,6 +113,17 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].StakingTx))   // make sure to compare b64 encoded strings
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].SlashingTx)) // make sure to compare b64 encoded strings
 
+	// ensure fp has voting power in smart contract
+	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers_by_power": {}}`)
+	require.NoError(t, err)
+	require.NotNil(t, dataFromContract)
+	var fpPower e2etypes.ConsumerFpsByPowerResponse
+	err = json.Unmarshal(dataFromContract.Data, &fpPower)
+	require.NoError(t, err)
+	require.Len(t, fpPower.Fps, 1)
+	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
+	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
+
 	// submit finality signature to the btc staking contract using admin
 	//finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
 	//finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
