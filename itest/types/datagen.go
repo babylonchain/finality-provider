@@ -356,3 +356,23 @@ func GenFinalitySignatureMessage(fpBtcPkHex string) *ExecuteMsg {
 
 	return &msg
 }
+
+type ConsumerDelegationsResponse struct {
+	ConsumerDelegations []SingleConsumerDelegationResponse `json:"delegations"`
+}
+
+type SingleConsumerDelegationResponse struct {
+	BtcPkHex             string                      `json:"btc_pk_hex"`
+	FpBtcPkList          []string                    `json:"fp_btc_pk_list"`
+	StartHeight          uint64                      `json:"start_height"`
+	EndHeight            uint64                      `json:"end_height"`
+	TotalSat             uint64                      `json:"total_sat"`
+	StakingTx            []byte                      `json:"staking_tx"`
+	SlashingTx           []byte                      `json:"slashing_tx"`
+	DelegatorSlashingSig []byte                      `json:"delegator_slashing_sig"`
+	CovenantSigs         []CovenantAdaptorSignatures `json:"covenant_sigs"`
+	StakingOutputIdx     uint32                      `json:"staking_output_idx"`
+	UnbondingTime        uint32                      `json:"unbonding_time"`
+	UndelegationInfo     *BtcUndelegationInfo        `json:"undelegation_info"`
+	ParamsVersion        uint32                      `json:"params_version"`
+}

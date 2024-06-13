@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -95,6 +96,22 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Len(t, consumerFps.ConsumerFps, 1)
 	require.Equal(t, msg.BtcStaking.NewFP[0].ConsumerID, consumerFps.ConsumerFps[0].ConsumerId)
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFps.ConsumerFps[0].BtcPkHex)
+
+	// query delegations in smart contract
+	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"delegations": {}}`)
+	require.NoError(t, err)
+	require.NotNil(t, dataFromContract)
+	var consumerDels e2etypes.ConsumerDelegationsResponse
+	err = json.Unmarshal(dataFromContract.Data, &consumerDels)
+	require.NoError(t, err)
+	require.Len(t, consumerDels.ConsumerDelegations, 1)
+	require.Empty(t, consumerDels.ConsumerDelegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDels.ConsumerDelegations[0].BtcPkHex)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDels.ConsumerDelegations[0].StartHeight)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDels.ConsumerDelegations[0].EndHeight)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDels.ConsumerDelegations[0].TotalSat)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].StakingTx))   // make sure to compare b64 encoded strings
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].SlashingTx)) // make sure to compare b64 encoded strings
 
 	// submit finality signature to the btc staking contract using admin
 	//finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
