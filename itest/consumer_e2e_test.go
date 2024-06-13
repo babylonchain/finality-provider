@@ -124,11 +124,15 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
 
+	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
+	require.NoError(t, err)
+	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
+
 	// submit finality signature to the btc staking contract using admin
-	//finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
-	//finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
-	//require.NoError(t, err)
-	//err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
-	//// TODO: insert delegation and pub randomness to fix the error
-	//require.Error(t, err)
+	finalitySigMsg := e2etypes.GenFinalitySignatureMessage(msg.BtcStaking.NewFP[0].BTCPKHex, uint64(cometLatestHeight))
+	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
+	require.NoError(t, err)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
+	// TODO: insert delegation and pub randomness to fix the error
+	require.NoError(t, err)
 }

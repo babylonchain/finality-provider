@@ -73,7 +73,7 @@ func genBTCDelegation() (*types.Params, ActiveBtcDelegation) {
 	require.NoError(t, err)
 	covenantQuorum := uint32(3)
 
-	stakingTimeBlocks := uint16(5)
+	stakingTimeBlocks := uint16(50000)
 	stakingValue := int64(2 * 10e8)
 	slashingAddress, err := datagen.GenRandomBTCAddress(r, net)
 	require.NoError(t, err)
@@ -102,7 +102,7 @@ func genBTCDelegation() (*types.Params, ActiveBtcDelegation) {
 		covenantPKs,
 		covenantQuorum,
 		slashingAddress.EncodeAddress(),
-		1000,
+		1,
 		uint64(1000+stakingTimeBlocks),
 		uint64(stakingValue),
 		slashingRate,
@@ -331,8 +331,7 @@ type Proof struct {
 }
 
 // Generate a finality signature message with mock data
-func GenFinalitySignatureMessage(fpBtcPkHex string) *ExecuteMsg {
-	height := uint64(123456)
+func GenFinalitySignatureMessage(fpBtcPkHex string, height uint64) *ExecuteMsg {
 	pubRand := base64.StdEncoding.EncodeToString([]byte("mock_pub_rand"))
 	leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
 	blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
