@@ -80,7 +80,9 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	//msg := GenIBCPacket(t, r)
 	//msgBytes, err := zctypes.ModuleCdc.MarshalJSON(msg)
 	//require.NoError(t, err)
-	msg := e2etypes.GenExecMessage()
+	_, _, _, msgPub := e2etypes.GenCommitPubRandListMsg(100, 10, 1)
+
+	msg := e2etypes.GenExecMessage(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
@@ -123,6 +125,18 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Len(t, fpPower.Fps, 1)
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
+
+	msg2 := e2etypes.GenExecMessage2(
+		msgPub.FpBtcPk.MarshalHex(),
+		base64.StdEncoding.EncodeToString(msgPub.Commitment),
+		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+		msgPub.StartHeight,
+		msgPub.NumPubRand,
+	)
+	msgBytes2, err := json.Marshal(msg2)
+	require.NoError(t, err)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
+	require.NoError(t, err)
 
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
 	require.NoError(t, err)
