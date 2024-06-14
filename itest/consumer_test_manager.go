@@ -44,7 +44,7 @@ type ConsumerTestManager struct {
 }
 
 func StartConsumerManager(t *testing.T) *ConsumerTestManager {
-	// Setup test manager
+	// Setup consumer test manager
 	testDir, err := tempDirWithName("fpe2etest")
 	require.NoError(t, err)
 
