@@ -84,7 +84,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
-	msg := e2etypes.GenExecMessage(msgPub.FpBtcPk.MarshalHex())
+	msg := e2etypes.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
@@ -129,7 +129,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
 
 	// inject pub rand commitment in smart contract using admin
-	msg2 := e2etypes.GenExecMessage2(
+	msg2 := e2etypes.GenPubRandomnessExecMsg(
 		msgPub.FpBtcPk.MarshalHex(),
 		base64.StdEncoding.EncodeToString(msgPub.Commitment),
 		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
@@ -145,7 +145,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	finalitySigMsg := e2etypes.GenFinalitySignatureMessage2(uint64(1), uint64(cometLatestHeight), randList, fpPrivKey)
+	finalitySigMsg := e2etypes.GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpPrivKey)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)

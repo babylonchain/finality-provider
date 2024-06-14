@@ -21,42 +21,108 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 )
 
-func GenExecMessage(fpHex string) ExecuteMessage {
-	_, newDel := genBTCDelegation()
-	newFp := genFp()
-
-	newFp.BTCPKHex = fpHex
-	newDel.FpBtcPkList = []string{fpHex}
-
-	// Create the ExecuteMessage instance
-	executeMessage := ExecuteMessage{
-		BtcStaking: BtcStaking{
-			NewFP:       []NewFinalityProvider{newFp},
-			ActiveDel:   []ActiveBtcDelegation{newDel},
-			SlashedDel:  []SlashedBtcDelegation{},
-			UnbondedDel: []UnbondedBtcDelegation{},
-		},
-	}
-
-	return executeMessage
+type NewFinalityProvider struct {
+	Description *FinalityProviderDescription `json:"description,omitempty"`
+	Commission  string                       `json:"commission"`
+	BabylonPK   *PubKey                      `json:"babylon_pk,omitempty"`
+	BTCPKHex    string                       `json:"btc_pk_hex"`
+	Pop         *ProofOfPossession           `json:"pop,omitempty"`
+	ConsumerID  string                       `json:"consumer_id"`
 }
 
-func GenExecMessage2(fpHex, commitment, sig string, startHeight, numPubRand uint64) ExecuteMessage2 {
-	// Create the ExecuteMessage instance
-	executeMessage := ExecuteMessage2{
-		CommitPublicRandomness: CommitPublicRandomness{
-			FPPubKeyHex: fpHex,
-			StartHeight: startHeight,
-			NumPubRand:  numPubRand,
-			Commitment:  commitment,
-			Signature:   sig,
-		},
-	}
-
-	return executeMessage
+type FinalityProviderDescription struct {
+	Moniker         string `json:"moniker"`
+	Identity        string `json:"identity"`
+	Website         string `json:"website"`
+	SecurityContact string `json:"security_contact"`
+	Details         string `json:"details"`
 }
 
-func genFp() NewFinalityProvider {
+type PubKey struct {
+	Key string `json:"key"`
+}
+
+type ProofOfPossession struct {
+	BTCSigType int32  `json:"btc_sig_type"`
+	BabylonSig string `json:"babylon_sig"`
+	BTCSig     string `json:"btc_sig"`
+}
+
+type CovenantAdaptorSignatures struct {
+	CovPK       string   `json:"cov_pk"`
+	AdaptorSigs []string `json:"adaptor_sigs"`
+}
+
+type SignatureInfo struct {
+	PK  string `json:"pk"`
+	Sig string `json:"sig"`
+}
+
+type BtcUndelegationInfo struct {
+	UnbondingTx           string                      `json:"unbonding_tx"`
+	DelegatorUnbondingSig string                      `json:"delegator_unbonding_sig"`
+	CovenantUnbondingSigs []SignatureInfo             `json:"covenant_unbonding_sig_list"`
+	SlashingTx            string                      `json:"slashing_tx"`
+	DelegatorSlashingSig  string                      `json:"delegator_slashing_sig"`
+	CovenantSlashingSigs  []CovenantAdaptorSignatures `json:"covenant_slashing_sigs"`
+}
+
+type ActiveBtcDelegation struct {
+	BTCPkHex             string                      `json:"btc_pk_hex"`
+	FpBtcPkList          []string                    `json:"fp_btc_pk_list"`
+	StartHeight          uint64                      `json:"start_height"`
+	EndHeight            uint64                      `json:"end_height"`
+	TotalSat             uint64                      `json:"total_sat"`
+	StakingTx            string                      `json:"staking_tx"`
+	SlashingTx           string                      `json:"slashing_tx"`
+	DelegatorSlashingSig string                      `json:"delegator_slashing_sig"`
+	CovenantSigs         []CovenantAdaptorSignatures `json:"covenant_sigs"`
+	StakingOutputIdx     uint32                      `json:"staking_output_idx"`
+	UnbondingTime        uint32                      `json:"unbonding_time"`
+	UndelegationInfo     BtcUndelegationInfo         `json:"undelegation_info"`
+	ParamsVersion        uint32                      `json:"params_version"`
+}
+
+type SlashedBtcDelegation struct {
+	// Define fields as needed
+}
+
+type UnbondedBtcDelegation struct {
+	// Define fields as needed
+}
+
+type BtcStaking struct {
+	NewFP       []NewFinalityProvider   `json:"new_fp"`
+	ActiveDel   []ActiveBtcDelegation   `json:"active_del"`
+	SlashedDel  []SlashedBtcDelegation  `json:"slashed_del"`
+	UnbondedDel []UnbondedBtcDelegation `json:"unbonded_del"`
+}
+
+type CommitPublicRandomness struct {
+	FPPubKeyHex string `json:"fp_pubkey_hex"`
+	StartHeight uint64 `json:"start_height"`
+	NumPubRand  uint64 `json:"num_pub_rand"`
+	Commitment  string `json:"commitment"`
+	Signature   string `json:"signature"`
+}
+
+type SubmitFinalitySignature struct {
+	FpPubkeyHex string `json:"fp_pubkey_hex"`
+	Height      uint64 `json:"height"`
+	PubRand     string `json:"pub_rand"`   // base64 encoded
+	Proof       Proof  `json:"proof"`      // nested struct
+	BlockHash   string `json:"block_hash"` // base64 encoded
+	Signature   string `json:"signature"`  // base64 encoded
+}
+
+type Proof struct {
+	Total    uint64   `json:"total"`
+	Index    uint64   `json:"index"`
+	LeafHash string   `json:"leaf_hash"`
+	Aunts    []string `json:"aunts"`
+}
+
+func genRandomFinalityProvider() NewFinalityProvider {
 	return NewFinalityProvider{
 		Description: &FinalityProviderDescription{
 			Moniker:         "fp1",
@@ -79,7 +145,7 @@ func genFp() NewFinalityProvider {
 	}
 }
 
-func genBTCDelegation() (*types.Params, ActiveBtcDelegation) {
+func genRandomBtcDelegation() (*types.Params, ActiveBtcDelegation) {
 	var net = &chaincfg.RegressionNetParams
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	t := &testing.T{}
@@ -202,194 +268,8 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) A
 	}
 }
 
-type NewFinalityProvider struct {
-	Description *FinalityProviderDescription `json:"description,omitempty"`
-	Commission  string                       `json:"commission"`
-	BabylonPK   *PubKey                      `json:"babylon_pk,omitempty"`
-	BTCPKHex    string                       `json:"btc_pk_hex"`
-	Pop         *ProofOfPossession           `json:"pop,omitempty"`
-	ConsumerID  string                       `json:"consumer_id"`
-}
-
-type FinalityProviderDescription struct {
-	Moniker         string `json:"moniker"`
-	Identity        string `json:"identity"`
-	Website         string `json:"website"`
-	SecurityContact string `json:"security_contact"`
-	Details         string `json:"details"`
-}
-
-type PubKey struct {
-	Key string `json:"key"`
-}
-
-type ProofOfPossession struct {
-	BTCSigType int32  `json:"btc_sig_type"`
-	BabylonSig string `json:"babylon_sig"`
-	BTCSig     string `json:"btc_sig"`
-}
-
-type CovenantAdaptorSignatures struct {
-	CovPK       string   `json:"cov_pk"`
-	AdaptorSigs []string `json:"adaptor_sigs"`
-}
-
-type SignatureInfo struct {
-	PK  string `json:"pk"`
-	Sig string `json:"sig"`
-}
-
-type BtcUndelegationInfo struct {
-	UnbondingTx           string                      `json:"unbonding_tx"`
-	DelegatorUnbondingSig string                      `json:"delegator_unbonding_sig"`
-	CovenantUnbondingSigs []SignatureInfo             `json:"covenant_unbonding_sig_list"`
-	SlashingTx            string                      `json:"slashing_tx"`
-	DelegatorSlashingSig  string                      `json:"delegator_slashing_sig"`
-	CovenantSlashingSigs  []CovenantAdaptorSignatures `json:"covenant_slashing_sigs"`
-}
-
-type ActiveBtcDelegation struct {
-	BTCPkHex             string                      `json:"btc_pk_hex"`
-	FpBtcPkList          []string                    `json:"fp_btc_pk_list"`
-	StartHeight          uint64                      `json:"start_height"`
-	EndHeight            uint64                      `json:"end_height"`
-	TotalSat             uint64                      `json:"total_sat"`
-	StakingTx            string                      `json:"staking_tx"`
-	SlashingTx           string                      `json:"slashing_tx"`
-	DelegatorSlashingSig string                      `json:"delegator_slashing_sig"`
-	CovenantSigs         []CovenantAdaptorSignatures `json:"covenant_sigs"`
-	StakingOutputIdx     uint32                      `json:"staking_output_idx"`
-	UnbondingTime        uint32                      `json:"unbonding_time"`
-	UndelegationInfo     BtcUndelegationInfo         `json:"undelegation_info"`
-	ParamsVersion        uint32                      `json:"params_version"`
-}
-
-type SlashedBtcDelegation struct {
-	// Define fields as needed
-}
-
-type UnbondedBtcDelegation struct {
-	// Define fields as needed
-}
-
-type ExecuteMessage struct {
-	BtcStaking BtcStaking `json:"btc_staking"`
-}
-
-type ExecuteMessage2 struct {
-	CommitPublicRandomness CommitPublicRandomness `json:"commit_public_randomness"`
-}
-
-type BtcStaking struct {
-	NewFP       []NewFinalityProvider   `json:"new_fp"`
-	ActiveDel   []ActiveBtcDelegation   `json:"active_del"`
-	SlashedDel  []SlashedBtcDelegation  `json:"slashed_del"`
-	UnbondedDel []UnbondedBtcDelegation `json:"unbonded_del"`
-}
-
-type CommitPublicRandomness struct {
-	FPPubKeyHex string `json:"fp_pubkey_hex"`
-	StartHeight uint64 `json:"start_height"`
-	NumPubRand  uint64 `json:"num_pub_rand"`
-	Commitment  string `json:"commitment"`
-	Signature   string `json:"signature"`
-}
-
-type ConsumerFpsResponse struct {
-	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
-}
-
-// SingleConsumerFpResponse represents the finality provider data returned by the contract query.
-// For more details, refer to the following links:
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/packages/apis/src/btc_staking_api.rs
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/src/msg.rs
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/schema/btc-staking.json
-type SingleConsumerFpResponse struct {
-	BtcPkHex             string `json:"btc_pk_hex"`
-	SlashedBabylonHeight uint64 `json:"slashed_babylon_height"`
-	SlashedBtcHeight     uint64 `json:"slashed_btc_height"`
-	ConsumerId           string `json:"consumer_id"`
-}
-
-type SubmitFinalitySignature struct {
-	FpPubkeyHex string `json:"fp_pubkey_hex"`
-	Height      uint64 `json:"height"`
-	PubRand     string `json:"pub_rand"`   // base64 encoded
-	Proof       Proof  `json:"proof"`      // nested struct
-	BlockHash   string `json:"block_hash"` // base64 encoded
-	Signature   string `json:"signature"`  // base64 encoded
-}
-
-type ExecuteMsg struct {
-	SubmitFinalitySignature *SubmitFinalitySignature `json:"submit_finality_signature"`
-}
-
-type Proof struct {
-	Total    uint64   `json:"total"`
-	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
-}
-
-func GenFinalitySignatureMessage2(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ExecuteMsg {
-	fmsg := GenAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
-
-	// iterate proof.aunts and convert them to base64 encoded strings
-	var aunts []string
-	for _, aunt := range fmsg.Proof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
-	msg := ExecuteMsg{
-		SubmitFinalitySignature: &SubmitFinalitySignature{
-			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
-			Height:      fmsg.BlockHeight,
-			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
-			Proof: Proof{
-				Total:    uint64(fmsg.Proof.Total),
-				Index:    uint64(fmsg.Proof.Index),
-				LeafHash: base64.StdEncoding.EncodeToString(fmsg.Proof.LeafHash),
-				Aunts:    aunts,
-			},
-			BlockHash: base64.StdEncoding.EncodeToString(fmsg.BlockAppHash),
-			Signature: base64.StdEncoding.EncodeToString(fmsg.FinalitySig.MustMarshal()),
-		},
-	}
-
-	return &msg
-}
-
-type ConsumerDelegationsResponse struct {
-	ConsumerDelegations []SingleConsumerDelegationResponse `json:"delegations"`
-}
-
-type SingleConsumerDelegationResponse struct {
-	BtcPkHex             string                      `json:"btc_pk_hex"`
-	FpBtcPkList          []string                    `json:"fp_btc_pk_list"`
-	StartHeight          uint64                      `json:"start_height"`
-	EndHeight            uint64                      `json:"end_height"`
-	TotalSat             uint64                      `json:"total_sat"`
-	StakingTx            []byte                      `json:"staking_tx"`
-	SlashingTx           []byte                      `json:"slashing_tx"`
-	DelegatorSlashingSig []byte                      `json:"delegator_slashing_sig"`
-	CovenantSigs         []CovenantAdaptorSignatures `json:"covenant_sigs"`
-	StakingOutputIdx     uint32                      `json:"staking_output_idx"`
-	UnbondingTime        uint32                      `json:"unbonding_time"`
-	UndelegationInfo     *BtcUndelegationInfo        `json:"undelegation_info"`
-	ParamsVersion        uint32                      `json:"params_version"`
-}
-
-type ConsumerFpInfo struct {
-	BtcPkHex string `json:"btc_pk_hex"`
-	Power    uint64 `json:"power"`
-}
-
-type ConsumerFpsByPowerResponse struct {
-	Fps []ConsumerFpInfo `json:"fps"`
-}
-
 func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *btcec.PrivateKey, *ftypes.MsgCommitPubRandList, error) {
-	randListInfo, err := GenRandomPubRandList(r, numPubRand)
+	randListInfo, err := genRandomPubRandList(r, numPubRand)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -413,7 +293,7 @@ func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight u
 	return randListInfo, fpSk, msg, nil
 }
 
-func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
+func genRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
 	// generate a list of secret/public randomness
 	var srList []*eots.PrivateRand
 	var prList []bbn.SchnorrPubRand
@@ -438,12 +318,12 @@ func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 	return &datagen.RandListInfo{SRList: srList, PRList: prList, Commitment: commitment, ProofList: proofList}, nil
 }
 
-func GenAddFinalitySig(startHeight uint64, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ftypes.MsgAddFinalitySig {
+func genAddFinalitySig(startHeight uint64, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ftypes.MsgAddFinalitySig {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	blockHash := datagen.GenRandomByteArray(r, 32)
 
 	signer := datagen.GenRandomAccount().Address
-	msg, err := NewMsgAddFinalitySig(signer, sk, startHeight, blockHeight, randListInfo, blockHash)
+	msg, err := newMsgAddFinalitySig(signer, sk, startHeight, blockHeight, randListInfo, blockHash)
 	if err != nil {
 		panic(err)
 	}
@@ -451,7 +331,7 @@ func GenAddFinalitySig(startHeight uint64, blockHeight uint64, randListInfo *dat
 	return msg
 }
 
-func NewMsgAddFinalitySig(
+func newMsgAddFinalitySig(
 	signer string,
 	sk *btcec.PrivateKey,
 	startHeight uint64,
