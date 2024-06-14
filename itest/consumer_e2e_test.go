@@ -3,8 +3,11 @@ package e2etest
 import (
 	"encoding/base64"
 	"encoding/json"
+	"math/rand"
 	"testing"
+	"time"
 
+	"github.com/babylonchain/babylon/testutil/datagen"
 	e2etypes "github.com/babylonchain/finality-provider/itest/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -29,7 +32,7 @@ func TestConsumerFinalityProviderRegistration(t *testing.T) {
 // TODO: make a test suite for the wasmd <-> babylon e2e tests
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
-	ctm := StartConsumerManager(t)
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
 	defer ctm.Stop(t)
 
 	// store babylon contract
@@ -75,12 +78,11 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
 
-	// generate ibc packet and send to btc staking contract using admin
-	//r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	//msg := GenIBCPacket(t, r)
-	//msgBytes, err := zctypes.ModuleCdc.MarshalJSON(msg)
-	//require.NoError(t, err)
-	randList, fpPrivKey, msgPub := e2etypes.GenCommitPubRandListMsg(1, 1000)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
+	require.NoError(t, err)
+	randList, fpPrivKey, msgPub, err := e2etypes.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	require.NoError(t, err)
 
 	msg := e2etypes.GenExecMessage(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
@@ -138,16 +140,13 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
 	require.NoError(t, err)
 
+	// submit finality signature to the btc staking contract using admin
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-
-	// submit finality signature to the btc staking contract using admin
 	finalitySigMsg := e2etypes.GenFinalitySignatureMessage2(uint64(1), uint64(cometLatestHeight), randList, fpPrivKey)
-	//finalitySigMsg := e2etypes.GenFinalitySignatureMessage(msg.BtcStaking.NewFP[0].BTCPKHex, randList.PRList[cometLatestHeight], uint64(cometLatestHeight))
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
-	// TODO: insert delegation and pub randomness to fix the error
 	require.NoError(t, err)
 }

@@ -12,7 +12,6 @@ import (
 	bbn "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
-	zctypes "github.com/babylonchain/babylon/x/zoneconcierge/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -296,42 +295,6 @@ type CommitPublicRandomness struct {
 	Signature   string `json:"signature"`
 }
 
-func GenIBCPacket(t *testing.T, r *rand.Rand) *zctypes.ZoneconciergePacketData {
-	// generate a finality provider
-	fpBTCSK, _, err := datagen.GenRandomBTCKeyPair(r)
-	require.NoError(t, err)
-	fpBabylonSK, _, err := datagen.GenRandomSecp256k1KeyPair(r)
-	require.NoError(t, err)
-	fp, err := datagen.GenRandomCustomFinalityProvider(r, fpBTCSK, fpBabylonSK, "consumer-id")
-	require.NoError(t, err)
-
-	packet := &bstypes.BTCStakingIBCPacket{
-		NewFp: []*bstypes.NewFinalityProvider{
-			// TODO: fill empty data
-			{
-				// Description: fp.Description,
-				Commission: fp.Commission.String(),
-				// BabylonPk:  fp.BabylonPk,
-				BtcPkHex: fp.BtcPk.MarshalHex(),
-				// Pop:        fp.Pop,
-				ConsumerId: fp.ConsumerId,
-			},
-		},
-		ActiveDel:   []*bstypes.ActiveBTCDelegation{},
-		SlashedDel:  []*bstypes.SlashedBTCDelegation{},
-		UnbondedDel: []*bstypes.UnbondedBTCDelegation{},
-	}
-	return NewBTCStakingPacketData(packet)
-}
-
-func NewBTCStakingPacketData(packet *bstypes.BTCStakingIBCPacket) *zctypes.ZoneconciergePacketData {
-	return &zctypes.ZoneconciergePacketData{
-		Packet: &zctypes.ZoneconciergePacketData_BtcStaking{
-			BtcStaking: packet,
-		},
-	}
-}
-
 type ConsumerFpsResponse struct {
 	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
 }
@@ -368,39 +331,8 @@ type Proof struct {
 	Aunts    []string `json:"aunts"`
 }
 
-// Generate a finality signature message with mock data
-func GenFinalitySignatureMessage(fpBtcPkHex string, pubRandValue bbn.SchnorrPubRand, height uint64) *ExecuteMsg {
-	pubRand := base64.StdEncoding.EncodeToString(pubRandValue.MustMarshal())
-	leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
-	blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
-	signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
-
-	msg := ExecuteMsg{
-		SubmitFinalitySignature: &SubmitFinalitySignature{
-			FpPubkeyHex: fpBtcPkHex,
-			Height:      height,
-			PubRand:     pubRand,
-			Proof: Proof{
-				Total:    0,
-				Index:    0,
-				LeafHash: leafHash,
-				Aunts:    []string{},
-			},
-			BlockHash: blockHash,
-			Signature: signature,
-		},
-	}
-
-	return &msg
-}
-
 func GenFinalitySignatureMessage2(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ExecuteMsg {
 	fmsg := GenAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
-
-	//pubRand := base64.StdEncoding.EncodeToString(pubRandValue.MustMarshal())
-	//leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
-	//blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
-	//signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
 
 	// iterate proof.aunts and convert them to base64 encoded strings
 	var aunts []string
@@ -456,38 +388,29 @@ type ConsumerFpsByPowerResponse struct {
 	Fps []ConsumerFpInfo `json:"fps"`
 }
 
-func GenCommitPubRandListMsg(startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *btcec.PrivateKey, *ftypes.MsgCommitPubRandList) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	sk, _, err := datagen.GenRandomBTCKeyPair(r)
-	if err != nil {
-		panic(err)
-	}
-
+func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *btcec.PrivateKey, *ftypes.MsgCommitPubRandList, error) {
 	randListInfo, err := GenRandomPubRandList(r, numPubRand)
 	if err != nil {
-		panic(err)
+		return nil, nil, nil, err
 	}
-
 	msg := &ftypes.MsgCommitPubRandList{
 		Signer:      datagen.GenRandomAccount().Address,
-		FpBtcPk:     bbn.NewBIP340PubKeyFromBTCPK(sk.PubKey()),
+		FpBtcPk:     bbn.NewBIP340PubKeyFromBTCPK(fpSk.PubKey()),
 		StartHeight: startHeight,
 		NumPubRand:  numPubRand,
 		Commitment:  randListInfo.Commitment,
 	}
 	hash, err := msg.HashToSign()
 	if err != nil {
-		panic(err)
+		return nil, nil, nil, err
 	}
-	schnorrSig, err := schnorr.Sign(sk, hash)
+	schnorrSig, err := schnorr.Sign(fpSk, hash)
 	if err != nil {
 		panic(err)
 	}
 	msg.Sig = bbn.NewBIP340SignatureFromBTCSig(schnorrSig)
 
-	//pubRandValue := randListInfo.PRList[pubRandIndex]
-	return randListInfo, sk, msg
+	return randListInfo, fpSk, msg, nil
 }
 
 func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
