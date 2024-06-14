@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -11,6 +13,8 @@ import (
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	bbn "github.com/babylonchain/babylon/types"
+	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
@@ -18,6 +22,7 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/cosmos/relayer/v2/relayer/provider"
@@ -28,7 +33,7 @@ var _ ConsumerController = &CosmwasmConsumerController{}
 
 type CosmwasmConsumerController struct {
 	CosmwasmClient *cosmwasmclient.Client
-	cfg            *config.CosmwasmConfig
+	Cfg            *config.CosmwasmConfig
 	logger         *zap.Logger
 }
 
@@ -63,7 +68,7 @@ func NewCosmwasmConsumerController(
 //nolint:unused
 func (wc *CosmwasmConsumerController) mustGetTxSigner() string {
 	signer := wc.GetKeyAddress()
-	prefix := wc.cfg.AccountPrefix
+	prefix := wc.Cfg.AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
@@ -73,7 +78,7 @@ func (wc *CosmwasmConsumerController) GetKeyAddress() sdk.AccAddress {
 	// and we should panic.
 	// This is checked at the start of BabylonConsumerController, so if it fails something is really wrong
 
-	keyRec, err := wc.CosmwasmClient.GetKeyring().Key(wc.cfg.Key)
+	keyRec, err := wc.CosmwasmClient.GetKeyring().Key(wc.Cfg.Key)
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
@@ -110,8 +115,28 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 	commitment []byte,
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
-	// empty response
-	return nil, nil
+	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig).MustMarshal()
+	msg := types.PubRandomnessExecMsg{
+		CommitPublicRandomness: types.CommitPublicRandomness{
+			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+			StartHeight: startHeight,
+			NumPubRand:  numPubRand,
+			Commitment:  base64.StdEncoding.EncodeToString(commitment),
+			Signature:   base64.StdEncoding.EncodeToString(bip340Sig),
+		},
+	}
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+
+	}
+
+	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.Cfg.BtcStakingContractAddress), msgBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
@@ -122,8 +147,44 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
-	// empty response
-	return nil, nil
+	cmtProof := cmtcrypto.Proof{}
+	if err := cmtProof.Unmarshal(proof); err != nil {
+		return nil, err
+	}
+
+	var aunts []string
+	for _, aunt := range cmtProof.Aunts {
+		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
+	}
+
+	msg := types.FinalitySigExecMsg{
+		SubmitFinalitySignature: types.SubmitFinalitySignature{
+			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+			Height:      block.Height,
+			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
+			Proof: types.Proof{
+				Total:    uint64(cmtProof.Total),
+				Index:    uint64(cmtProof.Index),
+				LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
+				Aunts:    aunts,
+			},
+			BlockHash: base64.StdEncoding.EncodeToString(block.Hash),
+			Signature: base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal()),
+		},
+	}
+
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+
+	}
+
+	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.Cfg.BtcStakingContractAddress), msgBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
@@ -140,8 +201,21 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	// empty response
-	return 0, nil
+	fpBtcPkHex := bbn.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
+	queryMsg := fmt.Sprintf(`{"finality_provider_info":{"btc_pk_hex":"%s", "height": %d}}`, fpBtcPkHex, blockHeight)
+	fmt.Println("query message is", queryMsg)
+	dataFromContract, err := wc.QuerySmartContractState(wc.Cfg.BtcStakingContractAddress, queryMsg)
+	if err != nil {
+		return 0, err
+	}
+
+	var resp types.SingleConsumerFpPowerResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.Power, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
@@ -200,7 +274,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
+	ctx, cancel := getContextWithCancel(wc.Cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.CosmwasmClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
@@ -225,19 +299,19 @@ func (wc *CosmwasmConsumerController) Close() error {
 	return wc.CosmwasmClient.Stop()
 }
 
-func (wc *CosmwasmConsumerController) Exec(contract sdk.AccAddress, payload []byte) error {
+func (wc *CosmwasmConsumerController) Exec(contract sdk.AccAddress, payload []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmdtypes.MsgExecuteContract{
 		Sender:   wc.CosmwasmClient.MustGetAddr(),
 		Contract: contract.String(),
 		Msg:      payload,
 	}
 
-	_, err := wc.reliablySendMsg(execMsg, nil, nil)
+	res, err := wc.reliablySendMsg(execMsg, nil, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return res, nil
 }
 
 // QuerySmartContractState queries the smart contract state
