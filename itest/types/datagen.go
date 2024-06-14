@@ -440,8 +440,6 @@ func GenRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 
 func GenAddFinalitySig(startHeight uint64, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ftypes.MsgAddFinalitySig {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	//blockHeight := startHeight + index
 	blockHash := datagen.GenRandomByteArray(r, 32)
 
 	signer := datagen.GenRandomAccount().Address
