@@ -3,11 +3,15 @@ package clientcontroller
 import (
 	"fmt"
 
+	wasmdparams "github.com/CosmWasm/wasmd/app/params"
+	appparams "github.com/babylonchain/babylon/app/params"
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
+	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -21,25 +25,77 @@ import (
 var _ ConsumerController = &EVMConsumerController{}
 
 type EVMConsumerController struct {
-	evmClient *rpc.Client
-	cfg       *fpcfg.EVMConfig
-	logger    *zap.Logger
+	cwClient *cosmwasmclient.Client
+	logger   *zap.Logger
 }
 
 func NewEVMConsumerController(
-	evmCfg *fpcfg.EVMConfig,
+	bbnCfg *fpcfg.BBNConfig,
 	logger *zap.Logger,
 ) (*EVMConsumerController, error) {
-	if err := evmCfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for EVM RPC client: %w", err)
+	bbnConfig := fpcfg.BBNConfigToBabylonConfig(bbnCfg)
+	if err := bbnConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
 	}
-	ec, err := rpc.Dial(evmCfg.RPCAddr)
+	bbnClient, err := bbnclient.New(
+		&bbnConfig,
+		logger,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to the EVM RPC server %s: %w", evmCfg.RPCAddr, err)
+		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
 	}
+
+	keyRec, err := bbnClient.GetKeyring().Key(bbnConfig.Key)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get key address: %s", err))
+	}
+	// submitterAddress retrieves address based on key name which is configured in
+	// cfg *stakercfg.BBNConfig.
+	submitterAddress, err := keyRec.GetAddress()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get key address: %s", err))
+	}
+
+	cwConfig := cwcfg.CosmwasmConfig{
+		Key:              bbnCfg.Key,
+		ChainID:          bbnCfg.ChainID,
+		RPCAddr:          bbnCfg.RPCAddr,
+		AccountPrefix:    bbnCfg.AccountPrefix,
+		KeyringBackend:   bbnCfg.KeyringBackend,
+		GasAdjustment:    bbnCfg.GasAdjustment,
+		GasPrices:        bbnCfg.GasPrices,
+		KeyDirectory:     bbnCfg.KeyDirectory,
+		Debug:            bbnCfg.Debug,
+		Timeout:          bbnCfg.Timeout,
+		BlockTimeout:     bbnCfg.BlockTimeout,
+		OutputFormat:     bbnCfg.OutputFormat,
+		SignModeStr:      bbnCfg.SignModeStr,
+		SubmitterAddress: submitterAddress.String(),
+	}
+
+	if err := cwConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for Babylon Wasm client: %w", err)
+	}
+
+	encCfg := appparams.DefaultEncodingConfig()
+	cwClient, err := cosmwasmclient.New(
+		&cwConfig,
+		BabylonConsumerChainName,
+		wasmdparams.EncodingConfig{
+			InterfaceRegistry: encCfg.InterfaceRegistry,
+			Codec:             encCfg.Codec,
+			TxConfig:          encCfg.TxConfig,
+			Amino:             encCfg.Amino,
+		},
+		logger,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Babylon Wasm client: %w", err)
+	}
+
 	return &EVMConsumerController{
-		ec,
-		evmCfg,
+		cwClient,
 		logger,
 	}, nil
 }
@@ -179,6 +235,6 @@ func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Public
 }
 
 func (ec *EVMConsumerController) Close() error {
-	ec.evmClient.Close()
+	ec.cwClient.Stop()
 	return nil
 }
