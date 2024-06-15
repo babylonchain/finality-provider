@@ -149,7 +149,7 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	// check the BTC delegations are active
 	_ = tm.WaitForNActiveDels(t, n)
 
-	// check there's a block finalized
+	// check if there's a block finalized
 	_ = tm.WaitForNFinalizedBlocks(t, 1)
 }
 
