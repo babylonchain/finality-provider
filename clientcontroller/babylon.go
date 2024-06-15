@@ -76,7 +76,7 @@ func (bc *BabylonController) mustGetTxSigner() string {
 
 func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 	// get key address, retrieves address based on key name which is configured in
-	// cfg *stakercfg.BBNConfig. If this fails, it means we have misconfiguration problem
+	// cfg *stakercfg.BBNConfig. If this fails, it means we have a misconfiguration problem
 	// and we should panic.
 	// This is checked at the start of BabylonController, so if it fails something is really wrong
 
