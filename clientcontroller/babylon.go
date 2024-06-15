@@ -116,7 +116,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	pop []byte,
 	commission *math.LegacyDec,
 	description []byte,
-) (*types.TxResponse, error) {
+) (types.TxResponse, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
 		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
@@ -142,7 +142,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.BabylonTxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
@@ -236,7 +236,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 	unbondingValue int64,
 	unbondingSlashingTx *btcstakingtypes.BTCSlashingTx,
 	delUnbondingSlashingSig *bbntypes.BIP340Signature,
-) (*types.TxResponse, error) {
+) (types.TxResponse, error) {
 	fpBtcPks := make([]bbntypes.BIP340PubKey, 0, len(fpPks))
 	for _, v := range fpPks {
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
@@ -264,7 +264,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash}, nil
+	return &types.BabylonTxResponse{TxHash: res.TxHash}, nil
 }
 
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
@@ -389,7 +389,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 	slashingSigs [][]byte,
 	unbondingSig *schnorr.Signature,
 	unbondingSlashingSigs [][]byte,
-) (*types.TxResponse, error) {
+) (types.TxResponse, error) {
 	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
 
 	msg := &btcstakingtypes.MsgAddCovenantSigs{
@@ -406,7 +406,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.BabylonTxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctypes.BTCSpvProof) (*provider.RelayerTxResponse, error) {
@@ -424,7 +424,7 @@ func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctyp
 }
 
 // RegisterConsumerChain registers a consumer chain via a MsgRegisterChain to Babylon
-func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (*types.TxResponse, error) {
+func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (types.TxResponse, error) {
 	msg := &bsctypes.MsgRegisterConsumer{
 		Signer:              bc.mustGetTxSigner(),
 		ConsumerId:          id,
@@ -437,5 +437,5 @@ func (bc *BabylonController) RegisterConsumerChain(id, name, description string)
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.BabylonTxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }

@@ -156,7 +156,7 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 		return nil, err
 	}
 
-	res := &proto.AddFinalitySignatureResponse{TxHash: txRes.TxHash}
+	res := &proto.AddFinalitySignatureResponse{TxHash: txRes.GetTxHash()}
 
 	// if privKey is not empty, then this BTC finality-provider
 	// has voted for a fork and will be slashed

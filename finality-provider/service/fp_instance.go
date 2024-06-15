@@ -235,7 +235,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				"successfully submitted a finality signature to the consumer chain",
 				zap.String("pk", fp.GetBtcPkHex()),
 				zap.Uint64("height", b.Height),
-				zap.String("tx_hash", res.TxHash),
+				zap.String("tx_hash", res.GetTxHash()),
 			)
 
 		case targetBlock := <-fp.laggingTargetChan:
@@ -304,7 +304,7 @@ func (fp *FinalityProviderInstance) randomnessCommitmentLoop() {
 				fp.logger.Info(
 					"successfully committed public randomness to the consumer chain",
 					zap.String("pk", fp.GetBtcPkHex()),
-					zap.String("tx_hash", txRes.TxHash),
+					zap.String("tx_hash", txRes.GetTxHash()),
 				)
 			}
 
@@ -519,7 +519,7 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
-func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (types.TxResponse, error) {
 	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the signature is successfully submitted
@@ -580,7 +580,7 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 
 // retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
-func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(targetBlockHeight uint64) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(targetBlockHeight uint64) (types.TxResponse, error) {
 	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the public rand is successfully committed
@@ -642,7 +642,7 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 // CommitPubRand generates a list of Schnorr rand pairs,
 // commits the public randomness for the managed finality providers,
 // and save the randomness pair to DB
-func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (types.TxResponse, error) {
 	lastCommittedHeight, err := fp.GetLastCommittedHeight()
 	if err != nil {
 		return nil, err
@@ -704,7 +704,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
-func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) (types.TxResponse, error) {
 	sig, err := fp.signFinalitySig(b)
 	if err != nil {
 		return nil, err
@@ -741,7 +741,7 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 
 // SubmitBatchFinalitySignatures builds and sends a finality signature over the given block to the consumer chain
 // NOTE: the input blocks should be in the ascending order of height
-func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockInfo) (types.TxResponse, error) {
 	if len(blocks) == 0 {
 		return nil, fmt.Errorf("should not submit batch finality signature with zero block")
 	}
@@ -784,7 +784,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 // TestSubmitFinalitySignatureAndExtractPrivKey is exposed for presentation/testing purpose to allow manual sending finality signature
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
-func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (*types.TxResponse, *btcec.PrivateKey, error) {
+func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (types.TxResponse, *btcec.PrivateKey, error) {
 	// check last committed height
 	lastCommittedHeight, err := fp.GetLastCommittedHeight()
 	if err != nil {
@@ -822,19 +822,23 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 
 	// try to extract the private key
 	var privKey *btcec.PrivateKey
-	for _, ev := range res.Events {
-		if strings.Contains(ev.EventType, "EventSlashedFinalityProvider") {
-			evidenceStr := ev.Attributes["evidence"]
-			fp.logger.Debug("found slashing evidence")
-			var evidence ftypes.Evidence
-			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
-				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+	// Babylon tx response - provider.RelayerEvent
+	if babylonTxResp, ok := res.(*types.BabylonTxResponse); ok {
+		events := babylonTxResp.Events
+		for _, ev := range events {
+			if strings.Contains(ev.EventType, "EventSlashedFinalityProvider") {
+				evidenceStr := ev.Attributes["evidence"]
+				fp.logger.Debug("found slashing evidence")
+				var evidence ftypes.Evidence
+				if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
+					return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+				}
+				privKey, err = evidence.ExtractBTCSK()
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
+				}
+				break
 			}
-			privKey, err = evidence.ExtractBTCSK()
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to extract private key: %s", err.Error())
-			}
-			break
 		}
 	}
 

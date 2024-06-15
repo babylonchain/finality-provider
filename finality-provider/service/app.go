@@ -610,13 +610,13 @@ func (app *FinalityProviderApp) registrationLoop() {
 				"successfully registered finality-provider on babylon",
 				zap.String("btc_pk", req.btcPubKey.MarshalHex()),
 				zap.String("babylon_pk", hex.EncodeToString(req.bbnPubKey.Key)),
-				zap.String("txHash", res.TxHash),
+				zap.String("txHash", res.GetTxHash()),
 			)
 
 			app.finalityProviderRegisteredEventChan <- &finalityProviderRegisteredEvent{
 				btcPubKey: req.btcPubKey,
 				bbnPubKey: req.bbnPubKey,
-				txHash:    res.TxHash,
+				txHash:    res.GetTxHash(),
 				// pass the channel to the event so that we can send the response to the user which requested
 				// the registration
 				successResponse: req.successResponse,

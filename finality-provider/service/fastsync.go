@@ -9,7 +9,7 @@ import (
 )
 
 type FastSyncResult struct {
-	Responses           []*types.TxResponse
+	Responses           []types.TxResponse
 	SyncedHeight        uint64
 	LastProcessedHeight uint64
 }
@@ -29,7 +29,7 @@ func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*Fa
 	}
 
 	var syncedHeight uint64
-	responses := make([]*types.TxResponse, 0)
+	responses := make([]types.TxResponse, 0)
 	// we may need several rounds to catch-up as we need to limit
 	// the catch-up distance for each round to avoid memory overflow
 	for startHeight <= endHeight {
