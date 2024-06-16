@@ -1,14 +1,17 @@
 package clientcontroller
 
 import (
+	"encoding/json"
 	"fmt"
 
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	appparams "github.com/babylonchain/babylon/app/params"
 	bbnclient "github.com/babylonchain/babylon/client/client"
+	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
+	cwtypes "github.com/babylonchain/finality-provider/cosmwasmclient/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -26,6 +29,7 @@ var _ ConsumerController = &EVMConsumerController{}
 
 type EVMConsumerController struct {
 	cwClient *cosmwasmclient.Client
+	cfg      *fpcfg.EVMConfig
 	logger   *zap.Logger
 }
 
@@ -98,11 +102,12 @@ func NewEVMConsumerController(
 
 	return &EVMConsumerController{
 		cwClient,
+		evmCfg,
 		logger,
 	}, nil
 }
 
-// CommitPubRandList commits a list of Schnorr public randomness via a MsgCommitPubRand to Babylon
+// CommitPubRandList commits a list of Schnorr public randomness to Babylon CosmWasm contract
 // it returns tx hash and error
 func (ec *EVMConsumerController) CommitPubRandList(
 	fpPk *btcec.PublicKey,
@@ -111,7 +116,34 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	commitment []byte,
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
+	contractAddress := ec.cfg.OPFinalityGadgetAddress
+	contractInfo, err := ec.cwClient.QueryContractInfo(contractAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query contract info %s: %w", contractAddress, err)
+	}
 
+	msg := cwtypes.CommitPublicRandomnessMsg{
+		CommitPublicRandomness: cwtypes.CommitPublicRandomnessMsgParams{
+			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+			StartHeight: startHeight,
+			NumPubRand:  numPubRand,
+			Commitment:  commitment,
+			Signature:   sig.Serialize(),
+		},
+	}
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := ec.cwClient.ExecuteContract(contractAddress, contractInfo.CodeID, msgData, "")
+	if err != nil {
+		return nil, err
+	}
+	var data cwtypes.CommitPublicRandomnessResponse
+	if err := json.Unmarshal(resp.Data, &data); err != nil {
+		return nil, err
+	}
+	// TODO: need to refactor
 	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
