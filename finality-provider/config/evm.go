@@ -5,6 +5,7 @@ import (
 )
 
 type EVMConfig struct {
+	GRPCAddress             string `long:"grpc-address" description:"address of the grpc server(e.g.Babylon) to connect to"`
 	OPFinalityGadgetAddress string `long:"op-finality-gadget" description:"the contract address of the op-finality-gadget"`
 }
 

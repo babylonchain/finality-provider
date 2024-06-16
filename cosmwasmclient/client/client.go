@@ -2,23 +2,28 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	"github.com/babylonchain/finality-provider/cosmwasmclient/query"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
 	*query.QueryClient
-
-	provider *cosmos.CosmosProvider
-	timeout  time.Duration
-	logger   *zap.Logger
-	cfg      *config.CosmwasmConfig
+	// MsgClient is the client API for Msg service
+	msgClient wasmtypes.MsgClient
+	provider  *cosmos.CosmosProvider
+	timeout   time.Duration
+	logger    *zap.Logger
+	cfg       *config.CosmwasmConfig
 }
 
 func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
@@ -40,6 +45,13 @@ func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.E
 			return nil, err
 		}
 	}
+
+	// establish grpc connection
+	grpcConn, err := grpc.NewClient(cfg.GRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build gRPC connection to %s: %w", cfg.GRPCAddr, err)
+	}
+	msgClient := wasmtypes.NewMsgClient(grpcConn)
 
 	provider, err := cfg.ToCosmosProviderConfig().NewProvider(
 		zapLogger,
@@ -84,6 +96,7 @@ func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.E
 
 	return &Client{
 		queryClient,
+		msgClient,
 		cp,
 		cfg.Timeout,
 		zapLogger,

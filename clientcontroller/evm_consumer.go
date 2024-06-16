@@ -31,6 +31,7 @@ type EVMConsumerController struct {
 
 func NewEVMConsumerController(
 	bbnCfg *fpcfg.BBNConfig,
+	evmCfg *fpcfg.EVMConfig,
 	logger *zap.Logger,
 ) (*EVMConsumerController, error) {
 	bbnConfig := fpcfg.BBNConfigToBabylonConfig(bbnCfg)
@@ -60,6 +61,7 @@ func NewEVMConsumerController(
 		Key:              bbnCfg.Key,
 		ChainID:          bbnCfg.ChainID,
 		RPCAddr:          bbnCfg.RPCAddr,
+		GRPCAddr:         evmCfg.GRPCAddress,
 		AccountPrefix:    bbnCfg.AccountPrefix,
 		KeyringBackend:   bbnCfg.KeyringBackend,
 		GasAdjustment:    bbnCfg.GasAdjustment,
