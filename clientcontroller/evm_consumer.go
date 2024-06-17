@@ -54,6 +54,7 @@ func NewEVMConsumerController(
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
 	}
+
 	// submitterAddress retrieves address based on key name which is configured in
 	// cfg *stakercfg.BBNConfig.
 	submitterAddress, err := keyRec.GetAddress()
@@ -139,12 +140,8 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	if err != nil {
 		return nil, err
 	}
-	var data cwtypes.CommitPublicRandomnessResponse
-	if err := json.Unmarshal(resp.Data, &data); err != nil {
-		return nil, err
-	}
 	// TODO: need to refactor
-	return &types.TxResponse{TxHash: "", Events: nil}, nil
+	return &types.TxResponse{TxHash: resp.TxHash, Events: nil}, nil
 }
 
 // SubmitFinalitySig submits the finality signature
@@ -269,6 +266,8 @@ func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Public
 }
 
 func (ec *EVMConsumerController) Close() error {
-	ec.cwClient.Stop()
+	if err := ec.cwClient.Stop(); err != nil {
+		return err
+	}
 	return nil
 }
