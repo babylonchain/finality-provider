@@ -33,7 +33,7 @@ var _ ConsumerController = &CosmwasmConsumerController{}
 
 type CosmwasmConsumerController struct {
 	CosmwasmClient *cosmwasmclient.Client
-	Cfg            *config.CosmwasmConfig
+	cfg            *config.CosmwasmConfig
 	logger         *zap.Logger
 }
 
@@ -68,7 +68,7 @@ func NewCosmwasmConsumerController(
 //nolint:unused
 func (wc *CosmwasmConsumerController) mustGetTxSigner() string {
 	signer := wc.GetKeyAddress()
-	prefix := wc.Cfg.AccountPrefix
+	prefix := wc.cfg.AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
 }
 
@@ -78,7 +78,7 @@ func (wc *CosmwasmConsumerController) GetKeyAddress() sdk.AccAddress {
 	// and we should panic.
 	// This is checked at the start of BabylonConsumerController, so if it fails something is really wrong
 
-	keyRec, err := wc.CosmwasmClient.GetKeyring().Key(wc.Cfg.Key)
+	keyRec, err := wc.CosmwasmClient.GetKeyring().Key(wc.cfg.Key)
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
@@ -131,7 +131,7 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 
 	}
 
-	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.Cfg.BtcStakingContractAddress), msgBytes)
+	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress), msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 
 	}
 
-	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.Cfg.BtcStakingContractAddress), msgBytes)
+	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress), msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 	fpBtcPkHex := bbn.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
 	queryMsg := fmt.Sprintf(`{"finality_provider_info":{"btc_pk_hex":"%s", "height": %d}}`, fpBtcPkHex, blockHeight)
 	fmt.Println("query message is", queryMsg)
-	dataFromContract, err := wc.QuerySmartContractState(wc.Cfg.BtcStakingContractAddress, queryMsg)
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
 	if err != nil {
 		return 0, err
 	}
@@ -274,7 +274,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(wc.Cfg.Timeout)
+	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.CosmwasmClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
