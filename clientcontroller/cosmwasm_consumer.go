@@ -19,7 +19,7 @@ import (
 	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
-	"github.com/babylonchain/finality-provider/types"
+	fptypes "github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
@@ -114,10 +114,10 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 	numPubRand uint64,
 	commitment []byte,
 	sig *schnorr.Signature,
-) (*types.TxResponse, error) {
+) (*fptypes.TxResponse, error) {
 	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig).MustMarshal()
-	msg := types.PubRandomnessExecMsg{
-		CommitPublicRandomness: types.CommitPublicRandomness{
+	msg := fptypes.PubRandomnessExecMsg{
+		CommitPublicRandomness: fptypes.CommitPublicRandomness{
 			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -136,17 +136,17 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &fptypes.TxResponse{TxHash: res.TxHash, Events: fromCosmosEventsToBytes(res.Events)}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
 func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
-	block *types.BlockInfo,
+	block *fptypes.BlockInfo,
 	pubRand *btcec.FieldVal,
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
-) (*types.TxResponse, error) {
+) (*fptypes.TxResponse, error) {
 	cmtProof := cmtcrypto.Proof{}
 	if err := cmtProof.Unmarshal(proof); err != nil {
 		return nil, err
@@ -157,12 +157,12 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
 	}
 
-	msg := types.FinalitySigExecMsg{
-		SubmitFinalitySignature: types.SubmitFinalitySignature{
+	msg := fptypes.FinalitySigExecMsg{
+		SubmitFinalitySignature: fptypes.SubmitFinalitySignature{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
-			Proof: types.Proof{
+			Proof: fptypes.Proof{
 				Total:    uint64(cmtProof.Total),
 				Index:    uint64(cmtProof.Index),
 				LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
@@ -184,17 +184,17 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &fptypes.TxResponse{TxHash: res.TxHash, Events: fromCosmosEventsToBytes(res.Events)}, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
 func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 	fpPk *btcec.PublicKey,
-	blocks []*types.BlockInfo,
+	blocks []*fptypes.BlockInfo,
 	pubRandList []*btcec.FieldVal,
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
-) (*types.TxResponse, error) {
+) (*fptypes.TxResponse, error) {
 	// empty response
 	return nil, nil
 }
@@ -203,13 +203,12 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	fpBtcPkHex := bbn.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
 	queryMsg := fmt.Sprintf(`{"finality_provider_info":{"btc_pk_hex":"%s", "height": %d}}`, fpBtcPkHex, blockHeight)
-	fmt.Println("query message is", queryMsg)
 	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
 	if err != nil {
 		return 0, err
 	}
 
-	var resp types.SingleConsumerFpPowerResponse
+	var resp fptypes.SingleConsumerFpPowerResponse
 	err = json.Unmarshal(dataFromContract.Data, &resp)
 	if err != nil {
 		return 0, err
@@ -218,30 +217,30 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 	return resp.Power, nil
 }
 
-func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
 	// empty response
 	return nil, nil
 }
 
-func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
 	// empty response
 	return nil, nil
 }
 
 //nolint:unused
-func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*fptypes.BlockInfo, error) {
 	// TODO: not used right now, will be used to return latest indexed blocks once implemented in the smart contract
 	return nil, nil
 }
 
-func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
 	// TODO: dummy response, fetch actual block from the smart contract
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.BlockInfo{
+	return &fptypes.BlockInfo{
 		Height: height,
 		Hash:   block.Hash,
 	}, nil
@@ -273,7 +272,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	return block.Height, nil
 }
 
-func (wc *CosmwasmConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
+func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.CosmwasmClient.RPCClient.BlockchainInfo(ctx, 0, 0)
@@ -285,7 +284,7 @@ func (wc *CosmwasmConsumerController) queryCometBestBlock() (*types.BlockInfo, e
 
 	// Returning response directly, if header with specified number did not exist
 	// at request will contain nil header
-	return &types.BlockInfo{
+	return &fptypes.BlockInfo{
 		Height: uint64(chainInfo.BlockMetas[0].Header.Height),
 		Hash:   chainInfo.BlockMetas[0].Header.AppHash,
 	}, nil

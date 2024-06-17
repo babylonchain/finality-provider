@@ -4,22 +4,11 @@ import (
 	"encoding/base64"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	fptypes "github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 )
 
-type FinalitySigExecMsg struct {
-	SubmitFinalitySignature SubmitFinalitySignature `json:"submit_finality_signature"`
-}
-
-type BtcStakingExecMsg struct {
-	BtcStaking BtcStaking `json:"btc_staking"`
-}
-
-type PubRandomnessExecMsg struct {
-	CommitPublicRandomness CommitPublicRandomness `json:"commit_public_randomness"`
-}
-
-func GenBtcStakingExecMsg(fpHex string) BtcStakingExecMsg {
+func GenBtcStakingExecMsg(fpHex string) fptypes.BtcStakingExecMsg {
 	// generate random delegation and finality provider
 	_, newDel := genRandomBtcDelegation()
 	newFp := genRandomFinalityProvider()
@@ -29,22 +18,22 @@ func GenBtcStakingExecMsg(fpHex string) BtcStakingExecMsg {
 	newDel.FpBtcPkList = []string{fpHex}
 
 	// create the BtcStakingExecMsg instance
-	executeMessage := BtcStakingExecMsg{
-		BtcStaking: BtcStaking{
-			NewFP:       []NewFinalityProvider{newFp},
-			ActiveDel:   []ActiveBtcDelegation{newDel},
-			SlashedDel:  []SlashedBtcDelegation{},
-			UnbondedDel: []UnbondedBtcDelegation{},
+	executeMessage := fptypes.BtcStakingExecMsg{
+		BtcStaking: fptypes.BtcStaking{
+			NewFP:       []fptypes.NewFinalityProvider{newFp},
+			ActiveDel:   []fptypes.ActiveBtcDelegation{newDel},
+			SlashedDel:  []fptypes.SlashedBtcDelegation{},
+			UnbondedDel: []fptypes.UnbondedBtcDelegation{},
 		},
 	}
 
 	return executeMessage
 }
 
-func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) PubRandomnessExecMsg {
+func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) fptypes.PubRandomnessExecMsg {
 	// create the PubRandomnessExecMsg instance
-	executeMessage := PubRandomnessExecMsg{
-		CommitPublicRandomness: CommitPublicRandomness{
+	executeMessage := fptypes.PubRandomnessExecMsg{
+		CommitPublicRandomness: fptypes.CommitPublicRandomness{
 			FPPubKeyHex: fpHex,
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -56,7 +45,7 @@ func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubR
 	return executeMessage
 }
 
-func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) FinalitySigExecMsg {
+func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) fptypes.FinalitySigExecMsg {
 	fmsg := genAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
 
 	// iterate proof.aunts and convert them to base64 encoded strings
@@ -65,12 +54,12 @@ func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datag
 		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
 	}
 
-	msg := FinalitySigExecMsg{
-		SubmitFinalitySignature: SubmitFinalitySignature{
+	msg := fptypes.FinalitySigExecMsg{
+		SubmitFinalitySignature: fptypes.SubmitFinalitySignature{
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
 			Height:      fmsg.BlockHeight,
 			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
-			Proof: Proof{
+			Proof: fptypes.Proof{
 				Total:    uint64(fmsg.Proof.Total),
 				Index:    uint64(fmsg.Proof.Index),
 				LeafHash: base64.StdEncoding.EncodeToString(fmsg.Proof.LeafHash),

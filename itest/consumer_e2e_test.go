@@ -1,6 +1,3 @@
-//go:build e2e
-// +build e2e
-
 package e2etest
 
 import (
@@ -13,6 +10,7 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	e2etypes "github.com/babylonchain/finality-provider/itest/types"
+	fptypes "github.com/babylonchain/finality-provider/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -91,14 +89,14 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	msg := e2etypes.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
-	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
+	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
 	dataFromContract, err := ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerFps e2etypes.ConsumerFpsResponse
+	var consumerFps fptypes.ConsumerFpsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerFps)
 	require.NoError(t, err)
 	require.Len(t, consumerFps.ConsumerFps, 1)
@@ -109,7 +107,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"delegations": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerDels e2etypes.ConsumerDelegationsResponse
+	var consumerDels fptypes.ConsumerDelegationsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerDels)
 	require.NoError(t, err)
 	require.Len(t, consumerDels.ConsumerDelegations, 1)
@@ -125,7 +123,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers_by_power": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var fpPower e2etypes.ConsumerFpsByPowerResponse
+	var fpPower fptypes.ConsumerFpsByPowerResponse
 	err = json.Unmarshal(dataFromContract.Data, &fpPower)
 	require.NoError(t, err)
 	require.Len(t, fpPower.Fps, 1)
@@ -142,7 +140,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	)
 	msgBytes2, err := json.Marshal(msg2)
 	require.NoError(t, err)
-	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
+	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
 	require.NoError(t, err)
 
 	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
@@ -152,13 +150,13 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	finalitySigMsg := e2etypes.GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
-	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
+	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
 	require.NoError(t, err)
 	finalitySigQuery := fmt.Sprintf(`{"finality_signature": {"btc_pk_hex": "%s", "height": %d}}`, msgPub.FpBtcPk.MarshalHex(), cometLatestHeight)
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var fpSigsResponse e2etypes.FinalitySignatureResponse
+	var fpSigsResponse fptypes.FinalitySignatureResponse
 	err = json.Unmarshal(dataFromContract.Data, &fpSigsResponse)
 	require.NoError(t, err)
 	require.NotNil(t, fpSigsResponse.Signature)
