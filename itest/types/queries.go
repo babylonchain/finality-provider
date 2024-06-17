@@ -44,3 +44,7 @@ type ConsumerFpInfo struct {
 type ConsumerFpsByPowerResponse struct {
 	Fps []ConsumerFpInfo `json:"fps"`
 }
+
+type FinalitySignatureResponse struct {
+	Signature []byte `json:"signature"`
+}
