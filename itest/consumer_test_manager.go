@@ -247,28 +247,28 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 	}
 
 	// check finality providers on Babylon side
-	//require.Eventually(t, func() bool {
-	//	fps, err := ctm.BBNClient.QueryFinalityProviders()
-	//	if err != nil {
-	//		t.Logf("failed to query finality providers from Babylon %s", err.Error())
-	//		return false
-	//	}
-	//
-	//	if len(fps) != n {
-	//		return false
-	//	}
-	//
-	//	for _, fp := range fps {
-	//		if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
-	//			return false
-	//		}
-	//		if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
-	//			return false
-	//		}
-	//	}
-	//
-	//	return true
-	//}, eventuallyWaitTimeOut, eventuallyPollTime)
+	require.Eventually(t, func() bool {
+		fps, err := ctm.BBNClient.QueryFinalityProviders()
+		if err != nil {
+			t.Logf("failed to query finality providers from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(fps) != n {
+			return false
+		}
+
+		for _, fp := range fps {
+			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				return false
+			}
+			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+				return false
+			}
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	fpInsList := app.ListFinalityProviderInstancesForChain(chainID)
 	require.Equal(t, n, len(fpInsList))
