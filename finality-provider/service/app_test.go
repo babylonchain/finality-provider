@@ -106,7 +106,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 				popBytes,
 				testutil.ZeroCommissionRate(),
 				gomock.Any(),
-			).Return(&types.BabylonTxResponse{TxHash: txHash}, nil).AnyTimes()
+			).Return(&types.TxResponse{TxHash: txHash}, nil).AnyTimes()
 
 		res, err := app.RegisterFinalityProvider(fp.GetBIP340BTCPK().MarshalHex())
 		require.NoError(t, err)

@@ -41,11 +41,11 @@ func FuzzCommitPubRandList(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockConsumerController.EXPECT().
 			CommitPubRandList(fpIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&types.BabylonTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
 		res, err := fpIns.CommitPubRand(startingBlock.Height)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, res.GetTxHash())
+		require.Equal(t, expectedTxHash, res.TxHash)
 	})
 }
 
@@ -90,10 +90,10 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockConsumerController.EXPECT().
 			SubmitFinalitySig(fpIns.GetBtcPk(), nextBlock, gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&types.BabylonTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		providerRes, err := fpIns.SubmitFinalitySignature(nextBlock)
 		require.NoError(t, err)
-		require.Equal(t, expectedTxHash, providerRes.GetTxHash())
+		require.Equal(t, expectedTxHash, providerRes.TxHash)
 
 		// check the last_voted_height
 		require.Equal(t, nextBlock.Height, fpIns.GetLastVotedHeight())

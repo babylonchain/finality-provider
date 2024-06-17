@@ -109,7 +109,7 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 	numPubRand uint64,
 	commitment []byte,
 	sig *schnorr.Signature,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	// empty response
 	return nil, nil
 }
@@ -121,7 +121,7 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 	pubRand *btcec.FieldVal,
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	// empty response
 	return nil, nil
 }
@@ -133,7 +133,7 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 	pubRandList []*btcec.FieldVal,
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	// empty response
 	return nil, nil
 }

@@ -2,56 +2,32 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/cosmos/relayer/v2/relayer/provider"
 )
 
-// TxResponse is the interface that handles different types of transaction responses
-type TxResponse interface {
-	GetTxHash() string
-	GetEventsBytes() []byte
-}
-
-var _ TxResponse = &BabylonTxResponse{}
-
-type BabylonTxResponse struct {
+// TxResponse handles the transaction response in the interface ConsumerController
+// Not every consumer has Events thing in their response,
+// so consumer client implementations need to care about Events field.
+type TxResponse struct {
 	TxHash string
-	Events []provider.RelayerEvent
+	// JSON-encoded data, now it is for testing purposes only
+	Events []byte
 }
 
-func (tx *BabylonTxResponse) GetTxHash() string {
-	return tx.TxHash
-}
-
-func (tx *BabylonTxResponse) GetEventsBytes() []byte {
-	bytes, err := json.Marshal(tx.Events)
+func GetEventsBytes(events []provider.RelayerEvent) []byte {
+	bytes, err := json.Marshal(events)
 	if err != nil {
 		return nil
 	}
 	return bytes
 }
 
-var _ TxResponse = &CosmwasmTxResponse{}
-
-type CosmwasmTxResponse struct {
-	TxHash string `json:"txhash"`
-	Events []struct {
-		Type       string `json:"type"`
-		Attributes []struct {
-			Key   string `json:"key"`
-			Value string `json:"value"`
-		} `json:"attributes"`
-	} `json:"events"`
-}
-
-func (tx *CosmwasmTxResponse) GetTxHash() string {
-	return tx.TxHash
-}
-
-func (tx *CosmwasmTxResponse) GetEventsBytes() []byte {
-	bytes, err := json.Marshal(tx.Events)
-	if err != nil {
-		return nil
+func (res *TxResponse) ParseEvents() ([]provider.RelayerEvent, error) {
+	var events []provider.RelayerEvent
+	if err := json.Unmarshal(res.Events, &events); err != nil {
+		return nil, fmt.Errorf("failed to decode bytes to RelayerEvent: %s", err.Error())
 	}
-	return bytes
+	return events, nil
 }

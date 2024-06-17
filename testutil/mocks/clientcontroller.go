@@ -68,10 +68,10 @@ func (mr *MockClientControllerMockRecorder) QueryFinalityProviderSlashed(fpPk in
 }
 
 // RegisterFinalityProvider mocks base method.
-func (m *MockClientController) RegisterFinalityProvider(chainID string, chainPk []byte, fpPk *btcec.PublicKey, pop []byte, commission *math.LegacyDec, description []byte) (types0.TxResponse, error) {
+func (m *MockClientController) RegisterFinalityProvider(chainID string, chainPk []byte, fpPk *btcec.PublicKey, pop []byte, commission *math.LegacyDec, description []byte) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegisterFinalityProvider", chainID, chainPk, fpPk, pop, commission, description)
-	ret0, _ := ret[0].(types0.TxResponse)
+	ret0, _ := ret[0].(*types0.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -120,10 +120,10 @@ func (mr *MockConsumerControllerMockRecorder) Close() *gomock.Call {
 }
 
 // CommitPubRandList mocks base method.
-func (m *MockConsumerController) CommitPubRandList(fpPk *btcec.PublicKey, startHeight, numPubRand uint64, commitment []byte, sig *schnorr.Signature) (types0.TxResponse, error) {
+func (m *MockConsumerController) CommitPubRandList(fpPk *btcec.PublicKey, startHeight, numPubRand uint64, commitment []byte, sig *schnorr.Signature) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CommitPubRandList", fpPk, startHeight, numPubRand, commitment, sig)
-	ret0, _ := ret[0].(types0.TxResponse)
+	ret0, _ := ret[0].(*types0.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -255,10 +255,10 @@ func (mr *MockConsumerControllerMockRecorder) QueryLatestFinalizedBlock() *gomoc
 }
 
 // SubmitBatchFinalitySigs mocks base method.
-func (m *MockConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types0.BlockInfo, pubRandList []*btcec.FieldVal, proofList [][]byte, sigs []*btcec.ModNScalar) (types0.TxResponse, error) {
+func (m *MockConsumerController) SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types0.BlockInfo, pubRandList []*btcec.FieldVal, proofList [][]byte, sigs []*btcec.ModNScalar) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitBatchFinalitySigs", fpPk, blocks, pubRandList, proofList, sigs)
-	ret0, _ := ret[0].(types0.TxResponse)
+	ret0, _ := ret[0].(*types0.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -270,10 +270,10 @@ func (mr *MockConsumerControllerMockRecorder) SubmitBatchFinalitySigs(fpPk, bloc
 }
 
 // SubmitFinalitySig mocks base method.
-func (m *MockConsumerController) SubmitFinalitySig(fpPk *btcec.PublicKey, block *types0.BlockInfo, pubRand *btcec.FieldVal, proof []byte, sig *btcec.ModNScalar) (types0.TxResponse, error) {
+func (m *MockConsumerController) SubmitFinalitySig(fpPk *btcec.PublicKey, block *types0.BlockInfo, pubRand *btcec.FieldVal, proof []byte, sig *btcec.ModNScalar) (*types0.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubmitFinalitySig", fpPk, block, pubRand, proof, sig)
-	ret0, _ := ret[0].(types0.TxResponse)
+	ret0, _ := ret[0].(*types0.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

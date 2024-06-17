@@ -107,7 +107,7 @@ func (bc *BabylonConsumerController) CommitPubRandList(
 	numPubRand uint64,
 	commitment []byte,
 	sig *schnorr.Signature,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	msg := &finalitytypes.MsgCommitPubRandList{
 		Signer:      bc.mustGetTxSigner(),
 		FpBtcPk:     bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
@@ -129,7 +129,7 @@ func (bc *BabylonConsumerController) CommitPubRandList(
 		return nil, err
 	}
 
-	return &types.BabylonTxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: types.GetEventsBytes(res.Events)}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
@@ -139,7 +139,7 @@ func (bc *BabylonConsumerController) SubmitFinalitySig(
 	pubRand *btcec.FieldVal,
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	cmtProof := cmtcrypto.Proof{}
 	if err := cmtProof.Unmarshal(proof); err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (bc *BabylonConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 
-	return &types.BabylonTxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: types.GetEventsBytes(res.Events)}, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
@@ -176,7 +176,7 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 	pubRandList []*btcec.FieldVal,
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
@@ -211,7 +211,7 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 		return nil, err
 	}
 
-	return &types.BabylonTxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: types.GetEventsBytes(res.Events)}, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height

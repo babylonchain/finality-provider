@@ -52,9 +52,9 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	numPubRand uint64,
 	commitment []byte,
 	sig *schnorr.Signature,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 
-	return &types.CosmwasmTxResponse{TxHash: "", Events: nil}, nil
+	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
 // SubmitFinalitySig submits the finality signature
@@ -65,9 +65,9 @@ func (ec *EVMConsumerController) SubmitFinalitySig(
 	pubRand *btcec.FieldVal,
 	proof []byte, // TODO: have a type for proof
 	sig *btcec.ModNScalar,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 
-	return &types.CosmwasmTxResponse{TxHash: "", Events: nil}, nil
+	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
@@ -77,12 +77,12 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(
 	pubRandList []*btcec.FieldVal,
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
-) (types.TxResponse, error) {
+) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
 
-	return &types.CosmwasmTxResponse{TxHash: "", Events: nil}, nil
+	return &types.TxResponse{TxHash: "", Events: nil}, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height

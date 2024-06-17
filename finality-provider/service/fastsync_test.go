@@ -56,11 +56,11 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		mockConsumerController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
 		mockConsumerController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks, gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&types.BabylonTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.Equal(t, expectedTxHash, result.Responses[0].GetTxHash())
+		require.Equal(t, expectedTxHash, result.Responses[0].TxHash)
 		require.Equal(t, currentHeight, fpIns.GetLastVotedHeight())
 		require.Equal(t, currentHeight, fpIns.GetLastProcessedHeight())
 	})
@@ -108,11 +108,11 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		mockConsumerController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
 		mockConsumerController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks[:lastHeightWithPubRand-finalizedHeight], gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&types.BabylonTxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.Equal(t, expectedTxHash, result.Responses[0].GetTxHash())
+		require.Equal(t, expectedTxHash, result.Responses[0].TxHash)
 		require.Equal(t, lastHeightWithPubRand, fpIns.GetLastVotedHeight())
 		require.Equal(t, lastHeightWithPubRand, fpIns.GetLastProcessedHeight())
 	})
