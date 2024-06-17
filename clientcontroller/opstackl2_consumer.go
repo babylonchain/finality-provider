@@ -20,23 +20,19 @@ import (
 	"go.uber.org/zap"
 )
 
-// TODO: rename the file name, class name and etc
-// This is not a simple EVM chain. It's a OP Stack L2 chain, which has many
-// implications. So we should rename to sth like e.g. OPStackL2Consumer
-// This helps distinguish from pure EVM sidechains e.g. Binance Chain
-var _ ConsumerController = &EVMConsumerController{}
+var _ ConsumerController = &OPStackL2ConsumerController{}
 
-type EVMConsumerController struct {
+type OPStackL2ConsumerController struct {
 	bbnClient *bbnclient.Client
 	cfg       *fpcfg.EVMConfig
 	logger    *zap.Logger
 }
 
-func NewEVMConsumerController(
+func NewOPStackL2ConsumerController(
 	bbnCfg *fpcfg.BBNConfig,
 	evmCfg *fpcfg.EVMConfig,
 	logger *zap.Logger,
-) (*EVMConsumerController, error) {
+) (*OPStackL2ConsumerController, error) {
 	bbnConfig := fpcfg.BBNConfigToBabylonConfig(bbnCfg)
 	if err := bbnConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
@@ -62,14 +58,14 @@ func NewEVMConsumerController(
 	}
 	bbnConfig.SubmitterAddress = submitterAddress.String()
 
-	return &EVMConsumerController{
+	return &OPStackL2ConsumerController{
 		bbnClient,
 		evmCfg,
 		logger,
 	}, nil
 }
 
-func (ec *EVMConsumerController) ExecuteContract(contractAddress string, payload []byte) (*provider.RelayerTxResponse, error) {
+func (ec *OPStackL2ConsumerController) ExecuteContract(contractAddress string, payload []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmtypes.MsgExecuteContract{
 		Sender:   ec.bbnClient.MustGetAddr(),
 		Contract: contractAddress,
@@ -84,11 +80,11 @@ func (ec *EVMConsumerController) ExecuteContract(contractAddress string, payload
 	return res, nil
 }
 
-func (ec *EVMConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (ec *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return ec.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
-func (ec *EVMConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (ec *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return ec.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -99,7 +95,7 @@ func (ec *EVMConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs [
 
 // CommitPubRandList commits a list of Schnorr public randomness to Babylon CosmWasm contract
 // it returns tx hash and error
-func (ec *EVMConsumerController) CommitPubRandList(
+func (ec *OPStackL2ConsumerController) CommitPubRandList(
 	fpPk *btcec.PublicKey,
 	startHeight uint64,
 	numPubRand uint64,
@@ -128,7 +124,7 @@ func (ec *EVMConsumerController) CommitPubRandList(
 
 // SubmitFinalitySig submits the finality signature to Babylon CosmWasm contract
 // it returns tx hash and error
-func (ec *EVMConsumerController) SubmitFinalitySig(
+func (ec *OPStackL2ConsumerController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
 	block *types.BlockInfo,
 	pubRand *btcec.FieldVal,
@@ -162,7 +158,7 @@ func (ec *EVMConsumerController) SubmitFinalitySig(
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures
-func (ec *EVMConsumerController) SubmitBatchFinalitySigs(
+func (ec *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	fpPk *btcec.PublicKey,
 	blocks []*types.BlockInfo,
 	pubRandList []*btcec.FieldVal,
@@ -177,7 +173,7 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+func (ec *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	/* TODO: implement
 
 	latest_committed_l2_height = read `latestBlockNumber()` from the L1 L2OutputOracle contract and return the result
@@ -198,25 +194,25 @@ func (ec *EVMConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.Pu
 	return 0, nil
 }
 
-func (ec *EVMConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+func (ec *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
 	return &types.BlockInfo{
 		Height: 0,
 		Hash:   nil,
 	}, nil
 }
 
-func (ec *EVMConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+func (ec *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
 
 	return ec.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), 0, finalitytypes.QueriedBlockStatus_ANY, false)
 }
 
-func (ec *EVMConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
+func (ec *OPStackL2ConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
 	var blocks []*types.BlockInfo
 
 	return blocks, nil
 }
 
-func (ec *EVMConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
+func (ec *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 
 	return &types.BlockInfo{
 		Height: height,
@@ -224,7 +220,7 @@ func (ec *EVMConsumerController) QueryBlock(height uint64) (*types.BlockInfo, er
 	}, nil
 }
 
-func (ec *EVMConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
+func (ec *OPStackL2ConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
 	/* TODO: implement
 	1. get the latest finalized block number from `latestBlockNumber()` in the L1 L2OutputOracle contract
 	2. compare the block number with `height`
@@ -232,7 +228,7 @@ func (ec *EVMConsumerController) QueryIsBlockFinalized(height uint64) (bool, err
 	return false, nil
 }
 
-func (ec *EVMConsumerController) QueryActivatedHeight() (uint64, error) {
+func (ec *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
 	/* TODO: implement
 
 		oracle_event = query the event in the L1 oracle contract where the FP's voting power is firstly set
@@ -255,7 +251,7 @@ func (ec *EVMConsumerController) QueryActivatedHeight() (uint64, error) {
 	return 0, nil
 }
 
-func (ec *EVMConsumerController) QueryLatestBlockHeight() (uint64, error) {
+func (ec *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	/* TODO: implement
 	get the latest L2 block number from a RPC call
 	*/
@@ -264,12 +260,12 @@ func (ec *EVMConsumerController) QueryLatestBlockHeight() (uint64, error) {
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+func (ec *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
 
 	return nil, nil
 }
 
-func (ec *EVMConsumerController) Close() error {
+func (ec *OPStackL2ConsumerController) Close() error {
 	if err := ec.bbnClient.Stop(); err != nil {
 		return err
 	}

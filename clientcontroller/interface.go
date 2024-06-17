@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	BabylonConsumerChainName = "babylon"
-	EVMConsumerChainName     = "evm"
-	WasmdConsumerChainName   = "wasmd"
+	BabylonConsumerChainName   = "babylon"
+	OPStackL2ConsumerChainName = "OPStackL2"
+	WasmdConsumerChainName     = "wasmd"
 )
 
 type ClientController interface {
@@ -107,8 +107,8 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
-	case EVMConsumerChainName:
-		ccc, err = NewEVMConsumerController(config.BabylonConfig, config.EVMConfig, logger)
+	case OPStackL2ConsumerChainName:
+		ccc, err = NewOPStackL2ConsumerController(config.BabylonConfig, config.EVMConfig, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EVM consumer client: %w", err)
 		}
