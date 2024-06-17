@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -129,7 +130,7 @@ func (bc *BabylonConsumerController) CommitPubRandList(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: types.GetEventsBytes(res.Events)}, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
@@ -166,7 +167,7 @@ func (bc *BabylonConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: types.GetEventsBytes(res.Events)}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: fromCosmosEventsToBytes(res.Events)}, nil
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
@@ -211,7 +212,7 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: types.GetEventsBytes(res.Events)}, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
@@ -358,4 +359,12 @@ func (bc *BabylonConsumerController) Close() error {
 	}
 
 	return bc.bbnClient.Stop()
+}
+
+func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
+	bytes, err := json.Marshal(events)
+	if err != nil {
+		return nil
+	}
+	return bytes
 }

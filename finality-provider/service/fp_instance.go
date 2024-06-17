@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -822,7 +824,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 
 	// try to extract the private key
 	var privKey *btcec.PrivateKey
-	events, err := res.ParseEvents()
+	events, err := parseCosmosEvents(res.Events)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to decode bytes to RelayerEvent: %s", err.Error())
 	}
@@ -843,6 +845,14 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	return res, privKey, nil
+}
+
+func parseCosmosEvents(eventsData []byte) ([]provider.RelayerEvent, error) {
+	var events []provider.RelayerEvent
+	if err := json.Unmarshal(eventsData, &events); err != nil {
+		return nil, fmt.Errorf("failed to decode bytes to RelayerEvent: %s", err.Error())
+	}
+	return events, nil
 }
 
 func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
