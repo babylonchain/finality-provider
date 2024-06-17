@@ -139,7 +139,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
@@ -401,7 +401,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctypes.BTCSpvProof) (*provider.RelayerTxResponse, error) {
@@ -432,5 +432,5 @@ func (bc *BabylonController) RegisterConsumerChain(id, name, description string)
 		return nil, err
 	}
 
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }

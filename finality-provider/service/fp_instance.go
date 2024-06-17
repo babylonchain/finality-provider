@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -847,7 +849,11 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 
 	// try to extract the private key
 	var privKey *btcec.PrivateKey
-	for _, ev := range res.Events {
+	events, err := parseCosmosEvents(res.Events)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode bytes to RelayerEvent: %s", err.Error())
+	}
+	for _, ev := range events {
 		if strings.Contains(ev.EventType, "EventSlashedFinalityProvider") {
 			evidenceStr := ev.Attributes["evidence"]
 			fp.logger.Debug("found slashing evidence")
@@ -864,6 +870,14 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	return res, privKey, nil
+}
+
+func parseCosmosEvents(eventsData []byte) ([]provider.RelayerEvent, error) {
+	var events []provider.RelayerEvent
+	if err := json.Unmarshal(eventsData, &events); err != nil {
+		return nil, fmt.Errorf("failed to decode bytes to RelayerEvent: %s", err.Error())
+	}
+	return events, nil
 }
 
 func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
