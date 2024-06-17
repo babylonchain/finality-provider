@@ -1,8 +1,12 @@
+//go:build e2e
+// +build e2e
+
 package e2etest
 
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -31,15 +35,12 @@ func TestConsumerFinalityProviderRegistration(t *testing.T) {
 
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
-	ctm := StartConsumerManager(t)
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
 	defer ctm.Stop(t)
-
-	_, err := ctm.BBNClient.RegisterConsumerChain(wasmdChainID, "Wasmd consumer", "Wasmd consumer")
-	require.NoError(t, err)
 
 	// store babylon contract
 	babylonContractPath := "bytecode/babylon_contract.wasm"
-	err = ctm.WasmdConsumerClient.StoreWasmCode(babylonContractPath)
+	err := ctm.WasmdConsumerClient.StoreWasmCode(babylonContractPath)
 	require.NoError(t, err)
 	babylonContractWasmId, err := ctm.WasmdConsumerClient.GetLatestCodeId()
 	require.NoError(t, err)
@@ -79,20 +80,18 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
-	// update the contract address in config otherwise fp app won't be able to query the contract
-	ctm.WasmdConsumerClient.Cfg.BtcStakingContractAddress = btcStakingContractAddr.String()
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	_, _, msgPub, err := e2etypes.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	randList, msgPub, err := e2etypes.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
 	msg := e2etypes.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
@@ -133,30 +132,35 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
 
-	time.Sleep(5 * time.Second)
+	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
+	msg2 := e2etypes.GenPubRandomnessExecMsg(
+		msgPub.FpBtcPk.MarshalHex(),
+		base64.StdEncoding.EncodeToString(msgPub.Commitment),
+		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+		msgPub.StartHeight,
+		msgPub.NumPubRand,
+	)
+	msgBytes2, err := json.Marshal(msg2)
+	require.NoError(t, err)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
+	require.NoError(t, err)
 
-	ctm.CreateFinalityProvidersForChain(t, wasmdChainID, 1)
-
-	// inject pub rand commitment in smart contract using admin
-	//msg2 := e2etypes.GenPubRandomnessExecMsg(
-	//	msgPub.FpBtcPk.MarshalHex(),
-	//	base64.StdEncoding.EncodeToString(msgPub.Commitment),
-	//	base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
-	//	msgPub.StartHeight,
-	//	msgPub.NumPubRand,
-	//)
-	//msgBytes2, err := json.Marshal(msg2)
-	//require.NoError(t, err)
-	//_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
-	//require.NoError(t, err)
-	//
-	//// inject finality signature in smart contract using admin
-	//wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
-	//require.NoError(t, err)
-	//cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	//finalitySigMsg := e2etypes.GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpPrivKey)
-	//finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
-	//require.NoError(t, err)
-	//_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
-	//require.NoError(t, err)
+	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
+	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
+	require.NoError(t, err)
+	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
+	finalitySigMsg := e2etypes.GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
+	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
+	require.NoError(t, err)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
+	require.NoError(t, err)
+	finalitySigQuery := fmt.Sprintf(`{"finality_signature": {"btc_pk_hex": "%s", "height": %d}}`, msgPub.FpBtcPk.MarshalHex(), cometLatestHeight)
+	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)
+	require.NoError(t, err)
+	require.NotNil(t, dataFromContract)
+	var fpSigsResponse e2etypes.FinalitySignatureResponse
+	err = json.Unmarshal(dataFromContract.Data, &fpSigsResponse)
+	require.NoError(t, err)
+	require.NotNil(t, fpSigsResponse.Signature)
+	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
 }
