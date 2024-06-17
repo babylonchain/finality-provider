@@ -1,23 +1,22 @@
 package clientcontroller
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
-	wasmdparams "github.com/CosmWasm/wasmd/app/params"
-	appparams "github.com/babylonchain/babylon/app/params"
+	sdkErr "cosmossdk.io/errors"
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
-	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	cwtypes "github.com/babylonchain/finality-provider/cosmwasmclient/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +27,9 @@ import (
 var _ ConsumerController = &EVMConsumerController{}
 
 type EVMConsumerController struct {
-	cwClient *cosmwasmclient.Client
-	cfg      *fpcfg.EVMConfig
-	logger   *zap.Logger
+	bbnClient *bbnclient.Client
+	cfg       *fpcfg.EVMConfig
+	logger    *zap.Logger
 }
 
 func NewEVMConsumerController(
@@ -61,51 +60,41 @@ func NewEVMConsumerController(
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
 	}
-
-	cwConfig := cwcfg.CosmwasmConfig{
-		Key:              bbnCfg.Key,
-		ChainID:          bbnCfg.ChainID,
-		RPCAddr:          bbnCfg.RPCAddr,
-		GRPCAddr:         evmCfg.GRPCAddress,
-		AccountPrefix:    bbnCfg.AccountPrefix,
-		KeyringBackend:   bbnCfg.KeyringBackend,
-		GasAdjustment:    bbnCfg.GasAdjustment,
-		GasPrices:        bbnCfg.GasPrices,
-		KeyDirectory:     bbnCfg.KeyDirectory,
-		Debug:            bbnCfg.Debug,
-		Timeout:          bbnCfg.Timeout,
-		BlockTimeout:     bbnCfg.BlockTimeout,
-		OutputFormat:     bbnCfg.OutputFormat,
-		SignModeStr:      bbnCfg.SignModeStr,
-		SubmitterAddress: submitterAddress.String(),
-	}
-
-	if err := cwConfig.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for Babylon Wasm client: %w", err)
-	}
-
-	encCfg := appparams.DefaultEncodingConfig()
-	cwClient, err := cosmwasmclient.New(
-		&cwConfig,
-		BabylonConsumerChainName,
-		wasmdparams.EncodingConfig{
-			InterfaceRegistry: encCfg.InterfaceRegistry,
-			Codec:             encCfg.Codec,
-			TxConfig:          encCfg.TxConfig,
-			Amino:             encCfg.Amino,
-		},
-		logger,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Babylon Wasm client: %w", err)
-	}
+	bbnConfig.SubmitterAddress = submitterAddress.String()
 
 	return &EVMConsumerController{
-		cwClient,
+		bbnClient,
 		evmCfg,
 		logger,
 	}, nil
+}
+
+func (ec *EVMConsumerController) ExecuteContract(contractAddress string, payload []byte) (*provider.RelayerTxResponse, error) {
+	execMsg := &wasmtypes.MsgExecuteContract{
+		Sender:   ec.bbnClient.MustGetAddr(),
+		Contract: contractAddress,
+		Msg:      payload,
+	}
+
+	res, err := ec.reliablySendMsg(execMsg, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (ec *EVMConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	return ec.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
+}
+
+func (ec *EVMConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	return ec.bbnClient.ReliablySendMsgs(
+		context.Background(),
+		msgs,
+		expectedErrs,
+		unrecoverableErrs,
+	)
 }
 
 // CommitPubRandList commits a list of Schnorr public randomness to Babylon CosmWasm contract
@@ -118,10 +107,6 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
 	contractAddress := ec.cfg.OPFinalityGadgetAddress
-	contractInfo, err := ec.cwClient.QueryContractInfo(contractAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query contract info %s: %w", contractAddress, err)
-	}
 
 	msg := cwtypes.CommitPublicRandomnessMsg{
 		CommitPublicRandomness: cwtypes.CommitPublicRandomnessMsgParams{
@@ -136,12 +121,12 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	if err != nil {
 		return nil, err
 	}
-	resp, err := ec.cwClient.ExecuteContract(contractAddress, contractInfo.CodeID, msgData, "")
+	res, err := ec.ExecuteContract(contractAddress, msgData)
 	if err != nil {
 		return nil, err
 	}
 	// TODO: need to refactor
-	return &types.TxResponse{TxHash: resp.TxHash, Events: nil}, nil
+	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
 
 // SubmitFinalitySig submits the finality signature
@@ -266,7 +251,7 @@ func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Public
 }
 
 func (ec *EVMConsumerController) Close() error {
-	if err := ec.cwClient.Stop(); err != nil {
+	if err := ec.bbnClient.Stop(); err != nil {
 		return err
 	}
 	return nil
