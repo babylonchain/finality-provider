@@ -6,35 +6,36 @@ package e2etest
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	zctypes "github.com/babylonchain/babylon/x/zoneconcierge/types"
+	e2etypes "github.com/babylonchain/finality-provider/itest/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: currently fp app is not started in consumer manager, so the following tests are commented out
-//  uncomment after contract is ready and fp app is working
-//func TestConsumerFinalityProviderRegistration(t *testing.T) {
-//	ctm, _ := StartConsumerManagerWithFps(t, 1)
-//	defer ctm.Stop(t)
-//
-//	consumerChainID := "consumer-chain-test-1"
-//	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-//	require.NoError(t, err)
-//
-//	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
-//}
+// TODO: currently fp app is not started in consumer manager, so the following tests are commented out uncomment after contract is ready and fp app is working
 
 // TODO: make a test suite for the wasmd <-> babylon e2e tests
+func TestConsumerFinalityProviderRegistration(t *testing.T) {
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
+	defer ctm.Stop(t)
+
+	consumerChainID := "consumer-chain-test-1"
+	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
+	require.NoError(t, err)
+
+	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
+}
+
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
-	ctm := StartConsumerManager(t)
+	ctm, _ := StartConsumerManagerWithFps(t, 1)
 	defer ctm.Stop(t)
 
 	// store babylon contract
@@ -80,10 +81,15 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
 
-	// generate ibc packet and send to btc staking contract using admin
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	msg := GenIBCPacket(t, r)
-	msgBytes, err := zctypes.ModuleCdc.MarshalJSON(msg)
+	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
+	require.NoError(t, err)
+	randList, msgPub, err := e2etypes.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	require.NoError(t, err)
+
+	// inject fp and delegation in smart contract using admin
+	msg := e2etypes.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
+	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
 	require.NoError(t, err)
@@ -92,118 +98,69 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err := ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerFps ConsumerFpsResponse
+	var consumerFps e2etypes.ConsumerFpsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerFps)
 	require.NoError(t, err)
 	require.Len(t, consumerFps.ConsumerFps, 1)
-	require.Equal(t, msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].ConsumerId, consumerFps.ConsumerFps[0].ConsumerId)
-	require.Equal(t, msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex, consumerFps.ConsumerFps[0].BtcPkHex)
+	require.Equal(t, msg.BtcStaking.NewFP[0].ConsumerID, consumerFps.ConsumerFps[0].ConsumerId)
+	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFps.ConsumerFps[0].BtcPkHex)
 
-	// submit finality signature to the btc staking contract using admin
-	finalitySigMsg := GenFinalitySignatureMessage(msg.Packet.(*zctypes.ZoneconciergePacketData_BtcStaking).BtcStaking.NewFp[0].BtcPkHex)
+	// query delegations in smart contract
+	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"delegations": {}}`)
+	require.NoError(t, err)
+	require.NotNil(t, dataFromContract)
+	var consumerDels e2etypes.ConsumerDelegationsResponse
+	err = json.Unmarshal(dataFromContract.Data, &consumerDels)
+	require.NoError(t, err)
+	require.Len(t, consumerDels.ConsumerDelegations, 1)
+	require.Empty(t, consumerDels.ConsumerDelegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDels.ConsumerDelegations[0].BtcPkHex)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDels.ConsumerDelegations[0].StartHeight)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDels.ConsumerDelegations[0].EndHeight)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDels.ConsumerDelegations[0].TotalSat)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].StakingTx))   // make sure to compare b64 encoded strings
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+
+	// ensure fp has voting power in smart contract
+	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers_by_power": {}}`)
+	require.NoError(t, err)
+	require.NotNil(t, dataFromContract)
+	var fpPower e2etypes.ConsumerFpsByPowerResponse
+	err = json.Unmarshal(dataFromContract.Data, &fpPower)
+	require.NoError(t, err)
+	require.Len(t, fpPower.Fps, 1)
+	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
+	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
+
+	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
+	msg2 := e2etypes.GenPubRandomnessExecMsg(
+		msgPub.FpBtcPk.MarshalHex(),
+		base64.StdEncoding.EncodeToString(msgPub.Commitment),
+		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+		msgPub.StartHeight,
+		msgPub.NumPubRand,
+	)
+	msgBytes2, err := json.Marshal(msg2)
+	require.NoError(t, err)
+	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
+	require.NoError(t, err)
+
+	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
+	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
+	require.NoError(t, err)
+	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
+	finalitySigMsg := e2etypes.GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
-	// TODO: insert delegation and pub randomness to fix the error
-	require.Error(t, err)
-
-}
-
-func NewBTCStakingPacketData(packet *bstypes.BTCStakingIBCPacket) *zctypes.ZoneconciergePacketData {
-	return &zctypes.ZoneconciergePacketData{
-		Packet: &zctypes.ZoneconciergePacketData_BtcStaking{
-			BtcStaking: packet,
-		},
-	}
-}
-
-func GenIBCPacket(t *testing.T, r *rand.Rand) *zctypes.ZoneconciergePacketData {
-	// generate a finality provider
-	fpBTCSK, _, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	fpBabylonSK, _, err := datagen.GenRandomSecp256k1KeyPair(r)
+	finalitySigQuery := fmt.Sprintf(`{"finality_signature": {"btc_pk_hex": "%s", "height": %d}}`, msgPub.FpBtcPk.MarshalHex(), cometLatestHeight)
+	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)
 	require.NoError(t, err)
-	fp, err := datagen.GenRandomCustomFinalityProvider(r, fpBTCSK, fpBabylonSK, "consumer-id")
+	require.NotNil(t, dataFromContract)
+	var fpSigsResponse e2etypes.FinalitySignatureResponse
+	err = json.Unmarshal(dataFromContract.Data, &fpSigsResponse)
 	require.NoError(t, err)
-
-	packet := &bstypes.BTCStakingIBCPacket{
-		NewFp: []*bstypes.NewFinalityProvider{
-			// TODO: fill empty data
-			&bstypes.NewFinalityProvider{
-				// Description: fp.Description,
-				Commission: fp.Commission.String(),
-				// BabylonPk:  fp.BabylonPk,
-				BtcPkHex: fp.BtcPk.MarshalHex(),
-				// Pop:        fp.Pop,
-				ConsumerId: fp.ConsumerId,
-			},
-		},
-		ActiveDel:   []*bstypes.ActiveBTCDelegation{},
-		SlashedDel:  []*bstypes.SlashedBTCDelegation{},
-		UnbondedDel: []*bstypes.UnbondedBTCDelegation{},
-	}
-	return NewBTCStakingPacketData(packet)
-}
-
-type ConsumerFpsResponse struct {
-	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
-}
-
-// SingleConsumerFpResponse represents the finality provider data returned by the contract query.
-// For more details, refer to the following links:
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/packages/apis/src/btc_staking_api.rs
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/src/msg.rs
-// https://github.com/babylonchain/babylon-contract/blob/v0.5.3/contracts/btc-staking/schema/btc-staking.json
-type SingleConsumerFpResponse struct {
-	BtcPkHex             string `json:"btc_pk_hex"`
-	SlashedBabylonHeight uint64 `json:"slashed_babylon_height"`
-	SlashedBtcHeight     uint64 `json:"slashed_btc_height"`
-	ConsumerId           string `json:"consumer_id"`
-}
-
-type SubmitFinalitySignature struct {
-	FpPubkeyHex string `json:"fp_pubkey_hex"`
-	Height      uint64 `json:"height"`
-	PubRand     string `json:"pub_rand"`   // base64 encoded
-	Proof       Proof  `json:"proof"`      // nested struct
-	BlockHash   string `json:"block_hash"` // base64 encoded
-	Signature   string `json:"signature"`  // base64 encoded
-}
-
-type ExecuteMsg struct {
-	SubmitFinalitySignature *SubmitFinalitySignature `json:"submit_finality_signature"`
-}
-
-type Proof struct {
-	Total    uint64   `json:"total"`
-	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
-}
-
-// Generate a finality signature message with mock data
-func GenFinalitySignatureMessage(fpBtcPkHex string) *ExecuteMsg {
-	height := uint64(123456)
-	pubRand := base64.StdEncoding.EncodeToString([]byte("mock_pub_rand"))
-	leafHash := base64.StdEncoding.EncodeToString([]byte("mock_leaf_hash"))
-	blockHash := base64.StdEncoding.EncodeToString([]byte("mock_block_hash"))
-	signature := base64.StdEncoding.EncodeToString([]byte("mock_signature"))
-
-	msg := ExecuteMsg{
-		SubmitFinalitySignature: &SubmitFinalitySignature{
-			FpPubkeyHex: fpBtcPkHex,
-			Height:      height,
-			PubRand:     pubRand,
-			Proof: Proof{
-				Total:    0,
-				Index:    0,
-				LeafHash: leafHash,
-				Aunts:    []string{},
-			},
-			BlockHash: blockHash,
-			Signature: signature,
-		},
-	}
-
-	return &msg
+	require.NotNil(t, fpSigsResponse.Signature)
+	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
 }

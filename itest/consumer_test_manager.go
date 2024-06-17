@@ -44,7 +44,7 @@ type ConsumerTestManager struct {
 }
 
 func StartConsumerManager(t *testing.T) *ConsumerTestManager {
-	// Setup test manager
+	// Setup consumer test manager
 	testDir, err := tempDirWithName("fpe2etest")
 	require.NoError(t, err)
 
@@ -142,7 +142,7 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 
 func (ctm *ConsumerTestManager) Stop(t *testing.T) {
 	err := ctm.Fpa.Stop()
-	require.Error(t, err) // TODO: error is expected here, as the fp manager is not started and we are trying to stop it
+	require.NoError(t, err)
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
