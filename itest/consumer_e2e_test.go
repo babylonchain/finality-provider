@@ -131,7 +131,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
 
-	// inject pub rand commitment in smart contract using admin
+	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
 	msg2 := e2etypes.GenPubRandomnessExecMsg(
 		msgPub.FpBtcPk.MarshalHex(),
 		base64.StdEncoding.EncodeToString(msgPub.Commitment),
@@ -144,7 +144,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
 	require.NoError(t, err)
 
-	// inject finality signature in smart contract using admin
+	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
