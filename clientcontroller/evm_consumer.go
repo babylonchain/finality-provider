@@ -10,11 +10,11 @@ import (
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
-	cwtypes "github.com/babylonchain/finality-provider/cosmwasmclient/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
@@ -106,10 +106,8 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	commitment []byte,
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
-	contractAddress := ec.cfg.OPFinalityGadgetAddress
-
-	msg := cwtypes.CommitPublicRandomnessMsg{
-		CommitPublicRandomness: cwtypes.CommitPublicRandomnessMsgParams{
+	msg := types.CommitPublicRandomnessMsg{
+		CommitPublicRandomness: types.CommitPublicRandomnessMsgParams{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -121,28 +119,49 @@ func (ec *EVMConsumerController) CommitPubRandList(
 	if err != nil {
 		return nil, err
 	}
-	res, err := ec.ExecuteContract(contractAddress, msgData)
+	res, err := ec.ExecuteContract(ec.cfg.OPFinalityGadgetAddress, msgData)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: need to refactor
-	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// SubmitFinalitySig submits the finality signature
-// SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
+// SubmitFinalitySig submits the finality signature to Babylon CosmWasm contract
+// it returns tx hash and error
 func (ec *EVMConsumerController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
 	block *types.BlockInfo,
 	pubRand *btcec.FieldVal,
-	proof []byte, // TODO: have a type for proof
+	proof []byte,
 	sig *btcec.ModNScalar,
 ) (*types.TxResponse, error) {
+	cmtProof := cmtcrypto.Proof{}
+	if err := cmtProof.Unmarshal(proof); err != nil {
+		return nil, err
+	}
 
-	return &types.TxResponse{TxHash: "", Events: nil}, nil
+	msg := types.SubmitFinalitySignatureMsg{
+		SubmitFinalitySignature: types.SubmitFinalitySignatureMsgParams{
+			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+			Height:      block.Height,
+			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
+			Proof:       &cmtProof,
+			BlockHash:   block.Hash,
+			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
+		},
+	}
+	msgData, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	res, err := ec.ExecuteContract(ec.cfg.OPFinalityGadgetAddress, msgData)
+	if err != nil {
+		return nil, err
+	}
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// SubmitBatchFinalitySigs submits a batch of finality signatures to Babylon
+// SubmitBatchFinalitySigs submits a batch of finality signatures
 func (ec *EVMConsumerController) SubmitBatchFinalitySigs(
 	fpPk *btcec.PublicKey,
 	blocks []*types.BlockInfo,
@@ -154,7 +173,7 @@ func (ec *EVMConsumerController) SubmitBatchFinalitySigs(
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
 
-	return &types.TxResponse{TxHash: "", Events: nil}, nil
+	return &types.TxResponse{TxHash: ""}, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height

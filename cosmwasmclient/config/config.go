@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
@@ -60,25 +59,6 @@ func (cfg *CosmwasmConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig 
 		BlockTimeout:   cfg.BlockTimeout.String(),
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
-	}
-}
-
-func (cfg *CosmwasmConfig) ToBabylonConfig() bbncfg.BabylonConfig {
-	return bbncfg.BabylonConfig{
-		Key:              cfg.Key,
-		ChainID:          cfg.ChainID,
-		RPCAddr:          cfg.RPCAddr,
-		AccountPrefix:    cfg.AccountPrefix,
-		KeyringBackend:   cfg.KeyringBackend,
-		GasAdjustment:    cfg.GasAdjustment,
-		GasPrices:        cfg.GasPrices,
-		KeyDirectory:     cfg.KeyDirectory,
-		Debug:            cfg.Debug,
-		Timeout:          cfg.Timeout,
-		BlockTimeout:     cfg.BlockTimeout,
-		OutputFormat:     cfg.OutputFormat,
-		SignModeStr:      cfg.SignModeStr,
-		SubmitterAddress: cfg.SubmitterAddress,
 	}
 }
 

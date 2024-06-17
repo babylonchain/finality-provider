@@ -14,11 +14,11 @@ import (
 
 type Client struct {
 	*query.QueryClient
-	encodingCfg wasmdparams.EncodingConfig
-	provider    *cosmos.CosmosProvider
-	timeout     time.Duration
-	logger      *zap.Logger
-	cfg         *config.CosmwasmConfig
+
+	provider *cosmos.CosmosProvider
+	timeout  time.Duration
+	logger   *zap.Logger
+	cfg      *config.CosmwasmConfig
 }
 
 func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
@@ -84,7 +84,6 @@ func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.E
 
 	return &Client{
 		queryClient,
-		encodingCfg,
 		cp,
 		cfg.Timeout,
 		zapLogger,
