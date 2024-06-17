@@ -268,10 +268,10 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) A
 	}
 }
 
-func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *btcec.PrivateKey, *ftypes.MsgCommitPubRandList, error) {
+func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *ftypes.MsgCommitPubRandList, error) {
 	randListInfo, err := genRandomPubRandList(r, numPubRand)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	msg := &ftypes.MsgCommitPubRandList{
 		Signer:      datagen.GenRandomAccount().Address,
@@ -282,7 +282,7 @@ func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight u
 	}
 	hash, err := msg.HashToSign()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	schnorrSig, err := schnorr.Sign(fpSk, hash)
 	if err != nil {
@@ -290,7 +290,7 @@ func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight u
 	}
 	msg.Sig = bbn.NewBIP340SignatureFromBTCSig(schnorrSig)
 
-	return randListInfo, fpSk, msg, nil
+	return randListInfo, msg, nil
 }
 
 func genRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInfo, error) {
