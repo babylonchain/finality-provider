@@ -41,9 +41,9 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (api.Consum
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
 	case OPStackL2ConsumerChainName:
-		ccc, err = opstackl2.NewOPStackL2ConsumerController(config.BabylonConfig, config.OPStackL2Config, logger)
+		ccc, err = opstackl2.NewOPStackL2ConsumerController(config.OPStackL2Config, logger)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create EVM consumer client: %w", err)
+			return nil, fmt.Errorf("failed to create OPStack L2 consumer client: %w", err)
 		}
 	case WasmdConsumerChainName:
 		wasmdEncodingCfg := cosmwasmcfg.GetWasmdEncodingConfig()

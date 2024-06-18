@@ -30,11 +30,10 @@ type OPStackL2ConsumerController struct {
 }
 
 func NewOPStackL2ConsumerController(
-	bbnCfg *fpcfg.BBNConfig,
 	opl2Cfg *fpcfg.OPStackL2Config,
 	logger *zap.Logger,
 ) (*OPStackL2ConsumerController, error) {
-	bbnConfig := fpcfg.BBNConfigToBabylonConfig(bbnCfg)
+	bbnConfig := fpcfg.OPStackL2ConfigToBabylonConfig(opl2Cfg)
 	if err := bbnConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
 	}
@@ -45,20 +44,6 @@ func NewOPStackL2ConsumerController(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
 	}
-
-	keyRec, err := bbnClient.GetKeyring().Key(bbnConfig.Key)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to get key address: %s", err))
-	}
-
-	// submitterAddress retrieves address based on key name which is configured in
-	// cfg *stakercfg.BBNConfig.
-	submitterAddress, err := keyRec.GetAddress()
-	if err != nil {
-		panic(fmt.Sprintf("Failed to get key address: %s", err))
-	}
-	bbnConfig.SubmitterAddress = submitterAddress.String()
-
 	return &OPStackL2ConsumerController{
 		bbnClient,
 		opl2Cfg,
@@ -66,14 +51,14 @@ func NewOPStackL2ConsumerController(
 	}, nil
 }
 
-func (ec *OPStackL2ConsumerController) ExecuteContract(contractAddress string, payload []byte) (*provider.RelayerTxResponse, error) {
+func (cc *OPStackL2ConsumerController) ExecuteContract(payload []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   ec.bbnClient.MustGetAddr(),
-		Contract: contractAddress,
+		Sender:   cc.bbnClient.MustGetAddr(),
+		Contract: cc.cfg.OPFinalityGadgetAddress,
 		Msg:      payload,
 	}
 
-	res, err := ec.reliablySendMsg(execMsg, nil, nil)
+	res, err := cc.reliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +66,12 @@ func (ec *OPStackL2ConsumerController) ExecuteContract(contractAddress string, p
 	return res, nil
 }
 
-func (ec *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return ec.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
+func (cc *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	return cc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
-func (ec *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return ec.bbnClient.ReliablySendMsgs(
+func (cc *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	return cc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -96,7 +81,7 @@ func (ec *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expected
 
 // CommitPubRandList commits a list of Schnorr public randomness to Babylon CosmWasm contract
 // it returns tx hash and error
-func (ec *OPStackL2ConsumerController) CommitPubRandList(
+func (cc *OPStackL2ConsumerController) CommitPubRandList(
 	fpPk *btcec.PublicKey,
 	startHeight uint64,
 	numPubRand uint64,
@@ -112,11 +97,17 @@ func (ec *OPStackL2ConsumerController) CommitPubRandList(
 			Signature:   sig.Serialize(),
 		},
 	}
-	msgData, err := json.Marshal(msg)
+	payload, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
-	res, err := ec.ExecuteContract(ec.cfg.OPFinalityGadgetAddress, msgData)
+	execMsg := &wasmtypes.MsgExecuteContract{
+		Sender:   cc.bbnClient.MustGetAddr(),
+		Contract: cc.cfg.OPFinalityGadgetAddress,
+		Msg:      payload,
+	}
+
+	res, err := cc.reliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +116,7 @@ func (ec *OPStackL2ConsumerController) CommitPubRandList(
 
 // SubmitFinalitySig submits the finality signature to Babylon CosmWasm contract
 // it returns tx hash and error
-func (ec *OPStackL2ConsumerController) SubmitFinalitySig(
+func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 	fpPk *btcec.PublicKey,
 	block *types.BlockInfo,
 	pubRand *btcec.FieldVal,
@@ -147,11 +138,17 @@ func (ec *OPStackL2ConsumerController) SubmitFinalitySig(
 			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
 		},
 	}
-	msgData, err := json.Marshal(msg)
+	payload, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
-	res, err := ec.ExecuteContract(ec.cfg.OPFinalityGadgetAddress, msgData)
+	execMsg := &wasmtypes.MsgExecuteContract{
+		Sender:   cc.bbnClient.MustGetAddr(),
+		Contract: cc.cfg.OPFinalityGadgetAddress,
+		Msg:      payload,
+	}
+
+	res, err := cc.reliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +156,7 @@ func (ec *OPStackL2ConsumerController) SubmitFinalitySig(
 }
 
 // SubmitBatchFinalitySigs submits a batch of finality signatures
-func (ec *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
+func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	fpPk *btcec.PublicKey,
 	blocks []*types.BlockInfo,
 	pubRandList []*btcec.FieldVal,
@@ -169,8 +166,41 @@ func (ec *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	if len(blocks) != len(sigs) {
 		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
 	}
+	msgs := make([]sdk.Msg, 0, len(blocks))
+	for i, block := range blocks {
+		cmtProof := cmtcrypto.Proof{}
+		if err := cmtProof.Unmarshal(proofList[i]); err != nil {
+			return nil, err
+		}
 
-	return &types.TxResponse{TxHash: ""}, nil
+		msg := SubmitFinalitySignatureMsg{
+			SubmitFinalitySignature: SubmitFinalitySignatureMsgParams{
+				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+				Height:      block.Height,
+				PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal(),
+				Proof:       &cmtProof,
+				BlockHash:   block.Hash,
+				Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal(),
+			},
+		}
+		payload, err := json.Marshal(msg)
+		if err != nil {
+			return nil, err
+		}
+		execMsg := &wasmtypes.MsgExecuteContract{
+			Sender:   cc.bbnClient.MustGetAddr(),
+			Contract: cc.cfg.OPFinalityGadgetAddress,
+			Msg:      payload,
+		}
+		msgs = append(msgs, execMsg)
+	}
+
+	res, err := cc.reliablySendMsgs(msgs, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
@@ -267,8 +297,5 @@ func (ec *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 }
 
 func (ec *OPStackL2ConsumerController) Close() error {
-	if err := ec.bbnClient.Stop(); err != nil {
-		return err
-	}
-	return nil
+	return ec.bbnClient.Stop()
 }
