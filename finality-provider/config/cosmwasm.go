@@ -21,25 +21,27 @@ type CosmwasmConfig struct {
 	BlockTimeout              time.Duration `long:"block-timeout" description:"block timeout when waiting for block events"`
 	OutputFormat              string        `long:"output-format" description:"default output when printint responses"`
 	SignModeStr               string        `long:"sign-mode" description:"sign mode to use"`
-	BabylonContractAddress    string        `mapstructure:"babylon-contract-address"`
-	BtcStakingContractAddress string        `mapstructure:"btc-staking-contract-address"`
+	BabylonContractAddress    string        `long:"babylon-contract-address" description:"address of the Babylon contract"`
+	BtcStakingContractAddress string        `long:"btc-staking-contract-address" description:"address of the BTC staking contract"`
 }
 
 func DefaultCosmwasmConfig() *CosmwasmConfig {
 	return &CosmwasmConfig{
-		Key:            "validator",
-		ChainID:        "wasmd-test",
-		RPCAddr:        "http://localhost:2990",
-		GRPCAddr:       "https://localhost:9090",
-		AccountPrefix:  "wasm",
-		KeyringBackend: "test",
-		GasAdjustment:  1.3,
-		GasPrices:      "1ustake",
-		Debug:          true,
-		Timeout:        20 * time.Second,
-		BlockTimeout:   1 * time.Minute,
-		OutputFormat:   "direct",
-		SignModeStr:    "",
+		Key:                       "validator",
+		ChainID:                   "wasmd-test",
+		RPCAddr:                   "http://localhost:2990",
+		GRPCAddr:                  "https://localhost:9090",
+		AccountPrefix:             "wasm",
+		KeyringBackend:            "test",
+		GasAdjustment:             1.3,
+		GasPrices:                 "1ustake",
+		Debug:                     true,
+		Timeout:                   20 * time.Second,
+		BlockTimeout:              1 * time.Minute,
+		OutputFormat:              "direct",
+		SignModeStr:               "",
+		BtcStakingContractAddress: "",
+		BabylonContractAddress:    "",
 	}
 }
 
