@@ -428,6 +428,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	return blocks[0].Height, nil
 }
 
+//nolint:unused
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
 	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
