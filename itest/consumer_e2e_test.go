@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package e2etest
 
 import (
@@ -77,6 +80,8 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
+	// update the contract address in config because during setup we had used a random address which is not valid
+	ctm.WasmdConsumerClient.SetBtcStakingContractAddress(btcStakingContractAddr.String())
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)

@@ -553,3 +553,9 @@ func (wc *CosmwasmConsumerController) GetLatestCodeId() (uint64, error) {
 func (wc *CosmwasmConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmdtypes.QueryContractsByCodeResponse, error) {
 	return wc.CosmwasmClient.ListContractsByCode(codeID, pagination)
 }
+
+// SetBtcStakingContractAddress updates the BtcStakingContractAddress in the configuration
+// NOTE: this function is only meant to be used in tests.
+func (wc *CosmwasmConsumerController) SetBtcStakingContractAddress(newAddress string) {
+	wc.cfg.BtcStakingContractAddress = newAddress
+}
