@@ -909,8 +909,8 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 	return lastCommittedHeight, nil
 }
 
-func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*types.PubRandCommitResponse, error) {
-	var response map[uint64]*types.PubRandCommitResponse
+func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*types.PubRandCommit, error) {
+	var response map[uint64]*types.PubRandCommit
 	if err := retry.Do(func() error {
 		resp, err := fp.consumerCon.QueryLastCommittedPublicRand(fp.GetBtcPk(), count)
 		if err != nil {

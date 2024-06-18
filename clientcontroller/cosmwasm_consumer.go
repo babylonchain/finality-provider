@@ -373,7 +373,7 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*fptypes.PubRandCommitResponse, error) {
+func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*fptypes.PubRandCommit, error) {
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	// Construct the query message
@@ -393,10 +393,13 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 	}
 
 	// Convert the response to the expected map format
-	commitMap := make(map[uint64]*fptypes.PubRandCommitResponse)
+	commitMap := make(map[uint64]*fptypes.PubRandCommit)
 	for _, commit := range commits {
 		commitCopy := commit // create a copy to avoid referencing the loop variable
-		commitMap[commit.StartHeight] = &commitCopy
+		commitMap[commit.StartHeight] = &fptypes.PubRandCommit{
+			NumPubRand: commitCopy.NumPubRand,
+			Commitment: commitCopy.Commitment,
+		}
 	}
 
 	return commitMap, nil
