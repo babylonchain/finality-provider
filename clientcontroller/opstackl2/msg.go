@@ -1,4 +1,4 @@
-package types
+package opstackl2
 
 import (
 	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"

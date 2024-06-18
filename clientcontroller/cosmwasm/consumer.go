@@ -1,4 +1,4 @@
-package clientcontroller
+package cosmwasm
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	cosmwasmclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -24,7 +25,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerController = &CosmwasmConsumerController{}
+var _ api.ConsumerController = &CosmwasmConsumerController{}
 
 type CosmwasmConsumerController struct {
 	CosmwasmClient *cosmwasmclient.Client
@@ -200,7 +201,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(wc.cfg.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.CosmwasmClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()

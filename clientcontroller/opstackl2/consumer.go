@@ -1,4 +1,4 @@
-package clientcontroller
+package opstackl2
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -20,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerController = &OPStackL2ConsumerController{}
+var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
 	bbnClient *bbnclient.Client
@@ -102,8 +103,8 @@ func (ec *OPStackL2ConsumerController) CommitPubRandList(
 	commitment []byte,
 	sig *schnorr.Signature,
 ) (*types.TxResponse, error) {
-	msg := types.CommitPublicRandomnessMsg{
-		CommitPublicRandomness: types.CommitPublicRandomnessMsgParams{
+	msg := CommitPublicRandomnessMsg{
+		CommitPublicRandomness: CommitPublicRandomnessMsgParams{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -136,8 +137,8 @@ func (ec *OPStackL2ConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 
-	msg := types.SubmitFinalitySignatureMsg{
-		SubmitFinalitySignature: types.SubmitFinalitySignatureMsgParams{
+	msg := SubmitFinalitySignatureMsg{
+		SubmitFinalitySignature: SubmitFinalitySignatureMsgParams{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
