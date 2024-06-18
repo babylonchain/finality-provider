@@ -54,6 +54,16 @@ type FinalitySignatureResponse struct {
 	Signature []byte `json:"signature"`
 }
 
+type BlocksResponse struct {
+	Blocks []IndexedBlock `json:"blocks"`
+}
+
+type IndexedBlock struct {
+	Height    uint64 `json:"height"`
+	AppHash   []byte `json:"app_hash"`
+	Finalized bool   `json:"finalized"`
+}
+
 type NewFinalityProvider struct {
 	Description *FinalityProviderDescription `json:"description,omitempty"`
 	Commission  string                       `json:"commission"`

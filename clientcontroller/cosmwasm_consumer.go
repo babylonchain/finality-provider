@@ -265,31 +265,111 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	// empty response
-	return nil, nil
-}
-
-func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	// empty response
-	return nil, nil
-}
-
-//nolint:unused
-func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*fptypes.BlockInfo, error) {
-	// TODO: not used right now, will be used to return latest indexed blocks once implemented in the smart contract
-	return nil, nil
-}
-
-func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	// TODO: dummy response, fetch actual block from the smart contract
-	block, err := wc.queryCometBestBlock()
+	isFinalized := true
+	blocks, err := wc.queryLatestBlocks(nil, uint64(1), &isFinalized, nil)
 	if err != nil {
 		return nil, err
 	}
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("no finalized blocks found")
+	}
 
+	return blocks[0], nil
+}
+
+func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
+	if endHeight < startHeight {
+		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
+	}
+	count := endHeight - startHeight + 1
+	if count > limit {
+		count = limit
+	}
+
+	return wc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), count, nil, nil)
+}
+
+func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
+	// Construct the query message dynamically
+	queryMap := map[string]interface{}{
+		"blocks": make(map[string]interface{}),
+	}
+
+	if startKey != nil {
+		queryMap["blocks"].(map[string]interface{})["start_after"] = sdk.BigEndianToUint64(startKey)
+	}
+	if count > 0 {
+		queryMap["blocks"].(map[string]interface{})["limit"] = count
+	}
+	if finalized != nil {
+		queryMap["blocks"].(map[string]interface{})["finalized"] = *finalized
+	}
+	if reverse != nil {
+		queryMap["blocks"].(map[string]interface{})["reverse"] = *reverse
+	}
+
+	// Marshal the query map to JSON
+	queryMsgBytes, err := json.Marshal(queryMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %w", err)
+	}
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Unmarshal the response
+	var resp fptypes.BlocksResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Process the blocks and convert them to BlockInfo
+	var blocks []*fptypes.BlockInfo
+	for _, b := range resp.Blocks {
+		block := &fptypes.BlockInfo{
+			Height: b.Height,
+			Hash:   b.AppHash,
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks, nil
+}
+
+func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*fptypes.IndexedBlock, error) {
+	// Construct the query message
+	queryMsg := fmt.Sprintf(`{"block":{"height":%d}}`, height)
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Unmarshal the response
+	var resp fptypes.IndexedBlock
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return &resp, nil
+}
+
+func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
+	// Use the helper function to get the IndexedBlock
+	resp, err := wc.queryIndexedBlock(height)
+	if err != nil {
+		return nil, err
+	}
+	// Convert to BlockInfo and return
 	return &fptypes.BlockInfo{
-		Height: height,
-		Hash:   block.Hash,
+		Height: resp.Height,
+		Hash:   resp.AppHash,
 	}, nil
 }
 
@@ -300,23 +380,52 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	// TODO: dummy response, fetch actual finalized block from the smart contract
-	return true, nil
+	// Use the helper function to get the IndexedBlock
+	resp, err := wc.queryIndexedBlock(height)
+	if err != nil {
+		return false, err
+	}
+
+	// Return the finalized status
+	return resp.Finalized, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
-	// TODO: dummy response, fetch actual activated height from the smart contract
-	return 1, nil
+	// Construct the query message
+	queryMsg := `{"activated_height":{}}`
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Unmarshal the response
+	var resp struct {
+		Height uint64 `json:"height"`
+	}
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Return the activated height
+	return resp.Height, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	// TODO: dummy response, fetch actual latest indexed block from the smart contract
-	block, err := wc.queryCometBestBlock()
+	reverse := true
+	count := uint64(1)
+	blocks, err := wc.queryLatestBlocks(nil, count, nil, &reverse)
 	if err != nil {
 		return 0, err
 	}
 
-	return block.Height, nil
+	if len(blocks) == 0 {
+		return 0, fmt.Errorf("no blocks found")
+	}
+
+	return blocks[0].Height, nil
 }
 
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
