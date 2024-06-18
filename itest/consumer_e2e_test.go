@@ -68,6 +68,8 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
+	// update the contract address in config because during setup we had used a random address which is not valid
+	ctm.WasmdConsumerClient.SetBtcStakingContractAddress(btcStakingContractAddr.String())
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
@@ -79,7 +81,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	msg := GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
+	_, err = ctm.WasmdConsumerClient.Exec(msgBytes)
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
@@ -130,7 +132,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	)
 	msgBytes2, err := json.Marshal(msg2)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes2)
+	_, err = ctm.WasmdConsumerClient.Exec(msgBytes2)
 	require.NoError(t, err)
 
 	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
@@ -140,7 +142,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	finalitySigMsg := GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
+	_, err = ctm.WasmdConsumerClient.Exec(finalitySigMsgBytes)
 	require.NoError(t, err)
 	finalitySigQuery := fmt.Sprintf(`{"finality_signature": {"btc_pk_hex": "%s", "height": %d}}`, msgPub.FpBtcPk.MarshalHex(), cometLatestHeight)
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)

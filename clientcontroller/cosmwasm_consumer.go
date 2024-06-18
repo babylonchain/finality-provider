@@ -132,7 +132,7 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 
 	}
 
-	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress), msgBytes)
+	res, err := wc.Exec(msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 
 	}
 
-	res, err := wc.Exec(sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress), msgBytes)
+	res, err := wc.Exec(msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -455,10 +455,10 @@ func (wc *CosmwasmConsumerController) Close() error {
 	return wc.CosmwasmClient.Stop()
 }
 
-func (wc *CosmwasmConsumerController) Exec(contract sdk.AccAddress, payload []byte) (*provider.RelayerTxResponse, error) {
+func (wc *CosmwasmConsumerController) Exec(payload []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmdtypes.MsgExecuteContract{
 		Sender:   wc.CosmwasmClient.MustGetAddr(),
-		Contract: contract.String(),
+		Contract: wc.cfg.BtcStakingContractAddress,
 		Msg:      payload,
 	}
 
