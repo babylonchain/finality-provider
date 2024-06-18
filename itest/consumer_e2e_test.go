@@ -19,23 +19,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: currently fp app is not started in consumer manager, so the following tests are commented out uncomment after contract is ready and fp app is working
-
-// TODO: make a test suite for the wasmd <-> babylon e2e tests
-func TestConsumerFinalityProviderRegistration(t *testing.T) {
-	ctm, _ := StartConsumerManagerWithFps(t, 1)
-	defer ctm.Stop(t)
-
-	consumerChainID := "consumer-chain-test-1"
-	_, err := ctm.BBNClient.RegisterConsumerChain(consumerChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-	require.NoError(t, err)
-
-	ctm.CreateFinalityProvidersForChain(t, consumerChainID, 1)
-}
+// TODO: currently fp app is not started in consumer manager, make a separate test which submits finality signature and public randomness automatically through fp daemon
 
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
-	ctm, _ := StartConsumerManagerWithFps(t, 1)
+	ctm, _ := StartConsumerManager(t, 1)
 	defer ctm.Stop(t)
 
 	// store babylon contract
