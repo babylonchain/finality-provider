@@ -195,8 +195,54 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 	proofList [][]byte,
 	sigs []*btcec.ModNScalar,
 ) (*fptypes.TxResponse, error) {
-	// empty response
-	return nil, nil
+	msgs := make([]sdk.Msg, 0, len(blocks))
+	for i, b := range blocks {
+		cmtProof := cmtcrypto.Proof{}
+		if err := cmtProof.Unmarshal(proofList[i]); err != nil {
+			return nil, err
+		}
+
+		var aunts []string
+		for _, aunt := range cmtProof.Aunts {
+			aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
+		}
+
+		payload := fptypes.FinalitySigExecMsg{
+			SubmitFinalitySignature: fptypes.SubmitFinalitySignature{
+				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+				Height:      b.Height,
+				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
+				Proof: fptypes.Proof{
+					Total:    uint64(cmtProof.Total),
+					Index:    uint64(cmtProof.Index),
+					LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
+					Aunts:    aunts,
+				},
+				BlockHash: base64.StdEncoding.EncodeToString(b.Hash),
+				Signature: base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal()),
+			},
+		}
+
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+
+		}
+
+		execMsg := &wasmdtypes.MsgExecuteContract{
+			Sender:   wc.CosmwasmClient.MustGetAddr(),
+			Contract: sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress).String(),
+			Msg:      payloadBytes,
+		}
+		msgs = append(msgs, execMsg)
+	}
+
+	res, err := wc.reliablySendMsgs(msgs, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fptypes.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
