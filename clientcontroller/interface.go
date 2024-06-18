@@ -8,7 +8,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"go.uber.org/zap"
 
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	cosmwasmcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
@@ -74,7 +73,7 @@ type ConsumerController interface {
 	QueryLatestFinalizedBlock() (*types.BlockInfo, error)
 
 	// QueryLastCommittedPublicRand returns the last committed public randomness
-	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error)
+	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommitResponse, error)
 
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)

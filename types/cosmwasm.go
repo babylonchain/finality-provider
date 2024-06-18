@@ -64,6 +64,12 @@ type IndexedBlock struct {
 	Finalized bool   `json:"finalized"`
 }
 
+type PubRandCommitResponse struct {
+	StartHeight uint64 `json:"start_height"`
+	NumPubRand  uint64 `json:"num_pub_rand"`
+	Commitment  []byte `json:"commitment"`
+}
+
 type NewFinalityProvider struct {
 	Description *FinalityProviderDescription `json:"description,omitempty"`
 	Commission  string                       `json:"commission"`

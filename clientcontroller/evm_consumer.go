@@ -173,7 +173,7 @@ func (ec *EVMConsumerController) QueryLatestBlockHeight() (uint64, error) {
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+func (ec *EVMConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommitResponse, error) {
 
 	return nil, nil
 }
