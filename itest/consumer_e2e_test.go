@@ -23,7 +23,7 @@ import (
 
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature(t *testing.T) {
-	ctm, _ := StartConsumerManager(t, 1)
+	ctm := StartConsumerManager(t)
 	defer ctm.Stop(t)
 
 	// store babylon contract
