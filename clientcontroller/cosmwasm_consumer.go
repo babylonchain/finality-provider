@@ -375,7 +375,7 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
 func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
-	// empty response
+	// TODO: dummy response, fetch actual data by querying the smart contract
 	return nil, nil
 }
 
