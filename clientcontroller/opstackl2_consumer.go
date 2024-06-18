@@ -24,13 +24,13 @@ var _ ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
 	bbnClient *bbnclient.Client
-	cfg       *fpcfg.EVMConfig
+	cfg       *fpcfg.OPStackL2Config
 	logger    *zap.Logger
 }
 
 func NewOPStackL2ConsumerController(
 	bbnCfg *fpcfg.BBNConfig,
-	evmCfg *fpcfg.EVMConfig,
+	opl2Cfg *fpcfg.OPStackL2Config,
 	logger *zap.Logger,
 ) (*OPStackL2ConsumerController, error) {
 	bbnConfig := fpcfg.BBNConfigToBabylonConfig(bbnCfg)
@@ -60,7 +60,7 @@ func NewOPStackL2ConsumerController(
 
 	return &OPStackL2ConsumerController{
 		bbnClient,
-		evmCfg,
+		opl2Cfg,
 		logger,
 	}, nil
 }

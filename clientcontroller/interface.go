@@ -108,7 +108,7 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerCo
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
 	case OPStackL2ConsumerChainName:
-		ccc, err = NewOPStackL2ConsumerController(config.BabylonConfig, config.EVMConfig, logger)
+		ccc, err = NewOPStackL2ConsumerController(config.BabylonConfig, config.OPStackL2Config, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EVM consumer client: %w", err)
 		}
