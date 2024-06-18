@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	bbncfg "github.com/babylonchain/babylon/client/config"
+	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 )
 
 type OPStackL2Config struct {
@@ -40,8 +40,8 @@ func (cfg *OPStackL2Config) Validate() error {
 	return nil
 }
 
-func OPStackL2ConfigToBabylonConfig(cfg *OPStackL2Config) bbncfg.BabylonConfig {
-	return bbncfg.BabylonConfig{
+func OPStackL2ConfigToCosmwasmConfig(cfg *OPStackL2Config) cwcfg.CosmwasmConfig {
+	return cwcfg.CosmwasmConfig{
 		Key:              cfg.Key,
 		ChainID:          cfg.ChainID,
 		RPCAddr:          cfg.RPCAddr,

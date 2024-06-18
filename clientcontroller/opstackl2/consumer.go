@@ -7,11 +7,13 @@ import (
 	"math/big"
 
 	sdkErr "cosmossdk.io/errors"
+	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
-	bbnclient "github.com/babylonchain/babylon/client/client"
+	bbnapp "github.com/babylonchain/babylon/app"
 	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
+	cwclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -26,8 +28,7 @@ import (
 var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
-	// TODO: use the Client under the cosmwasmclient？
-	bbnClient  *bbnclient.Client
+	bbnClient  *cwclient.Client
 	opl2Client *ethclient.Client
 	cfg        *fpcfg.OPStackL2Config
 	logger     *zap.Logger
@@ -37,12 +38,23 @@ func NewOPStackL2ConsumerController(
 	opl2Cfg *fpcfg.OPStackL2Config,
 	logger *zap.Logger,
 ) (*OPStackL2ConsumerController, error) {
-	bbnConfig := fpcfg.OPStackL2ConfigToBabylonConfig(opl2Cfg)
-	if err := bbnConfig.Validate(); err != nil {
+	cwConfig := fpcfg.OPStackL2ConfigToCosmwasmConfig(opl2Cfg)
+	if err := cwConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
 	}
-	bbnClient, err := bbnclient.New(
-		&bbnConfig,
+
+	bbnEncodingCfg := bbnapp.GetEncodingConfig()
+	wasmdEncodingCfg := wasmdparams.EncodingConfig{
+		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
+		Codec:             bbnEncodingCfg.Codec,
+		TxConfig:          bbnEncodingCfg.TxConfig,
+		Amino:             bbnEncodingCfg.Amino,
+	}
+
+	bbnClient, err := cwclient.New(
+		&cwConfig,
+		"Babylon",
+		wasmdEncodingCfg,
 		logger,
 	)
 	if err != nil {
