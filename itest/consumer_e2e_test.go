@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	e2etypes "github.com/babylonchain/finality-provider/itest/types"
 	fptypes "github.com/babylonchain/finality-provider/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -82,11 +81,11 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	randList, msgPub, err := e2etypes.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	randList, msgPub, err := GenCommitPubRandListMsg(r, fpSk, 1, 1000)
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
-	msg := e2etypes.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
+	msg := GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, msgBytes)
@@ -131,7 +130,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
 
 	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
-	msg2 := e2etypes.GenPubRandomnessExecMsg(
+	msg2 := GenPubRandomnessExecMsg(
 		msgPub.FpBtcPk.MarshalHex(),
 		base64.StdEncoding.EncodeToString(msgPub.Commitment),
 		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
@@ -147,7 +146,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	finalitySigMsg := e2etypes.GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
+	finalitySigMsg := GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	_, err = ctm.WasmdConsumerClient.Exec(btcStakingContractAddr, finalitySigMsgBytes)
