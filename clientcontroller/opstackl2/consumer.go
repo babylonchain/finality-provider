@@ -26,6 +26,7 @@ import (
 var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
+	// TODO: use the Client under the cosmwasmclient？
 	bbnClient  *bbnclient.Client
 	opl2Client *ethclient.Client
 	cfg        *fpcfg.OPStackL2Config
