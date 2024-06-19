@@ -139,7 +139,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	finalitySigMsg := GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
+	finalitySigMsg := GenFinalitySigExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	_, err = ctm.WasmdConsumerClient.ExecuteContract(finalitySigMsgBytes)
