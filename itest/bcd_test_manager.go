@@ -5,10 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	sdklogs "cosmossdk.io/log"
-	wasmapp "github.com/CosmWasm/wasmd/app"
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
-	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
+	bcdapp "github.com/babylonchain/babylon-sdk/demo/app"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -20,8 +18,6 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	dbm "github.com/cosmos/cosmos-db"
-	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -73,8 +69,9 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	//  investigate if there is a better way to handle this
 	cfg.CosmwasmConfig.BabylonContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.CosmwasmConfig.BtcStakingContractAddress = datagen.GenRandomAccount().GetAddress().String()
-	cfg.ChainName = fpcc.WasmdConsumerChainName
-	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	cfg.ChainName = fpcc.BcdConsumerChainName
+	tempApp := bcdapp.NewTmpApp()
+	//tempApp := bcdapp.NewConsumerApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),
