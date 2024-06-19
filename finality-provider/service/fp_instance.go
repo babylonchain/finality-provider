@@ -18,7 +18,8 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
+	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
@@ -36,8 +37,8 @@ type FinalityProviderInstance struct {
 
 	logger      *zap.Logger
 	em          eotsmanager.EOTSManager
-	cc          clientcontroller.ClientController
-	consumerCon clientcontroller.ConsumerController
+	cc          ccapi.ClientController
+	consumerCon ccapi.ConsumerController
 	poller      *ChainPoller
 	metrics     *metrics.FpMetrics
 
@@ -62,8 +63,8 @@ func NewFinalityProviderInstance(
 	cfg *fpcfg.Config,
 	s *store.FinalityProviderStore,
 	prStore *store.PubRandProofStore,
-	cc clientcontroller.ClientController,
-	consumerCon clientcontroller.ConsumerController,
+	cc ccapi.ClientController,
+	consumerCon ccapi.ConsumerController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	passphrase string,
@@ -143,7 +144,7 @@ func (fp *FinalityProviderInstance) bootstrap() (uint64, error) {
 
 	if fp.checkLagging(latestBlockHeight) {
 		_, err := fp.tryFastSync(latestBlockHeight)
-		if err != nil && !clientcontroller.IsExpected(err) {
+		if err != nil && !fpcc.IsExpected(err) {
 			return 0, err
 		}
 	}
@@ -558,11 +559,11 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 				zap.Error(err),
 			)
 
-			if clientcontroller.IsUnrecoverable(err) {
+			if fpcc.IsUnrecoverable(err) {
 				return nil, err
 			}
 
-			if clientcontroller.IsExpected(err) {
+			if fpcc.IsExpected(err) {
 				return nil, nil
 			}
 
@@ -616,7 +617,7 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 		// is finalised or the pub rand is committed successfully
 		res, err := fp.CommitPubRand(targetBlockHeight)
 		if err != nil {
-			if clientcontroller.IsUnrecoverable(err) {
+			if fpcc.IsUnrecoverable(err) {
 				return nil, err
 			}
 			fp.logger.Debug(

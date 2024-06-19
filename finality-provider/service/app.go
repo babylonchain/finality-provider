@@ -16,7 +16,8 @@ import (
 	"github.com/lightningnetwork/lnd/kvdb"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
+	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -34,8 +35,8 @@ type FinalityProviderApp struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
-	cc           clientcontroller.ClientController
-	consumerCon  clientcontroller.ConsumerController
+	cc           ccapi.ClientController
+	consumerCon  ccapi.ConsumerController
 	kr           keyring.Keyring
 	fps          *store.FinalityProviderStore
 	pubRandStore *store.PubRandProofStore
@@ -58,11 +59,11 @@ func NewFinalityProviderAppFromConfig(
 	db kvdb.Backend,
 	logger *zap.Logger,
 ) (*FinalityProviderApp, error) {
-	cc, err := clientcontroller.NewClientController(cfg, logger)
+	cc, err := fpcc.NewClientController(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the Babylon chain: %v", err)
 	}
-	consumerCon, err := clientcontroller.NewConsumerController(cfg, logger)
+	consumerCon, err := fpcc.NewConsumerController(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 	}
@@ -80,8 +81,8 @@ func NewFinalityProviderAppFromConfig(
 
 func NewFinalityProviderApp(
 	config *fpcfg.Config,
-	cc clientcontroller.ClientController, // TODO: this should be renamed as client controller is always going to be babylon
-	consumerCon clientcontroller.ConsumerController,
+	cc ccapi.ClientController, // TODO: this should be renamed as client controller is always going to be babylon
+	consumerCon ccapi.ConsumerController,
 	em eotsmanager.EOTSManager,
 	db kvdb.Backend,
 	logger *zap.Logger,
