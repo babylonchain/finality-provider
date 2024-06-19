@@ -81,21 +81,6 @@ func NewOPStackL2ConsumerController(
 	}, nil
 }
 
-func (cc *OPStackL2ConsumerController) ExecuteContract(payload []byte) (*provider.RelayerTxResponse, error) {
-	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   cc.bbnClient.MustGetAddr(),
-		Contract: cc.cfg.OPFinalityGadgetAddress,
-		Msg:      payload,
-	}
-
-	res, err := cc.reliablySendMsg(execMsg, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
 func (cc *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return cc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
