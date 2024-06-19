@@ -1,16 +1,16 @@
-package clientcontroller
+package babylon
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	sdkErr "cosmossdk.io/errors"
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
+	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ ConsumerController = &BabylonConsumerController{}
+var _ api.ConsumerController = &BabylonConsumerController{}
 
 type BabylonConsumerController struct {
 	bbnClient *bbnclient.Client
@@ -271,11 +271,6 @@ func (bc *BabylonConsumerController) queryLatestBlocks(startKey []byte, count ui
 	return blocks, nil
 }
 
-func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	return ctx, cancel
-}
-
 func (bc *BabylonConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	res, err := bc.bbnClient.QueryClient.Block(height)
 	if err != nil {
@@ -336,7 +331,7 @@ func (bc *BabylonConsumerController) QueryLatestBlockHeight() (uint64, error) {
 }
 
 func (bc *BabylonConsumerController) queryCometBestBlock() (*types.BlockInfo, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), bc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := bc.bbnClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()

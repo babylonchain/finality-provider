@@ -84,7 +84,7 @@ proto-gen:
 
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
-	$(MOCKGEN_CMD) -source=clientcontroller/interface.go -package mocks -destination $(MOCKS_DIR)/clientcontroller.go
+	$(MOCKGEN_CMD) -source=clientcontroller/api/interface.go -package mocks -destination $(MOCKS_DIR)/clientcontroller.go
 
 .PHONY: mock-gen
 
