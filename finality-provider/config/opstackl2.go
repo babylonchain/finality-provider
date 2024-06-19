@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 type OPStackL2Config struct {
@@ -29,18 +31,28 @@ type OPStackL2Config struct {
 
 func (cfg *OPStackL2Config) Validate() error {
 	if cfg.OPStackL2RPCAddress == "" {
-		return fmt.Errorf("the rpc address of the op-stack-l2 node not specified")
+		return fmt.Errorf("opstackl2-rpc-address is required")
 	}
 	if cfg.OPFinalityGadgetAddress == "" {
-		return fmt.Errorf("the contract address of the op-finality-gadget not specified")
+		return fmt.Errorf("the contract address of the op-finality-gadget is required")
 	}
-	if cfg.RPCAddr == "" {
-		return fmt.Errorf("the rpc address of the node that hosts the smart contract not specified")
+	_, err := sdktypes.AccAddressFromBech32(cfg.OPFinalityGadgetAddress)
+	if err != nil {
+		return fmt.Errorf("op-finality-gadget: invalid bech32 address: %w", err)
+	}
+	if _, err := url.Parse(cfg.RPCAddr); err != nil {
+		return fmt.Errorf("rpc-addr is not correctly formatted: %w", err)
+	}
+	if cfg.Timeout <= 0 {
+		return fmt.Errorf("timeout must be positive")
+	}
+	if cfg.BlockTimeout < 0 {
+		return fmt.Errorf("block-timeout can't be negative")
 	}
 	return nil
 }
 
-func OPStackL2ConfigToCosmwasmConfig(cfg *OPStackL2Config) cwcfg.CosmwasmConfig {
+func (cfg *OPStackL2Config) ToCosmwasmConfig() cwcfg.CosmwasmConfig {
 	return cwcfg.CosmwasmConfig{
 		Key:              cfg.Key,
 		ChainID:          cfg.ChainID,

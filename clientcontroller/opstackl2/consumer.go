@@ -25,6 +25,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	BabylonChainName = "Babylon"
+)
+
 var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
@@ -38,7 +42,7 @@ func NewOPStackL2ConsumerController(
 	opl2Cfg *fpcfg.OPStackL2Config,
 	logger *zap.Logger,
 ) (*OPStackL2ConsumerController, error) {
-	cwConfig := fpcfg.OPStackL2ConfigToCosmwasmConfig(opl2Cfg)
+	cwConfig := opl2Cfg.ToCosmwasmConfig()
 	if err := cwConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
 	}
@@ -53,7 +57,7 @@ func NewOPStackL2ConsumerController(
 
 	bbnClient, err := cwclient.New(
 		&cwConfig,
-		"Babylon",
+		BabylonChainName,
 		wasmdEncodingCfg,
 		logger,
 	)
