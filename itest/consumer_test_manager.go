@@ -15,6 +15,8 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
+	cwcc "github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
@@ -32,9 +34,9 @@ import (
 type ConsumerTestManager struct {
 	BabylonHandler      *BabylonNodeHandler
 	FpConfig            *fpcfg.Config
-	BBNClient           *fpcc.BabylonController
+	BBNClient           *bbncc.BabylonController
 	WasmdHandler        *WasmdNodeHandler
-	WasmdConsumerClient *fpcc.CosmwasmConsumerController
+	WasmdConsumerClient *cwcc.CosmwasmConsumerController
 	StakingParams       *types.StakingParams
 	EOTSServerHandler   *EOTSServerHandler
 	EOTSConfig          *eotsconfig.Config
@@ -62,7 +64,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
-	bc, err := fpcc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
 	// 3. setup wasmd node
@@ -71,8 +73,9 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	require.NoError(t, err)
 	cfg.CosmwasmConfig = config.DefaultCosmwasmConfig()
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
-	// make random contract addresses for now to avoid validation errors
-	// later in the e2e tests we would upload the contract and update the addresses
+	// TODO: make random contract addresses for now to avoid validation errors
+	//  later in the e2e tests we would upload the contract and update the addresses
+	//  investigate if there is a better way to handle this
 	cfg.CosmwasmConfig.BabylonContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.CosmwasmConfig.BtcStakingContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.ChainName = fpcc.WasmdConsumerChainName
@@ -83,7 +86,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 		TxConfig:          tempApp.TxConfig(),
 		Amino:             tempApp.LegacyAmino(),
 	}
-	wcc, err := fpcc.NewCosmwasmConsumerController(cfg.CosmwasmConfig, encodingCfg, logger)
+	wcc, err := cwcc.NewCosmwasmConsumerController(cfg.CosmwasmConfig, encodingCfg, logger)
 	require.NoError(t, err)
 
 	// 4. prepare EOTS manager

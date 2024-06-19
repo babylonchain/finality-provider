@@ -12,7 +12,7 @@ import (
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
-	fptypes "github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +21,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/merkle"
 )
 
-func GenBtcStakingExecMsg(fpHex string) fptypes.BtcStakingExecMsg {
+func GenBtcStakingExecMsg(fpHex string) cosmwasm.BtcStakingExecMsg {
 	// generate random delegation and finality provider
 	_, newDel := genRandomBtcDelegation()
 	newFp := genRandomFinalityProvider()
@@ -31,22 +31,22 @@ func GenBtcStakingExecMsg(fpHex string) fptypes.BtcStakingExecMsg {
 	newDel.FpBtcPkList = []string{fpHex}
 
 	// create the BtcStakingExecMsg instance
-	executeMessage := fptypes.BtcStakingExecMsg{
-		BtcStaking: fptypes.BtcStaking{
-			NewFP:       []fptypes.NewFinalityProvider{newFp},
-			ActiveDel:   []fptypes.ActiveBtcDelegation{newDel},
-			SlashedDel:  []fptypes.SlashedBtcDelegation{},
-			UnbondedDel: []fptypes.UnbondedBtcDelegation{},
+	executeMessage := cosmwasm.BtcStakingExecMsg{
+		BtcStaking: cosmwasm.BtcStaking{
+			NewFP:       []cosmwasm.NewFinalityProvider{newFp},
+			ActiveDel:   []cosmwasm.ActiveBtcDelegation{newDel},
+			SlashedDel:  []cosmwasm.SlashedBtcDelegation{},
+			UnbondedDel: []cosmwasm.UnbondedBtcDelegation{},
 		},
 	}
 
 	return executeMessage
 }
 
-func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) fptypes.PubRandomnessExecMsg {
+func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) cosmwasm.PubRandomnessExecMsg {
 	// create the PubRandomnessExecMsg instance
-	executeMessage := fptypes.PubRandomnessExecMsg{
-		CommitPublicRandomness: fptypes.CommitPublicRandomness{
+	executeMessage := cosmwasm.PubRandomnessExecMsg{
+		CommitPublicRandomness: cosmwasm.CommitPublicRandomness{
 			FPPubKeyHex: fpHex,
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -58,7 +58,7 @@ func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubR
 	return executeMessage
 }
 
-func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) fptypes.FinalitySigExecMsg {
+func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) cosmwasm.FinalitySigExecMsg {
 	fmsg := genAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
 
 	// iterate proof.aunts and convert them to base64 encoded strings
@@ -67,12 +67,12 @@ func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datag
 		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
 	}
 
-	msg := fptypes.FinalitySigExecMsg{
-		SubmitFinalitySignature: fptypes.SubmitFinalitySignature{
+	msg := cosmwasm.FinalitySigExecMsg{
+		SubmitFinalitySignature: cosmwasm.SubmitFinalitySignature{
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
 			Height:      fmsg.BlockHeight,
 			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
-			Proof: fptypes.Proof{
+			Proof: cosmwasm.Proof{
 				Total:    uint64(fmsg.Proof.Total),
 				Index:    uint64(fmsg.Proof.Index),
 				LeafHash: base64.StdEncoding.EncodeToString(fmsg.Proof.LeafHash),
@@ -86,9 +86,9 @@ func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datag
 	return msg
 }
 
-func genRandomFinalityProvider() fptypes.NewFinalityProvider {
-	return fptypes.NewFinalityProvider{
-		Description: &fptypes.FinalityProviderDescription{
+func genRandomFinalityProvider() cosmwasm.NewFinalityProvider {
+	return cosmwasm.NewFinalityProvider{
+		Description: &cosmwasm.FinalityProviderDescription{
 			Moniker:         "fp1",
 			Identity:        "Finality Provider 1",
 			Website:         "https://fp1.com",
@@ -96,11 +96,11 @@ func genRandomFinalityProvider() fptypes.NewFinalityProvider {
 			Details:         "details",
 		},
 		Commission: "0.05",
-		BabylonPK: &fptypes.PubKey{
+		BabylonPK: &cosmwasm.PubKey{
 			Key: base64.StdEncoding.EncodeToString([]byte("mock_pub_rand")),
 		},
 		BTCPKHex: "1",
-		Pop: &fptypes.ProofOfPossession{
+		Pop: &cosmwasm.ProofOfPossession{
 			BTCSigType: 0,
 			BabylonSig: base64.StdEncoding.EncodeToString([]byte("mock_babylon_sig")),
 			BTCSig:     base64.StdEncoding.EncodeToString([]byte("mock_btc_sig")),
@@ -109,7 +109,7 @@ func genRandomFinalityProvider() fptypes.NewFinalityProvider {
 	}
 }
 
-func genRandomBtcDelegation() (*bstypes.Params, fptypes.ActiveBtcDelegation) {
+func genRandomBtcDelegation() (*bstypes.Params, cosmwasm.ActiveBtcDelegation) {
 	var net = &chaincfg.RegressionNetParams
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	t := &testing.T{}
@@ -169,45 +169,45 @@ func genRandomBtcDelegation() (*bstypes.Params, fptypes.ActiveBtcDelegation) {
 	return bsParams, activeDel
 }
 
-func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) fptypes.ActiveBtcDelegation {
+func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) cosmwasm.ActiveBtcDelegation {
 	var fpBtcPkList []string
 	for _, pk := range mockDel.FpBtcPkList {
 		fpBtcPkList = append(fpBtcPkList, pk.MarshalHex())
 	}
 
-	var covenantSigs []fptypes.CovenantAdaptorSignatures
+	var covenantSigs []cosmwasm.CovenantAdaptorSignatures
 	for _, cs := range mockDel.CovenantSigs {
 		var adaptorSigs []string
 		for _, sig := range cs.AdaptorSigs {
 			adaptorSigs = append(adaptorSigs, base64.StdEncoding.EncodeToString(sig))
 		}
-		covenantSigs = append(covenantSigs, fptypes.CovenantAdaptorSignatures{
+		covenantSigs = append(covenantSigs, cosmwasm.CovenantAdaptorSignatures{
 			CovPK:       cs.CovPk.MarshalHex(),
 			AdaptorSigs: adaptorSigs,
 		})
 	}
 
-	var covenantUnbondingSigs []fptypes.SignatureInfo
+	var covenantUnbondingSigs []cosmwasm.SignatureInfo
 	for _, sigInfo := range mockDel.BtcUndelegation.CovenantUnbondingSigList {
-		covenantUnbondingSigs = append(covenantUnbondingSigs, fptypes.SignatureInfo{
+		covenantUnbondingSigs = append(covenantUnbondingSigs, cosmwasm.SignatureInfo{
 			PK:  sigInfo.Pk.MarshalHex(),
 			Sig: base64.StdEncoding.EncodeToString(sigInfo.Sig.MustMarshal()),
 		})
 	}
 
-	var covenantSlashingSigs []fptypes.CovenantAdaptorSignatures
+	var covenantSlashingSigs []cosmwasm.CovenantAdaptorSignatures
 	for _, cs := range mockDel.BtcUndelegation.CovenantSlashingSigs {
 		var adaptorSigs []string
 		for _, sig := range cs.AdaptorSigs {
 			adaptorSigs = append(adaptorSigs, base64.StdEncoding.EncodeToString(sig))
 		}
-		covenantSlashingSigs = append(covenantSlashingSigs, fptypes.CovenantAdaptorSignatures{
+		covenantSlashingSigs = append(covenantSlashingSigs, cosmwasm.CovenantAdaptorSignatures{
 			CovPK:       cs.CovPk.MarshalHex(),
 			AdaptorSigs: adaptorSigs,
 		})
 	}
 
-	undelegationInfo := fptypes.BtcUndelegationInfo{
+	undelegationInfo := cosmwasm.BtcUndelegationInfo{
 		UnbondingTx:           base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.UnbondingTx),
 		SlashingTx:            base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.SlashingTx.MustMarshal()),
 		DelegatorSlashingSig:  base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal()),
@@ -215,7 +215,7 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) f
 		CovenantSlashingSigs:  covenantSlashingSigs,
 	}
 
-	return fptypes.ActiveBtcDelegation{
+	return cosmwasm.ActiveBtcDelegation{
 		BTCPkHex:             mockDel.BtcPk.MarshalHex(),
 		FpBtcPkList:          fpBtcPkList,
 		StartHeight:          mockDel.StartHeight,

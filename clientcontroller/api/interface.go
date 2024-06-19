@@ -1,22 +1,11 @@
-package clientcontroller
+package api
 
 import (
-	"fmt"
-
 	"cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"go.uber.org/zap"
 
-	cosmwasmcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
-)
-
-const (
-	BabylonConsumerChainName = "babylon"
-	EVMConsumerChainName     = "evm"
-	WasmdConsumerChainName   = "wasmd"
 )
 
 type ClientController interface {
@@ -40,16 +29,6 @@ type ClientController interface {
 	QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error)
 
 	Close() error
-}
-
-// NewClientController TODO: this is always going to be babylon so rename accordingly
-func NewClientController(config *fpcfg.Config, logger *zap.Logger) (ClientController, error) {
-	cc, err := NewBabylonController(config.BabylonConfig, &config.BTCNetParams, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
-	}
-
-	return cc, err
 }
 
 type ConsumerController interface {
@@ -92,34 +71,4 @@ type ConsumerController interface {
 	QueryActivatedHeight() (uint64, error)
 
 	Close() error
-}
-
-func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (ConsumerController, error) {
-	var (
-		ccc ConsumerController
-		err error
-	)
-
-	switch config.ChainName {
-	case BabylonConsumerChainName:
-		ccc, err = NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
-		}
-	case EVMConsumerChainName:
-		ccc, err = NewEVMConsumerController(config.EVMConfig, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EVM rpc client: %w", err)
-		}
-	case WasmdConsumerChainName:
-		wasmdEncodingCfg := cosmwasmcfg.GetWasmdEncodingConfig()
-		ccc, err = NewCosmwasmConsumerController(config.CosmwasmConfig, wasmdEncodingCfg, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported consumer chain")
-	}
-
-	return ccc, err
 }

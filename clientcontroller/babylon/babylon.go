@@ -1,4 +1,4 @@
-package clientcontroller
+package babylon
 
 import (
 	"context"
@@ -24,11 +24,12 @@ import (
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"go.uber.org/zap"
 
+	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 )
 
-var _ ClientController = &BabylonController{}
+var _ api.ClientController = &BabylonController{}
 
 var emptyErrs = []*sdkErr.Error{}
 

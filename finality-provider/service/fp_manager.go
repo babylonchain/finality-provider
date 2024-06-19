@@ -12,7 +12,7 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
+	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
@@ -44,8 +44,8 @@ type FinalityProviderManager struct {
 	fps          *store.FinalityProviderStore
 	pubRandStore *store.PubRandProofStore
 	config       *fpcfg.Config
-	cc           clientcontroller.ClientController
-	consumerCon  clientcontroller.ConsumerController
+	cc           ccapi.ClientController
+	consumerCon  ccapi.ConsumerController
 	em           eotsmanager.EOTSManager
 	logger       *zap.Logger
 
@@ -60,8 +60,8 @@ func NewFinalityProviderManager(
 	fps *store.FinalityProviderStore,
 	pubRandStore *store.PubRandProofStore,
 	config *fpcfg.Config,
-	cc clientcontroller.ClientController,
-	consumerCon clientcontroller.ConsumerController,
+	cc ccapi.ClientController,
+	consumerCon ccapi.ConsumerController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	logger *zap.Logger,

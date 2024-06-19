@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	fptypes "github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -44,7 +44,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 
 	// instantiate babylon contract with admin
 	btcStakingInitMsg := map[string]interface{}{
-		"admin": ctm.WasmdConsumerClient.CosmwasmClient.MustGetAddr(),
+		"admin": ctm.WasmdConsumerClient.MustGetValidatorAddress(),
 	}
 	btcStakingInitMsgBytes, err := json.Marshal(btcStakingInitMsg)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 		"notify_cosmos_zone":              false,
 		"btc_staking_code_id":             btcStakingContractWasmId,
 		"btc_staking_msg":                 btcStakingInitMsgBytes,
-		"admin":                           ctm.WasmdConsumerClient.CosmwasmClient.MustGetAddr(),
+		"admin":                           ctm.WasmdConsumerClient.MustGetValidatorAddress(),
 	}
 	initMsgBytes, err := json.Marshal(initMsg)
 	require.NoError(t, err)
@@ -81,14 +81,14 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	msg := GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(msgBytes)
+	_, err = ctm.WasmdConsumerClient.ExecuteContract(msgBytes)
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
 	dataFromContract, err := ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerFps fptypes.ConsumerFpsResponse
+	var consumerFps cosmwasm.ConsumerFpsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerFps)
 	require.NoError(t, err)
 	require.Len(t, consumerFps.ConsumerFps, 1)
@@ -99,7 +99,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"delegations": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerDels fptypes.ConsumerDelegationsResponse
+	var consumerDels cosmwasm.ConsumerDelegationsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerDels)
 	require.NoError(t, err)
 	require.Len(t, consumerDels.ConsumerDelegations, 1)
@@ -115,7 +115,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers_by_power": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var fpPower fptypes.ConsumerFpsByPowerResponse
+	var fpPower cosmwasm.ConsumerFpsByPowerResponse
 	err = json.Unmarshal(dataFromContract.Data, &fpPower)
 	require.NoError(t, err)
 	require.Len(t, fpPower.Fps, 1)
@@ -132,23 +132,23 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	)
 	msgBytes2, err := json.Marshal(msg2)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(msgBytes2)
+	_, err = ctm.WasmdConsumerClient.ExecuteContract(msgBytes2)
 	require.NoError(t, err)
 
 	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
-	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
+	wasmdNodeStatus, err := ctm.WasmdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
 	finalitySigMsg := GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
-	_, err = ctm.WasmdConsumerClient.Exec(finalitySigMsgBytes)
+	_, err = ctm.WasmdConsumerClient.ExecuteContract(finalitySigMsgBytes)
 	require.NoError(t, err)
 	finalitySigQuery := fmt.Sprintf(`{"finality_signature": {"btc_pk_hex": "%s", "height": %d}}`, msgPub.FpBtcPk.MarshalHex(), cometLatestHeight)
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var fpSigsResponse fptypes.FinalitySignatureResponse
+	var fpSigsResponse cosmwasm.FinalitySignatureResponse
 	err = json.Unmarshal(dataFromContract.Data, &fpSigsResponse)
 	require.NoError(t, err)
 	require.NotNil(t, fpSigsResponse.Signature)

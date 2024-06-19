@@ -3,34 +3,29 @@ package config
 import (
 	"fmt"
 	"net/url"
-	"os"
-	"path/filepath"
 	"time"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/chains/cosmos"
 )
 
 // CosmwasmConfig defines configuration for the Babylon client
 // adapted from https://github.com/strangelove-ventures/lens/blob/v0.5.1/client/config.go
 type CosmwasmConfig struct {
-	Key                       string        `mapstructure:"key"`
-	ChainID                   string        `mapstructure:"chain-id"`
-	RPCAddr                   string        `mapstructure:"rpc-addr"`
-	GRPCAddr                  string        `mapstructure:"grpc-addr"`
-	AccountPrefix             string        `mapstructure:"account-prefix"`
-	KeyringBackend            string        `mapstructure:"keyring-backend"`
-	GasAdjustment             float64       `mapstructure:"gas-adjustment"`
-	GasPrices                 string        `mapstructure:"gas-prices"`
-	KeyDirectory              string        `mapstructure:"key-directory"`
-	Debug                     bool          `mapstructure:"debug"`
-	Timeout                   time.Duration `mapstructure:"timeout"`
-	BlockTimeout              time.Duration `mapstructure:"block-timeout"`
-	OutputFormat              string        `mapstructure:"output-format"`
-	SignModeStr               string        `mapstructure:"sign-mode"`
-	SubmitterAddress          string        `mapstructure:"submitter-address"`
-	BabylonContractAddress    string        `mapstructure:"babylon-contract-address"`
-	BtcStakingContractAddress string        `mapstructure:"btc-staking-contract-address"`
+	Key              string        `mapstructure:"key"`
+	ChainID          string        `mapstructure:"chain-id"`
+	RPCAddr          string        `mapstructure:"rpc-addr"`
+	GRPCAddr         string        `mapstructure:"grpc-addr"`
+	AccountPrefix    string        `mapstructure:"account-prefix"`
+	KeyringBackend   string        `mapstructure:"keyring-backend"`
+	GasAdjustment    float64       `mapstructure:"gas-adjustment"`
+	GasPrices        string        `mapstructure:"gas-prices"`
+	KeyDirectory     string        `mapstructure:"key-directory"`
+	Debug            bool          `mapstructure:"debug"`
+	Timeout          time.Duration `mapstructure:"timeout"`
+	BlockTimeout     time.Duration `mapstructure:"block-timeout"`
+	OutputFormat     string        `mapstructure:"output-format"`
+	SignModeStr      string        `mapstructure:"sign-mode"`
+	SubmitterAddress string        `mapstructure:"submitter-address"`
 }
 
 func (cfg *CosmwasmConfig) Validate() error {
@@ -44,22 +39,6 @@ func (cfg *CosmwasmConfig) Validate() error {
 
 	if cfg.BlockTimeout < 0 {
 		return fmt.Errorf("block-timeout can't be negative")
-	}
-
-	if cfg.BabylonContractAddress == "" {
-		return fmt.Errorf("babylon-contract-address is required")
-	}
-	_, err := sdk.AccAddressFromBech32(cfg.BabylonContractAddress)
-	if err != nil {
-		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
-	}
-
-	if cfg.BtcStakingContractAddress == "" {
-		return fmt.Errorf("btc-staking-contract-address is required")
-	}
-	_, err = sdk.AccAddressFromBech32(cfg.BtcStakingContractAddress)
-	if err != nil {
-		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
 	}
 
 	return nil
@@ -81,38 +60,4 @@ func (cfg *CosmwasmConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig 
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
 	}
-}
-
-func DefaultWasmConfig() CosmwasmConfig {
-	return CosmwasmConfig{
-		Key:     "node0",
-		ChainID: "chain-test",
-		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
-		// TODO: configure HTTPS for Babylon's RPC server
-		// TODO: how to use Cosmos SDK's RPC server (port 1317) rather than Tendermint's RPC server (port 26657)?
-		RPCAddr: "http://localhost:26657",
-		// TODO: how to support GRPC in the Babylon client?
-		GRPCAddr:         "https://localhost:9090",
-		AccountPrefix:    "bbn",
-		KeyringBackend:   "test",
-		GasAdjustment:    1.2,
-		GasPrices:        "0.01ubbn",
-		KeyDirectory:     defaultWasmHome(),
-		Debug:            true,
-		Timeout:          20 * time.Second,
-		OutputFormat:     "json",
-		SignModeStr:      "direct",
-		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon
-	}
-}
-
-// defaultWasmHome returns the default cosmoswasm enabled cosmos sdk chain node directory, which is $HOME/.babylond
-// copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
-func defaultWasmHome() string {
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-
-	return filepath.Join(userHomeDir, ".wasmd")
 }
