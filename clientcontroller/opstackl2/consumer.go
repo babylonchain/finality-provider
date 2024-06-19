@@ -22,6 +22,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"go.uber.org/zap"
 )
 
@@ -223,19 +224,34 @@ func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *bt
 	return 0, nil
 }
 
+// QueryLatestFinalizedBlock returns the finalized L2 block from a RPC call
+// TODO: return the BTC finalized L2 block, it is tricky
 func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
+	defer cancel()
+
+	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.FinalizedBlockNumber.Int64()))
+	if err != nil {
+		return nil, err
+	}
 	return &types.BlockInfo{
-		Height: 0,
-		Hash:   nil,
+		Height: l2Block.Number.Uint64(),
+		Hash:   l2Block.Hash().Bytes(),
 	}, nil
 }
 
 func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
-	return cc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), 0, finalitytypes.QueriedBlockStatus_ANY, false)
-}
-
-func (cc *OPStackL2ConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
 	var blocks []*types.BlockInfo
+	var count uint64 = 0
+
+	for height := startHeight; height <= endHeight && count < limit; height++ {
+		block, err := cc.QueryBlock(height)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, block)
+		count++
+	}
 	return blocks, nil
 }
 
@@ -267,7 +283,12 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
 	defer cancel()
 
-	return cc.opl2Client.BlockNumber(ctx)
+	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.LatestBlockNumber.Int64()))
+	if err != nil {
+		return 0, err
+	}
+
+	return l2LatestBlock.Number.Uint64(), nil
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
