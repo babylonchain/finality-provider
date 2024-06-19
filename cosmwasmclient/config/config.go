@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 	"net/url"
-	"os"
-	"path/filepath"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -81,38 +79,4 @@ func (cfg *CosmwasmConfig) ToCosmosProviderConfig() cosmos.CosmosProviderConfig 
 		OutputFormat:   cfg.OutputFormat,
 		SignModeStr:    cfg.SignModeStr,
 	}
-}
-
-func DefaultWasmConfig() CosmwasmConfig {
-	return CosmwasmConfig{
-		Key:     "node0",
-		ChainID: "chain-test",
-		// see https://docs.cosmos.network/master/core/grpc_rest.html for default ports
-		// TODO: configure HTTPS for Babylon's RPC server
-		// TODO: how to use Cosmos SDK's RPC server (port 1317) rather than Tendermint's RPC server (port 26657)?
-		RPCAddr: "http://localhost:26657",
-		// TODO: how to support GRPC in the Babylon client?
-		GRPCAddr:         "https://localhost:9090",
-		AccountPrefix:    "bbn",
-		KeyringBackend:   "test",
-		GasAdjustment:    1.2,
-		GasPrices:        "0.01ubbn",
-		KeyDirectory:     defaultWasmHome(),
-		Debug:            true,
-		Timeout:          20 * time.Second,
-		OutputFormat:     "json",
-		SignModeStr:      "direct",
-		SubmitterAddress: "bbn1v6k7k9s8md3k29cu9runasstq5zaa0lpznk27w", // this is currently a placeholder, will not recognized by Babylon
-	}
-}
-
-// defaultWasmHome returns the default cosmoswasm enabled cosmos sdk chain node directory, which is $HOME/.babylond
-// copied from https://github.com/babylonchain/babylon/blob/648b804bc492ded2cb826ba261d7164b4614d78a/app/app.go#L205-L210
-func defaultWasmHome() string {
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-
-	return filepath.Join(userHomeDir, ".wasmd")
 }
