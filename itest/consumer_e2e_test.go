@@ -44,7 +44,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 
 	// instantiate babylon contract with admin
 	btcStakingInitMsg := map[string]interface{}{
-		"admin": ctm.WasmdConsumerClient.CosmwasmClient.MustGetAddr(),
+		"admin": ctm.WasmdConsumerClient.MustGetValidatorAddress(),
 	}
 	btcStakingInitMsgBytes, err := json.Marshal(btcStakingInitMsg)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 		"notify_cosmos_zone":              false,
 		"btc_staking_code_id":             btcStakingContractWasmId,
 		"btc_staking_msg":                 btcStakingInitMsgBytes,
-		"admin":                           ctm.WasmdConsumerClient.CosmwasmClient.MustGetAddr(),
+		"admin":                           ctm.WasmdConsumerClient.MustGetValidatorAddress(),
 	}
 	initMsgBytes, err := json.Marshal(initMsg)
 	require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
-	wasmdNodeStatus, err := ctm.WasmdConsumerClient.CosmwasmClient.GetStatus()
+	wasmdNodeStatus, err := ctm.WasmdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
 	finalitySigMsg := GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
