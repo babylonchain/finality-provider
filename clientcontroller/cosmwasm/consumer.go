@@ -138,7 +138,7 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 		return nil, err
 	}
 
-	return &fptypes.TxResponse{TxHash: res.TxHash, Events: fromCosmosEventsToBytes(res.Events)}, nil
+	return &fptypes.TxResponse{TxHash: res.TxHash}, nil
 }
 
 // SubmitFinalitySig submits the finality signature via a MsgAddVote to Babylon
