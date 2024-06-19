@@ -18,7 +18,6 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	cwcclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
-	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	fptypes "github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -35,7 +34,7 @@ var _ api.ConsumerController = &CosmwasmConsumerController{}
 
 type CosmwasmConsumerController struct {
 	cwcClient *cwcclient.Client
-	cfg       *config.CosmwasmConfig
+	cfg       *fpcfg.CosmwasmConfig
 	logger    *zap.Logger
 }
 
@@ -44,7 +43,7 @@ func NewCosmwasmConsumerController(
 	encodingCfg wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*CosmwasmConsumerController, error) {
-	wasmdConfig := fpcfg.ToQueryClientConfig(cfg)
+	wasmdConfig := cfg.ToQueryClientConfig()
 
 	if err := wasmdConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for Wasmd client: %w", err)
@@ -62,7 +61,7 @@ func NewCosmwasmConsumerController(
 
 	return &CosmwasmConsumerController{
 		wc,
-		wasmdConfig,
+		cfg,
 		logger,
 	}, nil
 }
@@ -134,7 +133,7 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 
 	}
 
-	res, err := wc.Exec(msgBytes)
+	res, err := wc.ExecuteContract(msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +181,7 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 
 	}
 
-	res, err := wc.Exec(msgBytes)
+	res, err := wc.ExecuteContract(msgBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +456,7 @@ func (wc *CosmwasmConsumerController) Close() error {
 	return wc.cwcClient.Stop()
 }
 
-func (wc *CosmwasmConsumerController) Exec(payload []byte) (*provider.RelayerTxResponse, error) {
+func (wc *CosmwasmConsumerController) ExecuteContract(payload []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmdtypes.MsgExecuteContract{
 		Sender:   wc.cwcClient.MustGetAddr(),
 		Contract: wc.cfg.BtcStakingContractAddress,
