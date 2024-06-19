@@ -1,13 +1,17 @@
 package e2etest
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -200,4 +204,101 @@ func bcdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 	cmd.Stderr = f
 
 	return cmd
+}
+
+func (w *BcdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
+	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
+		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", wasmdChainID,
+		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return "", "", fmt.Errorf("error running wasmd store command: %v", err)
+	}
+
+	// TODO: using struct from cometbft/sdk gives unmarshal error, investigate
+	var txResp TxResponse
+	resp := out.String()
+	err = json.Unmarshal([]byte(resp), &txResp)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling store wasm response: %v", err)
+	}
+
+	time.Sleep(3 * time.Second)
+	queryOutput, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txResp.TxHash, "-o", "json")
+	if err != nil {
+		return "", "", fmt.Errorf("error querying transaction: %v", err)
+	}
+
+	var queryResp TxResponse
+	err = json.Unmarshal(queryOutput, &queryResp)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling query response: %v", err)
+	}
+
+	var codeID, codeHash string
+	for _, event := range queryResp.Events {
+		if event.Type == "store_code" {
+			for _, attr := range event.Attributes {
+				if attr.Key == "code_id" {
+					codeID = attr.Value
+				} else if attr.Key == "code_checksum" {
+					codeHash = attr.Value
+				}
+			}
+		}
+	}
+
+	if codeID == "" || codeHash == "" {
+		return "", "", fmt.Errorf("code ID or code checksum not found in transaction events")
+	}
+
+	return codeID, codeHash, nil
+}
+
+func (w *BcdNodeHandler) GetLatestBlockHeight() (int64, error) {
+	out, err := runCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir())
+	if err != nil {
+		return 0, fmt.Errorf("error running wasmd status command: %v", err)
+	}
+
+	// TODO: using struct from cometbft/sdk gives unmarshal error, investigate
+	var statusResp StatusResponse
+	err = json.Unmarshal(out, &statusResp)
+	if err != nil {
+		return 0, fmt.Errorf("error unmarshalling status response: %v", err)
+	}
+
+	height, err := strconv.ParseInt(statusResp.SyncInfo.LatestBlockHeight, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing block height: %v", err)
+	}
+
+	return height, nil
+}
+
+func (w *BcdNodeHandler) GetLatestCodeID() (string, error) {
+	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
+	if err != nil {
+		return "", fmt.Errorf("error running wasmd list-code command: %v", err)
+	}
+
+	// TODO: using struct from cometbft/sdk gives unmarshal error, investigate
+	var listCodesResp ListResponse
+	err = json.Unmarshal(output, &listCodesResp)
+	if err != nil {
+		return "", fmt.Errorf("error unmarshalling list-code response: %v", err)
+	}
+
+	// Get the latest code ID from the list
+	if len(listCodesResp.CodeInfos) == 0 {
+		return "", fmt.Errorf("no code info found in list-code response")
+	}
+
+	latestCodeID := listCodesResp.CodeInfos[0].CodeID
+	return latestCodeID, nil
 }
