@@ -277,7 +277,23 @@ func (cc *OPStackL2ConsumerController) QueryIsBlockFinalized(height uint64) (boo
 }
 
 func (cc *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
-	return 0, nil
+	queryMsg := &QueryMsg{Config: &Config{}}
+	jsonData, err := json.Marshal(queryMsg) // `{"config":{}}`
+	if err != nil {
+		return 0, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+	stateResp, err := cc.cwClient.QuerySmartContractState(cc.cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return 0, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	var resp ConfigResponse
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return resp.ActivatedHeight, nil
 }
 
 // QueryLatestBlockHeight gets the latest L2 block number from a RPC call
