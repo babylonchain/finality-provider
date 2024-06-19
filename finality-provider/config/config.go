@@ -79,7 +79,7 @@ type Config struct {
 
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 
-	EVMConfig *EVMConfig `group:"evm" namespace:"evm"`
+	OPStackL2Config *OPStackL2Config `group:"opstackl2" namespace:"opstackl2"`
 
 	CosmwasmConfig *CosmwasmConfig `group:"wasm" namespace:"wasm"`
 

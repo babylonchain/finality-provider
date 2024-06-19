@@ -9,7 +9,7 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
+	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	cfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/types"
@@ -42,8 +42,8 @@ type ChainPoller struct {
 	wg        sync.WaitGroup
 	quit      chan struct{}
 
-	cc             clientcontroller.ClientController
-	consumerCon    clientcontroller.ConsumerController
+	cc             ccapi.ClientController
+	consumerCon    ccapi.ConsumerController
 	cfg            *cfg.ChainPollerConfig
 	metrics        *metrics.FpMetrics
 	blockInfoChan  chan *types.BlockInfo
@@ -55,8 +55,8 @@ type ChainPoller struct {
 func NewChainPoller(
 	logger *zap.Logger,
 	cfg *cfg.ChainPollerConfig,
-	cc clientcontroller.ClientController,
-	consumerCon clientcontroller.ConsumerController,
+	cc ccapi.ClientController,
+	consumerCon ccapi.ConsumerController,
 	metrics *metrics.FpMetrics,
 ) *ChainPoller {
 	return &ChainPoller{
