@@ -33,7 +33,7 @@ const (
 var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
-	bbnClient  *cwclient.Client
+	cwClient   *cwclient.Client
 	opl2Client *ethclient.Client
 	cfg        *fpcfg.OPStackL2Config
 	logger     *zap.Logger
@@ -49,17 +49,17 @@ func NewOPStackL2ConsumerController(
 	}
 
 	bbnEncodingCfg := bbnapp.GetEncodingConfig()
-	wasmdEncodingCfg := wasmdparams.EncodingConfig{
+	cwEncodingCfg := wasmdparams.EncodingConfig{
 		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
 		Codec:             bbnEncodingCfg.Codec,
 		TxConfig:          bbnEncodingCfg.TxConfig,
 		Amino:             bbnEncodingCfg.Amino,
 	}
 
-	bbnClient, err := cwclient.New(
+	cwClient, err := cwclient.New(
 		&cwConfig,
 		BabylonChainName,
-		wasmdEncodingCfg,
+		cwEncodingCfg,
 		logger,
 	)
 	if err != nil {
@@ -75,7 +75,7 @@ func NewOPStackL2ConsumerController(
 	}
 
 	return &OPStackL2ConsumerController{
-		bbnClient,
+		cwClient,
 		opl2Client,
 		opl2Cfg,
 		logger,
@@ -87,7 +87,7 @@ func (cc *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs
 }
 
 func (cc *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return cc.bbnClient.ReliablySendMsgs(
+	return cc.cwClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -118,7 +118,7 @@ func (cc *OPStackL2ConsumerController) CommitPubRandList(
 		return nil, err
 	}
 	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   cc.bbnClient.MustGetAddr(),
+		Sender:   cc.cwClient.MustGetAddr(),
 		Contract: cc.cfg.OPFinalityGadgetAddress,
 		Msg:      payload,
 	}
@@ -159,7 +159,7 @@ func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   cc.bbnClient.MustGetAddr(),
+		Sender:   cc.cwClient.MustGetAddr(),
 		Contract: cc.cfg.OPFinalityGadgetAddress,
 		Msg:      payload,
 	}
@@ -204,7 +204,7 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 			return nil, err
 		}
 		execMsg := &wasmtypes.MsgExecuteContract{
-			Sender:   cc.bbnClient.MustGetAddr(),
+			Sender:   cc.cwClient.MustGetAddr(),
 			Contract: cc.cfg.OPFinalityGadgetAddress,
 			Msg:      payload,
 		}
@@ -298,5 +298,5 @@ func (ec *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 
 func (cc *OPStackL2ConsumerController) Close() error {
 	cc.opl2Client.Close()
-	return cc.bbnClient.Stop()
+	return cc.cwClient.Stop()
 }
