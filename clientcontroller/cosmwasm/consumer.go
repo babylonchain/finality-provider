@@ -13,7 +13,6 @@ import (
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
-	bbn "github.com/babylonchain/babylon/types"
 	bbntypes "github.com/babylonchain/babylon/types"
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
@@ -249,7 +248,7 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	fpBtcPkHex := bbn.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
+	fpBtcPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
 	queryMsg := fmt.Sprintf(`{"finality_provider_info":{"btc_pk_hex":"%s", "height": %d}}`, fpBtcPkHex, blockHeight)
 	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
 	if err != nil {
