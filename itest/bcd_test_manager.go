@@ -140,7 +140,7 @@ func (ctm *BcdTestManager) WaitForServicesStart(t *testing.T) {
 		}
 		return blockHeight > 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
-	t.Logf("Wasmd node is started")
+	t.Logf("Bcd node is started")
 }
 
 func (ctm *BcdTestManager) Stop(t *testing.T) {
