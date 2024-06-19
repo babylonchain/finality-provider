@@ -225,7 +225,8 @@ func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *bt
 }
 
 // QueryLatestFinalizedBlock returns the finalized L2 block from a RPC call
-// TODO: return the BTC finalized L2 block, it is tricky
+// TODO: return the BTC finalized L2 block, it is tricky b/c it's not recorded anywhere so we can
+// use some exponential strategy to search
 func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
 	defer cancel()
@@ -244,6 +245,7 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 	var blocks []*types.BlockInfo
 	var count uint64 = 0
 
+	// TODO(lester): add test
 	for height := startHeight; height <= endHeight && count < limit; height++ {
 		block, err := cc.QueryBlock(height)
 		if err != nil {
