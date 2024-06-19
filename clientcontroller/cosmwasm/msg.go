@@ -1,4 +1,4 @@
-package types
+package cosmwasm
 
 type ConsumerFpsResponse struct {
 	ConsumerFps []SingleConsumerFpResponse `json:"fps"`

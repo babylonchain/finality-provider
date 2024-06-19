@@ -118,8 +118,8 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 	sig *schnorr.Signature,
 ) (*fptypes.TxResponse, error) {
 	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig).MustMarshal()
-	msg := fptypes.PubRandomnessExecMsg{
-		CommitPublicRandomness: fptypes.CommitPublicRandomness{
+	msg := PubRandomnessExecMsg{
+		CommitPublicRandomness: CommitPublicRandomness{
 			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -159,12 +159,12 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
 	}
 
-	msg := fptypes.FinalitySigExecMsg{
-		SubmitFinalitySignature: fptypes.SubmitFinalitySignature{
+	msg := FinalitySigExecMsg{
+		SubmitFinalitySignature: SubmitFinalitySignature{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
-			Proof: fptypes.Proof{
+			Proof: Proof{
 				Total:    uint64(cmtProof.Total),
 				Index:    uint64(cmtProof.Index),
 				LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
@@ -209,12 +209,12 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 			aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
 		}
 
-		payload := fptypes.FinalitySigExecMsg{
-			SubmitFinalitySignature: fptypes.SubmitFinalitySignature{
+		payload := FinalitySigExecMsg{
+			SubmitFinalitySignature: SubmitFinalitySignature{
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
 				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
-				Proof: fptypes.Proof{
+				Proof: Proof{
 					Total:    uint64(cmtProof.Total),
 					Index:    uint64(cmtProof.Index),
 					LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
@@ -256,7 +256,7 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 		return 0, err
 	}
 
-	var resp fptypes.SingleConsumerFpPowerResponse
+	var resp SingleConsumerFpPowerResponse
 	err = json.Unmarshal(dataFromContract.Data, &resp)
 	if err != nil {
 		return 0, err
@@ -322,7 +322,7 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count u
 	}
 
 	// Unmarshal the response
-	var resp fptypes.BlocksResponse
+	var resp BlocksResponse
 	err = json.Unmarshal(dataFromContract.Data, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
@@ -341,7 +341,7 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count u
 	return blocks, nil
 }
 
-func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*fptypes.IndexedBlock, error) {
+func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*IndexedBlock, error) {
 	// Construct the query message
 	queryMsg := fmt.Sprintf(`{"block":{"height":%d}}`, height)
 
@@ -352,7 +352,7 @@ func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*fptypes
 	}
 
 	// Unmarshal the response
-	var resp fptypes.IndexedBlock
+	var resp IndexedBlock
 	err = json.Unmarshal(dataFromContract.Data, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)

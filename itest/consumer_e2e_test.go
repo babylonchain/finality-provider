@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	fptypes "github.com/babylonchain/finality-provider/types"
+	"github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -88,7 +88,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err := ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerFps fptypes.ConsumerFpsResponse
+	var consumerFps cosmwasm.ConsumerFpsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerFps)
 	require.NoError(t, err)
 	require.Len(t, consumerFps.ConsumerFps, 1)
@@ -99,7 +99,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"delegations": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var consumerDels fptypes.ConsumerDelegationsResponse
+	var consumerDels cosmwasm.ConsumerDelegationsResponse
 	err = json.Unmarshal(dataFromContract.Data, &consumerDels)
 	require.NoError(t, err)
 	require.Len(t, consumerDels.ConsumerDelegations, 1)
@@ -115,7 +115,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers_by_power": {}}`)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var fpPower fptypes.ConsumerFpsByPowerResponse
+	var fpPower cosmwasm.ConsumerFpsByPowerResponse
 	err = json.Unmarshal(dataFromContract.Data, &fpPower)
 	require.NoError(t, err)
 	require.Len(t, fpPower.Fps, 1)
@@ -148,7 +148,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	dataFromContract, err = ctm.WasmdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)
 	require.NoError(t, err)
 	require.NotNil(t, dataFromContract)
-	var fpSigsResponse fptypes.FinalitySignatureResponse
+	var fpSigsResponse cosmwasm.FinalitySignatureResponse
 	err = json.Unmarshal(dataFromContract.Data, &fpSigsResponse)
 	require.NoError(t, err)
 	require.NotNil(t, fpSigsResponse.Signature)
