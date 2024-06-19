@@ -215,10 +215,6 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("invalid metrics config")
 	}
 
-	if err = cfg.CosmwasmConfig.Validate(); err != nil {
-		return fmt.Errorf("invalid cosmwasm config: %w", err)
-	}
-
 	// All good, return the sanitized result.
 	return nil
 }

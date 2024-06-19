@@ -73,8 +73,9 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	require.NoError(t, err)
 	cfg.CosmwasmConfig = config.DefaultCosmwasmConfig()
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
-	// make random contract addresses for now to avoid validation errors
-	// later in the e2e tests we would upload the contract and update the addresses
+	// TODO: make random contract addresses for now to avoid validation errors
+	//  later in the e2e tests we would upload the contract and update the addresses
+	//  investigate if there is a better way to handle this
 	cfg.CosmwasmConfig.BabylonContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.CosmwasmConfig.BtcStakingContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.ChainName = fpcc.WasmdConsumerChainName
