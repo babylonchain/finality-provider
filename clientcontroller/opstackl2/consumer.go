@@ -22,6 +22,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
 	"github.com/ethereum/go-ethereum/ethclient"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"go.uber.org/zap"
 )
 
@@ -79,21 +80,6 @@ func NewOPStackL2ConsumerController(
 		opl2Cfg,
 		logger,
 	}, nil
-}
-
-func (cc *OPStackL2ConsumerController) ExecuteContract(payload []byte) (*provider.RelayerTxResponse, error) {
-	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   cc.cwClient.MustGetAddr(),
-		Contract: cc.cfg.OPFinalityGadgetAddress,
-		Msg:      payload,
-	}
-
-	res, err := cc.reliablySendMsg(execMsg, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
 }
 
 func (cc *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
@@ -238,19 +224,36 @@ func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *bt
 	return 0, nil
 }
 
+// QueryLatestFinalizedBlock returns the finalized L2 block from a RPC call
+// TODO: return the BTC finalized L2 block, it is tricky b/c it's not recorded anywhere so we can
+// use some exponential strategy to search
 func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
+	defer cancel()
+
+	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.FinalizedBlockNumber.Int64()))
+	if err != nil {
+		return nil, err
+	}
 	return &types.BlockInfo{
-		Height: 0,
-		Hash:   nil,
+		Height: l2Block.Number.Uint64(),
+		Hash:   l2Block.Hash().Bytes(),
 	}, nil
 }
 
 func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
-	return cc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), 0, finalitytypes.QueriedBlockStatus_ANY, false)
-}
-
-func (cc *OPStackL2ConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
 	var blocks []*types.BlockInfo
+	var count uint64 = 0
+
+	// TODO(lester): add test
+	for height := startHeight; height <= endHeight && count < limit; height++ {
+		block, err := cc.QueryBlock(height)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, block)
+		count++
+	}
 	return blocks, nil
 }
 
@@ -282,7 +285,12 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
 	defer cancel()
 
-	return cc.opl2Client.BlockNumber(ctx)
+	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.LatestBlockNumber.Int64()))
+	if err != nil {
+		return 0, err
+	}
+
+	return l2LatestBlock.Number.Uint64(), nil
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
