@@ -235,7 +235,7 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 		return 0, err
 	}
 
-	var resp SingleConsumerFpPowerResponse
+	var resp ConsumerFpPowerResponse
 	err = json.Unmarshal(dataFromContract.Data, &resp)
 	if err != nil {
 		return 0, err
