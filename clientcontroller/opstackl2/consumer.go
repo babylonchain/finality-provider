@@ -219,9 +219,12 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
+// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height.
+// This interface function only used for checking if the FP is eligible for submitting sigs.
+// Now we can simply hardcode the voting power to a positive value.
+// TODO: Another way is that FP leverages backend service that indexes voting power for Babylon.
 func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	return 0, nil
+	return 1, nil
 }
 
 // QueryLatestFinalizedBlock returns the finalized L2 block from a RPC call
@@ -257,7 +260,7 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 	return blocks, nil
 }
 
-// QueryBlock gets the L2 block number and block hash with the given block number from a RPC call
+// QueryBlock returns the L2 block number and block hash with the given block number from a RPC call
 func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
 	defer cancel()
@@ -272,10 +275,20 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	}, nil
 }
 
+// QueryIsBlockFinalized returns whether the given the L2 block number has been finalized
 func (cc *OPStackL2ConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	return false, nil
+	l2Block, err := cc.QueryLatestFinalizedBlock()
+	if err != nil {
+		return false, err
+	}
+	if height > l2Block.Height {
+		return false, nil
+	}
+	return true, nil
 }
 
+// QueryActivatedHeight returns the L2 block number at which the finality gadget is activated.
+// It is fetched from the configuration of a CosmWasm contract OP finality gadget.
 func (cc *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
 	queryMsg := &QueryMsg{Config: &Config{}}
 	jsonData, err := json.Marshal(queryMsg) // `{"config":{}}`
@@ -310,8 +323,38 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (ec *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
-	return nil, nil
+// It is fetched from the state of a CosmWasm contract OP finality gadget.
+func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+	queryMsg := &QueryMsg{
+		LastPubRandCommit: &LastPubRandCommit{
+			BtcPkHex: fpPubKey.MarshalHex(),
+		},
+	}
+
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+
+	stateResp, err := cc.cwClient.QuerySmartContractState(cc.cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	var resp LastPubRandCommitResponse
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	respMap := make(map[uint64]*finalitytypes.PubRandCommitResponse)
+	respMap[resp.StartHeight] = &finalitytypes.PubRandCommitResponse{
+		NumPubRand: resp.NumPubRand,
+		Commitment: resp.Commitment,
+	}
+
+	return respMap, nil
 }
 
 func (cc *OPStackL2ConsumerController) Close() error {
