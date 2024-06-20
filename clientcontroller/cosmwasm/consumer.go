@@ -14,7 +14,6 @@ import (
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	bbntypes "github.com/babylonchain/babylon/types"
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	cwcclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -361,9 +360,49 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
-	// TODO: dummy response, fetch actual data by querying the smart contract
-	return nil, nil
+func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*fptypes.PubRandCommit, error) {
+	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+
+	// Construct the query message
+	reverse := true
+	queryMsgStruct := QueryMsgLastPubRandCommit{
+		LastPubRandCommit: LastPubRandCommitQuery{
+			BtcPkHex:   fpBtcPk.MarshalHex(),
+			StartAfter: nil,
+			Limit:      &count,
+			Reverse:    &reverse,
+		},
+	}
+
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Define a response struct
+	var commits []PubRandCommitResponse
+	err = json.Unmarshal(dataFromContract.Data, &commits)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Convert the response to the expected map format
+	commitMap := make(map[uint64]*fptypes.PubRandCommit)
+	for _, commit := range commits {
+		commitCopy := commit // create a copy to avoid referencing the loop variable
+		commitMap[commit.StartHeight] = &fptypes.PubRandCommit{
+			NumPubRand: commitCopy.NumPubRand,
+			Commitment: commitCopy.Commitment,
+		}
+	}
+
+	return commitMap, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
@@ -447,39 +486,6 @@ func (wc *CosmwasmConsumerController) QueryFinalitySignature(fpBtcPkHex string, 
 	}
 
 	return &resp, nil
-}
-
-// QueryLastCommittedPublicRand returns the last public randomness commitments
-func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*fptypes.PubRandCommit, error) {
-	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
-
-	// Construct the query message
-	queryMsg := fmt.Sprintf(`{"last_pub_rand_commit":{"btc_pk_hex":"%s", "limit":%d}}`, fpBtcPk.MarshalHex(), count)
-
-	// Query the smart contract state
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
-	}
-
-	// Define a response struct
-	var commits []PubRandCommitResponse
-	err = json.Unmarshal(dataFromContract.Data, &commits)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	// Convert the response to the expected map format
-	commitMap := make(map[uint64]*fptypes.PubRandCommit)
-	for _, commit := range commits {
-		commitCopy := commit // create a copy to avoid referencing the loop variable
-		commitMap[commit.StartHeight] = &fptypes.PubRandCommit{
-			NumPubRand: commitCopy.NumPubRand,
-			Commitment: commitCopy.Commitment,
-		}
-	}
-
-	return commitMap, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryFinalityProviders() (*ConsumerFpsResponse, error) {
