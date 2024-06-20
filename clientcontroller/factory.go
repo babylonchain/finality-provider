@@ -16,6 +16,7 @@ const (
 	BabylonConsumerChainName   = "babylon"
 	OPStackL2ConsumerChainName = "OPStackL2"
 	WasmdConsumerChainName     = "wasmd"
+	BcdConsumerChainName       = "bcd"
 )
 
 // NewClientController TODO: this is always going to be babylon so rename accordingly
