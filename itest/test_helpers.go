@@ -60,13 +60,6 @@ func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubR
 
 func GenFinalitySigExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) cosmwasm.ExecMsg {
 	fmsg := genAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
-
-	// iterate proof.aunts and convert them to base64 encoded strings
-	var aunts []string
-	for _, aunt := range fmsg.Proof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
 	msg := cosmwasm.ExecMsg{
 		SubmitFinalitySignature: &cosmwasm.SubmitFinalitySignature{
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
