@@ -127,8 +127,8 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 
-	msg := FinalitySigExecMsg{
-		SubmitFinalitySignature: SubmitFinalitySignature{
+	msg := ExecMsg{
+		SubmitFinalitySignature: &SubmitFinalitySignature{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
@@ -141,7 +141,6 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
-
 	}
 
 	res, err := wc.ExecuteContract(msgBytes)
