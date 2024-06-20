@@ -65,35 +65,6 @@ func NewCosmwasmConsumerController(
 	}, nil
 }
 
-//nolint:unused
-func (wc *CosmwasmConsumerController) mustGetTxSigner() string {
-	signer, err := wc.GetKeyAddress()
-	if err != nil {
-		panic(err)
-	}
-	prefix := wc.cfg.AccountPrefix
-	return sdk.MustBech32ifyAddressBytes(prefix, signer)
-}
-
-func (wc *CosmwasmConsumerController) GetKeyAddress() (sdk.AccAddress, error) {
-	// get key address, retrieves address based on key name which is configured in
-	// cfg *stakercfg.BBNConfig. If this fails, it means we have misconfiguration problem
-	// and we should panic.
-	// This is checked at the start of BabylonConsumerController, so if it fails something is really wrong
-
-	keyRec, err := wc.cwcClient.GetKeyring().Key(wc.cfg.Key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get key: %w", err)
-	}
-
-	addr, err := keyRec.GetAddress()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get address from key: %w", err)
-	}
-
-	return addr, nil
-}
-
 func (wc *CosmwasmConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return wc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
