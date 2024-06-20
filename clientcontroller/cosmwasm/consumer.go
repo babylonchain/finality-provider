@@ -132,7 +132,7 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
-			Proof:       convertProof(cmtProof),
+			Proof:       ConvertProof(cmtProof),
 			BlockHash:   base64.StdEncoding.EncodeToString(block.Hash),
 			Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal()),
 		},
@@ -172,7 +172,7 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
 				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
-				Proof:       convertProof(cmtProof),
+				Proof:       ConvertProof(cmtProof),
 				BlockHash:   base64.StdEncoding.EncodeToString(b.Hash),
 				Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal()),
 			},
@@ -553,7 +553,7 @@ func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
 	return bytes
 }
 
-func convertProof(cmtProof cmtcrypto.Proof) Proof {
+func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
 	var aunts []string
 	for _, aunt := range cmtProof.Aunts {
 		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
