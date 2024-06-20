@@ -3,16 +3,13 @@ package e2etest
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
 	bcdappparams "github.com/babylonchain/babylon-sdk/demo/app/params"
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 )
@@ -84,42 +81,33 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
-	dataFromContract, err := ctm.BcdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers": {}}`)
+	consumerFpsResp, err := ctm.BcdConsumerClient.QueryFinalityProviders()
 	require.NoError(t, err)
-	require.NotNil(t, dataFromContract)
-	var consumerFps cosmwasm.ConsumerFpsResponse
-	err = json.Unmarshal(dataFromContract.Data, &consumerFps)
-	require.NoError(t, err)
-	require.Len(t, consumerFps.ConsumerFps, 1)
-	require.Equal(t, msg.BtcStaking.NewFP[0].ConsumerID, consumerFps.ConsumerFps[0].ConsumerId)
-	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFps.ConsumerFps[0].BtcPkHex)
+	require.NotNil(t, consumerFpsResp)
+	require.Len(t, consumerFpsResp.Fps, 1)
+	require.Equal(t, msg.BtcStaking.NewFP[0].ConsumerID, consumerFpsResp.Fps[0].ConsumerId)
+	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsResp.Fps[0].BtcPkHex)
 
 	// query delegations in smart contract
-	dataFromContract, err = ctm.BcdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"delegations": {}}`)
+	consumerDelsResp, err := ctm.BcdConsumerClient.QueryDelegations()
 	require.NoError(t, err)
-	require.NotNil(t, dataFromContract)
-	var consumerDels cosmwasm.ConsumerDelegationsResponse
-	err = json.Unmarshal(dataFromContract.Data, &consumerDels)
-	require.NoError(t, err)
-	require.Len(t, consumerDels.ConsumerDelegations, 1)
-	require.Empty(t, consumerDels.ConsumerDelegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDels.ConsumerDelegations[0].BtcPkHex)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDels.ConsumerDelegations[0].StartHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDels.ConsumerDelegations[0].EndHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDels.ConsumerDelegations[0].TotalSat)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].StakingTx))   // make sure to compare b64 encoded strings
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDels.ConsumerDelegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+	require.NotNil(t, consumerDelsResp)
+	require.Len(t, consumerDelsResp.Delegations, 1)
+	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx))   // make sure to compare b64 encoded strings
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
 
 	// ensure fp has voting power in smart contract
-	dataFromContract, err = ctm.BcdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), `{"finality_providers_by_power": {}}`)
+	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
 	require.NoError(t, err)
-	require.NotNil(t, dataFromContract)
-	var fpPower cosmwasm.ConsumerFpsByPowerResponse
-	err = json.Unmarshal(dataFromContract.Data, &fpPower)
-	require.NoError(t, err)
-	require.Len(t, fpPower.Fps, 1)
-	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, fpPower.Fps[0].BtcPkHex)
-	require.Equal(t, consumerDels.ConsumerDelegations[0].TotalSat, fpPower.Fps[0].Power)
+	require.NotNil(t, consumerFpsByPowerResp)
+	require.Len(t, consumerFpsByPowerResp.Fps, 1)
+	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
+	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
 
 	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
 	msg2 := GenPubRandomnessExecMsg(
@@ -138,18 +126,14 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	finalitySigMsg := GenFinalitySignExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
+	finalitySigMsg := GenFinalitySigExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	_, err = ctm.BcdConsumerClient.ExecuteContract(finalitySigMsgBytes)
 	require.NoError(t, err)
-	finalitySigQuery := fmt.Sprintf(`{"finality_signature": {"btc_pk_hex": "%s", "height": %d}}`, msgPub.FpBtcPk.MarshalHex(), cometLatestHeight)
-	dataFromContract, err = ctm.BcdConsumerClient.QuerySmartContractState(btcStakingContractAddr.String(), finalitySigQuery)
+	fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(msgPub.FpBtcPk.MarshalHex(), uint64(cometLatestHeight))
 	require.NoError(t, err)
-	require.NotNil(t, dataFromContract)
-	var fpSigsResponse cosmwasm.FinalitySignatureResponse
-	err = json.Unmarshal(dataFromContract.Data, &fpSigsResponse)
-	require.NoError(t, err)
+	require.NotNil(t, fpSigsResponse)
 	require.NotNil(t, fpSigsResponse.Signature)
 	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
 }
