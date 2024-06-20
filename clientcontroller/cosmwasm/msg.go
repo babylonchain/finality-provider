@@ -1,7 +1,7 @@
 package cosmwasm
 
 type ConsumerFpsResponse struct {
-	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
+	Fps []SingleConsumerFpResponse `json:"fps"`
 }
 
 // SingleConsumerFpResponse represents the finality provider data returned by the contract query.
@@ -17,7 +17,7 @@ type SingleConsumerFpResponse struct {
 }
 
 type ConsumerDelegationsResponse struct {
-	ConsumerDelegations []SingleConsumerDelegationResponse `json:"delegations"`
+	Delegations []SingleConsumerDelegationResponse `json:"delegations"`
 }
 
 type SingleConsumerDelegationResponse struct {
@@ -41,13 +41,8 @@ type ConsumerFpInfoResponse struct {
 	Power    uint64 `json:"power"`
 }
 
-type ConsumerFpInfo struct {
-	BtcPkHex string `json:"btc_pk_hex"`
-	Power    uint64 `json:"power"`
-}
-
 type ConsumerFpsByPowerResponse struct {
-	Fps []ConsumerFpInfo `json:"fps"`
+	Fps []ConsumerFpInfoResponse `json:"fps"`
 }
 
 type FinalitySignatureResponse struct {
@@ -201,4 +196,25 @@ type BlocksQuery struct {
 
 type QueryMsgActivatedHeight struct {
 	ActivatedHeight struct{} `json:"activated_height"`
+}
+
+type QueryMsgFinalitySignature struct {
+	FinalitySignature FinalitySignatureQuery `json:"finality_signature"`
+}
+
+type FinalitySignatureQuery struct {
+	BtcPkHex string `json:"btc_pk_hex"`
+	Height   uint64 `json:"height"`
+}
+
+type QueryMsgFinalityProviders struct {
+	FinalityProviders struct{} `json:"finality_providers"`
+}
+
+type QueryMsgDelegations struct {
+	Delegations struct{} `json:"delegations"`
+}
+
+type QueryMsgFinalityProvidersByPower struct {
+	FinalityProvidersByPower struct{} `json:"finality_providers_by_power"`
 }

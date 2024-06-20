@@ -226,6 +226,30 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 	return resp.Power, nil
 }
 
+func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*ConsumerFpsByPowerResponse, error) {
+	queryMsgStruct := QueryMsgFinalityProvidersByPower{
+		FinalityProvidersByPower: struct{}{},
+	}
+
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ConsumerFpsByPowerResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
 	isFinalized := true
 	limit := uint64(1)
@@ -397,6 +421,80 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	}
 
 	return blocks[0].Height, nil
+}
+
+func (wc *CosmwasmConsumerController) QueryFinalitySignature(fpBtcPkHex string, height uint64) (*FinalitySignatureResponse, error) {
+	queryMsgStruct := QueryMsgFinalitySignature{
+		FinalitySignature: FinalitySignatureQuery{
+			BtcPkHex: fpBtcPkHex,
+			Height:   height,
+		},
+	}
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp FinalitySignatureResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+func (wc *CosmwasmConsumerController) QueryFinalityProviders() (*ConsumerFpsResponse, error) {
+	queryMsgStruct := QueryMsgFinalityProviders{
+		FinalityProviders: struct{}{},
+	}
+
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ConsumerFpsResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+func (wc *CosmwasmConsumerController) QueryDelegations() (*ConsumerDelegationsResponse, error) {
+	queryMsgStruct := QueryMsgDelegations{
+		Delegations: struct{}{},
+	}
+
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ConsumerDelegationsResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 //nolint:unused
