@@ -12,6 +12,7 @@ import (
 	wasmapp "github.com/CosmWasm/wasmd/app"
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
+	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -72,6 +73,10 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	require.NoError(t, err)
 	cfg.CosmwasmConfig = config.DefaultCosmwasmConfig()
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
+	// TODO: make random contract addresses for now to avoid validation errors
+	//  later in the e2e tests we would upload the contract and update the addresses
+	//  investigate if there is a better way to handle this
+	cfg.CosmwasmConfig.BtcStakingContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.ChainName = fpcc.WasmdConsumerChainName
 	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingCfg := wasmparams.EncodingConfig{
@@ -144,7 +149,7 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 
 func (ctm *ConsumerTestManager) Stop(t *testing.T) {
 	err := ctm.Fpa.Stop()
-	require.NoError(t, err)
+	require.Error(t, err) // TODO: expect error for now as finality daemon is not started in tests
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
