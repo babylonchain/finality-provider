@@ -73,6 +73,7 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	cfg.ChainName = fpcc.BcdConsumerChainName
 	cfg.CosmwasmConfig.AccountPrefix = "bbnc"
 	cfg.CosmwasmConfig.ChainID = bcdChainID
+	// tempApp := bcdapp.NewTmpApp() // TODO: investigate why wasmapp works and bcdapp doesn't
 	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
