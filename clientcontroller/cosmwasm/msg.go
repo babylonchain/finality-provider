@@ -165,18 +165,6 @@ type Proof struct {
 	Aunts    []string `json:"aunts"`
 }
 
-type FinalitySigExecMsg struct {
-	SubmitFinalitySignature SubmitFinalitySignature `json:"submit_finality_signature"`
-}
-
-type BtcStakingExecMsg struct {
-	BtcStaking BtcStaking `json:"btc_staking"`
-}
-
-type PubRandomnessExecMsg struct {
-	CommitPublicRandomness CommitPublicRandomness `json:"commit_public_randomness"`
-}
-
 type ExecMsg struct {
 	SubmitFinalitySignature *SubmitFinalitySignature `json:"submit_finality_signature,omitempty"`
 	BtcStaking              *BtcStaking              `json:"btc_staking,omitempty"`

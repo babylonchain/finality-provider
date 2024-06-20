@@ -21,7 +21,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/merkle"
 )
 
-func GenBtcStakingExecMsg(fpHex string) cosmwasm.BtcStakingExecMsg {
+func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	// generate random delegation and finality provider
 	_, newDel := genRandomBtcDelegation()
 	newFp := genRandomFinalityProvider()
@@ -30,9 +30,9 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.BtcStakingExecMsg {
 	newFp.BTCPKHex = fpHex
 	newDel.FpBtcPkList = []string{fpHex}
 
-	// create the BtcStakingExecMsg instance
-	executeMessage := cosmwasm.BtcStakingExecMsg{
-		BtcStaking: cosmwasm.BtcStaking{
+	// create the ExecMsg instance with BtcStaking set
+	executeMessage := cosmwasm.ExecMsg{
+		BtcStaking: &cosmwasm.BtcStaking{
 			NewFP:       []cosmwasm.NewFinalityProvider{newFp},
 			ActiveDel:   []cosmwasm.ActiveBtcDelegation{newDel},
 			SlashedDel:  []cosmwasm.SlashedBtcDelegation{},
