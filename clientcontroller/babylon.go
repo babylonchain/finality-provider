@@ -118,6 +118,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	commission *math.LegacyDec,
 	description []byte,
 	masterPubRand string,
+	consumerID string,
 ) (*types.TxResponse, uint64, error) {
 	var bbnPop btcstakingtypes.ProofOfPossession
 	if err := bbnPop.Unmarshal(pop); err != nil {
@@ -137,6 +138,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Commission:    commission,
 		Description:   &sdkDescription,
 		MasterPubRand: masterPubRand,
+		ConsumerId:    consumerID,
 	}
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)

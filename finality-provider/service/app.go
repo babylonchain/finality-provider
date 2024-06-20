@@ -187,6 +187,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 		description:     fp.Description,
 		commission:      fp.Commission,
 		masterPubRand:   fp.MasterPubRand,
+		consumerID:      fp.ChainID,
 		errResponse:     make(chan error, 1),
 		successResponse: make(chan *RegisterFinalityProviderResponse, 1),
 	}
@@ -541,6 +542,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				req.commission,
 				desBytes,
 				req.masterPubRand,
+				req.consumerID,
 			)
 
 			if err != nil {
