@@ -32,9 +32,9 @@ import (
 var _ api.ConsumerController = &CosmwasmConsumerController{}
 
 type CosmwasmConsumerController struct {
-	cwcClient *cwcclient.Client
-	cfg       *fpcfg.CosmwasmConfig
-	logger    *zap.Logger
+	cwClient *cwcclient.Client
+	cfg      *fpcfg.CosmwasmConfig
+	logger   *zap.Logger
 }
 
 func NewCosmwasmConsumerController(
@@ -70,7 +70,7 @@ func (wc *CosmwasmConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs 
 }
 
 func (wc *CosmwasmConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return wc.cwcClient.ReliablySendMsgs(
+	return wc.cwClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -183,7 +183,7 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 		}
 
 		execMsg := &wasmdtypes.MsgExecuteContract{
-			Sender:   wc.cwcClient.MustGetAddr(),
+			Sender:   wc.cwClient.MustGetAddr(),
 			Contract: sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress).String(),
 			Msg:      msgBytes,
 		}
@@ -403,7 +403,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
 	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := wc.cwcClient.RPCClient.BlockchainInfo(ctx, 0, 0)
+	chainInfo, err := wc.cwClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
 	if err != nil {
@@ -419,16 +419,16 @@ func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo,
 }
 
 func (wc *CosmwasmConsumerController) Close() error {
-	if !wc.cwcClient.IsRunning() {
+	if !wc.cwClient.IsRunning() {
 		return nil
 	}
 
-	return wc.cwcClient.Stop()
+	return wc.cwClient.Stop()
 }
 
 func (wc *CosmwasmConsumerController) ExecuteContract(msgBytes []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmdtypes.MsgExecuteContract{
-		Sender:   wc.cwcClient.MustGetAddr(),
+		Sender:   wc.cwClient.MustGetAddr(),
 		Contract: wc.cfg.BtcStakingContractAddress,
 		Msg:      msgBytes,
 	}
@@ -444,7 +444,7 @@ func (wc *CosmwasmConsumerController) ExecuteContract(msgBytes []byte) (*provide
 // QuerySmartContractState queries the smart contract state
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) QuerySmartContractState(contractAddress string, queryData string) (*wasmdtypes.QuerySmartContractStateResponse, error) {
-	return wc.cwcClient.QuerySmartContractState(contractAddress, queryData)
+	return wc.cwClient.QuerySmartContractState(contractAddress, queryData)
 }
 
 // StoreWasmCode stores the wasm code on the consumer chain
@@ -469,7 +469,7 @@ func (wc *CosmwasmConsumerController) StoreWasmCode(wasmFile string) error {
 	}
 
 	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       wc.cwcClient.MustGetAddr(),
+		Sender:       wc.cwClient.MustGetAddr(),
 		WASMByteCode: wasmCode,
 	}
 	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
@@ -484,8 +484,8 @@ func (wc *CosmwasmConsumerController) StoreWasmCode(wasmFile string) error {
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
 	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: wc.cwcClient.MustGetAddr(),
-		Admin:  wc.cwcClient.MustGetAddr(),
+		Sender: wc.cwClient.MustGetAddr(),
+		Admin:  wc.cwClient.MustGetAddr(),
 		CodeID: codeID,
 		Label:  "ibc-test",
 		Msg:    initMsg,
@@ -507,7 +507,7 @@ func (wc *CosmwasmConsumerController) GetLatestCodeId() (uint64, error) {
 		Limit:   1,
 		Reverse: true,
 	}
-	resp, err := wc.cwcClient.ListCodes(pagination)
+	resp, err := wc.cwClient.ListCodes(pagination)
 	if err != nil {
 		return 0, err
 	}
@@ -522,7 +522,7 @@ func (wc *CosmwasmConsumerController) GetLatestCodeId() (uint64, error) {
 // ListContractsByCode lists all contracts by wasm code id
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) ListContractsByCode(codeID uint64, pagination *sdkquerytypes.PageRequest) (*wasmdtypes.QueryContractsByCodeResponse, error) {
-	return wc.cwcClient.ListContractsByCode(codeID, pagination)
+	return wc.cwClient.ListContractsByCode(codeID, pagination)
 }
 
 // SetBtcStakingContractAddress updates the BtcStakingContractAddress in the configuration
@@ -534,13 +534,13 @@ func (wc *CosmwasmConsumerController) SetBtcStakingContractAddress(newAddress st
 // MustGetValidatorAddress gets the validator address of the consumer chain
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) MustGetValidatorAddress() string {
-	return wc.cwcClient.MustGetAddr()
+	return wc.cwClient.MustGetAddr()
 }
 
 // GetCometNodeStatus gets the tendermint node status of the consumer chain
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) GetCometNodeStatus() (*coretypes.ResultStatus, error) {
-	return wc.cwcClient.GetStatus()
+	return wc.cwClient.GetStatus()
 }
 
 func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
