@@ -41,17 +41,11 @@ func (cfg *CosmwasmConfig) Validate() error {
 		return fmt.Errorf("block-timeout can't be negative")
 	}
 
-	if cfg.BabylonContractAddress == "" {
-		return fmt.Errorf("babylon-contract-address is required")
-	}
 	_, err := sdk.AccAddressFromBech32(cfg.BabylonContractAddress)
 	if err != nil {
 		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
 	}
 
-	if cfg.BtcStakingContractAddress == "" {
-		return fmt.Errorf("btc-staking-contract-address is required")
-	}
 	_, err = sdk.AccAddressFromBech32(cfg.BtcStakingContractAddress)
 	if err != nil {
 		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
