@@ -204,3 +204,7 @@ type BlocksQuery struct {
 	Finalized  *bool   `json:"finalized,omitempty"`
 	Reverse    *bool   `json:"reverse,omitempty"`
 }
+
+type QueryMsgActivatedHeight struct {
+	ActivatedHeight struct{} `json:"activated_height"`
+}

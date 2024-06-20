@@ -354,10 +354,18 @@ func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool
 
 func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 	// Construct the query message
-	queryMsg := `{"activated_height":{}}`
+	queryMsg := QueryMsgActivatedHeight{
+		ActivatedHeight: struct{}{},
+	}
+
+	// Marshal the query message to JSON
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal query message: %w", err)
+	}
 
 	// Query the smart contract state
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
 	if err != nil {
 		return 0, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
