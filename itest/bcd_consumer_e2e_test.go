@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	bcdappparams "github.com/babylonchain/babylon-sdk/demo/app/params"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -16,11 +15,8 @@ import (
 
 // TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
 func TestSubmitFinalitySignature2(t *testing.T) {
-	bcdappparams.SetAddressPrefixes()
 	ctm := StartBcdTestManager(t)
 	defer ctm.Stop(t)
-
-	bcdappparams.SetAddressPrefixes()
 
 	// store babylon contract
 	babylonContractPath := "bytecode/babylon_contract.wasm"

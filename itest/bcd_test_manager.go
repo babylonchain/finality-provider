@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	sdklogs "cosmossdk.io/log"
+	wasmapp "github.com/CosmWasm/wasmd/app"
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
-	bcdapp "github.com/babylonchain/babylon-sdk/demo/app"
-	bcdappparams "github.com/babylonchain/babylon-sdk/demo/app/params"
+	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -19,6 +20,8 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	dbm "github.com/cosmos/cosmos-db"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -39,7 +42,6 @@ type BcdTestManager struct {
 }
 
 func StartBcdTestManager(t *testing.T) *BcdTestManager {
-	bcdappparams.SetAddressPrefixes()
 	// Setup consumer test manager
 	testDir, err := tempDirWithName("fpe2etest")
 	require.NoError(t, err)
@@ -66,13 +68,12 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	require.NoError(t, err)
 	cfg.CosmwasmConfig = config.DefaultCosmwasmConfig()
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
-	// TODO: make random contract addresses for now to avoid validation errors
-	//  later in the e2e tests we would upload the contract and update the addresses
-	//  investigate if there is a better way to handle this
+	// make random contract address for now to avoid validation errors, later we will update it with the correct address in the test
 	cfg.CosmwasmConfig.BtcStakingContractAddress = datagen.GenRandomAccount().GetAddress().String()
 	cfg.ChainName = fpcc.BcdConsumerChainName
-	tempApp := bcdapp.NewTmpApp()
-	//tempApp := bcdapp.NewConsumerApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	cfg.CosmwasmConfig.AccountPrefix = "bbnc"
+	cfg.CosmwasmConfig.ChainID = bcdChainID
+	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),
@@ -131,12 +132,12 @@ func (ctm *BcdTestManager) WaitForServicesStart(t *testing.T) {
 
 	// wait for wasmd to start
 	require.Eventually(t, func() bool {
-		blockHeight, err := ctm.BcdHandler.GetLatestBlockHeight()
+		bcdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
 		if err != nil {
-			t.Logf("failed to get latest block height from wasmd %s", err.Error())
+			t.Logf("Error getting bcd node status: %v", err)
 			return false
 		}
-		return blockHeight > 2
+		return bcdNodeStatus.SyncInfo.LatestBlockHeight > 2
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 	t.Logf("Bcd node is started")
 }
