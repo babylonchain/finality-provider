@@ -166,8 +166,8 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 			return nil, err
 		}
 
-		payload := FinalitySigExecMsg{
-			SubmitFinalitySignature: SubmitFinalitySignature{
+		msg := ExecMsg{
+			SubmitFinalitySignature: &SubmitFinalitySignature{
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
 				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
@@ -177,16 +177,15 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 			},
 		}
 
-		payloadBytes, err := json.Marshal(payload)
+		msgBytes, err := json.Marshal(msg)
 		if err != nil {
 			return nil, err
-
 		}
 
 		execMsg := &wasmdtypes.MsgExecuteContract{
 			Sender:   wc.cwcClient.MustGetAddr(),
 			Contract: sdk.MustAccAddressFromBech32(wc.cfg.BtcStakingContractAddress).String(),
-			Msg:      payloadBytes,
+			Msg:      msgBytes,
 		}
 		msgs = append(msgs, execMsg)
 	}
