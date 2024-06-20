@@ -38,3 +38,14 @@ type SubmitFinalitySignatureMsgParams struct {
 type SubmitFinalitySignatureResponse struct {
 	Result bool `json:"result"`
 }
+
+type QueryMsg struct {
+	Config *Config `json:"config,omitempty"`
+}
+
+type Config struct{}
+
+type ConfigResponse struct {
+	ConsumerId      string `json:"consumer_id"`
+	ActivatedHeight uint64 `json:"activated_height"`
+}
