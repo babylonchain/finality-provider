@@ -284,7 +284,7 @@ func (bc *BabylonConsumerController) QueryBlock(height uint64) (*types.BlockInfo
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
-func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommit, error) {
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	pagination := &sdkquery.PageRequest{
@@ -298,7 +298,15 @@ func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Pu
 		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
 	}
 
-	return res.PubRandCommitMap, nil
+	commitMap := make(map[uint64]*types.PubRandCommit)
+	for height, commit := range res.PubRandCommitMap {
+		commitMap[height] = &types.PubRandCommit{
+			NumPubRand: commit.NumPubRand,
+			Commitment: commit.Commitment,
+		}
+	}
+
+	return commitMap, nil
 }
 
 func (bc *BabylonConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {

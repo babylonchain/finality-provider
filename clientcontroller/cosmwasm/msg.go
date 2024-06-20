@@ -218,3 +218,19 @@ type QueryMsgDelegations struct {
 type QueryMsgFinalityProvidersByPower struct {
 	FinalityProvidersByPower struct{} `json:"finality_providers_by_power"`
 }
+
+type QueryMsgLastPubRandCommit struct {
+	LastPubRandCommit LastPubRandCommitQuery `json:"last_pub_rand_commit"`
+}
+
+type LastPubRandCommitQuery struct {
+	BtcPkHex   string  `json:"btc_pk_hex"`
+	StartAfter *uint64 `json:"start_after,omitempty"`
+	Limit      *uint64 `json:"limit,omitempty"`
+	Reverse    *bool   `json:"reverse,omitempty"`
+}
+type PubRandCommitResponse struct {
+	StartHeight uint64 `json:"start_height"`
+	NumPubRand  uint64 `json:"num_pub_rand"`
+	Commitment  []byte `json:"commitment"`
+}

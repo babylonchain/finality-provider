@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
@@ -72,8 +71,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 
 		// mock committed pub rand
 		lastCommittedHeight := randomStartingHeight + 25
-		lastCommittedPubRandMap := make(map[uint64]*ftypes.PubRandCommitResponse)
-		lastCommittedPubRandMap[lastCommittedHeight] = &ftypes.PubRandCommitResponse{
+		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
+		lastCommittedPubRandMap[lastCommittedHeight] = &types.PubRandCommit{
 			NumPubRand: 1000,
 			Commitment: datagen.GenRandomByteArray(r, 32),
 		}

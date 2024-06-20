@@ -5,7 +5,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -53,7 +52,7 @@ type ConsumerController interface {
 	QueryLatestFinalizedBlock() (*types.BlockInfo, error)
 
 	// QueryLastCommittedPublicRand returns the last committed public randomness
-	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error)
+	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommit, error)
 
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)
