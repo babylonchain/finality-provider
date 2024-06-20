@@ -11,7 +11,6 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	bbnapp "github.com/babylonchain/babylon/app"
 	bbntypes "github.com/babylonchain/babylon/types"
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	cwclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -324,7 +323,7 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
 // It is fetched from the state of a CosmWasm contract OP finality gadget.
-func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*finalitytypes.PubRandCommitResponse, error) {
+func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
 		LastPubRandCommit: &LastPubRandCommit{
@@ -348,8 +347,8 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	respMap := make(map[uint64]*finalitytypes.PubRandCommitResponse)
-	respMap[resp.StartHeight] = &finalitytypes.PubRandCommitResponse{
+	respMap := make(map[uint64]*types.PubRandCommit)
+	respMap[resp.StartHeight] = &types.PubRandCommit{
 		NumPubRand: resp.NumPubRand,
 		Commitment: resp.Commitment,
 	}

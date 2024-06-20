@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -42,8 +41,8 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
 		lastCommittedHeight := randomStartingHeight + testutil.TestPubRandNum
-		lastCommittedPubRandMap := make(map[uint64]*ftypes.PubRandCommitResponse)
-		lastCommittedPubRandMap[lastCommittedHeight] = &ftypes.PubRandCommitResponse{
+		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
+		lastCommittedPubRandMap[lastCommittedHeight] = &types.PubRandCommit{
 			NumPubRand: 1000,
 			Commitment: datagen.GenRandomByteArray(r, 32),
 		}
@@ -94,8 +93,8 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 			Return(uint64(1), nil).AnyTimes()
 		// the last height with pub rand is a random value inside [finalizedHeight+1, currentHeight]
 		lastHeightWithPubRand := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
-		lastCommittedPubRandMap := make(map[uint64]*ftypes.PubRandCommitResponse)
-		lastCommittedPubRandMap[lastHeightWithPubRand-10] = &ftypes.PubRandCommitResponse{
+		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
+		lastCommittedPubRandMap[lastHeightWithPubRand-10] = &types.PubRandCommit{
 			NumPubRand: 10 + 1,
 			Commitment: datagen.GenRandomByteArray(r, 32),
 		}
