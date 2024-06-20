@@ -176,3 +176,31 @@ type BtcStakingExecMsg struct {
 type PubRandomnessExecMsg struct {
 	CommitPublicRandomness CommitPublicRandomness `json:"commit_public_randomness"`
 }
+
+type FinalityProviderInfo struct {
+	BtcPkHex string `json:"btc_pk_hex"`
+	Height   uint64 `json:"height"`
+}
+
+type QueryMsgFinalityProviderInfo struct {
+	FinalityProviderInfo FinalityProviderInfo `json:"finality_provider_info"`
+}
+
+type BlockQuery struct {
+	Height uint64 `json:"height"`
+}
+
+type QueryMsgBlock struct {
+	Block BlockQuery `json:"block"`
+}
+
+type QueryMsgBlocks struct {
+	Blocks BlocksQuery `json:"blocks"`
+}
+
+type BlocksQuery struct {
+	StartAfter *uint64 `json:"start_after,omitempty"`
+	Limit      *uint64 `json:"limit,omitempty"`
+	Finalized  *bool   `json:"finalized,omitempty"`
+	Reverse    *bool   `json:"reverse,omitempty"`
+}

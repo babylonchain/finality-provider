@@ -200,8 +200,18 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	fpBtcPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
-	queryMsg := fmt.Sprintf(`{"finality_provider_info":{"btc_pk_hex":"%s", "height": %d}}`, fpBtcPkHex, blockHeight)
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
+
+	queryMsgStruct := QueryMsgFinalityProviderInfo{
+		FinalityProviderInfo: FinalityProviderInfo{
+			BtcPkHex: fpBtcPkHex,
+			Height:   blockHeight,
+		},
+	}
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
 	if err != nil {
 		return 0, err
 	}
@@ -217,7 +227,8 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
 	isFinalized := true
-	blocks, err := wc.queryLatestBlocks(nil, uint64(1), &isFinalized, nil)
+	limit := uint64(1)
+	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -237,30 +248,22 @@ func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit 
 		count = limit
 	}
 
-	return wc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), count, nil, nil)
+	return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
 }
 
-func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
-	// Construct the query message dynamically
-	queryMap := map[string]interface{}{
-		"blocks": make(map[string]interface{}),
+func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
+	// Construct the query message
+	queryMsg := QueryMsgBlocks{
+		Blocks: BlocksQuery{
+			StartAfter: startAfter,
+			Limit:      limit,
+			Finalized:  finalized,
+			Reverse:    reverse,
+		},
 	}
 
-	if startKey != nil {
-		queryMap["blocks"].(map[string]interface{})["start_after"] = sdk.BigEndianToUint64(startKey)
-	}
-	if count > 0 {
-		queryMap["blocks"].(map[string]interface{})["limit"] = count
-	}
-	if finalized != nil {
-		queryMap["blocks"].(map[string]interface{})["finalized"] = *finalized
-	}
-	if reverse != nil {
-		queryMap["blocks"].(map[string]interface{})["reverse"] = *reverse
-	}
-
-	// Marshal the query map to JSON
-	queryMsgBytes, err := json.Marshal(queryMap)
+	// Marshal the query message to JSON
+	queryMsgBytes, err := json.Marshal(queryMsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query message: %w", err)
 	}
@@ -293,10 +296,18 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startKey []byte, count u
 
 func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*IndexedBlock, error) {
 	// Construct the query message
-	queryMsg := fmt.Sprintf(`{"block":{"height":%d}}`, height)
+	queryMsgStruct := QueryMsgBlock{
+		Block: BlockQuery{
+			Height: height,
+		},
+	}
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
 
 	// Query the smart contract state
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, queryMsg)
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
@@ -367,7 +378,7 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	reverse := true
 	count := uint64(1)
-	blocks, err := wc.queryLatestBlocks(nil, count, nil, &reverse)
+	blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
 	if err != nil {
 		return 0, err
 	}
