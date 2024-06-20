@@ -88,8 +88,10 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 	sig *schnorr.Signature,
 ) (*fptypes.TxResponse, error) {
 	bip340Sig := bbntypes.NewBIP340SignatureFromBTCSig(sig).MustMarshal()
-	msg := PubRandomnessExecMsg{
-		CommitPublicRandomness: CommitPublicRandomness{
+
+	// Construct the ExecMsg struct
+	msg := ExecMsg{
+		CommitPublicRandomness: &CommitPublicRandomness{
 			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -97,10 +99,11 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 			Signature:   base64.StdEncoding.EncodeToString(bip340Sig),
 		},
 	}
+
+	// Marshal the ExecMsg struct to JSON
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err
-
 	}
 
 	res, err := wc.ExecuteContract(msgBytes)
@@ -425,11 +428,11 @@ func (wc *CosmwasmConsumerController) Close() error {
 	return wc.cwcClient.Stop()
 }
 
-func (wc *CosmwasmConsumerController) ExecuteContract(payload []byte) (*provider.RelayerTxResponse, error) {
+func (wc *CosmwasmConsumerController) ExecuteContract(msgBytes []byte) (*provider.RelayerTxResponse, error) {
 	execMsg := &wasmdtypes.MsgExecuteContract{
 		Sender:   wc.cwcClient.MustGetAddr(),
 		Contract: wc.cfg.BtcStakingContractAddress,
-		Msg:      payload,
+		Msg:      msgBytes,
 	}
 
 	res, err := wc.reliablySendMsg(execMsg, nil, nil)

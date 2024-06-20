@@ -177,6 +177,12 @@ type PubRandomnessExecMsg struct {
 	CommitPublicRandomness CommitPublicRandomness `json:"commit_public_randomness"`
 }
 
+type ExecMsg struct {
+	SubmitFinalitySignature *SubmitFinalitySignature `json:"submit_finality_signature,omitempty"`
+	BtcStaking              *BtcStaking              `json:"btc_staking,omitempty"`
+	CommitPublicRandomness  *CommitPublicRandomness  `json:"commit_public_randomness,omitempty"`
+}
+
 type FinalityProviderInfo struct {
 	BtcPkHex string `json:"btc_pk_hex"`
 	Height   uint64 `json:"height"`
