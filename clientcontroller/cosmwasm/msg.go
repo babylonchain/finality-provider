@@ -1,7 +1,7 @@
 package cosmwasm
 
 type ConsumerFpsResponse struct {
-	ConsumerFps []SingleConsumerFpResponse `json:"fps"`
+	Fps []SingleConsumerFpResponse `json:"fps"`
 }
 
 // SingleConsumerFpResponse represents the finality provider data returned by the contract query.
@@ -17,7 +17,7 @@ type SingleConsumerFpResponse struct {
 }
 
 type ConsumerDelegationsResponse struct {
-	ConsumerDelegations []SingleConsumerDelegationResponse `json:"delegations"`
+	Delegations []SingleConsumerDelegationResponse `json:"delegations"`
 }
 
 type SingleConsumerDelegationResponse struct {
@@ -36,18 +36,13 @@ type SingleConsumerDelegationResponse struct {
 	ParamsVersion        uint32                      `json:"params_version"`
 }
 
-type ConsumerFpPowerResponse struct {
-	BtcPkHex string `json:"btc_pk_hex"`
-	Power    uint64 `json:"power"`
-}
-
-type ConsumerFpInfo struct {
+type ConsumerFpInfoResponse struct {
 	BtcPkHex string `json:"btc_pk_hex"`
 	Power    uint64 `json:"power"`
 }
 
 type ConsumerFpsByPowerResponse struct {
-	Fps []ConsumerFpInfo `json:"fps"`
+	Fps []ConsumerFpInfoResponse `json:"fps"`
 }
 
 type FinalitySignatureResponse struct {
@@ -62,12 +57,6 @@ type IndexedBlock struct {
 	Height    uint64 `json:"height"`
 	AppHash   []byte `json:"app_hash"`
 	Finalized bool   `json:"finalized"`
-}
-
-type PubRandCommitResponse struct {
-	StartHeight uint64 `json:"start_height"`
-	NumPubRand  uint64 `json:"num_pub_rand"`
-	Commitment  []byte `json:"commitment"`
 }
 
 type NewFinalityProvider struct {
@@ -171,14 +160,61 @@ type Proof struct {
 	Aunts    []string `json:"aunts"`
 }
 
-type FinalitySigExecMsg struct {
-	SubmitFinalitySignature SubmitFinalitySignature `json:"submit_finality_signature"`
+type ExecMsg struct {
+	SubmitFinalitySignature *SubmitFinalitySignature `json:"submit_finality_signature,omitempty"`
+	BtcStaking              *BtcStaking              `json:"btc_staking,omitempty"`
+	CommitPublicRandomness  *CommitPublicRandomness  `json:"commit_public_randomness,omitempty"`
 }
 
-type BtcStakingExecMsg struct {
-	BtcStaking BtcStaking `json:"btc_staking"`
+type FinalityProviderInfo struct {
+	BtcPkHex string `json:"btc_pk_hex"`
+	Height   uint64 `json:"height"`
 }
 
-type PubRandomnessExecMsg struct {
-	CommitPublicRandomness CommitPublicRandomness `json:"commit_public_randomness"`
+type QueryMsgFinalityProviderInfo struct {
+	FinalityProviderInfo FinalityProviderInfo `json:"finality_provider_info"`
+}
+
+type BlockQuery struct {
+	Height uint64 `json:"height"`
+}
+
+type QueryMsgBlock struct {
+	Block BlockQuery `json:"block"`
+}
+
+type QueryMsgBlocks struct {
+	Blocks BlocksQuery `json:"blocks"`
+}
+
+type BlocksQuery struct {
+	StartAfter *uint64 `json:"start_after,omitempty"`
+	Limit      *uint64 `json:"limit,omitempty"`
+	Finalized  *bool   `json:"finalized,omitempty"`
+	Reverse    *bool   `json:"reverse,omitempty"`
+}
+
+type QueryMsgActivatedHeight struct {
+	ActivatedHeight struct{} `json:"activated_height"`
+}
+
+type QueryMsgFinalitySignature struct {
+	FinalitySignature FinalitySignatureQuery `json:"finality_signature"`
+}
+
+type FinalitySignatureQuery struct {
+	BtcPkHex string `json:"btc_pk_hex"`
+	Height   uint64 `json:"height"`
+}
+
+type QueryMsgFinalityProviders struct {
+	FinalityProviders struct{} `json:"finality_providers"`
+}
+
+type QueryMsgDelegations struct {
+	Delegations struct{} `json:"delegations"`
+}
+
+type QueryMsgFinalityProvidersByPower struct {
+	FinalityProvidersByPower struct{} `json:"finality_providers_by_power"`
 }

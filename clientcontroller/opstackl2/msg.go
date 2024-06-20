@@ -38,3 +38,25 @@ type SubmitFinalitySignatureMsgParams struct {
 type SubmitFinalitySignatureResponse struct {
 	Result bool `json:"result"`
 }
+
+type QueryMsg struct {
+	Config            *Config            `json:"config,omitempty"`
+	LastPubRandCommit *LastPubRandCommit `json:"last_pub_rand_commit,omitempty"`
+}
+
+type Config struct{}
+
+type LastPubRandCommit struct {
+	BtcPkHex string `json:"btc_pk_hex"`
+}
+
+type ConfigResponse struct {
+	ConsumerId      string `json:"consumer_id"`
+	ActivatedHeight uint64 `json:"activated_height"`
+}
+
+type LastPubRandCommitResponse struct {
+	StartHeight uint64 `json:"start_height"`
+	NumPubRand  uint64 `json:"num_pub_rand"`
+	Commitment  []byte `json:"commitment"`
+}

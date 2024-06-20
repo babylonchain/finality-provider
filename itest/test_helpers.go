@@ -21,7 +21,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/merkle"
 )
 
-func GenBtcStakingExecMsg(fpHex string) cosmwasm.BtcStakingExecMsg {
+func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	// generate random delegation and finality provider
 	_, newDel := genRandomBtcDelegation()
 	newFp := genRandomFinalityProvider()
@@ -30,9 +30,9 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.BtcStakingExecMsg {
 	newFp.BTCPKHex = fpHex
 	newDel.FpBtcPkList = []string{fpHex}
 
-	// create the BtcStakingExecMsg instance
-	executeMessage := cosmwasm.BtcStakingExecMsg{
-		BtcStaking: cosmwasm.BtcStaking{
+	// create the ExecMsg instance with BtcStaking set
+	executeMessage := cosmwasm.ExecMsg{
+		BtcStaking: &cosmwasm.BtcStaking{
 			NewFP:       []cosmwasm.NewFinalityProvider{newFp},
 			ActiveDel:   []cosmwasm.ActiveBtcDelegation{newDel},
 			SlashedDel:  []cosmwasm.SlashedBtcDelegation{},
@@ -43,10 +43,10 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.BtcStakingExecMsg {
 	return executeMessage
 }
 
-func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) cosmwasm.PubRandomnessExecMsg {
-	// create the PubRandomnessExecMsg instance
-	executeMessage := cosmwasm.PubRandomnessExecMsg{
-		CommitPublicRandomness: cosmwasm.CommitPublicRandomness{
+func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
+	// create the ExecMsg instance with CommitPublicRandomness set
+	executeMessage := cosmwasm.ExecMsg{
+		CommitPublicRandomness: &cosmwasm.CommitPublicRandomness{
 			FPPubKeyHex: fpHex,
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
@@ -58,28 +58,16 @@ func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubR
 	return executeMessage
 }
 
-func GenFinalitySignExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) cosmwasm.FinalitySigExecMsg {
+func GenFinalitySigExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) cosmwasm.ExecMsg {
 	fmsg := genAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
-
-	// iterate proof.aunts and convert them to base64 encoded strings
-	var aunts []string
-	for _, aunt := range fmsg.Proof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
-	msg := cosmwasm.FinalitySigExecMsg{
-		SubmitFinalitySignature: cosmwasm.SubmitFinalitySignature{
+	msg := cosmwasm.ExecMsg{
+		SubmitFinalitySignature: &cosmwasm.SubmitFinalitySignature{
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
 			Height:      fmsg.BlockHeight,
 			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
-			Proof: cosmwasm.Proof{
-				Total:    uint64(fmsg.Proof.Total),
-				Index:    uint64(fmsg.Proof.Index),
-				LeafHash: base64.StdEncoding.EncodeToString(fmsg.Proof.LeafHash),
-				Aunts:    aunts,
-			},
-			BlockHash: base64.StdEncoding.EncodeToString(fmsg.BlockAppHash),
-			Signature: base64.StdEncoding.EncodeToString(fmsg.FinalitySig.MustMarshal()),
+			Proof:       cosmwasm.ConvertProof(*fmsg.Proof),
+			BlockHash:   base64.StdEncoding.EncodeToString(fmsg.BlockAppHash),
+			Signature:   base64.StdEncoding.EncodeToString(fmsg.FinalitySig.MustMarshal()),
 		},
 	}
 

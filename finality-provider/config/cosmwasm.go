@@ -24,7 +24,6 @@ type CosmwasmConfig struct {
 	BlockTimeout              time.Duration `long:"block-timeout" description:"block timeout when waiting for block events"`
 	OutputFormat              string        `long:"output-format" description:"default output when printint responses"`
 	SignModeStr               string        `long:"sign-mode" description:"sign mode to use"`
-	BabylonContractAddress    string        `long:"babylon-contract-address" description:"address of the Babylon contract"`
 	BtcStakingContractAddress string        `long:"btc-staking-contract-address" description:"address of the BTC staking contract"`
 }
 
@@ -41,18 +40,7 @@ func (cfg *CosmwasmConfig) Validate() error {
 		return fmt.Errorf("block-timeout can't be negative")
 	}
 
-	if cfg.BabylonContractAddress == "" {
-		return fmt.Errorf("babylon-contract-address is required")
-	}
-	_, err := sdk.AccAddressFromBech32(cfg.BabylonContractAddress)
-	if err != nil {
-		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
-	}
-
-	if cfg.BtcStakingContractAddress == "" {
-		return fmt.Errorf("btc-staking-contract-address is required")
-	}
-	_, err = sdk.AccAddressFromBech32(cfg.BtcStakingContractAddress)
+	_, err := sdk.AccAddressFromBech32(cfg.BtcStakingContractAddress)
 	if err != nil {
 		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
 	}
@@ -76,7 +64,6 @@ func DefaultCosmwasmConfig() *CosmwasmConfig {
 		OutputFormat:              "direct",
 		SignModeStr:               "",
 		BtcStakingContractAddress: "",
-		BabylonContractAddress:    "",
 	}
 }
 
