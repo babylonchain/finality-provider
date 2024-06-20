@@ -36,7 +36,7 @@ type SingleConsumerDelegationResponse struct {
 	ParamsVersion        uint32                      `json:"params_version"`
 }
 
-type ConsumerFpPowerResponse struct {
+type ConsumerFpInfoResponse struct {
 	BtcPkHex string `json:"btc_pk_hex"`
 	Power    uint64 `json:"power"`
 }
