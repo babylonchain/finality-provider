@@ -7,6 +7,7 @@ import (
 
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	bcdapp "github.com/babylonchain/babylon-sdk/demo/app"
+	bcdappparams "github.com/babylonchain/babylon-sdk/demo/app/params"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -38,6 +39,7 @@ type BcdTestManager struct {
 }
 
 func StartBcdTestManager(t *testing.T) *BcdTestManager {
+	bcdappparams.SetAddressPrefixes()
 	// Setup consumer test manager
 	testDir, err := tempDirWithName("fpe2etest")
 	require.NoError(t, err)
