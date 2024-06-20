@@ -222,7 +222,7 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height.
 // This interface function only used for checking if the FP is eligible for submitting sigs.
 // Now we can simply hardcode the voting power to a positive value.
-// TODO: Another way is that FP leverages backend service that indexes voting power for Babylon.
+// TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
 func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
 	return 1, nil
 }
