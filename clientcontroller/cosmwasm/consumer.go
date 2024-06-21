@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	sdkErr "cosmossdk.io/errors"
@@ -263,11 +264,19 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 	//return blocks[0], nil
 
 	// TODO: temporary hack get the block from comet
-	block, err := wc.queryCometBestBlock()
+	latestHeight, err := wc.QueryLatestBlockHeight()
 	if err != nil {
 		return nil, err
 	}
-	return block, err
+	qHeight := latestHeight / 3
+	if qHeight == 0 {
+		qHeight = 1
+	}
+	block, err := wc.QueryBlock(qHeight)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
@@ -612,6 +621,11 @@ func (wc *CosmwasmConsumerController) queryCometBlocksInRange(startHeight, endHe
 		}
 		blocks = append(blocks, block)
 	}
+
+	// Sort the blocks by height in ascending order
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].Height < blocks[j].Height
+	})
 
 	return blocks, nil
 }
