@@ -253,11 +253,10 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 	isFinalized := true
 	limit := uint64(1)
 	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
-	if err != nil {
-		return nil, err
-	}
-	if len(blocks) == 0 {
-		return nil, fmt.Errorf("no finalized blocks found")
+	if err != nil || len(blocks) != 1 {
+		// TODO: temporary hack get the block from comet
+		block, err := wc.queryCometBestBlock()
+		return block, err
 	}
 
 	return blocks[0], nil
@@ -349,9 +348,12 @@ func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*Indexed
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
 	// Use the helper function to get the IndexedBlock
 	resp, err := wc.queryIndexedBlock(height)
-	if err != nil {
-		return nil, err
+	if err != nil || resp == nil {
+		// TODO: temporary hack get the block from comet
+		block, err := wc.queryCometBestBlock()
+		return block, err
 	}
+
 	// Convert to BlockInfo and return
 	return &fptypes.BlockInfo{
 		Height: resp.Height,
@@ -408,8 +410,13 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
 	// Use the helper function to get the IndexedBlock
 	resp, err := wc.queryIndexedBlock(height)
-	if err != nil {
-		return false, err
+	if err != nil || resp == nil {
+		// TODO: temporary hack get the block from comet
+		block, err := wc.queryCometBestBlock()
+		if err != nil {
+			return false, err
+		}
+		return height <= block.Height, nil
 	}
 
 	// Return the finalized status
@@ -452,7 +459,7 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	count := uint64(1)
 	blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
 	if err != nil || len(blocks) != 1 {
-		// try query comet block if the index block query is not available
+		// TODO: temporary hack get the block from comet
 		block, err := wc.queryCometBestBlock()
 		return block.Height, err
 	}
@@ -534,7 +541,6 @@ func (wc *CosmwasmConsumerController) QueryDelegations() (*ConsumerDelegationsRe
 	return &resp, nil
 }
 
-//nolint:unused
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
 	defer cancel()
