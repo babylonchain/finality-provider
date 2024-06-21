@@ -48,7 +48,7 @@ type ConsumerTestManager struct {
 
 func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// Setup consumer test manager
-	testDir, err := tempDirWithName("fpe2etest")
+	testDir, err := TempDirWithName("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -56,14 +56,14 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := TenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -132,7 +132,7 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 		}
 		ctm.StakingParams = params
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 	t.Logf("Babylon node is started")
 
 	// wait for wasmd to start
@@ -143,7 +143,7 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 			return false
 		}
 		return blockHeight > 2
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 	t.Logf("Wasmd node is started")
 }
 
@@ -205,7 +205,7 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*
 			}
 
 			return true
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
+		}, EventuallyWaitTimeOut, EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
@@ -270,7 +270,7 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 		}
 
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	fpInsList := app.ListFinalityProviderInstancesForChain(chainID)
 	require.Equal(t, n, len(fpInsList))
