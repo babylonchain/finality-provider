@@ -353,6 +353,20 @@ func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*Indexed
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
+	defer cancel()
+
+	// TODO(euphrates): fix
+	blockHeight := int64(height)
+	block, err := wc.cwClient.RPCClient.Block(ctx, &blockHeight)
+	if err != nil {
+		return nil, err
+	}
+	return &fptypes.BlockInfo{
+		Height: height,
+		Hash:   block.Block.AppHash,
+	}, nil
+
 	// Use the helper function to get the IndexedBlock
 	resp, err := wc.queryIndexedBlock(height)
 	if err != nil {
@@ -539,9 +553,10 @@ func (wc *CosmwasmConsumerController) QueryDelegations() (*ConsumerDelegationsRe
 //nolint:unused
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
+	defer cancel()
+
 	// this will return 20 items at max in the descending order (highest first)
 	chainInfo, err := wc.cwClient.RPCClient.BlockchainInfo(ctx, 0, 0)
-	defer cancel()
 
 	if err != nil {
 		return nil, err
