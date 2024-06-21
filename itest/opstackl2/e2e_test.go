@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
+
 func storeWasmCode(opL2cc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
@@ -73,7 +75,6 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	defer ctm.Stop(t)
 
 	// store op-finality-gadget contract
-	opFinalityGadgetContractPath := "bytecode/op_finality_gadget.wasm"
 	err := storeWasmCode(ctm.OpL2ConsumerCtrl, opFinalityGadgetContractPath)
 	require.NoError(t, err)
 	opFinalityGadgetContractWasmId, err := getLatestCodeId(ctm.OpL2ConsumerCtrl)
