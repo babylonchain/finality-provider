@@ -19,7 +19,6 @@ import (
 	cwcc "github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
-	"github.com/babylonchain/finality-provider/finality-provider/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
@@ -48,7 +47,7 @@ type ConsumerTestManager struct {
 
 func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	// Setup consumer test manager
-	testDir, err := tempDirWithName("fpe2etest")
+	testDir, err := baseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -71,7 +70,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	wh := NewWasmdNodeHandler(t)
 	err = wh.Start()
 	require.NoError(t, err)
-	cfg.CosmwasmConfig = config.DefaultCosmwasmConfig()
+	cfg.CosmwasmConfig = fpcfg.DefaultCosmwasmConfig()
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
 	// TODO: make random contract addresses for now to avoid validation errors
 	//  later in the e2e tests we would upload the contract and update the addresses
