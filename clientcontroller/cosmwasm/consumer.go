@@ -264,6 +264,9 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 
 	// TODO: temporary hack get the block from comet
 	block, err := wc.queryCometBestBlock()
+	if err != nil {
+		return nil, err
+	}
 	return block, err
 }
 
@@ -366,8 +369,14 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 	//}, nil
 
 	// TODO: temporary hack get the block from comet
-	block, err := wc.queryCometBestBlock()
-	return block, err
+	block, err := wc.cwClient.GetBlock(int64(height))
+	if err != nil {
+		return nil, err
+	}
+	return &fptypes.BlockInfo{
+		Height: uint64(block.Block.Header.Height),
+		Hash:   block.Block.Header.AppHash,
+	}, nil
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
@@ -481,6 +490,9 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 
 	// TODO: temporary hack get the block from comet
 	block, err := wc.queryCometBestBlock()
+	if err != nil {
+		return 0, err
+	}
 	return block.Height, err
 }
 
