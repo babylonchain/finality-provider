@@ -252,7 +252,10 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 	return &resp, nil
 }
 
+// TODO(euphrates): start from here
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
+	return wc.queryCometBestBlock()
+
 	isFinalized := true
 	limit := uint64(1)
 	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
