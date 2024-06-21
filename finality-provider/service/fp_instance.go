@@ -236,6 +236,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 			}
 			fp.logger.Info(
 				"successfully submitted a finality signature to the consumer chain",
+				zap.String("consumer_id", string(fp.GetChainID())),
 				zap.String("pk", fp.GetBtcPkHex()),
 				zap.Uint64("height", b.Height),
 				zap.String("tx_hash", res.TxHash),
@@ -306,6 +307,7 @@ func (fp *FinalityProviderInstance) randomnessCommitmentLoop() {
 			if txRes != nil {
 				fp.logger.Info(
 					"successfully committed public randomness to the consumer chain",
+					zap.String("consumer_id", string(fp.GetChainID())),
 					zap.String("pk", fp.GetBtcPkHex()),
 					zap.String("tx_hash", txRes.TxHash),
 				)
