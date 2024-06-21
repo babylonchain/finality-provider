@@ -39,6 +39,7 @@ type registerFinalityProviderRequest struct {
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
 	masterPubRand   string
+	consumerID      string
 	errResponse     chan error
 	successResponse chan *RegisterFinalityProviderResponse
 }
