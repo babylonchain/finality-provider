@@ -78,6 +78,6 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 	opFinalityGadgetContractWasmId, err := getLatestCodeId(ctm.OpL2ConsumerCtrl)
 	require.NoError(t, err)
-	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contracvt code_id should be 1")
+	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
 }
