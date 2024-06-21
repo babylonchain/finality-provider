@@ -3,11 +3,13 @@ package e2etest
 import (
 	"encoding/base64"
 	"encoding/json"
-	"math/rand"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/babylonchain/babylon/testutil/datagen"
+	sdkmath "cosmossdk.io/math"
+	bbntypes "github.com/babylonchain/babylon/types"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
@@ -76,15 +78,26 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	_, err = ctm.BBNClient.RegisterConsumerChain(bcdChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
 	require.NoError(t, err)
 
-	ctm.CreateConsumerFinalityProviders(t, bcdChainID, 1)
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
+	app := ctm.Fpa
+	cfg := app.GetConfig()
+
+	fpName := fpNamePrefix + bcdChainID
+	moniker := monikerPrefix + bcdChainID
+	commission := sdkmath.LegacyZeroDec()
+	desc := newDescription(moniker)
+	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
 	require.NoError(t, err)
-	_, msgPub, err := GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	res, err := app.CreateFinalityProvider(fpName, bcdChainID, passphrase, hdPath, desc, &commission)
+	require.NoError(t, err)
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+	require.NoError(t, err)
+	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 	require.NoError(t, err)
 
+	//ctm.CreateConsumerFinalityProviders(t, bcdChainID, 1)
+
 	// inject fp and delegation in smart contract using admin
-	msg := GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
+	msg := GenBtcStakingExecMsg(fpPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	_, err = ctm.BcdConsumerClient.ExecuteContract(msgBytes)
@@ -118,6 +131,35 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	require.Len(t, consumerFpsByPowerResp.Fps, 1)
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
+
+	err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+	require.NoError(t, err)
+	fpIns, err := app.GetFinalityProviderInstance(fpPk)
+	require.NoError(t, err)
+	require.True(t, fpIns.IsRunning())
+	require.NoError(t, err)
+
+	// check finality providers on Babylon side
+	require.Eventually(t, func() bool {
+		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(bcdChainID)
+		if err != nil {
+			t.Logf("failed to query finality providers from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(fps) != 1 {
+			return false
+		}
+
+		if !strings.Contains(fps[0].Description.Moniker, monikerPrefix) {
+			return false
+		}
+		if !fps[0].Commission.Equal(sdkmath.LegacyZeroDec()) {
+			return false
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	//// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
 	//msg2 := GenPubRandomnessExecMsg(
