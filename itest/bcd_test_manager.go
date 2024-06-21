@@ -3,13 +3,17 @@ package e2etest
 import (
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	sdklogs "cosmossdk.io/log"
+	sdkmath "cosmossdk.io/math"
 	wasmapp "github.com/CosmWasm/wasmd/app"
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	"github.com/babylonchain/babylon/testutil/datagen"
+	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	cwcc "github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
@@ -21,6 +25,7 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	dbm "github.com/cosmos/cosmos-db"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -145,11 +150,75 @@ func (ctm *BcdTestManager) WaitForServicesStart(t *testing.T) {
 
 func (ctm *BcdTestManager) Stop(t *testing.T) {
 	err := ctm.Fpa.Stop()
-	require.Error(t, err) // TODO: expect error for now as finality daemon is not started in tests
+	require.NoError(t, err)
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
 	ctm.BcdHandler.Stop(t)
 	err = os.RemoveAll(ctm.baseDir)
 	require.NoError(t, err)
+}
+
+func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consumerId string, n int) []*service.FinalityProviderInstance {
+	app := ctm.Fpa
+	cfg := app.GetConfig()
+
+	// register all finality providers
+	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
+	for i := 0; i < n; i++ {
+		fpName := fpNamePrefix + consumerId + "-" + strconv.Itoa(i)
+		moniker := monikerPrefix + consumerId + "-" + strconv.Itoa(i)
+		commission := sdkmath.LegacyZeroDec()
+		desc := newDescription(moniker)
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, consumerId, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		require.NoError(t, err)
+		res, err := app.CreateFinalityProvider(fpName, consumerId, passphrase, hdPath, desc, &commission)
+		require.NoError(t, err)
+		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+		require.NoError(t, err)
+		fpPKs = append(fpPKs, fpPk)
+		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		require.NoError(t, err)
+	}
+
+	for i := 0; i < n; i++ {
+		// start
+		err := app.StartHandlingFinalityProvider(fpPKs[i], passphrase)
+		require.NoError(t, err)
+		fpIns, err := app.GetFinalityProviderInstance(fpPKs[i])
+		require.NoError(t, err)
+		require.True(t, fpIns.IsRunning())
+		require.NoError(t, err)
+	}
+
+	// check finality providers on Babylon side
+	require.Eventually(t, func() bool {
+		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(consumerId)
+		if err != nil {
+			t.Logf("failed to query finality providers from Babylon %s", err.Error())
+			return false
+		}
+
+		if len(fps) != n {
+			return false
+		}
+
+		for _, fp := range fps {
+			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				return false
+			}
+			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+				return false
+			}
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	fpInsList := app.ListFinalityProviderInstancesForChain(consumerId)
+	require.Equal(t, n, len(fpInsList))
+
+	t.Logf("the consumer test manager is running with %v finality-provider(s)", len(fpInsList))
+
+	return fpInsList
 }

@@ -281,7 +281,7 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint6
 		Blocks: BlocksQuery{
 			StartAfter: startAfter,
 			Limit:      limit,
-			Finalized:  finalized,
+			Finalised:  finalized,
 			Reverse:    reverse,
 		},
 	}
@@ -451,12 +451,10 @@ func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	reverse := true
 	count := uint64(1)
 	blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(blocks) == 0 {
-		return 0, fmt.Errorf("no blocks found")
+	if err != nil || len(blocks) != 1 {
+		// try query comet block if the index block query is not available
+		block, err := wc.queryCometBestBlock()
+		return block.Height, err
 	}
 
 	return blocks[0].Height, nil
@@ -539,10 +537,10 @@ func (wc *CosmwasmConsumerController) QueryDelegations() (*ConsumerDelegationsRe
 //nolint:unused
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
-	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := wc.cwClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	defer cancel()
 
+	// this will return 20 items at max in the descending order (highest first)
+	chainInfo, err := wc.cwClient.RPCClient.BlockchainInfo(ctx, 0, 0)
 	if err != nil {
 		return nil, err
 	}

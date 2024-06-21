@@ -190,7 +190,7 @@ type QueryMsgBlocks struct {
 type BlocksQuery struct {
 	StartAfter *uint64 `json:"start_after,omitempty"`
 	Limit      *uint64 `json:"limit,omitempty"`
-	Finalized  *bool   `json:"finalized,omitempty"`
+	Finalised  *bool   `json:"finalised,omitempty"` //TODO: finalised or finalized, typo in smart contract
 	Reverse    *bool   `json:"reverse,omitempty"`
 }
 

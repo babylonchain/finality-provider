@@ -304,6 +304,28 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 	return fps, nil
 }
 
+func (bc *BabylonController) QueryConsumerFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
+	var fps []*bsctypes.FinalityProviderResponse
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	for {
+		res, err := bc.bbnClient.QueryClient.QueryConsumerFinalityProviders(consumerId, pagination)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query finality providers: %v", err)
+		}
+		fps = append(fps, res.FinalityProviders...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return fps, nil
+}
+
 func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfoResponse, error) {
 	res, err := bc.bbnClient.QueryClient.BTCHeaderChainTip()
 	if err != nil {
