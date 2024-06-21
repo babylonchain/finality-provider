@@ -50,7 +50,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 
 	// 3. new op consumer controller
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(), logger)
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
 
 	ctm := &OpL2ConsumerTestManager{
@@ -67,12 +67,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	return ctm
 }
 
-func mockOpL2ConsumerCtrlConfig() *fpcfg.OPStackL2Config {
+func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 	dc := bbncfg.DefaultBabylonConfig()
-	keyDir, err := e2etest.BaseDir("zOpL2Test")
-	if err != nil {
-		panic(err)
-	}
+
 	// fill up the config from dc config
 	return &fpcfg.OPStackL2Config{
 		// it has to be a valid EVM RPC which doesn't timeout
@@ -85,7 +82,7 @@ func mockOpL2ConsumerCtrlConfig() *fpcfg.OPStackL2Config {
 		GRPCAddr:                dc.GRPCAddr,
 		AccountPrefix:           dc.AccountPrefix,
 		KeyringBackend:          dc.KeyringBackend,
-		KeyDirectory:            keyDir,
+		KeyDirectory:            nodeDataDir,
 		GasAdjustment:           1.5,
 		GasPrices:               "0.002ubbn",
 		Debug:                   dc.Debug,
