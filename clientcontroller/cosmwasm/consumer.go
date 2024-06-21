@@ -250,28 +250,36 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	isFinalized := true
-	limit := uint64(1)
-	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
-	if err != nil || len(blocks) != 1 {
-		// TODO: temporary hack get the block from comet
-		block, err := wc.queryCometBestBlock()
-		return block, err
-	}
+	//isFinalized := true
+	//limit := uint64(1)
+	//blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if len(blocks) == 0 {
+	//	return nil, fmt.Errorf("no finalized blocks found")
+	//}
+	//
+	//return blocks[0], nil
 
-	return blocks[0], nil
+	// TODO: temporary hack get the block from comet
+	block, err := wc.queryCometBestBlock()
+	return block, err
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	if endHeight < startHeight {
-		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
-	}
-	count := endHeight - startHeight + 1
-	if count > limit {
-		count = limit
-	}
+	//if endHeight < startHeight {
+	//	return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
+	//}
+	//count := endHeight - startHeight + 1
+	//if count > limit {
+	//	count = limit
+	//}
+	//
+	//return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
 
-	return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
+	// TODO: temporary hack get the block from comet
+	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
 func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
@@ -346,19 +354,20 @@ func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*Indexed
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	// Use the helper function to get the IndexedBlock
-	resp, err := wc.queryIndexedBlock(height)
-	if err != nil || resp == nil {
-		// TODO: temporary hack get the block from comet
-		block, err := wc.queryCometBestBlock()
-		return block, err
-	}
+	//// Use the helper function to get the IndexedBlock
+	//resp, err := wc.queryIndexedBlock(height)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//// Convert to BlockInfo and return
+	//return &fptypes.BlockInfo{
+	//	Height: resp.Height,
+	//	Hash:   resp.AppHash,
+	//}, nil
 
-	// Convert to BlockInfo and return
-	return &fptypes.BlockInfo{
-		Height: resp.Height,
-		Hash:   resp.AppHash,
-	}, nil
+	// TODO: temporary hack get the block from comet
+	block, err := wc.queryCometBestBlock()
+	return block, err
 }
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
@@ -408,19 +417,21 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	// Use the helper function to get the IndexedBlock
-	resp, err := wc.queryIndexedBlock(height)
-	if err != nil || resp == nil {
-		// TODO: temporary hack get the block from comet
-		block, err := wc.queryCometBestBlock()
-		if err != nil {
-			return false, err
-		}
-		return height <= block.Height, nil
-	}
+	//// Use the helper function to get the IndexedBlock
+	//resp, err := wc.queryIndexedBlock(height)
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//// Return the finalized status
+	//return resp.Finalized, nil
 
-	// Return the finalized status
-	return resp.Finalized, nil
+	// TODO: temporary hack get the block from comet
+	_, err := wc.queryCometBestBlock()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
@@ -455,16 +466,22 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	reverse := true
-	count := uint64(1)
-	blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
-	if err != nil || len(blocks) != 1 {
-		// TODO: temporary hack get the block from comet
-		block, err := wc.queryCometBestBlock()
-		return block.Height, err
-	}
+	//reverse := true
+	//count := uint64(1)
+	//blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
+	//if err != nil {
+	//	return 0, err
+	//}
+	//
+	//if len(blocks) == 0 {
+	//	return 0, fmt.Errorf("no blocks found")
+	//}
+	//
+	//return blocks[0].Height, nil
 
-	return blocks[0].Height, nil
+	// TODO: temporary hack get the block from comet
+	block, err := wc.queryCometBestBlock()
+	return block.Height, err
 }
 
 func (wc *CosmwasmConsumerController) QueryFinalitySignature(fpBtcPkHex string, height uint64) (*FinalitySignatureResponse, error) {
@@ -557,6 +574,34 @@ func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo,
 		Height: uint64(chainInfo.BlockMetas[0].Header.Height),
 		Hash:   chainInfo.BlockMetas[0].Header.AppHash,
 	}, nil
+}
+
+func (wc *CosmwasmConsumerController) queryCometBlocksInRange(startHeight, endHeight uint64) ([]*fptypes.BlockInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
+	defer cancel()
+
+	// this will return 20 items at max in the descending order (highest first)
+	chainInfo, err := wc.cwClient.RPCClient.BlockchainInfo(ctx, int64(startHeight), int64(endHeight))
+	if err != nil {
+		return nil, err
+	}
+
+	// If no blocks found, return an empty slice
+	if len(chainInfo.BlockMetas) == 0 {
+		return nil, fmt.Errorf("no comet blocks found in the range")
+	}
+
+	// Process the blocks and convert them to BlockInfo
+	var blocks []*fptypes.BlockInfo
+	for _, blockMeta := range chainInfo.BlockMetas {
+		block := &fptypes.BlockInfo{
+			Height: uint64(blockMeta.Header.Height),
+			Hash:   blockMeta.Header.AppHash,
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks, nil
 }
 
 func (wc *CosmwasmConsumerController) Close() error {
