@@ -384,13 +384,10 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	// Construct the query message
-	reverse := true
 	queryMsgStruct := QueryMsgLastPubRandCommit{
 		LastPubRandCommit: LastPubRandCommitQuery{
-			BtcPkHex:   fpBtcPk.MarshalHex(),
-			StartAfter: nil,
-			Limit:      &count,
-			Reverse:    &reverse,
+			BtcPkHex: fpBtcPk.MarshalHex(),
+			Limit:    &count,
 		},
 	}
 
