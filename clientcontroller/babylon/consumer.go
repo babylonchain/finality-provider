@@ -332,7 +332,10 @@ func (bc *BabylonConsumerController) QueryLatestBlockHeight() (uint64, error) {
 	if err != nil || len(blocks) != 1 {
 		// try query comet block if the index block query is not available
 		block, err := bc.queryCometBestBlock()
-		return block.Height, err
+		if err != nil {
+			return 0, err
+		}
+		return block.Height, nil
 	}
 
 	return blocks[0].Height, nil
