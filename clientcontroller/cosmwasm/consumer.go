@@ -451,18 +451,12 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	reverse := true
-	count := uint64(1)
-	blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
+	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
 	}
 
-	if len(blocks) == 0 {
-		return 0, fmt.Errorf("no blocks found")
-	}
-
-	return blocks[0].Height, nil
+	return block.Height, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryFinalitySignature(fpBtcPkHex string, height uint64) (*FinalitySignatureResponse, error) {
