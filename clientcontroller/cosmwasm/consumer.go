@@ -199,6 +199,9 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
 func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+	// TODO(euphrates): fix this
+	return 1, nil
+
 	fpBtcPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
 
 	queryMsgStruct := QueryMsgFinalityProviderInfo{
