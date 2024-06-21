@@ -161,31 +161,22 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 		return true
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	//// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
-	//msg2 := GenPubRandomnessExecMsg(
-	//	msgPub.FpBtcPk.MarshalHex(),
-	//	base64.StdEncoding.EncodeToString(msgPub.Commitment),
-	//	base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
-	//	msgPub.StartHeight,
-	//	msgPub.NumPubRand,
-	//)
-	//msgBytes2, err := json.Marshal(msg2)
-	//require.NoError(t, err)
-	//_, err = ctm.BcdConsumerClient.ExecuteContract(msgBytes2)
-	//require.NoError(t, err)
-	//
-	//// inject finality signature in smart contract (admin is not required, although in the tests admin and sender are the same)
-	//wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
-	//require.NoError(t, err)
-	//cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	//finalitySigMsg := GenFinalitySigExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
-	//finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
-	//require.NoError(t, err)
-	//_, err = ctm.BcdConsumerClient.ExecuteContract(finalitySigMsgBytes)
-	//require.NoError(t, err)
-	//fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(msgPub.FpBtcPk.MarshalHex(), uint64(cometLatestHeight))
-	//require.NoError(t, err)
-	//require.NotNil(t, fpSigsResponse)
-	//require.NotNil(t, fpSigsResponse.Signature)
-	//require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
+	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
+	require.NoError(t, err)
+	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
+
+	require.Eventually(t, func() bool {
+		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(cometLatestHeight))
+		if err != nil {
+			t.Logf("failed to query finality signature: %s", err.Error())
+			return false
+		}
+		if fpSigsResponse == nil {
+			return false
+		}
+		if fpSigsResponse.Signature == nil {
+			return false
+		}
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
 }
