@@ -69,6 +69,10 @@ install-wasmd:
 
 test-e2e: install-babylond install-wasmd
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
+
+test-e2e-op: install-babylond
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
 
 ###############################################################################
 ###                                Protobuf                                 ###
