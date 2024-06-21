@@ -41,6 +41,7 @@ func NewCosmwasmConsumerController(
 	encodingCfg wasmdparams.EncodingConfig,
 	logger *zap.Logger,
 ) (*CosmwasmConsumerController, error) {
+	// MARK
 	wasmdConfig := cfg.ToQueryClientConfig()
 
 	if err := wasmdConfig.Validate(); err != nil {

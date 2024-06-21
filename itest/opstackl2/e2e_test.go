@@ -1,6 +1,5 @@
-//ro:build e2e_op
-
-// -build e2e_op
+//go:build e2e_op
+// +build e2e_op
 
 package e2etest_op
 

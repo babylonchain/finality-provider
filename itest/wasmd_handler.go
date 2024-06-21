@@ -31,8 +31,9 @@ type WasmdNodeHandler struct {
 	dataDir string
 }
 
+// MARK
 func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
-	testDir, err := baseDir("ZWasmdTest")
+	testDir, err := BaseDir("ZWasmdTest")
 	require.NoError(t, err)
 	defer func() {
 		if err != nil {

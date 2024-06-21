@@ -72,6 +72,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	err = wh.Start()
 	require.NoError(t, err)
 	cfg.CosmwasmConfig = config.DefaultCosmwasmConfig()
+	// MARK
 	cfg.CosmwasmConfig.KeyDirectory = wh.dataDir
 	// TODO: make random contract addresses for now to avoid validation errors
 	//  later in the e2e tests we would upload the contract and update the addresses
