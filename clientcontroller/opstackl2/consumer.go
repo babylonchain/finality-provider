@@ -344,16 +344,17 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
 
-	var resp LastPubRandCommitResponse
-	err = json.Unmarshal(stateResp.Data, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
 	respMap := make(map[uint64]*types.PubRandCommit)
-	respMap[resp.StartHeight] = &types.PubRandCommit{
-		NumPubRand: resp.NumPubRand,
-		Commitment: resp.Commitment,
+	if stateResp.Data != nil {
+		var resp LastPubRandCommitResponse
+		err = json.Unmarshal(stateResp.Data, &resp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		}
+		respMap[resp.StartHeight] = &types.PubRandCommit{
+			NumPubRand: resp.NumPubRand,
+			Commitment: resp.Commitment,
+		}
 	}
 
 	return respMap, nil
