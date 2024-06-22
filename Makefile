@@ -69,7 +69,12 @@ install-wasmd:
 
 .PHONY: clean-e2e
 clean-e2e:
-	ps aux | grep -E 'babylond start|wasmd start' | grep -v grep | awk '{print $$2}' | xargs kill
+# find babylond adn wasmd process ids (in one line, seperated by space)
+	@pids=$$(ps aux | grep -E 'babylond start|wasmd start' | grep -v grep | awk '{print $$2}' | tr '\n' ' '); \
+	if [ -n "$$pids" ]; then \
+		echo $$pids | xargs kill; \
+		echo "Killed process $$pids"; \
+	fi
 
 test-e2e: install-babylond install-wasmd
 	make clean-e2e
