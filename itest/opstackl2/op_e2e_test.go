@@ -114,4 +114,12 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	err = instantiateWasmContract(ctm.OpL2ConsumerCtrl, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
 
+	// get op contract address
+	resp, err := ctm.OpL2ConsumerCtrl.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Contracts, 1)
+	// update the contract address in config because during setup we had used a
+	// mocked address which is diff than the deployed one on the fly
+	ctm.OpL2ConsumerCtrl.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
+	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 }
