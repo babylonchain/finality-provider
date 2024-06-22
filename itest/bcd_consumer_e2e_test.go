@@ -75,12 +75,13 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	// update the contract address in config because during setup we had used a random address which is not valid
 	ctm.BcdConsumerClient.SetBtcStakingContractAddress(btcStakingContractAddr.String())
 
+	// register consumer to babylon
 	_, err = ctm.BBNClient.RegisterConsumerChain(bcdChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
 	require.NoError(t, err)
 
+	// register consumer fps to babylon
 	app := ctm.Fpa
 	cfg := app.GetConfig()
-
 	fpName := fpNamePrefix + bcdChainID
 	moniker := monikerPrefix + bcdChainID
 	commission := sdkmath.LegacyZeroDec()
@@ -93,8 +94,6 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	require.NoError(t, err)
 	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 	require.NoError(t, err)
-
-	//ctm.CreateConsumerFinalityProviders(t, bcdChainID, 1)
 
 	// inject fp and delegation in smart contract using admin
 	msg := GenBtcStakingExecMsg(fpPk.MarshalHex())
