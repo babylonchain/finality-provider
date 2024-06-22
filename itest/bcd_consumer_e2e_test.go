@@ -174,7 +174,7 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 		if fpSigsResponse == nil {
 			return false
 		}
-		if fpSigsResponse.Signature == nil {
+		if fpSigsResponse.Signature == nil || len(fpSigsResponse.Signature) == 0 {
 			return false
 		}
 		return true
