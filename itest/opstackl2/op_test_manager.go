@@ -30,7 +30,7 @@ type OpL2ConsumerTestManager struct {
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// Setup consumer test manager
-	testDir, err := e2etest.TempDirWithName("fpe2etest")
+	testDir, err := e2etest.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
