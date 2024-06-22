@@ -370,7 +370,7 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 	}
 	if targetBlockHeight < activatedHeight {
 		fp.logger.Debug(
-			"finality gadget is not activated yet, no need to catch up",
+			"finality provider is not activated yet on the consumer, no need to catch up",
 			zap.Uint64("activated height", activatedHeight),
 			zap.Uint64("target height", targetBlockHeight),
 		)
