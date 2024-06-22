@@ -30,8 +30,8 @@ import (
 )
 
 var (
-	eventuallyWaitTimeOut = 1 * time.Second
-	eventuallyPollTime    = 10 * time.Millisecond
+	EventuallyWaitTimeOut = 1 * time.Second
+	EventuallyPollTime    = 10 * time.Millisecond
 )
 
 func FuzzStatusUpdate(f *testing.F) {
@@ -89,7 +89,7 @@ func waitForStatus(t *testing.T, fpIns *service.FinalityProviderInstance, s prot
 	require.Eventually(t,
 		func() bool {
 			return fpIns.GetStatus() == s
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
+		}, EventuallyWaitTimeOut, EventuallyPollTime)
 }
 
 func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc ccapi.ClientController, consumerCon ccapi.ConsumerController) (*service.FinalityProviderManager, *bbntypes.BIP340PubKey, func()) {

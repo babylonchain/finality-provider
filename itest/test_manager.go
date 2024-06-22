@@ -38,8 +38,8 @@ import (
 )
 
 var (
-	eventuallyWaitTimeOut = 1 * time.Minute
-	eventuallyPollTime    = 500 * time.Millisecond
+	EventuallyWaitTimeOut = 1 * time.Minute
+	EventuallyPollTime    = 500 * time.Millisecond
 	btcNetworkParams      = &chaincfg.SimNetParams
 
 	fpNamePrefix  = "test-fp-"
@@ -82,7 +82,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := baseDir("fpe2etest")
+	testDir, err := BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -90,14 +90,14 @@ func StartManager(t *testing.T) *TestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := TenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 	bcc, err := bbncc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -146,7 +146,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 		}
 		tm.StakingParams = params
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("Babylon node is started")
 }
@@ -213,7 +213,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			return true
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
+		}, EventuallyWaitTimeOut, EventuallyPollTime)
 	}
 
 	// goes back to old key in app
@@ -240,6 +240,18 @@ func (tm *TestManager) Stop(t *testing.T) {
 	tm.EOTSServerHandler.Stop()
 }
 
+func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
+	require.Eventually(t, func() bool {
+		queriedFps, err := tm.BBNClient.QueryFinalityProviders()
+		if err != nil {
+			return false
+		}
+		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
+
+	t.Logf("the finality-provider is successfully registered")
+}
+
 func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
 		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
@@ -247,7 +259,7 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 			return false
 		}
 		return lastCommittedHeight > 0
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
 }
@@ -265,7 +277,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 			return false
 		}
 		return len(dels) == n
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("delegations are pending")
 
@@ -285,14 +297,14 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDel
 			return false
 		}
 		return len(dels) == n
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("delegations are active")
 
 	return dels
 }
 
-func generateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
+func TenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
 	var (
 		covenantPrivKeys []*btcec.PrivateKey
 		covenantPubKeys  []*bbntypes.BIP340PubKey
@@ -318,7 +330,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return len(votes) == num
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
@@ -328,7 +340,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return finalized
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 }
 
 func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
@@ -340,7 +352,7 @@ func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityPr
 		} else {
 			return false
 		}
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	return lastVotedHeight
 }
@@ -365,7 +377,7 @@ func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n
 			firstFinalizedBlock = lastFinalizedBlock
 		}
 		return lastFinalizedBlock.Height-firstFinalizedBlock.Height >= uint64(n-1)
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
 
@@ -376,7 +388,7 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 	require.Eventually(t, func() bool {
 		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
 		return err != nil
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
@@ -394,7 +406,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 		}
 
 		return headerAfterStopHeight >= uint64(n)+blockBeforeStopHeight
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Log("restarting the finality-provider instance")
 
@@ -669,7 +681,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	}
 }
 
-func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
+func DefaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg := fpcfg.DefaultConfigWithHome(homeDir)
 
 	cfg.BitcoinNetwork = "simnet"

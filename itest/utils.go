@@ -2,7 +2,7 @@ package e2etest
 
 import "os"
 
-func baseDir(pattern string) (string, error) {
+func BaseDir(pattern string) (string, error) {
 	tempPath := os.TempDir()
 
 	tempName, err := os.MkdirTemp(tempPath, pattern)
