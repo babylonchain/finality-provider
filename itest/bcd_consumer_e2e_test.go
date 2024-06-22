@@ -139,7 +139,7 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	require.True(t, fpIns.IsRunning())
 	require.NoError(t, err)
 
-	// check finality providers on Babylon side
+	// ensure consumer finality providers are stored in Babylon
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(bcdChainID)
 		if err != nil {
@@ -164,9 +164,25 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
+	lookupHeight := cometLatestHeight + 20 // TODO: this is a hack, as its possible the randomness/sigs submission loops haven't started yet
 
+	// ensure pub rand is submitted to smart contract
 	require.Eventually(t, func() bool {
-		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(cometLatestHeight))
+		fpPubRandResp, err := ctm.BcdConsumerClient.QueryLastCommittedPublicRand(fpPk.MustToBTCPK(), 1)
+		if err != nil {
+			t.Logf("failed to query last committed public rand: %s", err.Error())
+			return false
+		}
+		if fpPubRandResp == nil {
+			return false
+		}
+
+		return true
+	}, eventuallyWaitTimeOut, eventuallyPollTime)
+
+	// ensure finality signature is submitted to smart contract
+	require.Eventually(t, func() bool {
+		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(lookupHeight))
 		if err != nil {
 			t.Logf("failed to query finality signature: %s", err.Error())
 			return false
