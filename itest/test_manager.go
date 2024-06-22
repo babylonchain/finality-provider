@@ -82,7 +82,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := tempDirWithName("fpe2etest")
+	testDir, err := baseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -685,23 +685,6 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.BabylonConfig.GasAdjustment = 20
 
 	return &cfg
-}
-
-func tempDirWithName(name string) (string, error) {
-	tempPath := os.TempDir()
-
-	tempName, err := os.MkdirTemp(tempPath, name)
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Chmod(tempName, 0755)
-
-	if err != nil {
-		return "", err
-	}
-
-	return tempName, nil
 }
 
 func newDescription(moniker string) *stakingtypes.Description {
