@@ -67,11 +67,17 @@ install-wasmd:
 	cd $(TOOLS_DIR); \
 	go install -trimpath $(WASMD_PKG)
 
+.PHONY: clean-e2e
+clean-e2e:
+	ps aux | grep -E 'babylond start|wasmd start' | grep -v grep | awk '{print $$2}' | xargs kill
+
 test-e2e: install-babylond install-wasmd
+	make clean-e2e
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
 
 test-e2e-op: install-babylond
+	make clean-e2e
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
 
 ###############################################################################
