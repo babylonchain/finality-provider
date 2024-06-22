@@ -42,11 +42,11 @@ var (
 	EventuallyPollTime    = 500 * time.Millisecond
 	btcNetworkParams      = &chaincfg.SimNetParams
 
-	fpNamePrefix  = "test-fp-"
-	monikerPrefix = "moniker-"
-	chainID       = "chain-test"
-	passphrase    = "testpass"
-	hdPath        = ""
+	FpNamePrefix  = "test-fp-"
+	MonikerPrefix = "moniker-"
+	ChainID       = "chain-test"
+	Passphrase    = "testpass"
+	HdPath        = ""
 	simnetParams  = &chaincfg.SimNetParams
 )
 
@@ -157,20 +157,20 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	app := tm.Fpa
 
 	for i := 0; i < n; i++ {
-		fpName := fpNamePrefix + strconv.Itoa(i)
-		moniker := monikerPrefix + strconv.Itoa(i)
+		fpName := FpNamePrefix + strconv.Itoa(i)
+		moniker := MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := newDescription(moniker)
+		desc := NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, ChainID, Passphrase, HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+		err = app.StartHandlingFinalityProvider(fpPk, Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
@@ -190,7 +190,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				if !strings.Contains(fp.Description.Moniker, MonikerPrefix) {
 					return false
 				}
 				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -205,7 +205,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
+	t.Logf("The test manager is running with %v finality-provider(s)", len(fpInsList))
 
 	return tm, fpInsList
 }
@@ -396,7 +396,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 }
 
 func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(fpPk, passphrase)
+	record, err := tm.EOTSClient.KeyRecord(fpPk, Passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
 }
@@ -683,7 +683,7 @@ func DefaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	return &cfg
 }
 
-func newDescription(moniker string) *stakingtypes.Description {
+func NewDescription(moniker string) *stakingtypes.Description {
 	dec := stakingtypes.NewDescription(moniker, "", "", "", "")
 	return &dec
 }

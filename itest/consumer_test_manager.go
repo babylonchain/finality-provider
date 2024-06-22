@@ -162,20 +162,20 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*
 	app := ctm.Fpa
 
 	for i := 0; i < n; i++ {
-		fpName := fpNamePrefix + strconv.Itoa(i)
-		moniker := monikerPrefix + strconv.Itoa(i)
+		fpName := FpNamePrefix + strconv.Itoa(i)
+		moniker := MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := newDescription(moniker)
+		desc := NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, ChainID, Passphrase, HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+		err = app.StartHandlingFinalityProvider(fpPk, Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
@@ -195,7 +195,7 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*
 			}
 
 			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				if !strings.Contains(fp.Description.Moniker, MonikerPrefix) {
 					return false
 				}
 				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -222,13 +222,13 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 	// register all finality providers
 	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
 	for i := 0; i < n; i++ {
-		fpName := fpNamePrefix + chainID + "-" + strconv.Itoa(i)
-		moniker := monikerPrefix + chainID + "-" + strconv.Itoa(i)
+		fpName := FpNamePrefix + chainID + "-" + strconv.Itoa(i)
+		moniker := MonikerPrefix + chainID + "-" + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := newDescription(moniker)
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, chainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		desc := NewDescription(moniker)
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, chainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, chainID, Passphrase, HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -239,7 +239,7 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 
 	for i := 0; i < n; i++ {
 		// start
-		err := app.StartHandlingFinalityProvider(fpPKs[i], passphrase)
+		err := app.StartHandlingFinalityProvider(fpPKs[i], Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPKs[i])
 		require.NoError(t, err)
@@ -260,7 +260,7 @@ func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, ch
 		}
 
 		for _, fp := range fps {
-			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+			if !strings.Contains(fp.Description.Moniker, MonikerPrefix) {
 				return false
 			}
 			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
