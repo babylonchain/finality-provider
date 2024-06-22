@@ -363,6 +363,20 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 		return nil, fmt.Errorf("the finality-provider %s is already in sync", fp.GetBtcPkHex())
 	}
 
+	// get the activated height from the consumer controller
+	activatedHeight, err := fp.consumerCon.QueryActivatedHeight()
+	if err != nil {
+		return nil, err
+	}
+	if targetBlockHeight < activatedHeight {
+		fp.logger.Debug(
+			"finality gadget is not activated yet, no need to catch up",
+			zap.Uint64("activated height", activatedHeight),
+			zap.Uint64("target height", targetBlockHeight),
+		)
+		return nil, nil
+	}
+
 	// get the last finalized height
 	lastFinalizedBlock, err := fp.latestFinalizedBlockWithRetry()
 	if err != nil {
