@@ -25,7 +25,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -38,16 +37,8 @@ import (
 )
 
 var (
-	EventuallyWaitTimeOut = 1 * time.Minute
-	EventuallyPollTime    = 500 * time.Millisecond
-	btcNetworkParams      = &chaincfg.SimNetParams
-
-	FpNamePrefix  = "test-fp-"
-	MonikerPrefix = "moniker-"
-	ChainID       = "chain-test"
-	Passphrase    = "testpass"
-	HdPath        = ""
-	simnetParams  = &chaincfg.SimNetParams
+	btcNetworkParams = &chaincfg.SimNetParams
+	simnetParams     = &chaincfg.SimNetParams
 )
 
 type TestManager struct {
@@ -681,11 +672,6 @@ func DefaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.BabylonConfig.GasAdjustment = 20
 
 	return &cfg
-}
-
-func NewDescription(moniker string) *stakingtypes.Description {
-	dec := stakingtypes.NewDescription(moniker, "", "", "", "")
-	return &dec
 }
 
 // ParseRespBTCDelToBTCDel parses an BTC delegation response to BTC Delegation
