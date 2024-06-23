@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
+	e2etest "github.com/babylonchain/finality-provider/itest"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 )
@@ -73,6 +75,21 @@ func instantiateWasmContract(opL2cc *opstackl2.OPStackL2ConsumerController, code
 	return nil
 }
 
+func executeWasmContract(opL2cc *opstackl2.OPStackL2ConsumerController, msgBytes []byte) error {
+	execMsg := &wasmdtypes.MsgExecuteContract{
+		Sender:   opL2cc.CwClient.MustGetAddr(),
+		Contract: opL2cc.Cfg.OPFinalityGadgetAddress,
+		Msg:      msgBytes,
+	}
+
+	_, err := opL2cc.ReliablySendMsg(execMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // returns the latest wasm code id.
 func getLatestCodeId(opL2cc *opstackl2.OPStackL2ConsumerController) (uint64, error) {
 	pagination := &sdkquerytypes.PageRequest{
@@ -107,7 +124,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
-		"activated_height": opActivatedHeight,
+		"activated_height": 0,
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
@@ -122,4 +139,35 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// mocked address which is diff than the deployed one on the fly
 	ctm.OpL2ConsumerCtrl.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
+
+	// TODO: this will fix the error at pubrand commitment
+	// register FP in Babylon Chain
+	fpList := ctm.StartFinalityProvider(t, 1)
+
+	// generate randomness data
+	msgPub, err := ctm.generateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
+	require.NoError(t, err)
+
+	// inject pub rand commitment in smart contract
+	commitPubRandMsg := e2etest.GenPubRandomnessExecMsg(
+		msgPub.FpBtcPk.MarshalHex(),
+		base64.StdEncoding.EncodeToString(msgPub.Commitment),
+		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+		msgPub.StartHeight,
+		msgPub.NumPubRand,
+	)
+	commitPubRandMsgBytes, err := json.Marshal(commitPubRandMsg)
+	require.NoError(t, err)
+	/*
+		Error:          Received unexpected error:
+		rpc error: code = Unknown desc = rpc error: code = Unknown desc = failed to execute message; message index: 0:
+		Finality provider not found for consumer op-stack-l2-12345 with pubkey 6ab0e00becb98e617f780dc36b16d71710f3277627b52aaedba6be2a62085833:
+		execute wasm contract failed [CosmWasm/wasmd@v0.51.0/x/wasm/keeper/keeper.go:422] with gas used: '102325': unknown request
+	*/
+	// TODO:
+	// - register FP to Babylon chain using the same FP FpBtcPk
+	err = executeWasmContract(ctm.OpL2ConsumerCtrl, commitPubRandMsgBytes)
+	require.NoError(t, err)
+
+	// query pub rand
 }
