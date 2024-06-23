@@ -22,6 +22,8 @@ import (
 	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
+	"github.com/babylonchain/finality-provider/eotsmanager/client"
+	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2etest "github.com/babylonchain/finality-provider/itest"
@@ -39,11 +41,14 @@ const (
 )
 
 type OpL2ConsumerTestManager struct {
-	BabylonHandler   *e2etest.BabylonNodeHandler
-	BBNClient        *bbncc.BabylonController
-	FpApp            *service.FinalityProviderApp
-	FpConfig         *fpcfg.Config
-	OpL2ConsumerCtrl *opstackl2.OPStackL2ConsumerController
+	BabylonHandler    *e2etest.BabylonNodeHandler
+	BBNClient         *bbncc.BabylonController
+	EOTSClient        *client.EOTSManagerGRpcClient
+	EOTSConfig        *eotsconfig.Config
+	EOTSServerHandler *e2etest.EOTSServerHandler
+	FpApp             *service.FinalityProviderApp
+	FpConfig          *fpcfg.Config
+	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	// TODO: not sure if needed, if not can remove
 	StakingParams    *types.StakingParams
 	CovenantPrivKeys []*btcec.PrivateKey
@@ -71,15 +76,40 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. new op consumer controller
+	// 3. register consumer to Babylon
+	txRes, err := bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
+	require.NoError(t, err)
+	t.Logf("Register consumer %s to Babylon %s", opConsumerId, txRes.TxHash)
+
+	// 4. new op consumer controller
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
 
+	// 5. prepare EOTS manager
+	eotsHomeDir := filepath.Join(testDir, "eots-home")
+	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
+	eh := e2etest.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh.Start()
+	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
+	require.NoError(t, err)
+
+	// 6. prepare finality-provider
+	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
+	require.NoError(t, err)
+	err = fpApp.Start()
+	require.NoError(t, err)
+
 	ctm := &OpL2ConsumerTestManager{
-		BabylonHandler: bh,
-		FpConfig:       cfg,
+		BabylonHandler:    bh,
+		BBNClient:         bc,
+		EOTSClient:        eotsCli,
+		EOTSConfig:        eotsCfg,
+		EOTSServerHandler: eh,
+		FpApp:             fpApp,
+		FpConfig:          cfg,
 		// TODO: might not need this bc field
-		BBNClient:        bc,
 		OpL2ConsumerCtrl: opcc,
 		CovenantPrivKeys: covenantPrivKeys,
 		baseDir:          testDir,
@@ -291,8 +321,14 @@ func (ctm *OpL2ConsumerTestManager) GetLatestCodeId() (uint64, error) {
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
-	err := ctm.BabylonHandler.Stop()
+	var err error
+	// FpApp has to stop first or you will get "rpc error: desc = account xxx not found: key not found" error
+	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
+	err = ctm.FpApp.Stop()
 	require.NoError(t, err)
+	err = ctm.BabylonHandler.Stop()
+	require.NoError(t, err)
+	ctm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(ctm.baseDir)
 	require.NoError(t, err)
 }
