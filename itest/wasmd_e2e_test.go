@@ -17,10 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: currently fp app is not started in consumer manager, make a separate test which submits finality signature and public randomness automatically through fp daemon
-
-// TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
-func TestSubmitFinalitySignature(t *testing.T) {
+// TestConsumerFpDataInjection tests the finality provider lifecycle by manual injection using contract admin
+// NOTE: this doesn't use the fp app or fp daemon
+// 1. Upload Babylon and BTC staking contracts to wasmd chain
+// 2. Instantiate Babylon contract with admin
+// 3. Inject finality provider and delegation in BTC staking contract using admin
+// 4. Inject public randomness commitment in BTC staking contract
+// 5. Inject finality signature in BTC staking contract
+func TestConsumerFpDataInjection(t *testing.T) {
 	ctm := StartConsumerManager(t)
 	defer ctm.Stop(t)
 
