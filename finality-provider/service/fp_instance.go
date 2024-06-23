@@ -692,7 +692,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 	// NOTE: currently, calling this will create and save a list of randomness
 	// in case of failure, randomness that has been created will be overwritten
 	// for safety reason as the same randomness must not be used twice
-	pubRandList, err := fp.getPubRandList(startHeight, fp.cfg.NumPubRand)
+	pubRandList, err := fp.GetPubRandList(startHeight, fp.cfg.NumPubRand)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate randomness: %w", err)
 	}
@@ -707,7 +707,7 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 	}
 
 	// sign the commitment
-	schnorrSig, err := fp.signPubRandCommit(startHeight, numPubRand, commitment)
+	schnorrSig, err := fp.SignPubRandCommit(startHeight, numPubRand, commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
@@ -727,13 +727,13 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
 func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.TxResponse, error) {
-	sig, err := fp.signFinalitySig(b)
+	sig, err := fp.SignFinalitySig(b)
 	if err != nil {
 		return nil, err
 	}
 
 	// get public randomness at the height
-	prList, err := fp.getPubRandList(b.Height, 1)
+	prList, err := fp.GetPubRandList(b.Height, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
@@ -775,7 +775,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	}
 
 	// get public randomness list
-	prList, err := fp.getPubRandList(blocks[0].Height, uint64(len(blocks)))
+	prList, err := fp.GetPubRandList(blocks[0].Height, uint64(len(blocks)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
@@ -789,7 +789,7 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	// sign blocks
 	sigList := make([]*btcec.ModNScalar, 0, len(blocks))
 	for _, b := range blocks {
-		eotsSig, err := fp.signFinalitySig(b)
+		eotsSig, err := fp.SignFinalitySig(b)
 		if err != nil {
 			return nil, err
 		}
@@ -824,7 +824,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// get public randomness
-	prList, err := fp.getPubRandList(b.Height, 1)
+	prList, err := fp.GetPubRandList(b.Height, 1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get public randomness list: %v", err)
 	}
@@ -837,7 +837,7 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// sign block
-	eotsSig, err := fp.signFinalitySig(b)
+	eotsSig, err := fp.SignFinalitySig(b)
 	if err != nil {
 		return nil, nil, err
 	}
