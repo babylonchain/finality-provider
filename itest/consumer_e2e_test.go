@@ -72,7 +72,7 @@ func TestSubmitFinalitySignature(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	randList, msgPub, err := GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	randList, msgPub, err := GenCommitPubRandListMsg(r, fpSk, 1, 100)
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
