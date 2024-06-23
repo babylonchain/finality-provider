@@ -344,17 +344,21 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
 
+	// in CosmWasm contract, if the return data is None, in json it will be a lenth four string "null"
+	// and a nasty thing is it won't throw when calling json.Unmarshal()
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
+	}
+
+	var resp LastPubRandCommitResponse
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
 	respMap := make(map[uint64]*types.PubRandCommit)
-	if stateResp.Data != nil {
-		var resp LastPubRandCommitResponse
-		err = json.Unmarshal(stateResp.Data, &resp)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-		}
-		respMap[resp.StartHeight] = &types.PubRandCommit{
-			NumPubRand: resp.NumPubRand,
-			Commitment: resp.Commitment,
-		}
+	respMap[resp.StartHeight] = &types.PubRandCommit{
+		NumPubRand: resp.NumPubRand,
+		Commitment: resp.Commitment,
 	}
 
 	return respMap, nil
