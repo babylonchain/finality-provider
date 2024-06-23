@@ -42,4 +42,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// mocked address which is diff than the deployed one on the fly
 	ctm.OpL2ConsumerCtrl.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
+
+	// register FP in Babylon Chain
+	_ = ctm.StartFinalityProvider(t, 1)
 }
