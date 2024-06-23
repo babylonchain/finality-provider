@@ -1,6 +1,8 @@
 package e2etest_op
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -281,6 +284,88 @@ func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([
 	}
 
 	return fps, nil
+}
+
+func (ctm *OpL2ConsumerTestManager) StoreWasmCode(wasmFile string) error {
+	wasmCode, err := os.ReadFile(wasmFile)
+	if err != nil {
+		return err
+	}
+	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		_, err = gz.Write(wasmCode)
+		if err != nil {
+			return err
+		}
+		err = gz.Close()
+		if err != nil {
+			return err
+		}
+		wasmCode = buf.Bytes()
+	}
+
+	storeMsg := &wasmdtypes.MsgStoreCode{
+		Sender:       ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
+		WASMByteCode: wasmCode,
+	}
+	_, err = ctm.OpL2ConsumerCtrl.ReliablySendMsg(storeMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctm *OpL2ConsumerTestManager) InstantiateWasmContract(codeID uint64, initMsg []byte) error {
+	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
+		Sender: ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
+		Admin:  ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
+		CodeID: codeID,
+		Label:  "op-test",
+		Msg:    initMsg,
+		Funds:  nil,
+	}
+
+	_, err := ctm.OpL2ConsumerCtrl.ReliablySendMsg(instantiateMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctm *OpL2ConsumerTestManager) ExecuteWasmContract(msgBytes []byte) error {
+	execMsg := &wasmdtypes.MsgExecuteContract{
+		Sender:   ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
+		Contract: ctm.OpL2ConsumerCtrl.Cfg.OPFinalityGadgetAddress,
+		Msg:      msgBytes,
+	}
+
+	_, err := ctm.OpL2ConsumerCtrl.ReliablySendMsg(execMsg, nil, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// returns the latest wasm code id.
+func (ctm *OpL2ConsumerTestManager) GetLatestCodeId() (uint64, error) {
+	pagination := &sdkquery.PageRequest{
+		Limit:   1,
+		Reverse: true,
+	}
+	resp, err := ctm.OpL2ConsumerCtrl.CwClient.ListCodes(pagination)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(resp.CodeInfos) == 0 {
+		return 0, fmt.Errorf("no codes found")
+	}
+
+	return resp.CodeInfos[0].CodeID, nil
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
