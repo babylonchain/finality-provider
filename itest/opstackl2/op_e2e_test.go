@@ -58,6 +58,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		msgPub.Commitment,
 		msgPub.Sig.MustToBTCSig(),
 	)
+	require.NoError(t, err)
 	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
 
 	// query pub rand
@@ -69,6 +70,4 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		require.Equal(t, msgPub.Commitment, v.Commitment)
 		break
 	}
-
-	require.NoError(t, err)
 }
