@@ -37,18 +37,18 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_f149c8b.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
 )
 
 type OpL2ConsumerTestManager struct {
 	BabylonHandler    *e2etest.BabylonNodeHandler
-	EOTSServerHandler *e2etest.EOTSServerHandler
-	FpConfig          *fpcfg.Config
-	EOTSConfig        *eotsconfig.Config
-	FpApp             *service.FinalityProviderApp
-	EOTSClient        *client.EOTSManagerGRpcClient
 	BBNClient         *bbncc.BabylonController
+	EOTSClient        *client.EOTSManagerGRpcClient
+	EOTSConfig        *eotsconfig.Config
+	EOTSServerHandler *e2etest.EOTSServerHandler
+	FpApp             *service.FinalityProviderApp
+	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	// TODO: not sure if needed, if not can remove
 	StakingParams    *types.StakingParams
@@ -104,16 +104,15 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	ctm := &OpL2ConsumerTestManager{
 		BabylonHandler:    bh,
-		EOTSServerHandler: eh,
-		FpConfig:          cfg,
-		EOTSConfig:        eotsCfg,
-		FpApp:             fpApp,
+		BBNClient:         bc,
 		EOTSClient:        eotsCli,
-		// TODO: might not need this bc field
-		BBNClient:        bc,
-		OpL2ConsumerCtrl: opcc,
-		CovenantPrivKeys: covenantPrivKeys,
-		baseDir:          testDir,
+		EOTSConfig:        eotsCfg,
+		EOTSServerHandler: eh,
+		FpApp:             fpApp,
+		FpConfig:          cfg,
+		OpL2ConsumerCtrl:  opcc,
+		CovenantPrivKeys:  covenantPrivKeys,
+		baseDir:           testDir,
 	}
 
 	ctm.WaitForServicesStart(t)
