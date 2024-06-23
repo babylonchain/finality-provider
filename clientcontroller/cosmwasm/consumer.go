@@ -294,6 +294,7 @@ func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit 
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
+//nolint:unused
 func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
 	// Construct the query message
 	queryMsg := QueryMsgBlocks{
@@ -337,6 +338,7 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint6
 	return blocks, nil
 }
 
+//nolint:unused
 func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*IndexedBlock, error) {
 	// Construct the query message
 	queryMsgStruct := QueryMsgBlock{
