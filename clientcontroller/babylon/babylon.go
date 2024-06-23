@@ -146,9 +146,6 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// TODO: only used in test. this should not be put here. it causes confusion that this is a method
-// that will be used when FP runs. in that's the case, it implies it should work all all consumer
-// types. but `bbnClient.QueryClient.FinalityProviders` doesn't work for consumer chains
 func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	res, err := bc.bbnClient.QueryClient.FinalityProvider(fpPubKey.MarshalHex())
@@ -285,6 +282,9 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 	return res, nil
 }
 
+// TODO: only used in test. this should not be put here. it causes confusion that this is a method
+// that will be used when FP runs. in that's the case, it implies it should work all all consumer
+// types. but `bbnClient.QueryClient.FinalityProviders` doesn't work for consumer chains
 func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProviderResponse, error) {
 	var fps []*btcstakingtypes.FinalityProviderResponse
 	pagination := &sdkquery.PageRequest{
