@@ -82,7 +82,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := TenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
@@ -275,7 +275,7 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDel
 	return dels
 }
 
-func TenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
+func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
 	var (
 		covenantPrivKeys []*btcec.PrivateKey
 		covenantPubKeys  []*bbntypes.BIP340PubKey
