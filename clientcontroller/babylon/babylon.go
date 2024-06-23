@@ -68,7 +68,7 @@ func NewBabylonController(
 	}, nil
 }
 
-func (bc *BabylonController) mustGetTxSigner() string {
+func (bc *BabylonController) MustGetTxSigner() string {
 	signer := bc.GetKeyAddress()
 	prefix := bc.cfg.AccountPrefix
 	return sdk.MustBech32ifyAddressBytes(prefix, signer)
@@ -129,7 +129,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	}
 
 	msg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:      bc.mustGetTxSigner(),
+		Signer:      bc.MustGetTxSigner(),
 		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
 		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
 		Pop:         &bbnPop,
@@ -243,7 +243,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
 	}
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:                        bc.mustGetTxSigner(),
+		Signer:                        bc.MustGetTxSigner(),
 		BabylonPk:                     delBabylonPk,
 		Pop:                           pop,
 		BtcPk:                         delBtcPk,
@@ -270,7 +270,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
 	msg := &btclctypes.MsgInsertHeaders{
-		Signer:  bc.mustGetTxSigner(),
+		Signer:  bc.MustGetTxSigner(),
 		Headers: headers,
 	}
 
@@ -394,7 +394,7 @@ func (bc *BabylonController) SubmitCovenantSigs(
 	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
 
 	msg := &btcstakingtypes.MsgAddCovenantSigs{
-		Signer:                  bc.mustGetTxSigner(),
+		Signer:                  bc.MustGetTxSigner(),
 		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
 		StakingTxHash:           stakingTxHash,
 		SlashingTxSigs:          slashingSigs,
@@ -427,7 +427,7 @@ func (bc *BabylonController) InsertSpvProofs(submitter string, proofs []*btcctyp
 // RegisterConsumerChain registers a consumer chain via a MsgRegisterChain to Babylon
 func (bc *BabylonController) RegisterConsumerChain(id, name, description string) (*types.TxResponse, error) {
 	msg := &bsctypes.MsgRegisterConsumer{
-		Signer:              bc.mustGetTxSigner(),
+		Signer:              bc.MustGetTxSigner(),
 		ConsumerId:          id,
 		ConsumerName:        name,
 		ConsumerDescription: description,
