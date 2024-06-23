@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"math/rand"
+
+	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/babylonchain/finality-provider/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +51,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, 1)
 
 	// generate randomness data
-	_, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
+	pubRandListInfo, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
 	require.NoError(t, err)
 
 	// commit pub rand to smart contract
@@ -58,6 +62,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		msgPub.Commitment,
 		msgPub.Sig.MustToBTCSig(),
 	)
+	require.NoError(t, err)
 	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
 
 	// query pub rand
@@ -70,5 +75,28 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		break
 	}
 
+	// mock block
+	r := rand.New(rand.NewSource(1))
+	block := &types.BlockInfo{
+		Height: uint64(1),
+		Hash:   datagen.GenRandomByteArray(r, 32),
+	}
+	// fp sign
+	fpSig, err := fpList[0].SignFinalitySig(block)
 	require.NoError(t, err)
+
+	// pub rand proof
+	proof, err := pubRandListInfo.ProofList[0].ToProto().Marshal()
+	require.NoError(t, err)
+
+	// submit finality signature to smart contract
+	submitRes, err := ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
+		msgPub.FpBtcPk.MustToBTCPK(),
+		block,
+		pubRandListInfo.PubRandList[0],
+		proof,
+		fpSig.ToModNScalar(),
+	)
+	require.NoError(t, err)
+	t.Logf("Submit finality signature to op finality contract %s", submitRes.TxHash)
 }
