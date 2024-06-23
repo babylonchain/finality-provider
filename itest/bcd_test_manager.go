@@ -48,7 +48,7 @@ type BcdTestManager struct {
 
 func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	// Setup consumer test manager
-	testDir, err := tempDirWithName("fpe2etest")
+	testDir, err := BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -56,14 +56,14 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -133,7 +133,7 @@ func (ctm *BcdTestManager) WaitForServicesStart(t *testing.T) {
 		}
 		ctm.StakingParams = params
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 	t.Logf("Babylon node is started")
 
 	// wait for wasmd to start
@@ -144,7 +144,7 @@ func (ctm *BcdTestManager) WaitForServicesStart(t *testing.T) {
 			return false
 		}
 		return bcdNodeStatus.SyncInfo.LatestBlockHeight > 2
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 	t.Logf("Bcd node is started")
 }
 
@@ -166,13 +166,13 @@ func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consume
 	// register all finality providers
 	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
 	for i := 0; i < n; i++ {
-		fpName := fpNamePrefix + consumerId + "-" + strconv.Itoa(i)
-		moniker := monikerPrefix + consumerId + "-" + strconv.Itoa(i)
+		fpName := FpNamePrefix + consumerId + "-" + strconv.Itoa(i)
+		moniker := MonikerPrefix + consumerId + "-" + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := newDescription(moniker)
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, consumerId, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		desc := NewDescription(moniker)
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, consumerId, fpName, keyring.BackendTest, Passphrase, HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, consumerId, passphrase, hdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, consumerId, Passphrase, HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -183,7 +183,7 @@ func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consume
 
 	for i := 0; i < n; i++ {
 		// start
-		err := app.StartHandlingFinalityProvider(fpPKs[i], passphrase)
+		err := app.StartHandlingFinalityProvider(fpPKs[i], Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPKs[i])
 		require.NoError(t, err)
@@ -204,7 +204,7 @@ func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consume
 		}
 
 		for _, fp := range fps {
-			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+			if !strings.Contains(fp.Description.Moniker, MonikerPrefix) {
 				return false
 			}
 			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -213,7 +213,7 @@ func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consume
 		}
 
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	fpInsList := app.ListFinalityProviderInstancesForChain(consumerId)
 	require.Equal(t, n, len(fpInsList))

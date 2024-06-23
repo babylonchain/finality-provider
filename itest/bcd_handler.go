@@ -25,7 +25,7 @@ type BcdNodeHandler struct {
 }
 
 func NewBcdNodeHandler(t *testing.T) *BcdNodeHandler {
-	testDir, err := baseDir("ZBcdTest")
+	testDir, err := BaseDir("ZBcdTest")
 	require.NoError(t, err)
 	defer func() {
 		if err != nil {
