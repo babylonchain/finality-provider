@@ -32,9 +32,9 @@ const (
 var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
-	cwClient   *cwclient.Client
+	Cfg        *fpcfg.OPStackL2Config
+	CwClient   *cwclient.Client
 	opl2Client *ethclient.Client
-	cfg        *fpcfg.OPStackL2Config
 	logger     *zap.Logger
 }
 
@@ -42,9 +42,12 @@ func NewOPStackL2ConsumerController(
 	opl2Cfg *fpcfg.OPStackL2Config,
 	logger *zap.Logger,
 ) (*OPStackL2ConsumerController, error) {
+	if opl2Cfg == nil {
+		return nil, fmt.Errorf("nil config for OP consumer controller")
+	}
 	cwConfig := opl2Cfg.ToCosmwasmConfig()
 	if err := cwConfig.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for Babylon client: %w", err)
+		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
 	}
 
 	bbnEncodingCfg := bbnapp.GetEncodingConfig()
@@ -74,19 +77,19 @@ func NewOPStackL2ConsumerController(
 	}
 
 	return &OPStackL2ConsumerController{
+		opl2Cfg,
 		cwClient,
 		opl2Client,
-		opl2Cfg,
 		logger,
 	}, nil
 }
 
-func (cc *OPStackL2ConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (cc *OPStackL2ConsumerController) ReliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
 	return cc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
 func (cc *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	return cc.cwClient.ReliablySendMsgs(
+	return cc.CwClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
 		expectedErrs,
@@ -117,12 +120,12 @@ func (cc *OPStackL2ConsumerController) CommitPubRandList(
 		return nil, err
 	}
 	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   cc.cwClient.MustGetAddr(),
-		Contract: cc.cfg.OPFinalityGadgetAddress,
+		Sender:   cc.CwClient.MustGetAddr(),
+		Contract: cc.Cfg.OPFinalityGadgetAddress,
 		Msg:      payload,
 	}
 
-	res, err := cc.reliablySendMsg(execMsg, nil, nil)
+	res, err := cc.ReliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -158,12 +161,12 @@ func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 	execMsg := &wasmtypes.MsgExecuteContract{
-		Sender:   cc.cwClient.MustGetAddr(),
-		Contract: cc.cfg.OPFinalityGadgetAddress,
+		Sender:   cc.CwClient.MustGetAddr(),
+		Contract: cc.Cfg.OPFinalityGadgetAddress,
 		Msg:      payload,
 	}
 
-	res, err := cc.reliablySendMsg(execMsg, nil, nil)
+	res, err := cc.ReliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +206,8 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 			return nil, err
 		}
 		execMsg := &wasmtypes.MsgExecuteContract{
-			Sender:   cc.cwClient.MustGetAddr(),
-			Contract: cc.cfg.OPFinalityGadgetAddress,
+			Sender:   cc.CwClient.MustGetAddr(),
+			Contract: cc.Cfg.OPFinalityGadgetAddress,
 			Msg:      payload,
 		}
 		msgs = append(msgs, execMsg)
@@ -230,7 +233,7 @@ func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *bt
 // TODO: return the BTC finalized L2 block, it is tricky b/c it's not recorded anywhere so we can
 // use some exponential strategy to search
 func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
 	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.FinalizedBlockNumber.Int64()))
@@ -261,7 +264,7 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 
 // QueryBlock returns the L2 block number and block hash with the given block number from a RPC call
 func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
 	l2Block, err := cc.opl2Client.BlockByNumber(ctx, new(big.Int).SetUint64(height))
@@ -294,7 +297,7 @@ func (cc *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed marshaling to JSON: %w", err)
 	}
-	stateResp, err := cc.cwClient.QuerySmartContractState(cc.cfg.OPFinalityGadgetAddress, string(jsonData))
+	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
 	if err != nil {
 		return 0, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
@@ -310,7 +313,7 @@ func (cc *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
 
 // QueryLatestBlockHeight gets the latest L2 block number from a RPC call
 func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cc.cfg.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
 	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.LatestBlockNumber.Int64()))
@@ -336,9 +339,15 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
 	}
 
-	stateResp, err := cc.cwClient.QuerySmartContractState(cc.cfg.OPFinalityGadgetAddress, string(jsonData))
+	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
+	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
 	}
 
 	var resp LastPubRandCommitResponse
@@ -346,7 +355,6 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
 	respMap := make(map[uint64]*types.PubRandCommit)
 	respMap[resp.StartHeight] = &types.PubRandCommit{
 		NumPubRand: resp.NumPubRand,
@@ -358,5 +366,5 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 
 func (cc *OPStackL2ConsumerController) Close() error {
 	cc.opl2Client.Close()
-	return cc.cwClient.Stop()
+	return cc.CwClient.Stop()
 }

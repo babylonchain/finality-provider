@@ -1,8 +1,28 @@
 package e2etest
 
-import "os"
+import (
+	"os"
+	"time"
 
-func baseDir(pattern string) (string, error) {
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+)
+
+var (
+	EventuallyWaitTimeOut = 1 * time.Minute
+	EventuallyPollTime    = 500 * time.Millisecond
+	FpNamePrefix          = "test-fp-"
+	MonikerPrefix         = "moniker-"
+	ChainID               = "chain-test"
+	Passphrase            = "testpass"
+	HdPath                = ""
+)
+
+func NewDescription(moniker string) *stakingtypes.Description {
+	dec := stakingtypes.NewDescription(moniker, "", "", "", "")
+	return &dec
+}
+
+func BaseDir(pattern string) (string, error) {
 	tempPath := os.TempDir()
 
 	tempName, err := os.MkdirTemp(tempPath, pattern)

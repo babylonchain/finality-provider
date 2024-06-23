@@ -72,8 +72,23 @@ install-bcd:
 	cd $(TOOLS_DIR); \
 	go install -trimpath $(BCD_PKG)
 
-test-e2e: install-babylond install-wasmd
+.PHONY: clean-e2e
+clean-e2e:
+# find babylond adn wasmd process ids (in one line, seperated by space)
+	@pids=$$(ps aux | grep -E 'babylond start|wasmd start|bcd start' | grep -v grep | awk '{print $$2}' | tr '\n' ' '); \
+	if [ -n "$$pids" ]; then \
+		echo $$pids | xargs kill; \
+		echo "Killed process $$pids"; \
+	fi
+
+test-e2e: install-babylond install-wasmd install-bcd
+	make clean-e2e
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
+
+test-e2e-op: install-babylond
+	make clean-e2e
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
 
 ###############################################################################
 ###                                Protobuf                                 ###

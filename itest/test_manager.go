@@ -25,7 +25,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -38,16 +37,7 @@ import (
 )
 
 var (
-	eventuallyWaitTimeOut = 1 * time.Minute
-	eventuallyPollTime    = 500 * time.Millisecond
-	btcNetworkParams      = &chaincfg.SimNetParams
-
-	fpNamePrefix  = "test-fp-"
-	monikerPrefix = "moniker-"
-	chainID       = "chain-test"
-	passphrase    = "testpass"
-	hdPath        = ""
-	simnetParams  = &chaincfg.SimNetParams
+	btcNetworkParams = &chaincfg.SimNetParams
 )
 
 type TestManager struct {
@@ -83,7 +73,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := tempDirWithName("fpe2etest")
+	testDir, err := BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -91,14 +81,14 @@ func StartManager(t *testing.T) *TestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := generateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := defaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 	bcc, err := bbncc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -147,7 +137,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 		}
 		tm.StakingParams = params
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("Babylon node is started")
 }
@@ -157,20 +147,20 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	app := tm.Fpa
 
 	for i := 0; i < n; i++ {
-		fpName := fpNamePrefix + strconv.Itoa(i)
-		moniker := monikerPrefix + strconv.Itoa(i)
+		fpName := FpNamePrefix + strconv.Itoa(i)
+		moniker := MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := newDescription(moniker)
+		desc := NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, ChainID, Passphrase, HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+		err = app.StartHandlingFinalityProvider(fpPk, Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
@@ -190,7 +180,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+				if !strings.Contains(fp.Description.Moniker, MonikerPrefix) {
 					return false
 				}
 				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -199,13 +189,13 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			return true
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
+		}, EventuallyWaitTimeOut, EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
 
-	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
+	t.Logf("The test manager is running with %v finality-provider(s)", len(fpInsList))
 
 	return tm, fpInsList
 }
@@ -227,7 +217,7 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 			return false
 		}
 		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("the finality-provider is successfully registered")
 }
@@ -239,7 +229,7 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 			return false
 		}
 		return lastCommittedHeight > 0
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
 }
@@ -257,7 +247,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 			return false
 		}
 		return len(dels) == n
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("delegations are pending")
 
@@ -277,14 +267,14 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDel
 			return false
 		}
 		return len(dels) == n
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("delegations are active")
 
 	return dels
 }
 
-func generateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
+func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
 	var (
 		covenantPrivKeys []*btcec.PrivateKey
 		covenantPubKeys  []*bbntypes.BIP340PubKey
@@ -310,7 +300,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return len(votes) == num
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
@@ -320,7 +310,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return finalized
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 }
 
 func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
@@ -332,7 +322,7 @@ func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityPr
 		} else {
 			return false
 		}
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	return lastVotedHeight
 }
@@ -357,7 +347,7 @@ func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n
 			firstFinalizedBlock = lastFinalizedBlock
 		}
 		return lastFinalizedBlock.Height-firstFinalizedBlock.Height >= uint64(n-1)
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
 
@@ -368,7 +358,7 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 	require.Eventually(t, func() bool {
 		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
 		return err != nil
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
@@ -386,7 +376,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 		}
 
 		return headerAfterStopHeight >= uint64(n)+blockBeforeStopHeight
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Log("restarting the finality-provider instance")
 
@@ -396,7 +386,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 }
 
 func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(fpPk, passphrase)
+	record, err := tm.EOTSClient.KeyRecord(fpPk, Passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
 }
@@ -417,7 +407,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		btcDel.GetStakingTime(),
 		btcutil.Amount(btcDel.TotalSat),
-		simnetParams,
+		btcNetworkParams,
 	)
 	require.NoError(t, err)
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
@@ -442,7 +432,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		uint16(btcDel.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
-		simnetParams,
+		btcNetworkParams,
 	)
 	require.NoError(t, err)
 
@@ -665,7 +655,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	}
 }
 
-func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
+func DefaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg := fpcfg.DefaultConfigWithHome(homeDir)
 
 	cfg.BitcoinNetwork = "simnet"
@@ -681,28 +671,6 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	cfg.BabylonConfig.GasAdjustment = 20
 
 	return &cfg
-}
-
-func tempDirWithName(name string) (string, error) {
-	tempPath := os.TempDir()
-
-	tempName, err := os.MkdirTemp(tempPath, name)
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Chmod(tempName, 0755)
-
-	if err != nil {
-		return "", err
-	}
-
-	return tempName, nil
-}
-
-func newDescription(moniker string) *stakingtypes.Description {
-	dec := stakingtypes.NewDescription(moniker, "", "", "", "")
-	return &dec
 }
 
 // ParseRespBTCDelToBTCDel parses an BTC delegation response to BTC Delegation
