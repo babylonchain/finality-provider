@@ -1,3 +1,6 @@
+//go:build e2e_op
+// +build e2e_op
+
 package e2etest_op
 
 import (
@@ -21,6 +24,11 @@ import (
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+)
+
+const (
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
+	opConsumerId                 = "op-stack-l2-12345"
 )
 
 type OpL2ConsumerTestManager struct {
