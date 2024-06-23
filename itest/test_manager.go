@@ -38,7 +38,6 @@ import (
 
 var (
 	btcNetworkParams = &chaincfg.SimNetParams
-	simnetParams     = &chaincfg.SimNetParams
 )
 
 type TestManager struct {
@@ -82,7 +81,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := TenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
@@ -275,7 +274,7 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDel
 	return dels
 }
 
-func TenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
+func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
 	var (
 		covenantPrivKeys []*btcec.PrivateKey
 		covenantPubKeys  []*bbntypes.BIP340PubKey
@@ -408,7 +407,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		btcDel.GetStakingTime(),
 		btcutil.Amount(btcDel.TotalSat),
-		simnetParams,
+		btcNetworkParams,
 	)
 	require.NoError(t, err)
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
@@ -433,7 +432,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		uint16(btcDel.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
-		simnetParams,
+		btcNetworkParams,
 	)
 	require.NoError(t, err)
 
