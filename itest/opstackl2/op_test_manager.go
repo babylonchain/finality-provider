@@ -9,18 +9,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbncfg "github.com/babylonchain/babylon/client/config"
+	bbntypes "github.com/babylonchain/babylon/types"
+	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2etest "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -33,8 +40,9 @@ const (
 
 type OpL2ConsumerTestManager struct {
 	BabylonHandler   *e2etest.BabylonNodeHandler
-	FpConfig         *fpcfg.Config
 	BBNClient        *bbncc.BabylonController
+	FpApp            *service.FinalityProviderApp
+	FpConfig         *fpcfg.Config
 	OpL2ConsumerCtrl *opstackl2.OPStackL2ConsumerController
 	// TODO: not sure if needed, if not can remove
 	StakingParams    *types.StakingParams
@@ -118,7 +126,101 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 		ctm.StakingParams = params
 		return true
 	}, e2etest.EventuallyWaitTimeOut, e2etest.EventuallyPollTime)
-	t.Logf("Babylon node is started")
+	t.Logf("Babylon node has started")
+}
+
+func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) []*service.FinalityProviderInstance {
+	app := ctm.FpApp
+
+	for i := 0; i < n; i++ {
+		fpName := e2etest.FpNamePrefix + strconv.Itoa(i)
+		moniker := e2etest.MonikerPrefix + strconv.Itoa(i)
+		commission := sdkmath.LegacyZeroDec()
+		desc := e2etest.NewDescription(moniker)
+		cfg := app.GetConfig()
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2etest.Passphrase, e2etest.HdPath, "")
+		require.NoError(t, err)
+		res, err := app.CreateFinalityProvider(fpName, opConsumerId, e2etest.Passphrase, e2etest.HdPath, desc, &commission)
+		require.NoError(t, err)
+		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+		require.NoError(t, err)
+		regRes, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
+		t.Logf("Registered Finality Provider %s", regRes.TxHash)
+		require.NoError(t, err)
+		err = app.StartHandlingFinalityProvider(fpPk, e2etest.Passphrase)
+		require.NoError(t, err)
+		fpIns, err := app.GetFinalityProviderInstance(fpPk)
+		require.NoError(t, err)
+		require.True(t, fpIns.IsRunning())
+		require.NoError(t, err)
+
+		// check finality providers on Babylon side
+		require.Eventually(t, func() bool {
+			fps, err := ctm.QueryFinalityProviders(opConsumerId)
+			if err != nil {
+				t.Logf("failed to query finality providers from Babylon %s", err.Error())
+				return false
+			}
+
+			if len(fps) != i+1 {
+				return false
+			}
+
+			for _, fp := range fps {
+				if !strings.Contains(fp.Description.Moniker, e2etest.MonikerPrefix) {
+					return false
+				}
+				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+					return false
+				}
+			}
+
+			return true
+		}, e2etest.EventuallyWaitTimeOut, e2etest.EventuallyPollTime)
+	}
+
+	fpInsList := app.ListFinalityProviderInstances()
+	require.Equal(t, n, len(fpInsList))
+
+	t.Logf("The test manager is running with %v finality-provider(s)", len(fpInsList))
+
+	for i, fp := range fpInsList {
+		t.Logf("The num %d finality-provider pubkeyhex %s", i, fp.GetBtcPkHex())
+	}
+
+	return fpInsList
+}
+
+func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
+	var fps []*bsctypes.FinalityProviderResponse
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	bbnConfig := fpcfg.BBNConfigToBabylonConfig(ctm.FpConfig.BabylonConfig)
+	logger := zap.NewNop()
+	bc, err := bbnclient.New(
+		&bbnConfig,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
+	}
+
+	for {
+		res, err := bc.QueryConsumerFinalityProviders(consumerId, pagination)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query finality providers: %v", err)
+		}
+		fps = append(fps, res.FinalityProviders...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return fps, nil
 }
 
 func (ctm *OpL2ConsumerTestManager) StoreWasmCode(wasmFile string) error {
