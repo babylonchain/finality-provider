@@ -4,11 +4,9 @@
 package e2etest_op
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"testing"
 
-	e2etest "github.com/babylonchain/finality-provider/itest"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 )
@@ -49,22 +47,28 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, 1)
 
 	// generate randomness data
-	msgPub, err := ctm.GenerateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
+	_, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
 	require.NoError(t, err)
 
-	// inject pub rand commitment in smart contract
-	commitPubRandMsg := e2etest.GenPubRandomnessExecMsg(
-		msgPub.FpBtcPk.MarshalHex(),
-		base64.StdEncoding.EncodeToString(msgPub.Commitment),
-		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+	// commit pub rand to smart contract
+	commitRes, err := ctm.OpL2ConsumerCtrl.CommitPubRandList(
+		msgPub.FpBtcPk.MustToBTCPK(),
 		msgPub.StartHeight,
 		msgPub.NumPubRand,
+		msgPub.Commitment,
+		msgPub.Sig.MustToBTCSig(),
 	)
-	commitPubRandMsgBytes, err := json.Marshal(commitPubRandMsg)
-	require.NoError(t, err)
-
-	err = ctm.ExecuteWasmContract(commitPubRandMsgBytes)
-	require.NoError(t, err)
+	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
 
 	// query pub rand
+	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(msgPub.FpBtcPk.MustToBTCPK(), 1)
+	require.NoError(t, err)
+	for k, v := range committedPubRandMap {
+		require.Equal(t, uint64(1), k)
+		require.Equal(t, uint64(100), v.NumPubRand)
+		require.Equal(t, msgPub.Commitment, v.Commitment)
+		break
+	}
+
+	require.NoError(t, err)
 }

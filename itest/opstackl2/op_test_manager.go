@@ -30,8 +30,10 @@ import (
 	e2etest "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -221,28 +223,40 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 	return fpInsList
 }
 
-func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.BIP340PubKey, startHeight uint64, numPubRand uint64) (*ftypes.MsgCommitPubRandList, error) {
+type PubRandListInfo struct {
+	PubRandList []*secp256k1.FieldVal
+	Commitment  []byte
+	ProofList   []*merkle.Proof
+}
+
+func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.BIP340PubKey, startHeight uint64, numPubRand uint64) (*PubRandListInfo, *ftypes.MsgCommitPubRandList, error) {
 	// generate a list of Schnorr randomness pairs
 	fp, err := ctm.FpApp.GetFinalityProviderInstance(fpPk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get fp instance: %w", err)
+		return nil, nil, fmt.Errorf("failed to get fp instance: %w", err)
 	}
 	pubRandList, err := fp.GetPubRandList(startHeight, numPubRand)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate randomness: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate randomness: %w", err)
 	}
 	// generate commitment and proof for each public randomness
 	commitment, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
 	// store them to database
 	if err := ctm.FpApp.GetPubRandProofStore().AddPubRandProofList(pubRandList, proofList); err != nil {
-		return nil, fmt.Errorf("failed to save public randomness to DB: %w", err)
+		return nil, nil, fmt.Errorf("failed to save public randomness to DB: %w", err)
 	}
 
 	// sign the commitment
 	schnorrSig, err := fp.SignPubRandCommit(startHeight, numPubRand, commitment)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
+		return nil, nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
+	}
+
+	pubRandListInfo := &PubRandListInfo{
+		PubRandList: pubRandList,
+		Commitment:  commitment,
+		ProofList:   proofList,
 	}
 
 	msg := &ftypes.MsgCommitPubRandList{
@@ -253,7 +267,7 @@ func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.
 		Commitment:  commitment,
 		Sig:         bbntypes.NewBIP340SignatureFromBTCSig(schnorrSig),
 	}
-	return msg, nil
+	return pubRandListInfo, msg, nil
 }
 
 func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
@@ -330,21 +344,6 @@ func (ctm *OpL2ConsumerTestManager) InstantiateWasmContract(codeID uint64, initM
 	}
 
 	_, err := ctm.OpL2ConsumerCtrl.ReliablySendMsg(instantiateMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (ctm *OpL2ConsumerTestManager) ExecuteWasmContract(msgBytes []byte) error {
-	execMsg := &wasmdtypes.MsgExecuteContract{
-		Sender:   ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
-		Contract: ctm.OpL2ConsumerCtrl.Cfg.OPFinalityGadgetAddress,
-		Msg:      msgBytes,
-	}
-
-	_, err := ctm.OpL2ConsumerCtrl.ReliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return err
 	}
