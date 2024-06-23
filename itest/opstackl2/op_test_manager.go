@@ -10,8 +10,10 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
+	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
@@ -23,6 +25,7 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -178,8 +181,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 
 		// check finality providers on Babylon side
 		require.Eventually(t, func() bool {
-			// THIS code should be fixed!!!
-			fps, err := ctm.BBNClient.QueryFinalityProviders()
+			fps, err := ctm.QueryFinalityProviders(opConsumerId)
 			if err != nil {
 				t.Logf("failed to query finality providers from Babylon %s", err.Error())
 				return false
@@ -247,6 +249,38 @@ func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.
 		Sig:         bbntypes.NewBIP340SignatureFromBTCSig(schnorrSig),
 	}
 	return msg, nil
+}
+
+func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
+	var fps []*bsctypes.FinalityProviderResponse
+	pagination := &sdkquery.PageRequest{
+		Limit: 100,
+	}
+
+	bbnConfig := fpcfg.BBNConfigToBabylonConfig(ctm.FpConfig.BabylonConfig)
+	logger := zap.NewNop()
+	bc, err := bbnclient.New(
+		&bbnConfig,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
+	}
+
+	for {
+		res, err := bc.QueryConsumerFinalityProviders(consumerId, pagination)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query finality providers: %v", err)
+		}
+		fps = append(fps, res.FinalityProviders...)
+		if res.Pagination == nil || res.Pagination.NextKey == nil {
+			break
+		}
+
+		pagination.Key = res.Pagination.NextKey
+	}
+
+	return fps, nil
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
