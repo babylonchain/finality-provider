@@ -344,8 +344,8 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
 
-	// in CosmWasm contract, if the return data is None, in json it will be a lenth four string "null"
-	// and a nasty thing is it won't throw when calling json.Unmarshal()
+	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
+	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
 	if stateResp.Data == nil || string(stateResp.Data) == "null" {
 		return nil, nil
 	}
