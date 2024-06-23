@@ -27,6 +27,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
+	opConsumerId                 = "op-stack-l2-12345"
+)
+
 type OpL2ConsumerTestManager struct {
 	BabylonHandler    *e2etest.BabylonNodeHandler
 	EOTSServerHandler *e2etest.EOTSServerHandler
@@ -63,11 +68,16 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. new op consumer controller
+	// 3. register consumer to Babylon
+	txRes, err := bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
+	require.NoError(t, err)
+	t.Logf("Register consumer %s to Babylon %s", opConsumerId, txRes.TxHash)
+
+	// 4. new op consumer controller
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
 
-	// 4. prepare EOTS manager
+	// 5. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2etest.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -75,7 +85,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 5. prepare finality-provider
+	// 6. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
@@ -152,12 +162,14 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 		cfg := app.GetConfig()
 		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2etest.Passphrase, e2etest.HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, e2etest.ChainID, e2etest.Passphrase, e2etest.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, opConsumerId, e2etest.Passphrase, e2etest.HdPath, desc, &commission)
 		require.NoError(t, err)
+		t.Logf("Created Finality Provider %s", res.FpInfo.Status)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
-		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		regRes, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
+		t.Logf("Registered Finality Provider %s", regRes.TxHash)
 		err = app.StartHandlingFinalityProvider(fpPk, e2etest.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
@@ -202,7 +214,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 	return fpInsList
 }
 
-func (ctm *OpL2ConsumerTestManager) generateCommitPubRandListMsg(fpPk *bbntypes.BIP340PubKey, startHeight uint64, numPubRand uint64) (*ftypes.MsgCommitPubRandList, error) {
+func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.BIP340PubKey, startHeight uint64, numPubRand uint64) (*ftypes.MsgCommitPubRandList, error) {
 	// generate a list of Schnorr randomness pairs
 	fp, err := ctm.FpApp.GetFinalityProviderInstance(fpPk)
 	if err != nil {

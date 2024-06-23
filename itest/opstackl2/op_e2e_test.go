@@ -20,12 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
-	opConsumerId                 = "op-stack-l2-12345"
-	opActivatedHeight            = 1022293
-)
-
 func storeWasmCode(opL2cc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
@@ -140,12 +134,11 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm.OpL2ConsumerCtrl.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
-	// TODO: this will fix the error at pubrand commitment
 	// register FP in Babylon Chain
 	fpList := ctm.StartFinalityProvider(t, 1)
 
 	// generate randomness data
-	msgPub, err := ctm.generateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
+	msgPub, err := ctm.GenerateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
 	require.NoError(t, err)
 
 	// inject pub rand commitment in smart contract
@@ -161,11 +154,11 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	/*
 		Error:          Received unexpected error:
 		rpc error: code = Unknown desc = rpc error: code = Unknown desc = failed to execute message; message index: 0:
-		Finality provider not found for consumer op-stack-l2-12345 with pubkey 6ab0e00becb98e617f780dc36b16d71710f3277627b52aaedba6be2a62085833:
-		execute wasm contract failed [CosmWasm/wasmd@v0.51.0/x/wasm/keeper/keeper.go:422] with gas used: '102325': unknown request
+		Finality provider not found for consumer op-stack-l2-12345 with pubkey cf694ae34e93b38563c585ffdb9b78f9a680d9b67e60e0cd93a660257aba3d26:
+		execute wasm contract failed [CosmWasm/wasmd@v0.51.0/x/wasm/keeper/keeper.go:422] with gas used: '102297': unknown request
 	*/
 	// TODO:
-	// - register FP to Babylon chain using the same FP FpBtcPk
+	// - register FP to Babylon chain with the consumer id
 	err = executeWasmContract(ctm.OpL2ConsumerCtrl, commitPubRandMsgBytes)
 	require.NoError(t, err)
 
