@@ -146,6 +146,9 @@ func (bc *BabylonController) RegisterFinalityProvider(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
+// TODO: only used in test. this should not be put here. it causes confusion that this is a method
+// that will be used when FP runs. in that's the case, it implies it should work all all consumer
+// types. but `bbnClient.QueryClient.FinalityProviders` doesn't work for consumer chains
 func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey) (bool, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	res, err := bc.bbnClient.QueryClient.FinalityProvider(fpPubKey.MarshalHex())
@@ -313,6 +316,7 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	return res.Header, nil
 }
 
+// TODO: this method only used in test. this should be refactored out to test files
 func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
 	res, err := bc.bbnClient.QueryClient.VotesAtHeight(height)
 	if err != nil {
