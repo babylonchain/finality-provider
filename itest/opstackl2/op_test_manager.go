@@ -148,7 +148,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 		ctm.StakingParams = params
 		return true
 	}, e2etest.EventuallyWaitTimeOut, e2etest.EventuallyPollTime)
-	t.Logf("Babylon node is started")
+	t.Logf("Babylon node has started")
 }
 
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) []*service.FinalityProviderInstance {
@@ -164,12 +164,11 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 		require.NoError(t, err)
 		res, err := app.CreateFinalityProvider(fpName, opConsumerId, e2etest.Passphrase, e2etest.HdPath, desc, &commission)
 		require.NoError(t, err)
-		t.Logf("Created Finality Provider %s", res.FpInfo.Status)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		regRes, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
-		require.NoError(t, err)
 		t.Logf("Registered Finality Provider %s", regRes.TxHash)
+		require.NoError(t, err)
 		err = app.StartHandlingFinalityProvider(fpPk, e2etest.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
@@ -179,6 +178,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 
 		// check finality providers on Babylon side
 		require.Eventually(t, func() bool {
+			// THIS code should be fixed!!!
 			fps, err := ctm.BBNClient.QueryFinalityProviders()
 			if err != nil {
 				t.Logf("failed to query finality providers from Babylon %s", err.Error())
