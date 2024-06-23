@@ -20,6 +20,7 @@ import (
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
+	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
@@ -29,8 +30,10 @@ import (
 	e2etest "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -109,10 +112,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		EOTSServerHandler: eh,
 		FpApp:             fpApp,
 		FpConfig:          cfg,
-		// TODO: might not need this bc field
-		OpL2ConsumerCtrl: opcc,
-		CovenantPrivKeys: covenantPrivKeys,
-		baseDir:          testDir,
+		OpL2ConsumerCtrl:  opcc,
+		CovenantPrivKeys:  covenantPrivKeys,
+		baseDir:           testDir,
 	}
 
 	ctm.WaitForServicesStart(t)
@@ -219,6 +221,53 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 	}
 
 	return fpInsList
+}
+
+type PubRandListInfo struct {
+	PubRandList []*secp256k1.FieldVal
+	Commitment  []byte
+	ProofList   []*merkle.Proof
+}
+
+func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.BIP340PubKey, startHeight uint64, numPubRand uint64) (*PubRandListInfo, *ftypes.MsgCommitPubRandList, error) {
+	// generate a list of Schnorr randomness pairs
+	fp, err := ctm.FpApp.GetFinalityProviderInstance(fpPk)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get fp instance: %w", err)
+	}
+	pubRandList, err := fp.GetPubRandList(startHeight, numPubRand)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to generate randomness: %w", err)
+	}
+	// generate commitment and proof for each public randomness
+	commitment, proofList := types.GetPubRandCommitAndProofs(pubRandList)
+
+	// store them to database
+	if err := ctm.FpApp.GetPubRandProofStore().AddPubRandProofList(pubRandList, proofList); err != nil {
+		return nil, nil, fmt.Errorf("failed to save public randomness to DB: %w", err)
+	}
+
+	// sign the commitment
+	schnorrSig, err := fp.SignPubRandCommit(startHeight, numPubRand, commitment)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
+	}
+
+	pubRandListInfo := &PubRandListInfo{
+		PubRandList: pubRandList,
+		Commitment:  commitment,
+		ProofList:   proofList,
+	}
+
+	msg := &ftypes.MsgCommitPubRandList{
+		Signer:      ctm.BBNClient.MustGetTxSigner(),
+		FpBtcPk:     fpPk,
+		StartHeight: startHeight,
+		NumPubRand:  numPubRand,
+		Commitment:  commitment,
+		Sig:         bbntypes.NewBIP340SignatureFromBTCSig(schnorrSig),
+	}
+	return pubRandListInfo, msg, nil
 }
 
 func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
