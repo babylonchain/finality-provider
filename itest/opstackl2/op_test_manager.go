@@ -38,7 +38,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := e2etest.TenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := e2etest.GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := e2etest.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
