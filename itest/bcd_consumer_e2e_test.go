@@ -1,3 +1,6 @@
+//go:build e2e
+// +build e2e
+
 package e2etest
 
 import (
@@ -15,18 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConsumerFinalityProviderRegistration(t *testing.T) {
-	ctm := StartBcdTestManager(t)
-	defer ctm.Stop(t)
-
-	_, err := ctm.BBNClient.RegisterConsumerChain(bcdChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
-	require.NoError(t, err)
-
-	ctm.CreateConsumerFinalityProviders(t, bcdChainID, 1)
-}
-
-// TestSubmitFinalitySignature tests the finality signature submission to the btc staking contract using admin
-func TestSubmitFinalitySignature2(t *testing.T) {
+// TestConsumerFpLifecycle tests the consumer finality provider lifecycle
+// 1. Upload Babylon and BTC staking contracts to bcd chain
+// 2. Instantiate Babylon contract with admin
+// 3. Register consumer chain to Babylon
+// 4. Register finality provider to Babylon
+// 5. Inject finality provider and delegation in BTC staking contract using admin
+// 6. Start the finality provider daemon and app
+// 7. Wait for fp daemon to submit public randomness and finality signature
+func TestConsumerFpLifecycle(t *testing.T) {
 	ctm := StartBcdTestManager(t)
 	defer ctm.Stop(t)
 
@@ -82,13 +82,13 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	// register consumer fps to babylon
 	app := ctm.Fpa
 	cfg := app.GetConfig()
-	fpName := fpNamePrefix + bcdChainID
-	moniker := monikerPrefix + bcdChainID
+	fpName := FpNamePrefix + bcdChainID
+	moniker := MonikerPrefix + bcdChainID
 	commission := sdkmath.LegacyZeroDec()
-	desc := newDescription(moniker)
-	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+	desc := NewDescription(moniker)
+	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
 	require.NoError(t, err)
-	res, err := app.CreateFinalityProvider(fpName, bcdChainID, passphrase, hdPath, desc, &commission)
+	res, err := app.CreateFinalityProvider(fpName, bcdChainID, Passphrase, HdPath, desc, &commission)
 	require.NoError(t, err)
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 	require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
 
-	err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+	err = app.StartHandlingFinalityProvider(fpPk, Passphrase)
 	require.NoError(t, err)
 	fpIns, err := app.GetFinalityProviderInstance(fpPk)
 	require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 			return false
 		}
 
-		if !strings.Contains(fps[0].Description.Moniker, monikerPrefix) {
+		if !strings.Contains(fps[0].Description.Moniker, MonikerPrefix) {
 			return false
 		}
 		if !fps[0].Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -158,7 +158,7 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 		}
 
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 		}
 
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	// ensure finality signature is submitted to smart contract
 	require.Eventually(t, func() bool {
@@ -193,5 +193,5 @@ func TestSubmitFinalitySignature2(t *testing.T) {
 			return false
 		}
 		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
 }
