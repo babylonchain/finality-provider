@@ -23,11 +23,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
-	opConsumerId                 = "op-stack-l2-12345"
-)
-
 type OpL2ConsumerTestManager struct {
 	BabylonHandler   *e2etest.BabylonNodeHandler
 	FpConfig         *fpcfg.Config
