@@ -1,6 +1,7 @@
 package e2etest
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -79,6 +80,7 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	cfg.ChainName = fpcc.WasmConsumerChainName
 	cfg.CosmwasmConfig.AccountPrefix = "bbnc"
 	cfg.CosmwasmConfig.ChainID = bcdChainID
+	cfg.CosmwasmConfig.RPCAddr = fmt.Sprintf("http://localhost:%d", bcdRpcPort)
 	// tempApp := bcdapp.NewTmpApp() // TODO: investigate why wasmapp works and bcdapp doesn't
 	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingCfg := wasmparams.EncodingConfig{
