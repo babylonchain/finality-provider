@@ -53,9 +53,8 @@ var (
 
 // Config is the main config for the fpd cli command
 type Config struct {
-	LogLevel string `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
-	// ChainName and ChainID (if any) of the chain config identify a consumer chain
-	ChainName                string        `long:"chainname" description:"the name of the consumer chain" choice:"babylon"`
+	LogLevel                 string        `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
+	ChainName                string        `long:"chainname" description:"the name of the consumer chain"`
 	NumPubRand               uint64        `long:"numPubRand" description:"The number of Schnorr public randomness for each commitment"`
 	NumPubRandMax            uint64        `long:"numpubrandmax" description:"The upper bound of the number of Schnorr public randomness for each commitment"`
 	MinRandHeightGap         uint64        `long:"minrandheightgap" description:"The minimum gap between the last committed rand height and the current Babylon block height"`

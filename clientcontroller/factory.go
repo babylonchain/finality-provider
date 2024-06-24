@@ -15,7 +15,7 @@ import (
 const (
 	BabylonConsumerChainName   = "babylon"
 	OPStackL2ConsumerChainName = "OPStackL2"
-	WasmdConsumerChainName     = "wasmd"
+	WasmConsumerChainName      = "wasm"
 )
 
 // NewClientController TODO: this is always going to be babylon so rename accordingly
@@ -45,11 +45,11 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (api.Consum
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OPStack L2 consumer client: %w", err)
 		}
-	case WasmdConsumerChainName:
-		wasmdEncodingCfg := cosmwasmcfg.GetWasmdEncodingConfig()
-		ccc, err = cosmwasm.NewCosmwasmConsumerController(config.CosmwasmConfig, wasmdEncodingCfg, logger)
+	case WasmConsumerChainName:
+		wasmEncodingCfg := cosmwasmcfg.GetWasmdEncodingConfig()
+		ccc, err = cosmwasm.NewCosmwasmConsumerController(config.CosmwasmConfig, wasmEncodingCfg, logger)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Wasmd rpc client: %w", err)
+			return nil, fmt.Errorf("failed to create Wasm rpc client: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported consumer chain")
