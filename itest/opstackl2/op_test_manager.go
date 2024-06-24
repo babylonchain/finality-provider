@@ -54,7 +54,7 @@ type OpL2ConsumerTestManager struct {
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	StakingParams     *types.StakingParams
 	CovenantPrivKeys  []*btcec.PrivateKey
-	baseDir           string
+	BaseDir           string
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
@@ -113,7 +113,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		FpConfig:          cfg,
 		OpL2ConsumerCtrl:  opcc,
 		CovenantPrivKeys:  covenantPrivKeys,
-		baseDir:           testDir,
+		BaseDir:           testDir,
 	}
 
 	ctm.WaitForServicesStart(t)
@@ -377,6 +377,6 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
-	err = os.RemoveAll(ctm.baseDir)
+	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }
