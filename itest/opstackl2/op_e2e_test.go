@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// tests the finality signature submission to the btc staking contract using admin
+// tests the finality signature submission to the op-finality-gadget contract
 func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
