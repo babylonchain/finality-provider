@@ -68,6 +68,9 @@ require (
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aws/aws-sdk-go v1.44.312 // indirect
+	github.com/babylonchain/babylon-sdk v0.1.1-0.20240621110648-a18bedbcae7f // indirect
+	github.com/babylonchain/babylon-sdk/demo v0.0.0-20240621110648-a18bedbcae7f // indirect
+	github.com/babylonchain/babylon-sdk/x v0.0.0-20240621110648-a18bedbcae7f // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect
