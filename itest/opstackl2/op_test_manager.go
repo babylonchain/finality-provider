@@ -52,10 +52,9 @@ type OpL2ConsumerTestManager struct {
 	FpApp             *service.FinalityProviderApp
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
-	// TODO: not sure if needed, if not can remove
-	StakingParams    *types.StakingParams
-	CovenantPrivKeys []*btcec.PrivateKey
-	baseDir          string
+	StakingParams     *types.StakingParams
+	CovenantPrivKeys  []*btcec.PrivateKey
+	baseDir           string
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
