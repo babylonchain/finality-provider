@@ -301,6 +301,8 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint6
 		Blocks: BlocksQuery{
 			StartAfter: startAfter,
 			Limit:      limit,
+			Finalised:  finalized,
+			Reverse:    reverse,
 		},
 	}
 
