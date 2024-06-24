@@ -1,4 +1,4 @@
-package e2etest
+package e2etest_babylon
 
 import (
 	"encoding/hex"
@@ -19,6 +19,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	common "github.com/babylonchain/finality-provider/itest/common"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -42,8 +43,8 @@ var (
 
 type TestManager struct {
 	Wg                sync.WaitGroup
-	BabylonHandler    *BabylonNodeHandler
-	EOTSServerHandler *EOTSServerHandler
+	BabylonHandler    *common.BabylonNodeHandler
+	EOTSServerHandler *common.EOTSServerHandler
 	FpConfig          *fpcfg.Config
 	EOTSConfig        *eotsconfig.Config
 	Fpa               *service.FinalityProviderApp
@@ -73,7 +74,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := BaseDir("fpe2etest")
+	testDir, err := common.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -81,14 +82,14 @@ func StartManager(t *testing.T) *TestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := GenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := common.GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
-	bh := NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
+	bh := common.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := common.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 	bcc, err := bbncc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -97,7 +98,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
-	eh := NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh := common.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
@@ -137,7 +138,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 		}
 		tm.StakingParams = params
 		return true
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("Babylon node is started")
 }
@@ -147,20 +148,20 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	app := tm.Fpa
 
 	for i := 0; i < n; i++ {
-		fpName := FpNamePrefix + strconv.Itoa(i)
-		moniker := MonikerPrefix + strconv.Itoa(i)
+		fpName := common.FpNamePrefix + strconv.Itoa(i)
+		moniker := common.MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := NewDescription(moniker)
+		desc := common.NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, common.Passphrase, common.HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, ChainID, Passphrase, HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, common.ChainID, common.Passphrase, common.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, Passphrase)
+		err = app.StartHandlingFinalityProvider(fpPk, common.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
@@ -180,7 +181,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, MonikerPrefix) {
+				if !strings.Contains(fp.Description.Moniker, common.MonikerPrefix) {
 					return false
 				}
 				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -189,7 +190,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			return true
-		}, EventuallyWaitTimeOut, EventuallyPollTime)
+		}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
@@ -217,7 +218,7 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 			return false
 		}
 		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("the finality-provider is successfully registered")
 }
@@ -229,7 +230,7 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 			return false
 		}
 		return lastCommittedHeight > 0
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
 }
@@ -247,7 +248,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 			return false
 		}
 		return len(dels) == n
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("delegations are pending")
 
@@ -267,28 +268,11 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDel
 			return false
 		}
 		return len(dels) == n
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("delegations are active")
 
 	return dels
-}
-
-func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
-	var (
-		covenantPrivKeys []*btcec.PrivateKey
-		covenantPubKeys  []*bbntypes.BIP340PubKey
-	)
-
-	for i := 0; i < numCovenants; i++ {
-		privKey, err := btcec.NewPrivateKey()
-		require.NoError(t, err)
-		covenantPrivKeys = append(covenantPrivKeys, privKey)
-		pubKey := bbntypes.NewBIP340PubKeyFromBTCPK(privKey.PubKey())
-		covenantPubKeys = append(covenantPubKeys, pubKey)
-	}
-
-	return covenantPrivKeys, covenantPubKeys
 }
 
 func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
@@ -300,7 +284,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return len(votes) == num
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
@@ -310,7 +294,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return finalized
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 }
 
 func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
@@ -322,7 +306,7 @@ func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityPr
 		} else {
 			return false
 		}
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	return lastVotedHeight
 }
@@ -347,7 +331,7 @@ func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n
 			firstFinalizedBlock = lastFinalizedBlock
 		}
 		return lastFinalizedBlock.Height-firstFinalizedBlock.Height >= uint64(n-1)
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
 
@@ -358,7 +342,7 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 	require.Eventually(t, func() bool {
 		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
 		return err != nil
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
@@ -376,7 +360,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 		}
 
 		return headerAfterStopHeight >= uint64(n)+blockBeforeStopHeight
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	t.Log("restarting the finality-provider instance")
 
@@ -386,7 +370,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 }
 
 func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(fpPk, Passphrase)
+	record, err := tm.EOTSClient.KeyRecord(fpPk, common.Passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
 }
@@ -653,24 +637,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
 	}
-}
-
-func DefaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
-	cfg := fpcfg.DefaultConfigWithHome(homeDir)
-
-	cfg.BitcoinNetwork = "simnet"
-	cfg.BTCNetParams = chaincfg.SimNetParams
-
-	cfg.PollerConfig.AutoChainScanningMode = false
-	// babylon configs for sending transactions
-	cfg.BabylonConfig.KeyDirectory = keyringDir
-	// need to use this one to send otherwise we will have account sequence mismatch
-	// errors
-	cfg.BabylonConfig.Key = "test-spending-key"
-	// Big adjustment to make sure we have enough gas in our transactions
-	cfg.BabylonConfig.GasAdjustment = 20
-
-	return &cfg
 }
 
 // ParseRespBTCDelToBTCDel parses an BTC delegation response to BTC Delegation

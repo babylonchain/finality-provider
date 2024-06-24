@@ -1,7 +1,7 @@
 //go:build e2e_bcd
 // +build e2e_bcd
 
-package e2etest
+package e2etest_bcd
 
 import (
 	"encoding/base64"
@@ -82,13 +82,13 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	// register consumer fps to babylon
 	app := ctm.Fpa
 	cfg := app.GetConfig()
-	fpName := FpNamePrefix + bcdChainID
-	moniker := MonikerPrefix + bcdChainID
+	fpName := common.FpNamePrefix + bcdChainID
+	moniker := common.MonikerPrefix + bcdChainID
 	commission := sdkmath.LegacyZeroDec()
-	desc := NewDescription(moniker)
-	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, Passphrase, HdPath, "")
+	desc := common.NewDescription(moniker)
+	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, common.Passphrase, common.HdPath, "")
 	require.NoError(t, err)
-	res, err := app.CreateFinalityProvider(fpName, bcdChainID, Passphrase, HdPath, desc, &commission)
+	res, err := app.CreateFinalityProvider(fpName, bcdChainID, common.Passphrase, common.HdPath, desc, &commission)
 	require.NoError(t, err)
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
-	msg := GenBtcStakingExecMsg(fpPk.MarshalHex())
+	msg := common.e2etest.GenBtcStakingExecMsg(fpPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	_, err = ctm.BcdConsumerClient.ExecuteContract(msgBytes)
@@ -131,7 +131,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
 	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
 
-	err = app.StartHandlingFinalityProvider(fpPk, Passphrase)
+	err = app.StartHandlingFinalityProvider(fpPk, common.Passphrase)
 	require.NoError(t, err)
 	fpIns, err := app.GetFinalityProviderInstance(fpPk)
 	require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 			return false
 		}
 
-		if !strings.Contains(fps[0].Description.Moniker, MonikerPrefix) {
+		if !strings.Contains(fps[0].Description.Moniker, common.MonikerPrefix) {
 			return false
 		}
 		if !fps[0].Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -158,7 +158,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		}
 
 		return true
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		}
 
 		return true
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 
 	// ensure finality signature is submitted to smart contract
 	require.Eventually(t, func() bool {
@@ -193,5 +193,5 @@ func TestConsumerFpLifecycle(t *testing.T) {
 			return false
 		}
 		return true
-	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
 }

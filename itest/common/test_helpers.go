@@ -1,4 +1,4 @@
-package e2etest
+package e2etest_common
 
 import (
 	"encoding/base64"
