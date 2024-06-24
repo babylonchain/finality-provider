@@ -1,5 +1,5 @@
-//go:build e2e
-// +build e2e
+//go:build e2e_bcd
+// +build e2e_bcd
 
 package e2etest
 

@@ -1,5 +1,5 @@
-//go:build e2e
-// +build e2e
+//go:build e2e_wasmd
+// +build e2e_wasmd
 
 package e2etest
 
