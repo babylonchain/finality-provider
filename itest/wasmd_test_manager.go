@@ -76,7 +76,9 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	//  later in the e2e tests we would upload the contract and update the addresses
 	//  investigate if there is a better way to handle this
 	cfg.CosmwasmConfig.BtcStakingContractAddress = datagen.GenRandomAccount().GetAddress().String()
-	cfg.ChainName = fpcc.WasmdConsumerChainName
+	cfg.ChainName = fpcc.WasmConsumerChainName
+	cfg.CosmwasmConfig.AccountPrefix = "wasm"
+	cfg.CosmwasmConfig.ChainID = wasmdChainID
 	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
 	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
