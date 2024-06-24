@@ -26,7 +26,7 @@ import (
 // 4. Inject public randomness commitment in BTC staking contract
 // 5. Inject finality signature in BTC staking contract
 func TestConsumerFpDataInjection(t *testing.T) {
-	ctm := StartConsumerManager(t)
+	ctm := StartWasmdTestManager(t)
 	defer ctm.Stop(t)
 
 	// store babylon contract

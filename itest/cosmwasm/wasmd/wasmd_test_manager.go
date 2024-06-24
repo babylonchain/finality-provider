@@ -31,7 +31,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type ConsumerTestManager struct {
+type WasmdTestManager struct {
 	BabylonHandler      *common.BabylonNodeHandler
 	FpConfig            *fpcfg.Config
 	BBNClient           *bbncc.BabylonController
@@ -46,7 +46,7 @@ type ConsumerTestManager struct {
 	baseDir             string
 }
 
-func StartConsumerManager(t *testing.T) *ConsumerTestManager {
+func StartWasmdTestManager(t *testing.T) *WasmdTestManager {
 	// Setup consumer test manager
 	testDir, err := common.BaseDir("fpe2etest")
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 
 	// TODO: setup fp app after contract supports relevant queries
 
-	ctm := &ConsumerTestManager{
+	ctm := &WasmdTestManager{
 		BabylonHandler:      bh,
 		FpConfig:            cfg,
 		BBNClient:           bc,
@@ -126,7 +126,7 @@ func StartConsumerManager(t *testing.T) *ConsumerTestManager {
 	return ctm
 }
 
-func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
+func (ctm *WasmdTestManager) WaitForServicesStart(t *testing.T) {
 	require.Eventually(t, func() bool {
 		params, err := ctm.BBNClient.QueryStakingParams()
 		if err != nil {
@@ -149,7 +149,7 @@ func (ctm *ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Wasmd node is started")
 }
 
-func (ctm *ConsumerTestManager) Stop(t *testing.T) {
+func (ctm *WasmdTestManager) Stop(t *testing.T) {
 	err := ctm.Fpa.Stop()
 	require.Error(t, err) // TODO: expect error for now as finality daemon is not started in tests
 	err = ctm.BabylonHandler.Stop()
@@ -160,8 +160,8 @@ func (ctm *ConsumerTestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*service.FinalityProviderInstance) {
-	ctm := StartConsumerManager(t)
+func StartConsumerManagerWithFps(t *testing.T, n int) (*WasmdTestManager, []*service.FinalityProviderInstance) {
+	ctm := StartWasmdTestManager(t)
 	app := ctm.Fpa
 
 	for i := 0; i < n; i++ {
@@ -218,7 +218,7 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*ConsumerTestManager, []*
 	return ctm, fpInsList
 }
 
-func (ctm *ConsumerTestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) []*service.FinalityProviderInstance {
+func (ctm *WasmdTestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) []*service.FinalityProviderInstance {
 	app := ctm.Fpa
 	cfg := app.GetConfig()
 
