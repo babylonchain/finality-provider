@@ -300,6 +300,41 @@ func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.
 	return pubRandListInfo, msg, nil
 }
 
+func (ctm *OpL2ConsumerTestManager) CommitPubRandList(t *testing.T, fpPk *bbntypes.BIP340PubKey) (*PubRandListInfo, *ftypes.MsgCommitPubRandList) {
+	// generate randomness data
+	pubRandListInfo, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpPk, 1, 100)
+	require.NoError(t, err)
+
+	commitRes, err := ctm.OpL2ConsumerCtrl.CommitPubRandList(
+		msgPub.FpBtcPk.MustToBTCPK(),
+		msgPub.StartHeight,
+		msgPub.NumPubRand,
+		msgPub.Commitment,
+		msgPub.Sig.MustToBTCSig(),
+	)
+	require.NoError(t, err)
+	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
+	return pubRandListInfo, msgPub
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, msgPub *ftypes.MsgCommitPubRandList) {
+	require.Eventually(t, func() bool {
+		// query pub rand
+		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(msgPub.FpBtcPk.MustToBTCPK(), 1)
+		if err != nil {
+			return false
+		}
+		for k, v := range committedPubRandMap {
+			require.Equal(t, uint64(1), k)
+			require.Equal(t, uint64(100), v.NumPubRand)
+			require.Equal(t, msgPub.Commitment, v.Commitment)
+			break
+		}
+		return true
+	}, e2etest.EventuallyWaitTimeOut, e2etest.EventuallyPollTime)
+	t.Logf("Public randomness is successfully committed")
+}
+
 func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
 	var fps []*bsctypes.FinalityProviderResponse
 	pagination := &sdkquery.PageRequest{

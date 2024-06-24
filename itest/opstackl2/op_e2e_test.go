@@ -22,30 +22,9 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// register FP in Babylon Chain
 	fpList := ctm.StartFinalityProvider(t, 1)
 
-	// generate randomness data
-	pubRandListInfo, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpList[0].GetBtcPkBIP340(), 1, 100)
-	require.NoError(t, err)
-
 	// commit pub rand to smart contract
-	commitRes, err := ctm.OpL2ConsumerCtrl.CommitPubRandList(
-		msgPub.FpBtcPk.MustToBTCPK(),
-		msgPub.StartHeight,
-		msgPub.NumPubRand,
-		msgPub.Commitment,
-		msgPub.Sig.MustToBTCSig(),
-	)
-	require.NoError(t, err)
-	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
-
-	// query pub rand
-	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(msgPub.FpBtcPk.MustToBTCPK(), 1)
-	require.NoError(t, err)
-	for k, v := range committedPubRandMap {
-		require.Equal(t, uint64(1), k)
-		require.Equal(t, uint64(100), v.NumPubRand)
-		require.Equal(t, msgPub.Commitment, v.Commitment)
-		break
-	}
+	pubRandListInfo, msgPub := ctm.CommitPubRandList(t, fpList[0].GetBtcPkBIP340())
+	ctm.WaitForFpPubRandCommitted(t, msgPub)
 
 	// mock block
 	r := rand.New(rand.NewSource(1))
