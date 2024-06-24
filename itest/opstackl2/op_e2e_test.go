@@ -24,7 +24,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 
 	// commit pub rand to smart contract
 	pubRandListInfo, msgPub := ctm.CommitPubRandList(t, fpList[0].GetBtcPkBIP340())
-	ctm.WaitForFpPubRandCommitted(t, msgPub)
+	ctm.WaitForFpPubRandCommitted(t, fpList[0].GetBtcPkBIP340())
 
 	// mock block
 	r := rand.New(rand.NewSource(1))

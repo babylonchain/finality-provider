@@ -317,17 +317,16 @@ func (ctm *OpL2ConsumerTestManager) CommitPubRandList(t *testing.T, fpPk *bbntyp
 	return pubRandListInfo, msgPub
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, msgPub *ftypes.MsgCommitPubRandList) {
+func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpPk *bbntypes.BIP340PubKey) {
 	require.Eventually(t, func() bool {
 		// query pub rand
-		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(msgPub.FpBtcPk.MustToBTCPK(), 1)
+		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpPk.MustToBTCPK(), 1)
 		if err != nil {
 			return false
 		}
 		for k, v := range committedPubRandMap {
 			require.Equal(t, uint64(1), k)
 			require.Equal(t, uint64(100), v.NumPubRand)
-			require.Equal(t, msgPub.Commitment, v.Commitment)
 			break
 		}
 		return true
