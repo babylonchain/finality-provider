@@ -89,7 +89,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
 
-	// store op-finality-gadget contract
+	// 5. store op-finality-gadget contract
 	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
 	require.NoError(t, err)
 
@@ -97,7 +97,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// instantiate op contract
+	// 6. instantiate op contract
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            opcc.CwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
@@ -113,12 +113,12 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 
-	// update the contract address in config because during setup we had used a
-	// mocked address which is diff than the deployed one on the fly
+	// update the contract address in config to replace a placeholder address
+	// previously used to bypass the validation
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
-	// 5. prepare EOTS manager
+	// 7. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2etest.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -126,7 +126,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 6. prepare finality-provider
+	// 8. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
