@@ -17,6 +17,8 @@ var (
 	Passphrase            = "testpass"
 	HdPath                = ""
 	BtcNetworkParams      = &chaincfg.SimNetParams
+	StakingTime           = uint16(100)
+	StakingAmount         = int64(20000)
 )
 
 func NewDescription(moniker string) *stakingtypes.Description {
