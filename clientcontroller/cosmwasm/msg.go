@@ -190,7 +190,7 @@ type QueryMsgBlocks struct {
 type BlocksQuery struct {
 	StartAfter *uint64 `json:"start_after,omitempty"`
 	Limit      *uint64 `json:"limit,omitempty"`
-	Finalized  *bool   `json:"finalized,omitempty"`
+	Finalized  *bool   `json:"finalised,omitempty"` //TODO: finalised or finalized, typo in smart contract
 	Reverse    *bool   `json:"reverse,omitempty"`
 }
 
@@ -224,10 +224,8 @@ type QueryMsgLastPubRandCommit struct {
 }
 
 type LastPubRandCommitQuery struct {
-	BtcPkHex   string  `json:"btc_pk_hex"`
-	StartAfter *uint64 `json:"start_after,omitempty"`
-	Limit      *uint64 `json:"limit,omitempty"`
-	Reverse    *bool   `json:"reverse,omitempty"`
+	BtcPkHex string  `json:"btc_pk_hex"`
+	Limit    *uint64 `json:"limit,omitempty"`
 }
 type PubRandCommitResponse struct {
 	StartHeight uint64 `json:"start_height"`
