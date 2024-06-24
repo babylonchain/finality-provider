@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/btcsuite/btcd/chaincfg"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
@@ -15,6 +16,7 @@ var (
 	ChainID               = "chain-test"
 	Passphrase            = "testpass"
 	HdPath                = ""
+	BtcNetworkParams      = &chaincfg.SimNetParams
 )
 
 func NewDescription(moniker string) *stakingtypes.Description {

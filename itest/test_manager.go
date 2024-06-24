@@ -36,10 +36,6 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 )
 
-var (
-	btcNetworkParams = &chaincfg.SimNetParams
-)
-
 type TestManager struct {
 	Wg                sync.WaitGroup
 	BabylonHandler    *BabylonNodeHandler
@@ -407,7 +403,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		btcDel.GetStakingTime(),
 		btcutil.Amount(btcDel.TotalSat),
-		btcNetworkParams,
+		BtcNetworkParams,
 	)
 	require.NoError(t, err)
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
@@ -432,7 +428,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		uint16(btcDel.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
-		btcNetworkParams,
+		BtcNetworkParams,
 	)
 	require.NoError(t, err)
 
@@ -524,7 +520,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
-		btcNetworkParams,
+		BtcNetworkParams,
 		delBtcPrivKey,
 		fpPks,
 		params.CovenantPks,
@@ -590,7 +586,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
 		r,
 		t,
-		btcNetworkParams,
+		BtcNetworkParams,
 		delBtcPrivKey,
 		fpPks,
 		params.CovenantPks,
