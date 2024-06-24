@@ -20,6 +20,7 @@ build_tags := $(BUILD_TAGS)
 build_args := $(BUILD_ARGS)
 
 PACKAGES_E2E=$(shell go list ./... | grep '/itest')
+PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest')
 
 ifeq ($(LINK_STATICALLY),true)
 	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static" -v
@@ -56,6 +57,10 @@ build-docker:
 
 .PHONY: build build-docker
 
+.PHONY: lint
+lint:
+	golangci-lint run
+
 .PHONY: test
 test:
 	go test ./...
@@ -84,11 +89,11 @@ clean-e2e:
 test-e2e: install-babylond install-wasmd install-bcd
 	make clean-e2e
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
 
 test-e2e-op: install-babylond
 	make clean-e2e
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_op
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
 
 ###############################################################################
 ###                                Protobuf                                 ###
