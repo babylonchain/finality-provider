@@ -3,7 +3,7 @@ TOOLS_DIR := tools
 
 BABYLON_PKG := github.com/babylonchain/babylon/cmd/babylond
 WASMD_PKG   := github.com/CosmWasm/wasmd/cmd/wasmd
-BCD_PKG     := github.com/babylonchain/babylon-sdk/cmd/bcd
+BCD_PKG     := github.com/babylonchain/babylon-sdk/demo/cmd/bcd
 
 GO_BIN := ${GOPATH}/bin
 BTCD_BIN := $(GO_BIN)/btcd
