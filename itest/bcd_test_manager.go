@@ -12,6 +12,7 @@ import (
 	wasmapp "github.com/CosmWasm/wasmd/app"
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
+	_ "github.com/babylonchain/babylon-sdk/demo/app"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
