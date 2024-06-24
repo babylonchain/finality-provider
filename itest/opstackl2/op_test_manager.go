@@ -27,6 +27,7 @@ import (
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	common "github.com/babylonchain/finality-provider/itest/common"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cometbft/cometbft/crypto/merkle"
@@ -67,14 +68,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := babylon.GenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := common.GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
 	bh := common.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := babylon.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := common.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
