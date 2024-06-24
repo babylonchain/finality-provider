@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	bcdRpcPort int = 2990
-	bcdP2pPort int = 2991
+	bcdRpcPort int = 3990
+	bcdP2pPort int = 3991
 	bcdChainID     = "bcd-test"
 )
 
