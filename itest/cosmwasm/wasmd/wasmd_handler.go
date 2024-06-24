@@ -21,9 +21,6 @@ const (
 	wasmdRpcPort int = 2990
 	wasmdP2pPort int = 2991
 	wasmdChainID     = "wasmd-test"
-	stake            = "ustake"  // Default staking token
-	fee              = "ucosm"   // Default fee token
-	moniker          = "node001" // Default moniker
 )
 
 type WasmdNodeHandler struct {
@@ -139,13 +136,13 @@ func (w *WasmdNodeHandler) cleanup() error {
 }
 
 func wasmdInit(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "init", "--home", homeDir, "--chain-id", wasmdChainID, moniker)
+	_, err := common.RunCommand("wasmd", "init", "--home", homeDir, "--chain-id", wasmdChainID, common.WasmMoniker)
 	return err
 }
 
 func updateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
-	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", stake, genesisPath)
+	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
 	_, err := common.RunCommand("sh", "-c", sedCmd)
 	return err
 }
@@ -156,12 +153,12 @@ func wasmdKeysAdd(homeDir string) error {
 }
 
 func addValidatorGenesisAccount(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func gentxValidator(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+wasmdChainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", common.WasmStake), "--chain-id="+wasmdChainID, "--amount="+fmt.Sprintf("250000000%s", common.WasmStake), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 

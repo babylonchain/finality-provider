@@ -138,7 +138,7 @@ func bcdInit(homeDir string) error {
 
 func bcdUpdateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
-	sedCmd := fmt.Sprintf("sed -i. 's/\"WasmStake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
+	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
 	_, err := common.RunCommand("sh", "-c", sedCmd)
 	return err
 }
