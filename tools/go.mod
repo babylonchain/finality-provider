@@ -4,7 +4,11 @@ go 1.21
 
 toolchain go1.21.4
 
-require github.com/babylonchain/babylon v0.8.6-0.20240527005816-ae2182029020
+require (
+	github.com/CosmWasm/wasmd v0.51.0
+	github.com/babylonchain/babylon v0.8.6-0.20240527005816-ae2182029020
+	github.com/babylonchain/babylon-sdk/demo v0.0.0-20240619104946-312f29e4d3cf
+)
 
 require (
 	cloud.google.com/go v0.112.1 // indirect
@@ -30,15 +34,12 @@ require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
-	github.com/CosmWasm/wasmd v0.51.0 // indirect
 	github.com/CosmWasm/wasmvm/v2 v2.0.0 // indirect
 	github.com/DataDog/datadog-go v3.2.0+incompatible // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/aws/aws-sdk-go v1.44.312 // indirect
-	github.com/babylonchain/babylon-sdk v0.1.1-0.20240621110648-a18bedbcae7f // indirect
-	github.com/babylonchain/babylon-sdk/demo v0.0.0-20240621110648-a18bedbcae7f // indirect
-	github.com/babylonchain/babylon-sdk/x v0.0.0-20240621110648-a18bedbcae7f // indirect
+	github.com/babylonchain/babylon-sdk/x v0.0.0-20240619104946-312f29e4d3cf // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect

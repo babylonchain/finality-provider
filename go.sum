@@ -281,8 +281,6 @@ github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/babylonchain/babylon-private v0.8.6-0.20240618010559-dc7b6269474d h1:rCrkS45Znained3VZvxOEfgWhqC298FypC0PM6A0eFg=
 github.com/babylonchain/babylon-private v0.8.6-0.20240618010559-dc7b6269474d/go.mod h1:Tdi+29Y+DzCaaz0V0sBRXF1tXXLnH6JHJsOG8uktWLU=
-github.com/babylonchain/babylon-sdk v0.1.1-0.20240621110648-a18bedbcae7f h1:u5SRM5kEbDiyuVI11bbWFRUfEZy6AZGxz1bhDDSkFnI=
-github.com/babylonchain/babylon-sdk v0.1.1-0.20240621110648-a18bedbcae7f/go.mod h1:BzYtNqizS7gB0WrEBTn54c8cECBg2SFF00R50uocei8=
 github.com/babylonchain/babylon-sdk/demo v0.0.0-20240621110648-a18bedbcae7f h1:G2abQSf2ZQgNQBAGkUy8Jh7YQ0qUynFeCtqAu8yjxK0=
 github.com/babylonchain/babylon-sdk/demo v0.0.0-20240621110648-a18bedbcae7f/go.mod h1:X4QovCWMwqMjoTriu18w4gfqX1sYqOWRnZwXGYD8bnE=
 github.com/babylonchain/babylon-sdk/x v0.0.0-20240621110648-a18bedbcae7f h1:DORv7XDwO8Brwg+dCGniQdrLOJWocckGSnw34Pj1It8=
@@ -1618,7 +1616,6 @@ golang.org/x/sys v0.0.0-20200905004654-be1d3432aa8f/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210104204734-6f8348627aad/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
