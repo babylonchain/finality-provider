@@ -32,7 +32,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	defer ctm.Stop(t)
 
 	// store babylon contract
-	babylonContractPath := "bytecode/babylon_contract.wasm"
+	babylonContractPath := "../../bytecode/babylon_contract.wasm"
 	err := ctm.BcdConsumerClient.StoreWasmCode(babylonContractPath)
 	require.NoError(t, err)
 	babylonContractWasmId, err := ctm.BcdConsumerClient.GetLatestCodeId()
@@ -40,7 +40,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.Equal(t, uint64(1), babylonContractWasmId)
 
 	// store btc staking contract
-	btcStakingContractPath := "bytecode/btc_staking.wasm"
+	btcStakingContractPath := "../../bytecode/btc_staking.wasm"
 	err = ctm.BcdConsumerClient.StoreWasmCode(btcStakingContractPath)
 	require.NoError(t, err)
 	btcStakingContractWasmId, err := ctm.BcdConsumerClient.GetLatestCodeId()
