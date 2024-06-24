@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	common "github.com/babylonchain/finality-provider/itest/common"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -76,11 +77,11 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	fpSk, _, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
-	randList, msgPub, err := common.e2etest.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
+	randList, msgPub, err := common.GenCommitPubRandListMsg(r, fpSk, 1, 1000)
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
-	msg := common.e2etest.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
+	msg := common.GenBtcStakingExecMsg(msgPub.FpBtcPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	_, err = ctm.WasmdConsumerClient.ExecuteContract(msgBytes)
@@ -116,7 +117,7 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
 
 	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
-	msg2 := common.e2etest.GenPubRandomnessExecMsg(
+	msg2 := common.GenPubRandomnessExecMsg(
 		msgPub.FpBtcPk.MarshalHex(),
 		base64.StdEncoding.EncodeToString(msgPub.Commitment),
 		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
@@ -132,7 +133,7 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	finalitySigMsg := common.e2etest.GenFinalitySigExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
+	finalitySigMsg := common.GenFinalitySigExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	_, err = ctm.WasmdConsumerClient.ExecuteContract(finalitySigMsgBytes)

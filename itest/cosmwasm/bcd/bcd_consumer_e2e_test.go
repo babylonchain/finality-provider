@@ -12,6 +12,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	common "github.com/babylonchain/finality-provider/itest/common"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -96,7 +97,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// inject fp and delegation in smart contract using admin
-	msg := common.e2etest.GenBtcStakingExecMsg(fpPk.MarshalHex())
+	msg := common.GenBtcStakingExecMsg(fpPk.MarshalHex())
 	msgBytes, err := json.Marshal(msg)
 	require.NoError(t, err)
 	_, err = ctm.BcdConsumerClient.ExecuteContract(msgBytes)
