@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -52,10 +54,9 @@ type OpL2ConsumerTestManager struct {
 	FpApp             *service.FinalityProviderApp
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
-	// TODO: not sure if needed, if not can remove
-	StakingParams    *types.StakingParams
-	CovenantPrivKeys []*btcec.PrivateKey
-	baseDir          string
+	StakingParams     *types.StakingParams
+	CovenantPrivKeys  []*btcec.PrivateKey
+	BaseDir           string
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
@@ -88,7 +89,36 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
 
-	// 5. prepare EOTS manager
+	// 5. store op-finality-gadget contract
+	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
+	require.NoError(t, err)
+
+	opFinalityGadgetContractWasmId, err := getLatestCodeId(opcc)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
+
+	// 6. instantiate op contract
+	opFinalityGadgetInitMsg := map[string]interface{}{
+		"admin":            opcc.CwClient.MustGetAddr(),
+		"consumer_id":      opConsumerId,
+		"activated_height": 0,
+	}
+	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
+	require.NoError(t, err)
+	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
+	require.NoError(t, err)
+
+	// get op contract address
+	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Contracts, 1)
+
+	// update the contract address in config to replace a placeholder address
+	// previously used to bypass the validation
+	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
+	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
+
+	// 7. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -96,7 +126,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 6. prepare finality-provider
+	// 8. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
@@ -114,7 +144,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		FpConfig:          cfg,
 		OpL2ConsumerCtrl:  opcc,
 		CovenantPrivKeys:  covenantPrivKeys,
-		baseDir:           testDir,
+		BaseDir:           testDir,
 	}
 
 	ctm.WaitForServicesStart(t)
@@ -270,6 +300,40 @@ func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.
 	return pubRandListInfo, msg, nil
 }
 
+func (ctm *OpL2ConsumerTestManager) CommitPubRandList(t *testing.T, fpPk *bbntypes.BIP340PubKey) (*PubRandListInfo, *ftypes.MsgCommitPubRandList) {
+	// generate randomness data
+	pubRandListInfo, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpPk, 1, 100)
+	require.NoError(t, err)
+
+	commitRes, err := ctm.OpL2ConsumerCtrl.CommitPubRandList(
+		msgPub.FpBtcPk.MustToBTCPK(),
+		msgPub.StartHeight,
+		msgPub.NumPubRand,
+		msgPub.Commitment,
+		msgPub.Sig.MustToBTCSig(),
+	)
+	require.NoError(t, err)
+	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
+	return pubRandListInfo, msgPub
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpPk *bbntypes.BIP340PubKey) {
+	require.Eventually(t, func() bool {
+		// query pub rand
+		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpPk.MustToBTCPK(), 1)
+		if err != nil {
+			return false
+		}
+		for k, v := range committedPubRandMap {
+			require.Equal(t, uint64(1), k)
+			require.Equal(t, uint64(100), v.NumPubRand)
+			break
+		}
+		return true
+	}, e2etest.EventuallyWaitTimeOut, e2etest.EventuallyPollTime)
+	t.Logf("Public randomness is successfully committed")
+}
+
 func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
 	var fps []*bsctypes.FinalityProviderResponse
 	pagination := &sdkquery.PageRequest{
@@ -302,7 +366,7 @@ func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([
 	return fps, nil
 }
 
-func (ctm *OpL2ConsumerTestManager) StoreWasmCode(wasmFile string) error {
+func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
 		return err
@@ -322,10 +386,10 @@ func (ctm *OpL2ConsumerTestManager) StoreWasmCode(wasmFile string) error {
 	}
 
 	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
+		Sender:       opcc.CwClient.MustGetAddr(),
 		WASMByteCode: wasmCode,
 	}
-	_, err = ctm.OpL2ConsumerCtrl.ReliablySendMsg(storeMsg, nil, nil)
+	_, err = opcc.ReliablySendMsg(storeMsg, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -333,17 +397,17 @@ func (ctm *OpL2ConsumerTestManager) StoreWasmCode(wasmFile string) error {
 	return nil
 }
 
-func (ctm *OpL2ConsumerTestManager) InstantiateWasmContract(codeID uint64, initMsg []byte) error {
+func instantiateWasmContract(opcc *opstackl2.OPStackL2ConsumerController, codeID uint64, initMsg []byte) error {
 	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
-		Admin:  ctm.OpL2ConsumerCtrl.CwClient.MustGetAddr(),
+		Sender: opcc.CwClient.MustGetAddr(),
+		Admin:  opcc.CwClient.MustGetAddr(),
 		CodeID: codeID,
 		Label:  "op-test",
 		Msg:    initMsg,
 		Funds:  nil,
 	}
 
-	_, err := ctm.OpL2ConsumerCtrl.ReliablySendMsg(instantiateMsg, nil, nil)
+	_, err := opcc.ReliablySendMsg(instantiateMsg, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -352,12 +416,12 @@ func (ctm *OpL2ConsumerTestManager) InstantiateWasmContract(codeID uint64, initM
 }
 
 // returns the latest wasm code id.
-func (ctm *OpL2ConsumerTestManager) GetLatestCodeId() (uint64, error) {
+func getLatestCodeId(opcc *opstackl2.OPStackL2ConsumerController) (uint64, error) {
 	pagination := &sdkquery.PageRequest{
 		Limit:   1,
 		Reverse: true,
 	}
-	resp, err := ctm.OpL2ConsumerCtrl.CwClient.ListCodes(pagination)
+	resp, err := opcc.CwClient.ListCodes(pagination)
 	if err != nil {
 		return 0, err
 	}
@@ -378,6 +442,6 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
-	err = os.RemoveAll(ctm.baseDir)
+	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }

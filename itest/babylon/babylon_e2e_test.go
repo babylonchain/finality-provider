@@ -16,11 +16,6 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 )
 
-var (
-	stakingTime   = uint16(100)
-	stakingAmount = int64(20000)
-)
-
 // TestFinalityProviderLifeCycle tests the whole life cycle of a finality-provider
 // creation -> registration -> randomness commitment ->
 // activation with BTC delegation and Covenant sig ->
@@ -35,7 +30,7 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, StakingTime, StakingAmount)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
@@ -67,7 +62,7 @@ func TestDoubleSigning(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, StakingTime, StakingAmount)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
@@ -125,7 +120,7 @@ func TestMultipleFinalityProviders(t *testing.T) {
 		// check the public randomness is committed
 		tm.WaitForFpPubRandCommitted(t, fpi)
 		// send a BTC delegation
-		_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, stakingTime, stakingAmount)
+		_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, StakingTime, StakingAmount)
 	}
 
 	// check the BTC delegations are pending
@@ -158,7 +153,7 @@ func TestFastSync(t *testing.T) {
 	tm.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, StakingTime, StakingAmount)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
