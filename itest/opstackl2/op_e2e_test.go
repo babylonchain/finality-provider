@@ -4,9 +4,8 @@
 package e2etest_op
 
 import (
-	"testing"
-
 	"math/rand"
+	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	"github.com/babylonchain/finality-provider/types"
