@@ -330,7 +330,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpPk
 			break
 		}
 		return true
-	}, e2etest.EventuallyWaitTimeOut, e2etest.EventuallyPollTime)
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Public randomness is successfully committed")
 }
 
