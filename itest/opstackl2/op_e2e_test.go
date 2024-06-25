@@ -4,11 +4,14 @@
 package e2etest_op
 
 import (
+	"bytes"
 	"testing"
 
 	"math/rand"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
+	e2etest "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
@@ -19,32 +22,53 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	// register FP in Babylon Chain
-	fpList := ctm.StartFinalityProvider(t, 1)
+	// start Babylon chain FP
+	_ = ctm.StartFinalityProvider(t, e2etest.ChainID, 1)
 
-	// commit pub rand to smart contract
-	pubRandListInfo, msgPub := ctm.CommitPubRandList(t, fpList[0].GetBtcPkBIP340())
-	ctm.WaitForFpPubRandCommitted(t, fpList[0].GetBtcPkBIP340())
+	// start consumer chain FP
+	fpList := ctm.StartFinalityProvider(t, opConsumerId, 1)
+	var fpInstance *service.FinalityProviderInstance
+	for _, fp := range fpList {
+		if bytes.Equal(fp.GetChainID(), []byte(opConsumerId)) {
+			fpInstance = fp
+			break
+		}
+	}
+
+	ctm.WaitForFpPubRandCommitted(t, fpInstance)
+	// query pub rand
+	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk(), 1)
+	require.NoError(t, err)
+	var lastCommittedStartHeight uint64
+	for key, _ := range committedPubRandMap {
+		lastCommittedStartHeight = key
+		break
+	}
+	t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
+	pubRandList, err := fpInstance.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
+	require.NoError(t, err)
+	// generate commitment and proof for each public randomness
+	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
 	// mock block
 	r := rand.New(rand.NewSource(1))
 	block := &types.BlockInfo{
-		Height: uint64(1),
+		Height: lastCommittedStartHeight,
 		Hash:   datagen.GenRandomByteArray(r, 32),
 	}
 	// fp sign
-	fpSig, err := fpList[0].SignFinalitySig(block)
+	fpSig, err := fpInstance.SignFinalitySig(block)
 	require.NoError(t, err)
 
 	// pub rand proof
-	proof, err := pubRandListInfo.ProofList[0].ToProto().Marshal()
+	proof, err := proofList[0].ToProto().Marshal()
 	require.NoError(t, err)
 
 	// submit finality signature to smart contract
 	submitRes, err := ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
-		msgPub.FpBtcPk.MustToBTCPK(),
+		fpInstance.GetBtcPk(),
 		block,
-		pubRandListInfo.PubRandList[0],
+		pubRandList[0],
 		proof,
 		fpSig.ToModNScalar(),
 	)
@@ -54,14 +78,14 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// mock more blocks
 	blocks := []*types.BlockInfo{}
 	var fpSigs []*secp256k1.ModNScalar
-	for i := 2; i <= 4; i++ {
+	for i := 1; i <= 3; i++ {
 		block := &types.BlockInfo{
-			Height: uint64(i),
+			Height: lastCommittedStartHeight + uint64(i),
 			Hash:   datagen.GenRandomByteArray(r, 32),
 		}
 		blocks = append(blocks, block)
 		// fp sign
-		fpSig, err := fpList[0].SignFinalitySig(block)
+		fpSig, err := fpInstance.SignFinalitySig(block)
 		require.NoError(t, err)
 		fpSigs = append(fpSigs, fpSig.ToModNScalar())
 	}
@@ -69,16 +93,16 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// proofs
 	var proofs [][]byte
 	for i := 1; i <= 3; i++ {
-		proof, err := pubRandListInfo.ProofList[i].ToProto().Marshal()
+		proof, err := proofList[i].ToProto().Marshal()
 		require.NoError(t, err)
 		proofs = append(proofs, proof)
 	}
 
 	// submit batch finality signatures to smart contract
 	batchSubmitRes, err := ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
-		msgPub.FpBtcPk.MustToBTCPK(),
+		fpInstance.GetBtcPk(),
 		blocks,
-		pubRandListInfo.PubRandList[1:4],
+		pubRandList[1:4],
 		proofs,
 		fpSigs,
 	)
