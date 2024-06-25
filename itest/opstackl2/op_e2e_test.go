@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	e2e_utils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
@@ -22,11 +21,10 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// A BTC delegation has to stake to at least one Babylon finality provider
 	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
 	// So we have to start Babylon chain FP
-	// While using a mock value for chainId, it throws the error: the finality-provider manager has already stopped
-	ctm.StartFinalityProvider(t, e2e_utils.ChainID, 1)
+	ctm.StartFinalityProvider(t, true, 1)
 
 	// start consumer chain FP
-	fpList := ctm.StartFinalityProvider(t, opConsumerId, 1)
+	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
 	ctm.WaitForFpPubRandCommitted(t, fpInstance)

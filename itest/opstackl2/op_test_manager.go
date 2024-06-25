@@ -190,8 +190,14 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node has started")
 }
 
-func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, chainId string, n int) []*service.FinalityProviderInstance {
+func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
+
+	chainId := opConsumerId
+	if isBabylonFp {
+		// While using another mock value, it throws the error: the finality-provider manager has already stopped
+		chainId = e2eutils.ChainID
+	}
 
 	for i := 0; i < n; i++ {
 		fpName := chainId + "-" + e2eutils.FpNamePrefix + strconv.Itoa(i)
@@ -216,8 +222,8 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, chainId 
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			if chainId == opConsumerId {
-				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(opConsumerId)
+			if isBabylonFp {
+				fps, err := ctm.BBNClient.QueryFinalityProviders()
 				if err != nil {
 					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
@@ -231,7 +237,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, chainId 
 					}
 				}
 			} else {
-				fps, err := ctm.BBNClient.QueryFinalityProviders()
+				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(opConsumerId)
 				if err != nil {
 					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
