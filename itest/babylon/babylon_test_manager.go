@@ -370,13 +370,13 @@ func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey
 	return record.PrivKey
 }
 
-func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bstypes.BTCDelegation) {
+func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bstypes.BTCDelegation) {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := bbntypes.NewBTCTxFromBytes(stakingTx)
 	require.NoError(t, err)
 
-	params := stm.StakingParams
+	params := tm.StakingParams
 
 	var fpKeys []*btcec.PublicKey
 	for _, v := range btcDel.FpBtcPkList {
@@ -431,7 +431,7 @@ func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bst
 			stakingMsgTx,
 			idx,
 			slashingPathInfo.RevealedLeaf.Script,
-			stm.CovenantPrivKeys[0],
+			tm.CovenantPrivKeys[0],
 			v,
 		)
 		require.NoError(t, err)
@@ -441,7 +441,7 @@ func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bst
 	covenantUnbondingSig1, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
 		unbondingMsgTx,
 		stakingInfo.StakingOutput,
-		stm.CovenantPrivKeys[0],
+		tm.CovenantPrivKeys[0],
 		stakingTxUnbondingPathInfo.RevealedLeaf,
 	)
 	require.NoError(t, err)
@@ -455,15 +455,15 @@ func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bst
 			unbondingMsgTx,
 			0,
 			unbondingTxSlashingPathInfo.RevealedLeaf.Script,
-			stm.CovenantPrivKeys[0],
+			tm.CovenantPrivKeys[0],
 			v,
 		)
 		require.NoError(t, err)
 		covenantAdaptorUnbondingSlashing1List = append(covenantAdaptorUnbondingSlashing1List, covenantAdaptorUnbondingSlashing1.MustMarshal())
 	}
 
-	_, err = stm.BBNClient.SubmitCovenantSigs(
-		stm.CovenantPrivKeys[0].PubKey(),
+	_, err = tm.BBNClient.SubmitCovenantSigs(
+		tm.CovenantPrivKeys[0].PubKey(),
 		stakingMsgTx.TxHash().String(),
 		covenantAdaptorStakingSlashing1List,
 		covenantUnbondingSig1,
@@ -478,7 +478,7 @@ func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bst
 			stakingMsgTx,
 			idx,
 			slashingPathInfo.RevealedLeaf.Script,
-			stm.CovenantPrivKeys[1],
+			tm.CovenantPrivKeys[1],
 			v,
 		)
 		require.NoError(t, err)
@@ -488,7 +488,7 @@ func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bst
 	covenantUnbondingSig2, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
 		unbondingMsgTx,
 		stakingInfo.StakingOutput,
-		stm.CovenantPrivKeys[1],
+		tm.CovenantPrivKeys[1],
 		stakingTxUnbondingPathInfo.RevealedLeaf,
 	)
 	require.NoError(t, err)
@@ -502,15 +502,15 @@ func (stm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bst
 			unbondingMsgTx,
 			0,
 			unbondingTxSlashingPathInfo.RevealedLeaf.Script,
-			stm.CovenantPrivKeys[1],
+			tm.CovenantPrivKeys[1],
 			v,
 		)
 		require.NoError(t, err)
 		covenantAdaptorUnbondingSlashing2List = append(covenantAdaptorUnbondingSlashing2List, covenantAdaptorUnbondingSlashing2.MustMarshal())
 	}
 
-	_, err = stm.BBNClient.SubmitCovenantSigs(
-		stm.CovenantPrivKeys[1].PubKey(),
+	_, err = tm.BBNClient.SubmitCovenantSigs(
+		tm.CovenantPrivKeys[1].PubKey(),
 		stakingMsgTx.TxHash().String(),
 		covenantAdaptorStakingSlashing2List,
 		covenantUnbondingSig2,
