@@ -18,11 +18,6 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	// A BTC delegation has to stake to at least one Babylon finality provider
-	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
-	// So we have to start Babylon chain FP
-	ctm.StartFinalityProvider(t, true, 1)
-
 	// start consumer chain FP
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
@@ -43,6 +38,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// generate commitment and proof for each public randomness
 	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
+	// create a mock block
 	r := rand.New(rand.NewSource(1))
 	block := &types.BlockInfo{
 		Height: lastCommittedStartHeight,
@@ -59,7 +55,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// submit finality signature to smart contract
-	submitRes, err := ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
+	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
 		fpInstance.GetBtcPk(),
 		block,
 		pubRandList[0],
@@ -67,7 +63,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		fpSig.ToModNScalar(),
 	)
 	require.NoError(t, err)
-	t.Logf("Submit finality signature to op finality contract %s", submitRes.TxHash)
+	t.Logf("Submit finality signature to op finality contract")
 
 	// mock more blocks
 	blocks := []*types.BlockInfo{}
@@ -93,7 +89,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	}
 
 	// submit batch finality signatures to smart contract
-	batchSubmitRes, err := ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
+	_, err = ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
 		fpInstance.GetBtcPk(),
 		blocks,
 		pubRandList[1:4],
@@ -101,5 +97,5 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		fpSigs,
 	)
 	require.NoError(t, err)
-	t.Logf("Submit batch finality signatures to op finality contract %s", batchSubmitRes.TxHash)
+	t.Logf("Submit batch finality signatures to op finality contract")
 }
