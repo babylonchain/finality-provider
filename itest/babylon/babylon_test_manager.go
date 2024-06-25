@@ -19,7 +19,6 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	common "github.com/babylonchain/finality-provider/itest/common"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -43,8 +42,8 @@ var (
 
 type TestManager struct {
 	Wg                sync.WaitGroup
-	BabylonHandler    *common.BabylonNodeHandler
-	EOTSServerHandler *common.EOTSServerHandler
+	BabylonHandler    *itest.BabylonNodeHandler
+	EOTSServerHandler *itest.EOTSServerHandler
 	FpConfig          *fpcfg.Config
 	EOTSConfig        *eotsconfig.Config
 	Fpa               *service.FinalityProviderApp
@@ -74,7 +73,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := common.BaseDir("fpe2etest")
+	testDir, err := itest.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -82,14 +81,14 @@ func StartManager(t *testing.T) *TestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := common.GenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := itest.GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
-	bh := common.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
+	bh := itest.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := common.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := itest.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 	bcc, err := bbncc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -98,7 +97,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 3. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
-	eh := common.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh := itest.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
@@ -138,7 +137,7 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 		}
 		tm.StakingParams = params
 		return true
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("Babylon node is started")
 }
@@ -148,20 +147,20 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 	app := tm.Fpa
 
 	for i := 0; i < n; i++ {
-		fpName := common.FpNamePrefix + strconv.Itoa(i)
-		moniker := common.MonikerPrefix + strconv.Itoa(i)
+		fpName := itest.FpNamePrefix + strconv.Itoa(i)
+		moniker := itest.MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := common.NewDescription(moniker)
+		desc := itest.NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, common.Passphrase, common.HdPath, "")
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, itest.Passphrase, itest.HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, common.ChainID, common.Passphrase, common.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, itest.ChainID, itest.Passphrase, itest.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, common.Passphrase)
+		err = app.StartHandlingFinalityProvider(fpPk, itest.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
@@ -181,7 +180,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, common.MonikerPrefix) {
+				if !strings.Contains(fp.Description.Moniker, itest.MonikerPrefix) {
 					return false
 				}
 				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -190,7 +189,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			}
 
 			return true
-		}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+		}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
@@ -218,7 +217,7 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 			return false
 		}
 		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("the finality-provider is successfully registered")
 }
@@ -230,7 +229,7 @@ func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.Fi
 			return false
 		}
 		return lastCommittedHeight > 0
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
 }
@@ -248,7 +247,7 @@ func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDe
 			return false
 		}
 		return len(dels) == n
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("delegations are pending")
 
@@ -268,7 +267,7 @@ func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDel
 			return false
 		}
 		return len(dels) == n
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("delegations are active")
 
@@ -284,7 +283,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return len(votes) == num
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	// as the votes have been collected, the block should be finalized
 	require.Eventually(t, func() bool {
@@ -294,7 +293,7 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 			return false
 		}
 		return finalized
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 }
 
 func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
@@ -306,7 +305,7 @@ func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityPr
 		} else {
 			return false
 		}
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	return lastVotedHeight
 }
@@ -331,7 +330,7 @@ func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n
 			firstFinalizedBlock = lastFinalizedBlock
 		}
 		return lastFinalizedBlock.Height-firstFinalizedBlock.Height >= uint64(n-1)
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
 
@@ -342,7 +341,7 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 	require.Eventually(t, func() bool {
 		_, err := tm.Fpa.GetFinalityProviderInstance(pk)
 		return err != nil
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
@@ -360,7 +359,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 		}
 
 		return headerAfterStopHeight >= uint64(n)+blockBeforeStopHeight
-	}, common.EventuallyWaitTimeOut, common.EventuallyPollTime)
+	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
 
 	t.Log("restarting the finality-provider instance")
 
@@ -370,7 +369,7 @@ func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns 
 }
 
 func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey {
-	record, err := tm.EOTSClient.KeyRecord(fpPk, common.Passphrase)
+	record, err := tm.EOTSClient.KeyRecord(fpPk, itest.Passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
 }

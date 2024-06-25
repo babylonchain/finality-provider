@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	common "github.com/babylonchain/finality-provider/itest/common"
+	common "github.com/babylonchain/finality-provider/itest"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"

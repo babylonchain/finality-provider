@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	common "github.com/babylonchain/finality-provider/itest/common"
+	common "github.com/babylonchain/finality-provider/itest"
 	"github.com/stretchr/testify/require"
 )
 

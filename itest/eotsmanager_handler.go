@@ -1,4 +1,4 @@
-package e2etest_common
+package e2e_utils
 
 import (
 	"testing"
