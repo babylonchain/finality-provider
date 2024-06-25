@@ -73,8 +73,14 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
+	// get babylon contract address
+	resp, err = ctm.BcdConsumerClient.ListContractsByCode(babylonContractWasmId, &sdkquerytypes.PageRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Contracts, 1)
+	babylonContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
 	// update the contract address in config because during setup we had used a random address which is not valid
 	ctm.BcdConsumerClient.SetBtcStakingContractAddress(btcStakingContractAddr.String())
+	ctm.UpdateParams(t, babylonContractAddr.String(), btcStakingContractAddr.String(), 100000)
 
 	// register consumer to babylon
 	_, err = ctm.BBNClient.RegisterConsumerChain(bcdChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")

@@ -1,6 +1,7 @@
 package e2etest_bcd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,11 +15,13 @@ import (
 	wasmparams "github.com/CosmWasm/wasmd/app/params"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	_ "github.com/babylonchain/babylon-sdk/demo/app"
+	bcdtypes "github.com/babylonchain/babylon-sdk/x/babylon/types"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	cwcc "github.com/babylonchain/finality-provider/clientcontroller/cosmwasm"
+	cwcclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
@@ -30,7 +33,10 @@ import (
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	v1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	"github.com/stretchr/testify/require"
+
 	"go.uber.org/zap"
 )
 
@@ -39,6 +45,7 @@ type BcdTestManager struct {
 	FpConfig          *fpcfg.Config
 	BBNClient         *bbncc.BabylonController
 	BcdHandler        *BcdNodeHandler
+	WasmApp           *wasmapp.WasmApp
 	BcdConsumerClient *cwcc.CosmwasmConsumerController
 	StakingParams     *types.StakingParams
 	EOTSServerHandler *e2eutils.EOTSServerHandler
@@ -116,6 +123,7 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 		FpConfig:          cfg,
 		BBNClient:         bc,
 		BcdHandler:        wh,
+		WasmApp:           tempApp,
 		BcdConsumerClient: wcc,
 		EOTSServerHandler: eh,
 		EOTSConfig:        eotsCfg,
@@ -161,6 +169,58 @@ func (ctm *BcdTestManager) Stop(t *testing.T) {
 	ctm.BcdHandler.Stop(t)
 	err = os.RemoveAll(ctm.baseDir)
 	require.NoError(t, err)
+}
+
+func (ctm *BcdTestManager) UpdateParams(t *testing.T, babylonAddr, btcStakingAddr string, maxGas uint32) {
+	// TODO: what should be the maxGas? I set it to random value for now
+
+	// prepare client
+	wasmdConfig := ctm.FpConfig.CosmwasmConfig.ToQueryClientConfig()
+	encodingCfg := wasmparams.EncodingConfig{
+		InterfaceRegistry: ctm.WasmApp.InterfaceRegistry(),
+		Codec:             ctm.WasmApp.AppCodec(),
+		TxConfig:          ctm.WasmApp.TxConfig(),
+		Amino:             ctm.WasmApp.LegacyAmino(),
+	}
+	wc, err := cwcclient.New(
+		wasmdConfig,
+		"wasmd",
+		encodingCfg,
+		zap.NewNop(),
+	)
+
+	// prepare msg
+	newParams := bcdtypes.Params{
+		BabylonContractAddress:    babylonAddr,
+		BtcStakingContractAddress: btcStakingAddr,
+		MaxGasBeginBlocker:        maxGas,
+	}
+	govKeeper := ctm.WasmApp.GovKeeper
+	govAcctAddr := govKeeper.GetGovernanceAccount(context.Background()).GetAddress()
+	testProposal := &bcdtypes.MsgUpdateParams{
+		Authority: govAcctAddr.String(),
+		Params:    newParams,
+	}
+	msg, err := v1.NewMsgSubmitProposal(
+		[]sdk.Msg{testProposal},
+		sdk.Coins{},
+		ctm.BcdConsumerClient.MustGetValidatorAddress(),
+		"",
+		"my proposal",
+		"testing",
+		false,
+	)
+	require.NoError(t, err)
+
+	//broadcast msg
+	_, err = wc.ReliablySendMsgs(
+		context.Background(),
+		[]sdk.Msg{msg},
+		nil,
+		nil,
+	)
+
+	// TODO: vote on proposal
 }
 
 func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consumerId string, n int) []*service.FinalityProviderInstance {
