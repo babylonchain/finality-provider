@@ -17,11 +17,8 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
-	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
-	bsctypes "github.com/babylonchain/babylon/x/btcstkconsumer/types"
-	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
@@ -31,17 +28,15 @@ import (
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_f149c8b.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_c6ccca8.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
 )
 
@@ -77,6 +72,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg.StatusUpdateInterval = 500 * time.Millisecond
+	cfg.RandomnessCommitInterval = 500 * time.Millisecond
+	cfg.FastSyncInterval = 1 * time.Second
+	cfg.NumPubRand = 64
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -191,18 +190,24 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node has started")
 }
 
-func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) []*service.FinalityProviderInstance {
+func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
+	chainId := opConsumerId
+	if isBabylonFp {
+		// While using another mock value, it throws the error: the finality-provider manager has already stopped
+		chainId = e2eutils.ChainID
+	}
+
 	for i := 0; i < n; i++ {
-		fpName := e2eutils.FpNamePrefix + strconv.Itoa(i)
-		moniker := e2eutils.MonikerPrefix + strconv.Itoa(i)
+		fpName := chainId + "-" + e2eutils.FpNamePrefix + strconv.Itoa(i)
+		moniker := chainId + "-" + e2eutils.MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 		cfg := app.GetConfig()
 		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, opConsumerId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, chainId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -216,154 +221,64 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
 
-		// check finality providers on Babylon side
 		require.Eventually(t, func() bool {
-			fps, err := ctm.QueryFinalityProviders(opConsumerId)
-			if err != nil {
-				t.Logf("failed to query finality providers from Babylon %s", err.Error())
-				return false
-			}
-
-			if len(fps) != i+1 {
-				return false
-			}
-
-			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
+			if isBabylonFp {
+				fps, err := ctm.BBNClient.QueryFinalityProviders()
+				if err != nil {
+					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
 				}
-				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+				if len(fps) != i+1 {
 					return false
 				}
+				for _, fp := range fps {
+					if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
+						return false
+					}
+				}
+			} else {
+				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(opConsumerId)
+				if err != nil {
+					t.Logf("failed to query finality providers from Babylon %s", err.Error())
+					return false
+				}
+				if len(fps) != i+1 {
+					return false
+				}
+				for _, fp := range fps {
+					if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
+						return false
+					}
+				}
 			}
-
 			return true
 		}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
-	require.Equal(t, n, len(fpInsList))
-
 	t.Logf("The test manager is running with %v finality-provider(s)", len(fpInsList))
 
-	for i, fp := range fpInsList {
-		t.Logf("The num %d finality-provider pubkeyhex %s", i, fp.GetBtcPkHex())
+	var resFpList []*service.FinalityProviderInstance
+	for _, fp := range fpInsList {
+		if bytes.Equal(fp.GetChainID(), []byte(chainId)) {
+			resFpList = append(resFpList, fp)
+		}
 	}
+	require.Equal(t, n, len(resFpList))
 
-	return fpInsList
+	return resFpList
 }
 
-type PubRandListInfo struct {
-	PubRandList []*secp256k1.FieldVal
-	Commitment  []byte
-	ProofList   []*merkle.Proof
-}
-
-func (ctm *OpL2ConsumerTestManager) GenerateCommitPubRandListMsg(fpPk *bbntypes.BIP340PubKey, startHeight uint64, numPubRand uint64) (*PubRandListInfo, *ftypes.MsgCommitPubRandList, error) {
-	// generate a list of Schnorr randomness pairs
-	fp, err := ctm.FpApp.GetFinalityProviderInstance(fpPk)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get fp instance: %w", err)
-	}
-	pubRandList, err := fp.GetPubRandList(startHeight, numPubRand)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to generate randomness: %w", err)
-	}
-	// generate commitment and proof for each public randomness
-	commitment, proofList := types.GetPubRandCommitAndProofs(pubRandList)
-
-	// store them to database
-	if err := ctm.FpApp.GetPubRandProofStore().AddPubRandProofList(pubRandList, proofList); err != nil {
-		return nil, nil, fmt.Errorf("failed to save public randomness to DB: %w", err)
-	}
-
-	// sign the commitment
-	schnorrSig, err := fp.SignPubRandCommit(startHeight, numPubRand, commitment)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
-	}
-
-	pubRandListInfo := &PubRandListInfo{
-		PubRandList: pubRandList,
-		Commitment:  commitment,
-		ProofList:   proofList,
-	}
-
-	msg := &ftypes.MsgCommitPubRandList{
-		Signer:      ctm.BBNClient.MustGetTxSigner(),
-		FpBtcPk:     fpPk,
-		StartHeight: startHeight,
-		NumPubRand:  numPubRand,
-		Commitment:  commitment,
-		Sig:         bbntypes.NewBIP340SignatureFromBTCSig(schnorrSig),
-	}
-	return pubRandListInfo, msg, nil
-}
-
-func (ctm *OpL2ConsumerTestManager) CommitPubRandList(t *testing.T, fpPk *bbntypes.BIP340PubKey) (*PubRandListInfo, *ftypes.MsgCommitPubRandList) {
-	// generate randomness data
-	pubRandListInfo, msgPub, err := ctm.GenerateCommitPubRandListMsg(fpPk, 1, 100)
-	require.NoError(t, err)
-
-	commitRes, err := ctm.OpL2ConsumerCtrl.CommitPubRandList(
-		msgPub.FpBtcPk.MustToBTCPK(),
-		msgPub.StartHeight,
-		msgPub.NumPubRand,
-		msgPub.Commitment,
-		msgPub.Sig.MustToBTCSig(),
-	)
-	require.NoError(t, err)
-	t.Logf("Commit PubRandList to op finality contract %s", commitRes.TxHash)
-	return pubRandListInfo, msgPub
-}
-
-func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpPk *bbntypes.BIP340PubKey) {
+func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		// query pub rand
-		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpPk.MustToBTCPK(), 1)
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
 		if err != nil {
 			return false
 		}
-		for k, v := range committedPubRandMap {
-			require.Equal(t, uint64(1), k)
-			require.Equal(t, uint64(100), v.NumPubRand)
-			break
-		}
-		return true
+		return lastCommittedHeight > 0
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Public randomness is successfully committed")
-}
 
-func (ctm *OpL2ConsumerTestManager) QueryFinalityProviders(consumerId string) ([]*bsctypes.FinalityProviderResponse, error) {
-	var fps []*bsctypes.FinalityProviderResponse
-	pagination := &sdkquery.PageRequest{
-		Limit: 100,
-	}
-
-	bbnConfig := fpcfg.BBNConfigToBabylonConfig(ctm.FpConfig.BabylonConfig)
-	logger := zap.NewNop()
-	bc, err := bbnclient.New(
-		&bbnConfig,
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
-	}
-
-	for {
-		res, err := bc.QueryConsumerFinalityProviders(consumerId, pagination)
-		if err != nil {
-			return nil, fmt.Errorf("failed to query finality providers: %v", err)
-		}
-		fps = append(fps, res.FinalityProviders...)
-		if res.Pagination == nil || res.Pagination.NextKey == nil {
-			break
-		}
-
-		pagination.Key = res.Pagination.NextKey
-	}
-
-	return fps, nil
+	t.Logf("public randomness is successfully committed")
 }
 
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
