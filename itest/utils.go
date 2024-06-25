@@ -9,6 +9,7 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/finality-provider/finality-provider/config"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -77,6 +78,18 @@ func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.Private
 	}
 
 	return covenantPrivKeys, covenantPubKeys
+}
+
+func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
+	require.Eventually(t, func() bool {
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
+		if err != nil {
+			return false
+		}
+		return lastCommittedHeight > 0
+	}, EventuallyWaitTimeOut, EventuallyPollTime)
+
+	t.Logf("Public randomness is successfully committed")
 }
 
 func DefaultFpConfig(keyringDir, homeDir string) *config.Config {
