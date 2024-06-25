@@ -222,22 +222,45 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, chainId 
 					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
 				}
-				return len(fps) > 0
+				if len(fps) != i+1 {
+					return false
+				}
+				for _, fp := range fps {
+					if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
+						return false
+					}
+				}
 			} else {
 				fps, err := ctm.BBNClient.QueryFinalityProviders()
 				if err != nil {
 					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
 				}
-				return len(fps) > 0
+				if len(fps) != i+1 {
+					return false
+				}
+				for _, fp := range fps {
+					if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
+						return false
+					}
+				}
 			}
+			return true
 		}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
 	t.Logf("The test manager is running with %v finality-provider(s)", len(fpInsList))
 
-	return fpInsList
+	var resFpList []*service.FinalityProviderInstance
+	for _, fp := range fpInsList {
+		if bytes.Equal(fp.GetChainID(), []byte(chainId)) {
+			resFpList = append(resFpList, fp)
+		}
+	}
+	require.Equal(t, n, len(resFpList))
+
+	return resFpList
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {

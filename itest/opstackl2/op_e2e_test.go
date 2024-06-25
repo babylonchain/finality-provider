@@ -4,13 +4,11 @@
 package e2etest_op
 
 import (
-	"bytes"
 	"math/rand"
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
-	"github.com/babylonchain/finality-provider/finality-provider/service"
-	e2etest "github.com/babylonchain/finality-provider/itest"
+	e2e_utils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
@@ -21,20 +19,18 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	// start Babylon chain FP
-	_ = ctm.StartFinalityProvider(t, e2etest.ChainID, 1)
+	// A BTC delegation has to stake to at least one Babylon finality provider
+	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
+	// So we have to start Babylon chain FP
+	// While using a mock value for chainId, it throws the error: the finality-provider manager has already stopped
+	ctm.StartFinalityProvider(t, e2e_utils.ChainID, 1)
 
 	// start consumer chain FP
 	fpList := ctm.StartFinalityProvider(t, opConsumerId, 1)
-	var fpInstance *service.FinalityProviderInstance
-	for _, fp := range fpList {
-		if bytes.Equal(fp.GetChainID(), []byte(opConsumerId)) {
-			fpInstance = fp
-			break
-		}
-	}
+	fpInstance := fpList[0]
 
 	ctm.WaitForFpPubRandCommitted(t, fpInstance)
+
 	// query pub rand
 	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk(), 1)
 	require.NoError(t, err)
@@ -49,12 +45,13 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// generate commitment and proof for each public randomness
 	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
-	// mock block
 	r := rand.New(rand.NewSource(1))
 	block := &types.BlockInfo{
 		Height: lastCommittedStartHeight,
-		Hash:   datagen.GenRandomByteArray(r, 32),
+		// mock block hash
+		Hash: datagen.GenRandomByteArray(r, 32),
 	}
+
 	// fp sign
 	fpSig, err := fpInstance.SignFinalitySig(block)
 	require.NoError(t, err)
