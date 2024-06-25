@@ -378,10 +378,14 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 
 	params := tm.StakingParams
 
+	var fpKeys []*btcec.PublicKey
+	for _, v := range btcDel.FpBtcPkList {
+		fpKeys = append(fpKeys, v.MustToBTCPK())
+	}
+
 	stakingInfo, err := btcstaking.BuildStakingInfo(
 		btcDel.BtcPk.MustToBTCPK(),
-		// TODO: Handle multiple providers
-		[]*btcec.PublicKey{btcDel.FpBtcPkList[0].MustToBTCPK()},
+		fpKeys,
 		params.CovenantPks,
 		params.CovenantQuorum,
 		btcDel.GetStakingTime(),
@@ -398,15 +402,20 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 	require.NoError(t, err)
 	slashingPathInfo, err := stakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
-	// get covenant private key from the keyring
-	valEncKey, err := asig.NewEncryptionKeyFromBTCPK(btcDel.FpBtcPkList[0].MustToBTCPK())
-	require.NoError(t, err)
+
+	var valEncKeys []*asig.EncryptionKey
+	for _, v := range btcDel.FpBtcPkList {
+		// get covenant private key from the keyring
+		valEncKey, err := asig.NewEncryptionKeyFromBTCPK(v.MustToBTCPK())
+		require.NoError(t, err)
+		valEncKeys = append(valEncKeys, valEncKey)
+	}
 
 	unbondingMsgTx, err := bbntypes.NewBTCTxFromBytes(btcDel.BtcUndelegation.UnbondingTx)
 	require.NoError(t, err)
 	unbondingInfo, err := btcstaking.BuildUnbondingInfo(
 		btcDel.BtcPk.MustToBTCPK(),
-		[]*btcec.PublicKey{btcDel.FpBtcPkList[0].MustToBTCPK()},
+		fpKeys,
 		params.CovenantPks,
 		params.CovenantQuorum,
 		uint16(btcDel.UnbondingTime),
@@ -415,15 +424,20 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 	)
 	require.NoError(t, err)
 
-	// Covenant 0 signatures
-	covenantAdaptorStakingSlashing1, err := slashingTx.EncSign(
-		stakingMsgTx,
-		idx,
-		slashingPathInfo.RevealedLeaf.Script,
-		tm.CovenantPrivKeys[0],
-		valEncKey,
-	)
-	require.NoError(t, err)
+	var covenantAdaptorStakingSlashing1List [][]byte
+	for _, v := range valEncKeys {
+		// Covenant 0 signatures
+		covenantAdaptorStakingSlashing1, err := slashingTx.EncSign(
+			stakingMsgTx,
+			idx,
+			slashingPathInfo.RevealedLeaf.Script,
+			tm.CovenantPrivKeys[0],
+			v,
+		)
+		require.NoError(t, err)
+		covenantAdaptorStakingSlashing1List = append(covenantAdaptorStakingSlashing1List, covenantAdaptorStakingSlashing1.MustMarshal())
+	}
+
 	covenantUnbondingSig1, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
 		unbondingMsgTx,
 		stakingInfo.StakingOutput,
@@ -432,36 +446,45 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 	)
 	require.NoError(t, err)
 
-	// slashing unbonding tx sig
-	unbondingTxSlashingPathInfo, err := unbondingInfo.SlashingPathSpendInfo()
-	require.NoError(t, err)
-	covenantAdaptorUnbondingSlashing1, err := btcDel.BtcUndelegation.SlashingTx.EncSign(
-		unbondingMsgTx,
-		0,
-		unbondingTxSlashingPathInfo.RevealedLeaf.Script,
-		tm.CovenantPrivKeys[0],
-		valEncKey,
-	)
-	require.NoError(t, err)
+	var covenantAdaptorUnbondingSlashing1List [][]byte
+	for _, v := range valEncKeys {
+		// slashing unbonding tx sig
+		unbondingTxSlashingPathInfo, err := unbondingInfo.SlashingPathSpendInfo()
+		require.NoError(t, err)
+		covenantAdaptorUnbondingSlashing1, err := btcDel.BtcUndelegation.SlashingTx.EncSign(
+			unbondingMsgTx,
+			0,
+			unbondingTxSlashingPathInfo.RevealedLeaf.Script,
+			tm.CovenantPrivKeys[0],
+			v,
+		)
+		require.NoError(t, err)
+		covenantAdaptorUnbondingSlashing1List = append(covenantAdaptorUnbondingSlashing1List, covenantAdaptorUnbondingSlashing1.MustMarshal())
+	}
 
 	_, err = tm.BBNClient.SubmitCovenantSigs(
 		tm.CovenantPrivKeys[0].PubKey(),
 		stakingMsgTx.TxHash().String(),
-		[][]byte{covenantAdaptorStakingSlashing1.MustMarshal()},
+		covenantAdaptorStakingSlashing1List,
 		covenantUnbondingSig1,
-		[][]byte{covenantAdaptorUnbondingSlashing1.MustMarshal()},
+		covenantAdaptorUnbondingSlashing1List,
 	)
 	require.NoError(t, err)
 
-	// Covenant 1 signatures
-	covenantAdaptorStakingSlashing2, err := slashingTx.EncSign(
-		stakingMsgTx,
-		idx,
-		slashingPathInfo.RevealedLeaf.Script,
-		tm.CovenantPrivKeys[1],
-		valEncKey,
-	)
-	require.NoError(t, err)
+	var covenantAdaptorStakingSlashing2List [][]byte
+	for _, v := range valEncKeys {
+		// Covenant 1 signatures
+		covenantAdaptorStakingSlashing2, err := slashingTx.EncSign(
+			stakingMsgTx,
+			idx,
+			slashingPathInfo.RevealedLeaf.Script,
+			tm.CovenantPrivKeys[1],
+			v,
+		)
+		require.NoError(t, err)
+		covenantAdaptorStakingSlashing2List = append(covenantAdaptorStakingSlashing2List, covenantAdaptorStakingSlashing2.MustMarshal())
+	}
+
 	covenantUnbondingSig2, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
 		unbondingMsgTx,
 		stakingInfo.StakingOutput,
@@ -470,23 +493,28 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 	)
 	require.NoError(t, err)
 
-	// slashing unbonding tx sig
+	var covenantAdaptorUnbondingSlashing2List [][]byte
+	for _, v := range valEncKeys {
+		// slashing unbonding tx sig
+		unbondingTxSlashingPathInfo, err := unbondingInfo.SlashingPathSpendInfo()
+		require.NoError(t, err)
+		covenantAdaptorUnbondingSlashing2, err := btcDel.BtcUndelegation.SlashingTx.EncSign(
+			unbondingMsgTx,
+			0,
+			unbondingTxSlashingPathInfo.RevealedLeaf.Script,
+			tm.CovenantPrivKeys[1],
+			v,
+		)
+		require.NoError(t, err)
+		covenantAdaptorUnbondingSlashing2List = append(covenantAdaptorUnbondingSlashing2List, covenantAdaptorUnbondingSlashing2.MustMarshal())
+	}
 
-	covenantAdaptorUnbondingSlashing2, err := btcDel.BtcUndelegation.SlashingTx.EncSign(
-		unbondingMsgTx,
-		0,
-		unbondingTxSlashingPathInfo.RevealedLeaf.Script,
-		tm.CovenantPrivKeys[1],
-		valEncKey,
-	)
-
-	require.NoError(t, err)
 	_, err = tm.BBNClient.SubmitCovenantSigs(
 		tm.CovenantPrivKeys[1].PubKey(),
 		stakingMsgTx.TxHash().String(),
-		[][]byte{covenantAdaptorStakingSlashing2.MustMarshal()},
+		covenantAdaptorStakingSlashing2List,
 		covenantUnbondingSig2,
-		[][]byte{covenantAdaptorUnbondingSlashing2.MustMarshal()},
+		covenantAdaptorUnbondingSlashing2List,
 	)
 	require.NoError(t, err)
 }
