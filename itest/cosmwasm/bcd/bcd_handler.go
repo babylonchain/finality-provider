@@ -1,4 +1,4 @@
-package e2etest
+package e2etest_bcd
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"testing"
 
+	common "github.com/babylonchain/finality-provider/itest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +26,7 @@ type BcdNodeHandler struct {
 }
 
 func NewBcdNodeHandler(t *testing.T) *BcdNodeHandler {
-	testDir, err := BaseDir("ZBcdTest")
+	testDir, err := common.BaseDir("ZBcdTest")
 	require.NoError(t, err)
 	defer func() {
 		if err != nil {
@@ -131,34 +132,34 @@ func (w *BcdNodeHandler) cleanup() error {
 }
 
 func bcdInit(homeDir string) error {
-	_, err := runCommand("bcd", "init", "--home", homeDir, "--chain-id", bcdChainID, moniker)
+	_, err := common.RunCommand("bcd", "init", "--home", homeDir, "--chain-id", bcdChainID, common.WasmMoniker)
 	return err
 }
 
 func bcdUpdateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
-	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", stake, genesisPath)
-	_, err := runCommand("sh", "-c", sedCmd)
+	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
+	_, err := common.RunCommand("sh", "-c", sedCmd)
 	return err
 }
 
 func bcdKeysAdd(homeDir string) error {
-	_, err := runCommand("bcd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("bcd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func bcdAddValidatorGenesisAccount(homeDir string) error {
-	_, err := runCommand("bcd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("bcd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func bcdGentxValidator(homeDir string) error {
-	_, err := runCommand("bcd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+bcdChainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("bcd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", common.WasmStake), "--chain-id="+bcdChainID, "--amount="+fmt.Sprintf("250000000%s", common.WasmStake), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func bcdCollectGentxs(homeDir string) error {
-	_, err := runCommand("bcd", "genesis", "collect-gentxs", "--home", homeDir)
+	_, err := common.RunCommand("bcd", "genesis", "collect-gentxs", "--home", homeDir)
 	return err
 }
 

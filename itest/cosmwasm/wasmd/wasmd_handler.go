@@ -1,4 +1,4 @@
-package e2etest
+package e2etest_wasmd
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	common "github.com/babylonchain/finality-provider/itest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,9 +21,6 @@ const (
 	wasmdRpcPort int = 2990
 	wasmdP2pPort int = 2991
 	wasmdChainID     = "wasmd-test"
-	stake            = "ustake"  // Default staking token
-	fee              = "ucosm"   // Default fee token
-	moniker          = "node001" // Default moniker
 )
 
 type WasmdNodeHandler struct {
@@ -32,7 +30,7 @@ type WasmdNodeHandler struct {
 }
 
 func NewWasmdNodeHandler(t *testing.T) *WasmdNodeHandler {
-	testDir, err := BaseDir("ZWasmdTest")
+	testDir, err := common.BaseDir("ZWasmdTest")
 	require.NoError(t, err)
 	defer func() {
 		if err != nil {
@@ -137,44 +135,35 @@ func (w *WasmdNodeHandler) cleanup() error {
 	return nil
 }
 
-func runCommand(name string, args ...string) ([]byte, error) {
-	cmd := exec.Command(name, args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("error running command: %v", err)
-	}
-	return output, nil
-}
-
 func wasmdInit(homeDir string) error {
-	_, err := runCommand("wasmd", "init", "--home", homeDir, "--chain-id", wasmdChainID, moniker)
+	_, err := common.RunCommand("wasmd", "init", "--home", homeDir, "--chain-id", wasmdChainID, common.WasmMoniker)
 	return err
 }
 
 func updateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
-	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", stake, genesisPath)
-	_, err := runCommand("sh", "-c", sedCmd)
+	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
+	_, err := common.RunCommand("sh", "-c", sedCmd)
 	return err
 }
 
 func wasmdKeysAdd(homeDir string) error {
-	_, err := runCommand("wasmd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("wasmd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func addValidatorGenesisAccount(homeDir string) error {
-	_, err := runCommand("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", stake, fee), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func gentxValidator(homeDir string) error {
-	_, err := runCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", stake), "--chain-id="+wasmdChainID, "--amount="+fmt.Sprintf("250000000%s", stake), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", common.WasmStake), "--chain-id="+wasmdChainID, "--amount="+fmt.Sprintf("250000000%s", common.WasmStake), "--home", homeDir, "--keyring-backend=test")
 	return err
 }
 
 func collectGentxs(homeDir string) error {
-	_, err := runCommand("wasmd", "genesis", "collect-gentxs", "--home", homeDir)
+	_, err := common.RunCommand("wasmd", "genesis", "collect-gentxs", "--home", homeDir)
 	return err
 }
 
@@ -252,7 +241,7 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 	}
 
 	time.Sleep(3 * time.Second)
-	queryOutput, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txResp.TxHash, "-o", "json")
+	queryOutput, err := common.RunCommand("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txResp.TxHash, "-o", "json")
 	if err != nil {
 		return "", "", fmt.Errorf("error querying transaction: %v", err)
 	}
@@ -290,7 +279,7 @@ type StatusResponse struct {
 }
 
 func (w *WasmdNodeHandler) GetLatestBlockHeight() (int64, error) {
-	out, err := runCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir())
+	out, err := common.RunCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir())
 	if err != nil {
 		return 0, fmt.Errorf("error running wasmd status command: %v", err)
 	}
@@ -319,7 +308,7 @@ type CodeInfo struct {
 }
 
 func (w *WasmdNodeHandler) GetLatestCodeID() (string, error) {
-	output, err := runCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
+	output, err := common.RunCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
 	if err != nil {
 		return "", fmt.Errorf("error running wasmd list-code command: %v", err)
 	}
