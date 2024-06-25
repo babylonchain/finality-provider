@@ -39,7 +39,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk(), 1)
 	require.NoError(t, err)
 	var lastCommittedStartHeight uint64
-	for key, _ := range committedPubRandMap {
+	for key := range committedPubRandMap {
 		lastCommittedStartHeight = key
 		break
 	}
