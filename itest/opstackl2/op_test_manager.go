@@ -157,7 +157,7 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 	// fill up the config from dc config
 	return &fpcfg.OPStackL2Config{
 		// it has to be a valid EVM RPC which doesn't timeout
-		OPStackL2RPCAddress: "https://rpc.ankr.com/eth",
+		OPStackL2RPCAddress: "https://1rpc.io/eth",
 		// it has to be a valid addr that can be passed into `sdktypes.AccAddressFromBech32()`
 		OPFinalityGadgetAddress: "bbn1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqxxvh0f",
 		Key:                     dc.Key,
