@@ -22,7 +22,6 @@ import (
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -387,7 +386,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		btcDel.GetStakingTime(),
 		btcutil.Amount(btcDel.TotalSat),
-		BtcNetworkParams,
+		e2eutils.BtcNetworkParams,
 	)
 	require.NoError(t, err)
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
@@ -412,7 +411,7 @@ func (tm *TestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bsty
 		params.CovenantQuorum,
 		uint16(btcDel.UnbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
-		BtcNetworkParams,
+		e2eutils.BtcNetworkParams,
 	)
 	require.NoError(t, err)
 
@@ -504,7 +503,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
-		BtcNetworkParams,
+		e2eutils.BtcNetworkParams,
 		delBtcPrivKey,
 		fpPks,
 		params.CovenantPks,
@@ -570,7 +569,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	testUnbondingInfo := datagen.GenBTCUnbondingSlashingInfo(
 		r,
 		t,
-		BtcNetworkParams,
+		e2eutils.BtcNetworkParams,
 		delBtcPrivKey,
 		fpPks,
 		params.CovenantPks,
