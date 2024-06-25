@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_c6ccca8.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
 )
 
