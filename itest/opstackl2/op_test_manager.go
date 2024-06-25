@@ -27,6 +27,7 @@ import (
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
+	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cometbft/cometbft/crypto/merkle"
@@ -43,11 +44,11 @@ const (
 )
 
 type OpL2ConsumerTestManager struct {
-	BabylonHandler    *itest.BabylonNodeHandler
+	BabylonHandler    *e2eutils.BabylonNodeHandler
 	BBNClient         *bbncc.BabylonController
 	EOTSClient        *client.EOTSManagerGRpcClient
 	EOTSConfig        *eotsconfig.Config
-	EOTSServerHandler *itest.EOTSServerHandler
+	EOTSServerHandler *e2eutils.EOTSServerHandler
 	FpApp             *service.FinalityProviderApp
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
@@ -59,7 +60,7 @@ type OpL2ConsumerTestManager struct {
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// Setup consumer test manager
-	testDir, err := itest.BaseDir("fpe2etest")
+	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -67,14 +68,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 1. generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
-	covenantPrivKeys, covenantPubKeys := itest.GenerateCovenantCommittee(numCovenants, t)
+	covenantPrivKeys, covenantPubKeys := e2eutils.GenerateCovenantCommittee(numCovenants, t)
 
 	// 2. prepare Babylon node
-	bh := itest.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
+	bh := e2eutils.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	cfg := itest.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -90,7 +91,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 5. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
-	eh := itest.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
+	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
@@ -156,7 +157,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 		}
 		ctm.StakingParams = params
 		return true
-	}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Babylon node has started")
 }
 
@@ -164,21 +165,21 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 	app := ctm.FpApp
 
 	for i := 0; i < n; i++ {
-		fpName := itest.FpNamePrefix + strconv.Itoa(i)
-		moniker := itest.MonikerPrefix + strconv.Itoa(i)
+		fpName := e2eutils.FpNamePrefix + strconv.Itoa(i)
+		moniker := e2eutils.MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
-		desc := itest.NewDescription(moniker)
+		desc := e2eutils.NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, itest.Passphrase, itest.HdPath, "")
+		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, opConsumerId, itest.Passphrase, itest.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, opConsumerId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		regRes, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
 		t.Logf("Registered Finality Provider %s", regRes.TxHash)
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, itest.Passphrase)
+		err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
@@ -198,7 +199,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 			}
 
 			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, itest.MonikerPrefix) {
+				if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
 					return false
 				}
 				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
@@ -207,7 +208,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 			}
 
 			return true
-		}, itest.EventuallyWaitTimeOut, itest.EventuallyPollTime)
+		}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
