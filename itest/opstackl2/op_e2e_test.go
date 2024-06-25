@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
-	ctm.WaitForFpPubRandCommitted(t, fpInstance)
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 
 	// query pub rand
 	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk(), 1)

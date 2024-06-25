@@ -269,18 +269,6 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 	return resFpList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
-	require.Eventually(t, func() bool {
-		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
-		if err != nil {
-			return false
-		}
-		return lastCommittedHeight > 0
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("Public randomness is successfully committed")
-}
-
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
