@@ -644,6 +644,8 @@ func (wc *CosmwasmConsumerController) ExecuteContract(msgBytes []byte) (*provide
 		Msg:      msgBytes,
 	}
 
+	wc.logger.Debug("Triggering ExecuteContract", zap.ByteString("msgBytes", msgBytes), zap.String("sender", wc.cwClient.MustGetAddr()), zap.String("contract", wc.cfg.BtcStakingContractAddress))
+
 	res, err := wc.reliablySendMsg(execMsg, nil, nil)
 	if err != nil {
 		return nil, err
