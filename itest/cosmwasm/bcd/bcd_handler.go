@@ -136,11 +136,63 @@ func bcdInit(homeDir string) error {
 	return err
 }
 
+//// runSedCommand executes a sed command to update the genesis.json file
+//func runSedCommand(searchPattern, replacePattern, filePath string) error {
+//	sedCmd := fmt.Sprintf(`sed -i 's/%s/%s/g' %s`, searchPattern, replacePattern, filePath)
+//	_, err := common.RunCommand("sh", "-c", sedCmd)
+//	return err
+//}
+//
+//func bcdUpdateGenesisFile(homeDir string) error {
+//	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
+//
+//	// Update "stake" placeholder
+//	if err := runSedCommand(`"stake"`, fmt.Sprintf(`"%s"`, common.WasmStake), genesisPath); err != nil {
+//		return fmt.Errorf("failed to update stake in genesis.json: %w", err)
+//	}
+//
+//	babylonContractAddr := "bbnc14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9syx25zf"
+//	btcStakingContractAddr := "bbnc1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqgn0kq0"
+//
+//	// Update babylon_contract_address
+//	if err := runSedCommand(`"babylon_contract_address": ""`, fmt.Sprintf(`"babylon_contract_address": "%s"`, babylonContractAddr), genesisPath); err != nil {
+//		return fmt.Errorf("failed to update babylon_contract_address in genesis.json: %w", err)
+//	}
+//
+//	// Update btc_staking_contract_address
+//	if err := runSedCommand(`"btc_staking_contract_address": ""`, fmt.Sprintf(`"btc_staking_contract_address": "%s"`, btcStakingContractAddr), genesisPath); err != nil {
+//		return fmt.Errorf("failed to update btc_staking_contract_address in genesis.json: %w", err)
+//	}
+//
+//	return nil
+//}
+
 func bcdUpdateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
-	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
-	_, err := common.RunCommand("sh", "-c", sedCmd)
-	return err
+	sedCmd1 := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
+	_, err := common.RunCommand("sh", "-c", sedCmd1)
+	if err != nil {
+		return fmt.Errorf("failed to update stake in genesis.json: %w", err)
+	}
+
+	babylonContractAddr := "bbnc14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9syx25zf"
+	btcStakingContractAddr := "bbnc1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqgn0kq0"
+
+	// Update babylon_contract_address
+	sedCmd2 := fmt.Sprintf(`sed -i. 's/"babylon_contract_address": ""/"babylon_contract_address": "%s"/g' %s`, babylonContractAddr, genesisPath)
+	_, err = common.RunCommand("sh", "-c", sedCmd2)
+	if err != nil {
+		return fmt.Errorf("failed to update babylon_contract_address in genesis.json: %w", err)
+	}
+
+	// Update btc_staking_contract_address
+	sedCmd3 := fmt.Sprintf(`sed -i 's/"btc_staking_contract_address": ""/"btc_staking_contract_address": "%s"/g' %s`, btcStakingContractAddr, genesisPath)
+	_, err = common.RunCommand("sh", "-c", sedCmd3)
+	if err != nil {
+		return fmt.Errorf("failed to update btc_staking_contract_address in genesis.json: %w", err)
+	}
+
+	return nil
 }
 
 func bcdKeysAdd(homeDir string) error {
