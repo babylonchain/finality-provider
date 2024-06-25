@@ -80,9 +80,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 
 	// 3. register consumer to Babylon
-	txRes, err := bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
+	_, err = bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
 	require.NoError(t, err)
-	t.Logf("Register consumer %s to Babylon %s", opConsumerId, txRes.TxHash)
+	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
 	// 4. new op consumer controller
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
@@ -211,8 +211,8 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
-		regRes, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
-		t.Logf("Registered Finality Provider %s", regRes.TxHash)
+		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		t.Logf("Registered Finality Provider %s", fpPk.MarshalHex())
 		require.NoError(t, err)
 		err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
 		require.NoError(t, err)
@@ -278,7 +278,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForFpPubRandCommitted(t *testing.T, fpIn
 		return lastCommittedHeight > 0
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	t.Logf("public randomness is successfully committed")
+	t.Logf("Public randomness is successfully committed")
 }
 
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
