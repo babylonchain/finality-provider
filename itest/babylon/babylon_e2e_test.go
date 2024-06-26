@@ -35,7 +35,7 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	del, err := e2eutils.ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs

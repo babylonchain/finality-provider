@@ -4,12 +4,15 @@
 package e2etest_op
 
 import (
+	"encoding/hex"
 	"math/rand"
 	"testing"
 
+	"github.com/babylonchain/babylon-da-sdk/sdk"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -99,4 +102,96 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Logf("Submit batch finality signatures to op finality contract")
+}
+
+// tests the query whether the block is Babylon finalized
+func TestBlockBabylonFinalized(t *testing.T) {
+
+	ctm := StartOpL2ConsumerManager(t)
+	defer ctm.Stop(t)
+
+	// A BTC delegation has to stake to at least one Babylon finality provider
+	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
+	// So we have to start Babylon chain FP
+	bbnFpList := ctm.StartFinalityProvider(t, true, 1)
+
+	// start consumer chain FP
+	n := 1
+	fpList := ctm.StartFinalityProvider(t, false, n)
+
+	var lastCommittedStartHeight uint64
+	var mockHash []byte
+	// submit BTC delegations for each finality-provider
+	for _, fp := range fpList {
+		// check the public randomness is committed
+		e2eutils.WaitForFpPubRandCommitted(t, fp)
+		// send a BTC delegation to consumer and Babylon finality providers
+		ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fp.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	}
+
+	// check the BTC delegations are pending
+	delsResp := ctm.WaitForNPendingDels(t, 1)
+	require.Equal(t, 1, len(delsResp))
+
+	// send covenant sigs to each of the delegations
+	for _, delResp := range delsResp {
+		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
+		require.NoError(t, err)
+		// send covenant sigs
+		ctm.InsertCovenantSigForDelegation(t, d)
+	}
+
+	// check the BTC delegations are active
+	_ = ctm.WaitForNActiveDels(t, 1)
+
+	for _, fp := range fpList {
+		// query pub rand
+		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fp.GetBtcPk(), 1)
+		require.NoError(t, err)
+		for key := range committedPubRandMap {
+			lastCommittedStartHeight = key
+			break
+		}
+		t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
+
+		pubRandList, err := fp.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
+		require.NoError(t, err)
+		// generate commitment and proof for each public randomness
+		_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
+
+		// mock block hash
+		r := rand.New(rand.NewSource(1))
+		mockHash := datagen.GenRandomByteArray(r, 32)
+		block := &types.BlockInfo{
+			Height: lastCommittedStartHeight,
+			Hash:   mockHash,
+		}
+		// fp sign
+		fpSig, err := fp.SignFinalitySig(block)
+		require.NoError(t, err)
+
+		// pub rand proof
+		proof, err := proofList[0].ToProto().Marshal()
+		require.NoError(t, err)
+
+		// submit finality signature to smart contract
+		submitRes, err := ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
+			fp.GetBtcPk(),
+			block,
+			pubRandList[0],
+			proof,
+			fpSig.ToModNScalar(),
+		)
+		require.NoError(t, err)
+		t.Logf("Submit finality signature to op finality contract %s", submitRes.TxHash)
+	}
+
+	queryParams := &sdk.L2Block{
+		BlockHeight:    lastCommittedStartHeight,
+		BlockHash:      hex.EncodeToString(mockHash),
+		BlockTimestamp: uint64(1231473952),
+	}
+	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
+	require.NoError(t, err)
+	require.Equal(t, true, finalized)
 }
