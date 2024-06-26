@@ -84,6 +84,7 @@ func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.Private
 	return covenantPrivKeys, covenantPubKeys
 }
 
+// n means expect n rounds of submissions
 func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance, n int) {
 	count := 0
 	require.Eventually(t, func() bool {
