@@ -1,7 +1,6 @@
 package e2etest_babylon
 
 import (
-	"encoding/hex"
 	"math/rand"
 	"os"
 	"path/filepath"
