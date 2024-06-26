@@ -25,7 +25,8 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
+	// expect 2 rounds of submissions
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 2)
 
 	// query pub rand
 	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk())
@@ -117,7 +118,7 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	// submit BTC delegations for each finality-provider
 	for _, fp := range fpList {
 		// check the public randomness is committed
-		e2eutils.WaitForFpPubRandCommitted(t, fp)
+		e2eutils.WaitForFpPubRandCommitted(t, fp, 2)
 		// send a BTC delegation to consumer and Babylon finality providers
 		ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fp.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 	}
