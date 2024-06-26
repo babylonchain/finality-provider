@@ -19,6 +19,7 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -150,20 +151,30 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
 	tm := StartManager(t)
 	app := tm.Fpa
+	cfg := app.GetConfig()
+	oldKey := cfg.BabylonConfig.Key
 
 	for i := 0; i < n; i++ {
 		fpName := fpNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := newDescription(moniker)
-		cfg := app.GetConfig()
 
 		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
 		require.NoError(t, err)
+
+		// needs to update key in config to be able to register and sign the creation of the finality provider with the
+		// same address.
+		cfg.BabylonConfig.Key = fpName
+		cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
+		require.NoError(t, err)
+		app.UpdateClientController(cc)
+
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
+		// app update key in the cc           clientcontroller.ClientController
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
 		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
@@ -197,6 +208,12 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 			return true
 		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
+
+	// goes back to old key in app
+	cfg.BabylonConfig.Key = oldKey
+	cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
+	require.NoError(t, err)
+	app.UpdateClientController(cc)
 
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
@@ -522,7 +539,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 	)
 
-	stakerAddr := datagen.GenRandomAccount().GetAddress()
+	stakerAddr := tm.BBNClient.GetKeyAddress()
 
 	// proof-of-possession
 	pop, err := bstypes.NewPoPBTC(stakerAddr, delBtcPrivKey)

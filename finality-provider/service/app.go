@@ -450,6 +450,13 @@ func (app *FinalityProviderApp) loadChainKeyring(
 	return kr, chainSk, nil
 }
 
+// UpdateClientController sets a new client controoller in the App.
+// Usefull for testing with multiples PKs with different keys, it needs
+// to update who is the signer
+func (app *FinalityProviderApp) UpdateClientController(cc clientcontroller.ClientController) {
+	app.cc = cc
+}
+
 // StoreFinalityProvider stores a new finality provider in the fp store.
 func (app *FinalityProviderApp) StoreFinalityProvider(
 	keyName, passPhrase, hdPath, chainID string,
