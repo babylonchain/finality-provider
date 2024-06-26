@@ -21,6 +21,7 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/babylonchain/finality-provider/clientcontroller"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
+	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
@@ -37,7 +38,10 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 )
 
+type BaseTestManager = base_test_manager.BaseTestManager
+
 type TestManager struct {
+	BaseTestManager
 	Wg                sync.WaitGroup
 	BabylonHandler    *e2eutils.BabylonNodeHandler
 	EOTSServerHandler *e2eutils.EOTSServerHandler
@@ -45,10 +49,7 @@ type TestManager struct {
 	EOTSConfig        *eotsconfig.Config
 	Fpa               *service.FinalityProviderApp
 	EOTSClient        *client.EOTSManagerGRpcClient
-	BBNClient         *bbncc.BabylonController
 	BBNConsumerClient *bbncc.BabylonConsumerController
-	StakingParams     *types.StakingParams
-	CovenantPrivKeys  []*btcec.PrivateKey
 	baseDir           string
 }
 
@@ -107,15 +108,14 @@ func StartManager(t *testing.T) *TestManager {
 	require.NoError(t, err)
 
 	tm := &TestManager{
+		BaseTestManager:   BaseTestManager{BBNClient: bc, CovenantPrivKeys: covenantPrivKeys},
 		BabylonHandler:    bh,
 		EOTSServerHandler: eh,
 		FpConfig:          cfg,
 		EOTSConfig:        eotsCfg,
 		Fpa:               fpApp,
 		EOTSClient:        eotsCli,
-		BBNClient:         bc,
 		BBNConsumerClient: bcc,
-		CovenantPrivKeys:  covenantPrivKeys,
 		baseDir:           testDir,
 	}
 
@@ -237,46 +237,6 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
 	t.Logf("the finality-provider is successfully registered")
-}
-
-func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
-	var (
-		dels []*bstypes.BTCDelegationResponse
-		err  error
-	)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BBNClient.QueryPendingDelegations(
-			100,
-		)
-		if err != nil {
-			return false
-		}
-		return len(dels) == n
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("delegations are pending")
-
-	return dels
-}
-
-func (tm *TestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
-	var (
-		dels []*bstypes.BTCDelegationResponse
-		err  error
-	)
-	require.Eventually(t, func() bool {
-		dels, err = tm.BBNClient.QueryActiveDelegations(
-			100,
-		)
-		if err != nil {
-			return false
-		}
-		return len(dels) == n
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("delegations are active")
-
-	return dels
 }
 
 func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {
