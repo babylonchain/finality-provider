@@ -10,7 +10,7 @@ require (
 	cosmossdk.io/math v1.3.0
 	github.com/CosmWasm/wasmd v0.51.0
 	github.com/avast/retry-go/v4 v4.5.1
-	github.com/babylonchain/babylon v0.8.6-0.20240527005816-ae2182029020
+	github.com/babylonchain/babylon v0.8.6
 	github.com/babylonchain/babylon-sdk/demo v0.0.0-20240624102351-3a809d4fdcce
 	github.com/btcsuite/btcd v0.24.0
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
@@ -69,6 +69,7 @@ require (
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aws/aws-sdk-go v1.44.312 // indirect
+	github.com/babylonchain/babylon-da-sdk v0.1.3-alpha
 	github.com/babylonchain/babylon-sdk/x v0.0.0-20240624102351-3a809d4fdcce // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -220,7 +221,6 @@ require (
 	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
-	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/rs/zerolog v1.32.0 // indirect

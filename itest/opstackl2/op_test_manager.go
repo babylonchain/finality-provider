@@ -17,6 +17,7 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/babylonchain/babylon-da-sdk/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -26,8 +27,7 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
-	"github.com/babylonchain/finality-provider/types"
-	"github.com/btcsuite/btcd/btcec/v2"
+	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -40,18 +40,19 @@ const (
 	opConsumerId                 = "op-stack-l2-12345"
 )
 
+type BaseTestManager = base_test_manager.BaseTestManager
+
 type OpL2ConsumerTestManager struct {
+	BaseTestManager
 	BabylonHandler    *e2eutils.BabylonNodeHandler
-	BBNClient         *bbncc.BabylonController
 	EOTSClient        *client.EOTSManagerGRpcClient
 	EOTSConfig        *eotsconfig.Config
 	EOTSServerHandler *e2eutils.EOTSServerHandler
 	FpApp             *service.FinalityProviderApp
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
-	StakingParams     *types.StakingParams
-	CovenantPrivKeys  []*btcec.PrivateKey
 	BaseDir           string
+	SdkClient         *sdk.BabylonQueryClient
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
@@ -133,17 +134,24 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
+	// 9. init SDK client
+	sdkClient, err := sdk.NewClient(sdk.Config{
+		ChainType:    -1, // only for the e2e test
+		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
+	})
+	require.NoError(t, err)
+
 	ctm := &OpL2ConsumerTestManager{
+		BaseTestManager:   BaseTestManager{BBNClient: bc, CovenantPrivKeys: covenantPrivKeys},
 		BabylonHandler:    bh,
-		BBNClient:         bc,
 		EOTSClient:        eotsCli,
 		EOTSConfig:        eotsCfg,
 		EOTSServerHandler: eh,
 		FpApp:             fpApp,
 		FpConfig:          cfg,
 		OpL2ConsumerCtrl:  opcc,
-		CovenantPrivKeys:  covenantPrivKeys,
 		BaseDir:           testDir,
+		SdkClient:         sdkClient,
 	}
 
 	ctm.WaitForServicesStart(t)

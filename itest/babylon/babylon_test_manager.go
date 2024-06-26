@@ -1,7 +1,6 @@
 package e2etest_babylon
 
 import (
-	"encoding/hex"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -14,7 +13,6 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
-	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -293,78 +291,6 @@ func (tm *TestManager) GetFpPrivKey(t *testing.T, fpPk []byte) *btcec.PrivateKey
 	record, err := tm.EOTSClient.KeyRecord(fpPk, e2eutils.Passphrase)
 	require.NoError(t, err)
 	return record.PrivKey
-}
-
-// ParseRespBTCDelToBTCDel parses an BTC delegation response to BTC Delegation
-// adapted from
-// https://github.com/babylonchain/babylon/blob/1a3c50da64885452c8d669fcea2a2fad78c8a028/test/e2e/btc_staking_e2e_test.go#L548
-func ParseRespBTCDelToBTCDel(resp *bstypes.BTCDelegationResponse) (btcDel *bstypes.BTCDelegation, err error) {
-	stakingTx, err := hex.DecodeString(resp.StakingTxHex)
-	if err != nil {
-		return nil, err
-	}
-
-	delSig, err := bbntypes.NewBIP340SignatureFromHex(resp.DelegatorSlashSigHex)
-	if err != nil {
-		return nil, err
-	}
-
-	slashingTx, err := bstypes.NewBTCSlashingTxFromHex(resp.SlashingTxHex)
-	if err != nil {
-		return nil, err
-	}
-
-	btcDel = &bstypes.BTCDelegation{
-		// missing BabylonPk, Pop
-		// these fields are not sent out to the client on BTCDelegationResponse
-		BtcPk:            resp.BtcPk,
-		FpBtcPkList:      resp.FpBtcPkList,
-		StartHeight:      resp.StartHeight,
-		EndHeight:        resp.EndHeight,
-		TotalSat:         resp.TotalSat,
-		StakingTx:        stakingTx,
-		DelegatorSig:     delSig,
-		StakingOutputIdx: resp.StakingOutputIdx,
-		CovenantSigs:     resp.CovenantSigs,
-		UnbondingTime:    resp.UnbondingTime,
-		SlashingTx:       slashingTx,
-	}
-
-	if resp.UndelegationResponse != nil {
-		ud := resp.UndelegationResponse
-		unbondTx, err := hex.DecodeString(ud.UnbondingTxHex)
-		if err != nil {
-			return nil, err
-		}
-
-		slashTx, err := bstypes.NewBTCSlashingTxFromHex(ud.SlashingTxHex)
-		if err != nil {
-			return nil, err
-		}
-
-		delSlashingSig, err := bbntypes.NewBIP340SignatureFromHex(ud.DelegatorSlashingSigHex)
-		if err != nil {
-			return nil, err
-		}
-
-		btcDel.BtcUndelegation = &bstypes.BTCUndelegation{
-			UnbondingTx:              unbondTx,
-			CovenantUnbondingSigList: ud.CovenantUnbondingSigList,
-			CovenantSlashingSigs:     ud.CovenantSlashingSigs,
-			SlashingTx:               slashTx,
-			DelegatorSlashingSig:     delSlashingSig,
-		}
-
-		if len(ud.DelegatorUnbondingSigHex) > 0 {
-			delUnbondingSig, err := bbntypes.NewBIP340SignatureFromHex(ud.DelegatorUnbondingSigHex)
-			if err != nil {
-				return nil, err
-			}
-			btcDel.BtcUndelegation.DelegatorUnbondingSig = delUnbondingSig
-		}
-	}
-
-	return btcDel, nil
 }
 
 func (tm *TestManager) InsertWBTCHeaders(t *testing.T, r *rand.Rand) {
