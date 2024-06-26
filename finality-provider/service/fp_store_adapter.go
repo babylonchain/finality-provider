@@ -7,7 +7,7 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
 
@@ -31,10 +31,9 @@ type createFinalityProviderRequest struct {
 }
 
 type registerFinalityProviderRequest struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
-	// TODO we should have our own representation of PoP
-	pop             *btcstakingtypes.ProofOfPossession
+	fpAddr          sdk.AccAddress
+	btcPubKey       *bbntypes.BIP340PubKey
+	pop             *btcstakingtypes.ProofOfPossessionBTC
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
 	errResponse     chan error
@@ -42,16 +41,16 @@ type registerFinalityProviderRequest struct {
 }
 
 type finalityProviderRegisteredEvent struct {
-	bbnPubKey       *secp256k1.PubKey
+	bbnAddress      sdk.AccAddress
 	btcPubKey       *bbntypes.BIP340PubKey
 	txHash          string
 	successResponse chan *RegisterFinalityProviderResponse
 }
 
 type RegisterFinalityProviderResponse struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
-	TxHash    string
+	bbnAddress sdk.AccAddress
+	btcPubKey  *bbntypes.BIP340PubKey
+	TxHash     string
 }
 
 type CreateFinalityProviderResult struct {

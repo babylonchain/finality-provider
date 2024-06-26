@@ -19,11 +19,10 @@ const (
 )
 
 type ClientController interface {
-
 	// RegisterFinalityProvider registers a finality provider to the consumer chain
 	// it returns tx hash and error
 	RegisterFinalityProvider(
-		chainPk []byte,
+		// the address of the finality provider will be the signer of the msg.
 		fpPk *btcec.PublicKey,
 		pop []byte,
 		commission *math.LegacyDec,

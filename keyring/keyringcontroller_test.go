@@ -11,7 +11,6 @@ import (
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/stretchr/testify/require"
 
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
@@ -57,12 +56,13 @@ func FuzzCreatePoP(f *testing.F) {
 		require.NoError(t, err)
 		keyInfo, err := kc.CreateChainKey(passphrase, hdPath, "")
 		require.NoError(t, err)
-		bbnPk := &secp256k1.PubKey{Key: keyInfo.PublicKey.SerializeCompressed()}
+
+		fpAddr := keyInfo.AccAddress
 		fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 		require.NoError(t, err)
-		pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
+		pop, err := kc.CreatePop(fpAddr, fpRecord.PrivKey)
 		require.NoError(t, err)
-		err = pop.Verify(bbnPk, btcPk, &chaincfg.SimNetParams)
+		err = pop.Verify(fpAddr, btcPk, &chaincfg.SimNetParams)
 		require.NoError(t, err)
 	})
 }

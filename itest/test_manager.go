@@ -24,7 +24,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -65,15 +65,14 @@ type TestManager struct {
 }
 
 type TestDelegationData struct {
-	DelegatorPrivKey        *btcec.PrivateKey
-	DelegatorKey            *btcec.PublicKey
-	DelegatorBabylonPrivKey *secp256k1.PrivKey
-	DelegatorBabylonKey     *secp256k1.PubKey
-	SlashingTx              *bstypes.BTCSlashingTx
-	StakingTx               *wire.MsgTx
-	StakingTxInfo           *btcctypes.TransactionInfo
-	DelegatorSig            *bbntypes.BIP340Signature
-	FpPks                   []*btcec.PublicKey
+	FPAddr           sdk.AccAddress
+	DelegatorPrivKey *btcec.PrivateKey
+	DelegatorKey     *btcec.PublicKey
+	SlashingTx       *bstypes.BTCSlashingTx
+	StakingTx        *wire.MsgTx
+	StakingTxInfo    *btcctypes.TransactionInfo
+	DelegatorSig     *bbntypes.BIP340Signature
+	FpPks            []*btcec.PublicKey
 
 	SlashingAddr  string
 	ChangeAddr    string
@@ -158,6 +157,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		commission := sdkmath.LegacyZeroDec()
 		desc := newDescription(moniker)
 		cfg := app.GetConfig()
+
 		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
 		require.NoError(t, err)
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
@@ -214,18 +214,6 @@ func (tm *TestManager) Stop(t *testing.T) {
 	err = os.RemoveAll(tm.baseDir)
 	require.NoError(t, err)
 	tm.EOTSServerHandler.Stop()
-}
-
-func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
-	require.Eventually(t, func() bool {
-		queriedFps, err := tm.BBNClient.QueryFinalityProviders()
-		if err != nil {
-			return false
-		}
-		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
-
-	t.Logf("the finality-provider is successfully registered")
 }
 
 func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
@@ -534,12 +522,10 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 	)
 
-	// delegator Babylon key pairs
-	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
-	require.NoError(t, err)
+	stakerAddr := datagen.GenRandomAccount().GetAddress()
 
 	// proof-of-possession
-	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
+	pop, err := bstypes.NewPoPBTC(stakerAddr, delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
@@ -619,7 +605,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 
 	// submit the BTC delegation to Babylon
 	_, err = tm.BBNClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
 		fpPks,
 		pop,
@@ -632,24 +617,23 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		uint32(unbondingTime),
 		unbondingValue,
 		testUnbondingInfo.SlashingTx,
-		unbondingSig)
+		unbondingSig,
+	)
 	require.NoError(t, err)
 
 	t.Log("successfully submitted a BTC delegation")
 
 	return &TestDelegationData{
-		DelegatorPrivKey:        delBtcPrivKey,
-		DelegatorKey:            delBtcPubKey,
-		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
-		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		FpPks:                   fpPks,
-		StakingTx:               testStakingInfo.StakingTx,
-		SlashingTx:              testStakingInfo.SlashingTx,
-		StakingTxInfo:           txInfo,
-		DelegatorSig:            delegatorSig,
-		SlashingAddr:            params.SlashingAddress.String(),
-		StakingTime:             stakingTime,
-		StakingAmount:           stakingAmount,
+		DelegatorPrivKey: delBtcPrivKey,
+		DelegatorKey:     delBtcPubKey,
+		FpPks:            fpPks,
+		StakingTx:        testStakingInfo.StakingTx,
+		SlashingTx:       testStakingInfo.SlashingTx,
+		StakingTxInfo:    txInfo,
+		DelegatorSig:     delegatorSig,
+		SlashingAddr:     params.SlashingAddress.String(),
+		StakingTime:      stakingTime,
+		StakingAmount:    stakingAmount,
 	}
 }
 

@@ -18,7 +18,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sttypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -80,6 +79,7 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 	// and we should panic.
 	// This is checked at the start of BabylonController, so if it fails something is really wrong
 
+	// bc.bbnClient.GetKeyring().KeyByAddress()
 	keyRec, err := bc.bbnClient.GetKeyring().Key(bc.cfg.Key)
 
 	if err != nil {
@@ -111,13 +111,12 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sd
 // RegisterFinalityProvider registers a finality provider via a MsgCreateFinalityProvider to Babylon
 // it returns tx hash and error
 func (bc *BabylonController) RegisterFinalityProvider(
-	chainPk []byte,
 	fpPk *btcec.PublicKey,
 	pop []byte,
 	commission *math.LegacyDec,
 	description []byte,
 ) (*types.TxResponse, error) {
-	var bbnPop btcstakingtypes.ProofOfPossession
+	var bbnPop btcstakingtypes.ProofOfPossessionBTC
 	if err := bbnPop.Unmarshal(pop); err != nil {
 		return nil, fmt.Errorf("invalid proof-of-possession: %w", err)
 	}
@@ -127,14 +126,15 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		return nil, fmt.Errorf("invalid description: %w", err)
 	}
 
+	fpAddr := bc.mustGetTxSigner()
 	msg := &btcstakingtypes.MsgCreateFinalityProvider{
-		Signer:      bc.mustGetTxSigner(),
-		BabylonPk:   &secp256k1.PubKey{Key: chainPk},
+		Addr:        fpAddr,
 		BtcPk:       bbntypes.NewBIP340PubKeyFromBTCPK(fpPk),
 		Pop:         &bbnPop,
 		Commission:  commission,
 		Description: &sdkDescription,
 	}
+	fmt.Printf("\n RegisterFinalityProvider txSigner addr: %s", fpAddr)
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
@@ -409,10 +409,9 @@ func (bc *BabylonController) Close() error {
 */
 
 func (bc *BabylonController) CreateBTCDelegation(
-	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
 	fpPks []*btcec.PublicKey,
-	pop *btcstakingtypes.ProofOfPossession,
+	pop *btcstakingtypes.ProofOfPossessionBTC,
 	stakingTime uint32,
 	stakingValue int64,
 	stakingTxInfo *btcctypes.TransactionInfo,
@@ -429,8 +428,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
 	}
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:                        bc.mustGetTxSigner(),
-		BabylonPk:                     delBabylonPk,
+		StakerAddr:                    bc.mustGetTxSigner(),
 		Pop:                           pop,
 		BtcPk:                         delBtcPk,
 		FpBtcPkList:                   fpBtcPks,

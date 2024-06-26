@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdksecp256k1 "github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/go-bip39"
 
 	"github.com/babylonchain/finality-provider/types"
@@ -121,13 +122,19 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath, mnemonic st
 // CreatePop creates proof-of-possession of Babylon and BTC public keys
 // the input is the bytes of BTC public key used to sign
 // this requires both keys created beforehand
-func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey, passphrase string) (*bstypes.ProofOfPossession, error) {
-	bbnPrivKey, err := kc.GetChainPrivKey(passphrase)
+func (kc *ChainKeyringController) CreatePop(fpAddr sdk.AccAddress, btcPrivKey *btcec.PrivateKey) (*bstypes.ProofOfPossessionBTC, error) {
+	return bstypes.NewPoPBTC(fpAddr, btcPrivKey)
+}
+
+// Address returns the address inside the config.
+func (kc *ChainKeyringController) Address(passphrase string) (sdk.AccAddress, error) {
+	kc.input.Reset(passphrase)
+	k, err := kc.kr.Key(kc.fpName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get address: %w", err)
 	}
 
-	return bstypes.NewPoP(bbnPrivKey, btcPrivKey)
+	return k.GetAddress()
 }
 
 func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*sdksecp256k1.PrivKey, error) {

@@ -8,7 +8,6 @@ import (
 	"cosmossdk.io/math"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	dc "github.com/babylonchain/finality-provider/finality-provider/service/client"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	bbn "github.com/babylonchain/babylon/types"
@@ -97,17 +96,9 @@ func exportFp(ctx *cli.Context) error {
 		return fmt.Errorf("failed to parse fp commission %s: %w", fpInfo.Commission, err)
 	}
 
-	cosmosRawPubKey, err := hex.DecodeString(fpInfo.ChainPkHex)
-	if err != nil {
-		return fmt.Errorf("failed to decode chain pk hex %s: %w", fpInfo.ChainPkHex, err)
-	}
-
-	cosmosPubKey := &secp256k1.PubKey{
-		Key: cosmosRawPubKey,
-	}
-
 	desc := fpInfo.Description
 	fp := btcstktypes.FinalityProvider{
+		Addr: fpInfo.FpAddr,
 		Description: &types.Description{
 			Moniker:         desc.Moniker,
 			Identity:        desc.Identity,
@@ -117,7 +108,6 @@ func exportFp(ctx *cli.Context) error {
 		},
 		Commission: &comm,
 		BtcPk:      fpPk,
-		BabylonPk:  cosmosPubKey,
 		Pop:        nil, // TODO: fill PoP?
 	}
 
