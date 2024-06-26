@@ -2,6 +2,7 @@ package e2etest
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -24,7 +25,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
@@ -160,21 +160,28 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		commission := sdkmath.LegacyZeroDec()
 		desc := newDescription(moniker)
 
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
-		require.NoError(t, err)
-
+		fmt.Printf("\nkey name: %s", fpName)
 		// needs to update key in config to be able to register and sign the creation of the finality provider with the
 		// same address.
 		cfg.BabylonConfig.Key = fpName
+		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, passphrase, hdPath, "")
+		require.NoError(t, err)
+
 		cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
 		require.NoError(t, err)
 		app.UpdateClientController(cc)
+
+		// add some funds for new fp pay for fees '-'
+		err = tm.BabylonHandler.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "100000ubbn")
+		require.NoError(t, err)
 
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
+
 		// app update key in the cc           clientcontroller.ClientController
+
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
 		err = app.StartHandlingFinalityProvider(fpPk, passphrase)

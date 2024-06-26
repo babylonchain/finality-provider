@@ -15,25 +15,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type babylonNode struct {
-	cmd     *exec.Cmd
-	pidFile string
-	dataDir string
+type BabylonNode struct {
+	cmd        *exec.Cmd
+	pidFile    string
+	DataDir    string
+	WalletName string
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd) *babylonNode {
-	return &babylonNode{
-		dataDir: dataDir,
-		cmd:     cmd,
+func newBabylonNode(dataDir, walletName string, cmd *exec.Cmd) *BabylonNode {
+	return &BabylonNode{
+		DataDir:    dataDir,
+		cmd:        cmd,
+		WalletName: walletName,
 	}
 }
 
-func (n *babylonNode) start() error {
+func (n *BabylonNode) start() error {
 	if err := n.cmd.Start(); err != nil {
 		return err
 	}
 
-	pid, err := os.Create(filepath.Join(n.dataDir,
+	pid, err := os.Create(filepath.Join(n.DataDir,
 		fmt.Sprintf("%s.pid", "config")))
 	if err != nil {
 		return err
@@ -51,7 +53,7 @@ func (n *babylonNode) start() error {
 	return nil
 }
 
-func (n *babylonNode) stop() (err error) {
+func (n *BabylonNode) stop() (err error) {
 	if n.cmd == nil || n.cmd.Process == nil {
 		// return if not properly initialized
 		// or error starting the process
@@ -68,7 +70,7 @@ func (n *babylonNode) stop() (err error) {
 	return n.cmd.Process.Signal(os.Interrupt)
 }
 
-func (n *babylonNode) cleanup() error {
+func (n *BabylonNode) cleanup() error {
 	if n.pidFile != "" {
 		if err := os.Remove(n.pidFile); err != nil {
 			log.Printf("unable to remove file %s: %v", n.pidFile,
@@ -77,7 +79,7 @@ func (n *babylonNode) cleanup() error {
 	}
 
 	dirs := []string{
-		n.dataDir,
+		n.DataDir,
 	}
 	var err error
 	for _, dir := range dirs {
@@ -88,7 +90,7 @@ func (n *babylonNode) cleanup() error {
 	return nil
 }
 
-func (n *babylonNode) shutdown() error {
+func (n *BabylonNode) shutdown() error {
 	if err := n.stop(); err != nil {
 		return err
 	}
@@ -99,7 +101,7 @@ func (n *babylonNode) shutdown() error {
 }
 
 type BabylonNodeHandler struct {
-	babylonNode *babylonNode
+	BabylonNode *BabylonNode
 }
 
 func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*types.BIP340PubKey) *BabylonNodeHandler {
@@ -112,7 +114,8 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 		}
 	}()
 
-	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
+	walletName := "node0"
+	nodeDataDir := filepath.Join(testDir, walletName, "babylond")
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 
@@ -157,21 +160,21 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd),
+		BabylonNode: newBabylonNode(testDir, walletName, startCmd),
 	}
 }
 
 func (w *BabylonNodeHandler) Start() error {
-	if err := w.babylonNode.start(); err != nil {
+	if err := w.BabylonNode.start(); err != nil {
 		// try to cleanup after start error, but return original error
-		_ = w.babylonNode.cleanup()
+		_ = w.BabylonNode.cleanup()
 		return err
 	}
 	return nil
 }
 
 func (w *BabylonNodeHandler) Stop() error {
-	if err := w.babylonNode.shutdown(); err != nil {
+	if err := w.BabylonNode.shutdown(); err != nil {
 		return err
 	}
 
@@ -179,6 +182,29 @@ func (w *BabylonNodeHandler) Stop() error {
 }
 
 func (w *BabylonNodeHandler) GetNodeDataDir() string {
-	dir := filepath.Join(w.babylonNode.dataDir, "node0", "babylond")
+	dir := filepath.Join(w.BabylonNode.DataDir, "node0", "babylond")
 	return dir
+}
+
+func (n *BabylonNode) TxBankSend(addr, coins string) error {
+	flags := []string{
+		"tx",
+		"bank",
+		"send",
+		n.WalletName,
+		addr, coins,
+		"--keyring-backend=test",
+		fmt.Sprintf("--home=%s", filepath.Join(n.DataDir, n.WalletName, "babylond")),
+		"--log_level=debug",
+		"--chain-id=chain-test",
+		"-b=sync", "--yes",
+	}
+
+	cmd := exec.Command("babylond", flags...)
+	out, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("\n outputErr %s: %s: %s", strings.Join(flags, " "), out, err.Error())
+		return err
+	}
+	return nil
 }

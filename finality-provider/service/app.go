@@ -374,6 +374,7 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 		fpAddr = keyInfo.AccAddress
 	}
 	fmt.Printf("\nhandleCreateFinalityProviderRequest fpAddr %s", fpAddr.String())
+	fmt.Printf("\nhandleCreateFinalityProviderRequest keyName %s", req.keyName)
 
 	// 2. create EOTS key
 	fpPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
@@ -455,6 +456,17 @@ func (app *FinalityProviderApp) loadChainKeyring(
 // to update who is the signer
 func (app *FinalityProviderApp) UpdateClientController(cc clientcontroller.ClientController) {
 	app.cc = cc
+}
+
+// UpdateBabylonConfig after update the bbn config it update the client controller
+func (app *FinalityProviderApp) UpdateBabylonConfig(bbnConfig *fpcfg.BBNConfig) error {
+	cc, err := clientcontroller.NewClientController(app.config.ChainName, bbnConfig, &app.config.BTCNetParams, app.logger)
+	if err != nil {
+		return err
+	}
+	app.cc = cc
+
+	return nil
 }
 
 // StoreFinalityProvider stores a new finality provider in the fp store.

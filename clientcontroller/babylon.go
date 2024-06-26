@@ -135,6 +135,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Description: &sdkDescription,
 	}
 	fmt.Printf("\n RegisterFinalityProvider txSigner addr: %s", fpAddr)
+	fmt.Printf("\n RegisterFinalityProvider txSigner key: %s", bc.cfg.Key)
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
