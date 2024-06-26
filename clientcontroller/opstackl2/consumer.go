@@ -327,7 +327,7 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 
 // QueryLastCommittedPublicRand returns the last public randomness commitments
 // It is fetched from the state of a CosmWasm contract OP finality gadget.
-func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommit, error) {
+func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
 		LastPubRandCommit: &LastPubRandCommit{
@@ -351,18 +351,13 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, nil
 	}
 
-	var resp LastPubRandCommitResponse
+	var resp types.PubRandCommit
 	err = json.Unmarshal(stateResp.Data, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	respMap := make(map[uint64]*types.PubRandCommit)
-	respMap[resp.StartHeight] = &types.PubRandCommit{
-		NumPubRand: resp.NumPubRand,
-		Commitment: resp.Commitment,
-	}
 
-	return respMap, nil
+	return &resp, nil
 }
 
 func ConvertProof(cmtProof cmtcrypto.Proof) Proof {

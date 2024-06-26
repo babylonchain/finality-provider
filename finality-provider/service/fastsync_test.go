@@ -31,7 +31,7 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		defer cleanUp()
 
 		// commit pub rand
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).Times(1)
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(nil, nil).Times(1)
 		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
@@ -46,7 +46,7 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 			NumPubRand: 1000,
 			Commitment: datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRandMap, nil).AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
@@ -84,7 +84,7 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		defer cleanUp()
 
 		// commit pub rand
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).Times(1)
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(nil, nil).Times(1)
 		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
@@ -98,7 +98,7 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 			NumPubRand: 10 + 1,
 			Commitment: datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRandMap, nil).AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)

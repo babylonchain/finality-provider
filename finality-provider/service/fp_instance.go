@@ -891,31 +891,25 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 }
 
 func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
-	pubRandCommitMap, err := fp.lastCommittedPublicRandWithRetry(1)
+	pubRandCommit, err := fp.lastCommittedPublicRandWithRetry()
 	if err != nil {
 		return 0, err
 	}
 
 	// no committed randomness yet
-	if len(pubRandCommitMap) == 0 {
+	if pubRandCommit == nil {
 		return 0, nil
 	}
 
-	if len(pubRandCommitMap) > 1 {
-		return 0, fmt.Errorf("got more than one last committed public randomness")
-	}
-	var lastCommittedHeight uint64
-	for startHeight, resp := range pubRandCommitMap {
-		lastCommittedHeight = startHeight + resp.NumPubRand - 1
-	}
+	lastCommittedHeight := pubRandCommit.StartHeight + pubRandCommit.NumPubRand - 1
 
 	return lastCommittedHeight, nil
 }
 
-func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry(count uint64) (map[uint64]*types.PubRandCommit, error) {
-	var response map[uint64]*types.PubRandCommit
+func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry() (*types.PubRandCommit, error) {
+	var response *types.PubRandCommit
 	if err := retry.Do(func() error {
-		resp, err := fp.consumerCon.QueryLastCommittedPublicRand(fp.GetBtcPk(), count)
+		resp, err := fp.consumerCon.QueryLastCommittedPublicRand(fp.GetBtcPk())
 		if err != nil {
 			return err
 		}

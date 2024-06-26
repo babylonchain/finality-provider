@@ -29,13 +29,9 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 
 	// query pub rand
-	committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk(), 1)
+	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk())
 	require.NoError(t, err)
-	var lastCommittedStartHeight uint64
-	for key := range committedPubRandMap {
-		lastCommittedStartHeight = key
-		break
-	}
+	lastCommittedStartHeight := committedPubRand.StartHeight
 	t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
 	pubRandList, err := fpInstance.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
 	require.NoError(t, err)
@@ -119,7 +115,6 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	n := 1
 	fpList := ctm.StartFinalityProvider(t, false, n)
 
-	var lastCommittedStartHeight uint64
 	var mockHash []byte
 	// submit BTC delegations for each finality-provider
 	for _, fp := range fpList {
@@ -144,14 +139,12 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	// check the BTC delegations are active
 	_ = ctm.WaitForNActiveDels(t, 1)
 
+	var lastCommittedStartHeight uint64
 	for _, fp := range fpList {
 		// query pub rand
-		committedPubRandMap, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fp.GetBtcPk(), 1)
+		committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fp.GetBtcPk())
 		require.NoError(t, err)
-		for key := range committedPubRandMap {
-			lastCommittedStartHeight = key
-			break
-		}
+		lastCommittedStartHeight = committedPubRand.StartHeight
 		t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
 
 		pubRandList, err := fp.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)

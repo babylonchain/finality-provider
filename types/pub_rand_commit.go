@@ -7,8 +7,9 @@ import (
 )
 
 type PubRandCommit struct {
-	NumPubRand uint64 `json:"num_pub_rand"`
-	Commitment []byte `json:"commitment"`
+	StartHeight uint64 `json:"start_height"`
+	NumPubRand  uint64 `json:"num_pub_rand"`
+	Commitment  []byte `json:"commitment"`
 }
 
 // GetPubRandCommitAndProofs commits a list of public randomness and returns
