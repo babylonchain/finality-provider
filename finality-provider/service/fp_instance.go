@@ -662,7 +662,6 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 		// we are running out of the randomness
 		startHeight = lastCommittedHeight + 1
 	} else {
-		// MARK
 		fp.logger.Debug(
 			"the finality-provider has sufficient public randomness, skip committing more",
 			zap.String("pk", fp.GetBtcPkHex()),
