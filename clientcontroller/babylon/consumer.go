@@ -297,9 +297,8 @@ func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Pu
 		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
 	}
 
-	if len(res.PubRandCommitMap) != 1 {
-		// before first PR commitment, it's expected to return nothing
-		return nil, nil
+	if len(res.PubRandCommitMap) > 1 {
+		return nil, fmt.Errorf("expected length to be 1, but got :%d", len(res.PubRandCommitMap))
 	}
 
 	var commit *types.PubRandCommit

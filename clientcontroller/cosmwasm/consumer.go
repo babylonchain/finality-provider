@@ -421,6 +421,10 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	if len(commits) > 1 {
+		return nil, fmt.Errorf("expected length to be 1, but got :%d", len(commits))
+	}
+
 	// Convert the response to the expected map format
 	var commit *fptypes.PubRandCommit
 	for _, commitRes := range commits {
