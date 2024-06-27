@@ -315,10 +315,6 @@ func (bc *BabylonConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publi
 		}
 	}
 
-	if err := commit.Validate(); err != nil {
-		return nil, err
-	}
-
 	return commit, nil
 }
 
