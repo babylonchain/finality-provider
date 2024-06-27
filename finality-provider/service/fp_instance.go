@@ -897,8 +897,12 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 	}
 
 	// no committed randomness yet
-	if pubRandCommit == nil {
+	if pubRandCommit == nil || (pubRandCommit.StartHeight == 0 && pubRandCommit.NumPubRand == 0) {
 		return 0, nil
+	}
+
+	if pubRandCommit.NumPubRand == 0 {
+		return 0, errors.New("the field NumPubRand should always be at least one")
 	}
 
 	lastCommittedHeight := pubRandCommit.StartHeight + pubRandCommit.NumPubRand - 1
