@@ -4,7 +4,6 @@
 package e2etest_op
 
 import (
-	"encoding/hex"
 	"math/rand"
 	"testing"
 
@@ -26,7 +25,8 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
+	// expect 2 rounds of submissions
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 2)
 
 	// query pub rand
 	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk())
@@ -115,11 +115,10 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	n := 1
 	fpList := ctm.StartFinalityProvider(t, false, n)
 
-	var mockHash []byte
 	// submit BTC delegations for each finality-provider
 	for _, fp := range fpList {
 		// check the public randomness is committed
-		e2eutils.WaitForFpPubRandCommitted(t, fp)
+		e2eutils.WaitForFpPubRandCommitted(t, fp, 2)
 		// send a BTC delegation to consumer and Babylon finality providers
 		ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fp.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 	}
@@ -139,12 +138,16 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	// check the BTC delegations are active
 	_ = ctm.WaitForNActiveDels(t, 1)
 
-	var lastCommittedStartHeight uint64
+	// test block data
+	testBlock := &types.BlockInfo{
+		Height: uint64(0),
+		Hash:   []byte("30b3a087ec3b9800f2ae7aeeb4c3fd1b4fe50578c14381568874949b08858118"),
+	}
 	for _, fp := range fpList {
 		// query pub rand
 		committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fp.GetBtcPk())
 		require.NoError(t, err)
-		lastCommittedStartHeight = committedPubRand.StartHeight
+		lastCommittedStartHeight := committedPubRand.StartHeight
 		t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
 
 		pubRandList, err := fp.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
@@ -152,15 +155,11 @@ func TestBlockBabylonFinalized(t *testing.T) {
 		// generate commitment and proof for each public randomness
 		_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
-		// mock block hash
-		r := rand.New(rand.NewSource(1))
-		mockHash := datagen.GenRandomByteArray(r, 32)
-		block := &types.BlockInfo{
-			Height: lastCommittedStartHeight,
-			Hash:   mockHash,
-		}
+		// set the test block height
+		testBlock.Height = lastCommittedStartHeight
+
 		// fp sign
-		fpSig, err := fp.SignFinalitySig(block)
+		fpSig, err := fp.SignFinalitySig(testBlock)
 		require.NoError(t, err)
 
 		// pub rand proof
@@ -168,20 +167,21 @@ func TestBlockBabylonFinalized(t *testing.T) {
 		require.NoError(t, err)
 
 		// submit finality signature to smart contract
-		submitRes, err := ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
+		_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
 			fp.GetBtcPk(),
-			block,
+			testBlock,
 			pubRandList[0],
 			proof,
 			fpSig.ToModNScalar(),
 		)
 		require.NoError(t, err)
-		t.Logf("Submit finality signature to op finality contract %s", submitRes.TxHash)
+		t.Logf("Submit finality signature to op finality contract %+v\n", testBlock)
 	}
 
 	queryParams := &sdk.L2Block{
-		BlockHeight: lastCommittedStartHeight,
-		BlockHash:   hex.EncodeToString(mockHash),
+		BlockHeight: testBlock.Height,
+		// use the same UTF-8 encoding in CW contract
+		BlockHash: string(testBlock.Hash),
 		/*
 			this is BTC height 10's timestamp: https://mempool.space/block/10
 
