@@ -283,8 +283,8 @@ func (bc *BabylonConsumerController) QueryBlock(height uint64) (*types.BlockInfo
 	}, nil
 }
 
-// QueryLastCommittedPublicRand returns the last public randomness commitments
-func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+// QueryLastPublicRandCommit returns the last public randomness commitments
+func (bc *BabylonConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	pagination := &sdkquery.PageRequest{

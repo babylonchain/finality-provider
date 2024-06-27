@@ -913,7 +913,7 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry() (*types.PubRandCommit, error) {
 	var response *types.PubRandCommit
 	if err := retry.Do(func() error {
-		resp, err := fp.consumerCon.QueryLastCommittedPublicRand(fp.GetBtcPk())
+		resp, err := fp.consumerCon.QueryLastPublicRandCommit(fp.GetBtcPk())
 		if err != nil {
 			return err
 		}

@@ -29,7 +29,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 2)
 
 	// query pub rand
-	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fpInstance.GetBtcPk())
+	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	lastCommittedStartHeight := committedPubRand.StartHeight
 	t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
@@ -145,7 +145,7 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	}
 	for _, fp := range fpList {
 		// query pub rand
-		committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastCommittedPublicRand(fp.GetBtcPk())
+		committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fp.GetBtcPk())
 		require.NoError(t, err)
 		lastCommittedStartHeight := committedPubRand.StartHeight
 		t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)

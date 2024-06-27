@@ -390,8 +390,8 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 	}, nil
 }
 
-// QueryLastCommittedPublicRand returns the last public randomness commitments
-func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey) (*fptypes.PubRandCommit, error) {
+// QueryLastPublicRandCommit returns the last public randomness commitments
+func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*fptypes.PubRandCommit, error) {
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	// Construct the query message

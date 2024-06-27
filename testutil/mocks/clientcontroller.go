@@ -208,19 +208,19 @@ func (mr *MockConsumerControllerMockRecorder) QueryIsBlockFinalized(height inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryIsBlockFinalized", reflect.TypeOf((*MockConsumerController)(nil).QueryIsBlockFinalized), height)
 }
 
-// QueryLastCommittedPublicRand mocks base method.
-func (m *MockConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+// QueryLastPublicRandCommit mocks base method.
+func (m *MockConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryLastCommittedPublicRand", fpPk)
+	ret := m.ctrl.Call(m, "QueryLastPublicRandCommit", fpPk)
 	ret0, _ := ret[0].(*types.PubRandCommit)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryLastCommittedPublicRand indicates an expected call of QueryLastCommittedPublicRand.
-func (mr *MockConsumerControllerMockRecorder) QueryLastCommittedPublicRand(fpPk interface{}) *gomock.Call {
+// QueryLastPublicRandCommit indicates an expected call of QueryLastPublicRandCommit.
+func (mr *MockConsumerControllerMockRecorder) QueryLastPublicRandCommit(fpPk interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLastCommittedPublicRand", reflect.TypeOf((*MockConsumerController)(nil).QueryLastCommittedPublicRand), fpPk)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryLastPublicRandCommit", reflect.TypeOf((*MockConsumerController)(nil).QueryLastPublicRandCommit), fpPk)
 }
 
 // QueryLatestBlockHeight mocks base method.

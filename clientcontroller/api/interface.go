@@ -51,8 +51,8 @@ type ConsumerController interface {
 	// Note: nil will be returned if the finalized block does not exist
 	QueryLatestFinalizedBlock() (*types.BlockInfo, error)
 
-	// QueryLastCommittedPublicRand returns the last committed public randomness
-	QueryLastCommittedPublicRand(fpPk *btcec.PublicKey) (*types.PubRandCommit, error)
+	// QueryLastPublicRandCommit returns the last committed public randomness
+	QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error)
 
 	// QueryBlock queries the block at the given height
 	QueryBlock(height uint64) (*types.BlockInfo, error)
