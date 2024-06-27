@@ -421,12 +421,19 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	if len(commits) == 0 {
+		// expected when there is no PR commit at all
+		// `get_pub_rand_commit`'s return type is Vec<PubRandCommit> and it can be
+		// empty vector if no results found
+		return nil, nil
+	}
+
 	if len(commits) > 1 {
 		return nil, fmt.Errorf("expected length to be 1, but got :%d", len(commits))
 	}
 
 	// Convert the response to the expected map format
-	var commit *fptypes.PubRandCommit
+	var commit *fptypes.PubRandCommit = nil
 	for _, commitRes := range commits {
 		commitCopy := commitRes // create a copy to avoid referencing the loop variable
 		commit = &fptypes.PubRandCommit{

@@ -297,11 +297,16 @@ func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Pu
 		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
 	}
 
+	if len(res.PubRandCommitMap) == 0 {
+		// expected when there is no PR commit at all
+		return nil, nil
+	}
+
 	if len(res.PubRandCommitMap) > 1 {
 		return nil, fmt.Errorf("expected length to be 1, but get :%d", len(res.PubRandCommitMap))
 	}
 
-	var commit *types.PubRandCommit
+	var commit *types.PubRandCommit = nil
 	for height, commitRes := range res.PubRandCommitMap {
 		commit = &types.PubRandCommit{
 			StartHeight: height,
