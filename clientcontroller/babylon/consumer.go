@@ -298,7 +298,7 @@ func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Pu
 	}
 
 	if len(res.PubRandCommitMap) > 1 {
-		return nil, fmt.Errorf("expected length to be 1, but got :%d", len(res.PubRandCommitMap))
+		return nil, fmt.Errorf("expected length to be 1, but get :%d", len(res.PubRandCommitMap))
 	}
 
 	var commit *types.PubRandCommit
