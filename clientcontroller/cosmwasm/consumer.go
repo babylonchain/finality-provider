@@ -443,6 +443,10 @@ func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publ
 		}
 	}
 
+	if err := commit.Validate(); err != nil {
+		return nil, err
+	}
+
 	return commit, nil
 }
 
