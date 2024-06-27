@@ -40,13 +40,12 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 			Return(uint64(1), nil).AnyTimes()
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
-		lastCommittedHeight := randomStartingHeight + testutil.TestPubRandNum
-		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
-		lastCommittedPubRandMap[lastCommittedHeight] = &types.PubRandCommit{
-			NumPubRand: 1000,
-			Commitment: datagen.GenRandomByteArray(r, 32),
+		lastCommittedPubRand := &types.PubRandCommit{
+			StartHeight: randomStartingHeight + testutil.TestPubRandNum,
+			NumPubRand:  1000,
+			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
@@ -93,12 +92,12 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 			Return(uint64(1), nil).AnyTimes()
 		// the last height with pub rand is a random value inside [finalizedHeight+1, currentHeight]
 		lastHeightWithPubRand := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
-		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
-		lastCommittedPubRandMap[lastHeightWithPubRand-10] = &types.PubRandCommit{
-			NumPubRand: 10 + 1,
-			Commitment: datagen.GenRandomByteArray(r, 32),
+		lastCommittedPubRand := &types.PubRandCommit{
+			StartHeight: lastHeightWithPubRand - 10,
+			NumPubRand:  10 + 1,
+			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)

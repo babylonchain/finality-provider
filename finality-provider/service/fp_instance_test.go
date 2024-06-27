@@ -70,13 +70,12 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		require.NoError(t, err)
 
 		// mock committed pub rand
-		lastCommittedHeight := randomStartingHeight + 25
-		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
-		lastCommittedPubRandMap[lastCommittedHeight] = &types.PubRandCommit{
-			NumPubRand: 1000,
-			Commitment: datagen.GenRandomByteArray(r, 32),
+		lastCommittedPubRand := &types.PubRandCommit{
+			StartHeight: randomStartingHeight + 25,
+			NumPubRand:  1000,
+			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
 		// mock voting power and commit pub rand
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()
