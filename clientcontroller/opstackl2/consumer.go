@@ -351,13 +351,17 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 		return nil, nil
 	}
 
-	var resp types.PubRandCommit
+	var resp *types.PubRandCommit
 	err = json.Unmarshal(stateResp.Data, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return &resp, nil
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
