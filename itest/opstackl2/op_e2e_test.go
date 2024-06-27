@@ -4,8 +4,10 @@
 package e2etest_op
 
 import (
+	"encoding/hex"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -39,7 +41,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
 	// create a mock block
-	r := rand.New(rand.NewSource(1))
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	block := &types.BlockInfo{
 		Height: lastCommittedStartHeight,
 		// mock block hash
@@ -139,9 +141,10 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	_ = ctm.WaitForNActiveDels(t, 1)
 
 	// test block data
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	testBlock := &types.BlockInfo{
 		Height: uint64(0),
-		Hash:   []byte("30b3a087ec3b9800f2ae7aeeb4c3fd1b4fe50578c14381568874949b08858118"),
+		Hash:   datagen.GenRandomByteArray(r, 32),
 	}
 	for _, fp := range fpList {
 		// query pub rand
@@ -180,8 +183,7 @@ func TestBlockBabylonFinalized(t *testing.T) {
 
 	queryParams := &sdk.L2Block{
 		BlockHeight: testBlock.Height,
-		// use the same UTF-8 encoding in CW contract
-		BlockHash: string(testBlock.Hash),
+		BlockHash:   hex.EncodeToString(testBlock.Hash),
 		/*
 			this is BTC height 10's timestamp: https://mempool.space/block/10
 
