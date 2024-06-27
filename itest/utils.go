@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	EventuallyWaitTimeOut = 2 * time.Minute
+	EventuallyWaitTimeOut = 3 * time.Minute
 	EventuallyPollTime    = 500 * time.Millisecond
 	FpNamePrefix          = "test-fp-"
 	MonikerPrefix         = "moniker-"

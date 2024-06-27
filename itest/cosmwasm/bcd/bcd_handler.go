@@ -37,6 +37,7 @@ func NewBcdNodeHandler(t *testing.T) *BcdNodeHandler {
 
 	setupBcd(t, testDir)
 	cmd := bcdStartCmd(t, testDir)
+	fmt.Println("Starting bcd with command:", cmd.String())
 	return &BcdNodeHandler{
 		cmd:     cmd,
 		pidFile: "", // empty for now, will be set after start
@@ -179,6 +180,16 @@ func bcdAddValidatorGenesisAccount(homeDir string) error {
 	return err
 }
 
+func bcdVersion() error {
+	cmd := exec.Command("bcd", "version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %w", err)
+	}
+	fmt.Printf("bcd version:\n%s\n", string(output))
+	return nil
+}
+
 func bcdGentxValidator(homeDir string) error {
 	_, err := common.RunCommand("bcd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", common.WasmStake), "--chain-id="+bcdChainID, "--amount="+fmt.Sprintf("250000000%s", common.WasmStake), "--home", homeDir, "--keyring-backend=test")
 	return err
@@ -207,6 +218,9 @@ func setupBcd(t *testing.T, testDir string) {
 
 	err = bcdCollectGentxs(testDir)
 	require.NoError(t, err)
+
+	err = bcdVersion()
+	require.NoError(t, err)
 }
 
 func bcdStartCmd(t *testing.T, testDir string) *exec.Cmd {
@@ -215,7 +229,7 @@ func bcdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 		"--home", testDir,
 		"--rpc.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", bcdRpcPort),
 		"--p2p.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", bcdP2pPort),
-		"--log_level=info",
+		"--log_level=trace",
 		"--trace",
 	}
 

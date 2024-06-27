@@ -1,11 +1,9 @@
-//go:build e2e_bcd
-// +build e2e_bcd
-
 package e2etest_bcd
 
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -80,7 +78,8 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	babylonContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
 	// update the contract address in config because during setup we had used a random address which is not valid
 	ctm.BcdConsumerClient.SetBtcStakingContractAddress(btcStakingContractAddr.String())
-	ctm.UpdateParams(t, babylonContractAddr.String(), btcStakingContractAddr.String(), 100000)
+	fmt.Println("btc staking address", btcStakingContractAddr.String())
+	fmt.Println("babylon address", babylonContractAddr.String())
 
 	// register consumer to babylon
 	_, err = ctm.BBNClient.RegisterConsumerChain(bcdChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
@@ -102,11 +101,11 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 	require.NoError(t, err)
 
-	// inject fp and delegation in smart contract using admin
-	msg := e2eutils.GenBtcStakingExecMsg(fpPk.MarshalHex())
-	msgBytes, err := json.Marshal(msg)
+	// inject fp in smart contract using admin
+	fpMsg := e2eutils.GenBtcStakingFpExecMsg(fpPk.MarshalHex())
+	fpMsgBytes, err := json.Marshal(fpMsg)
 	require.NoError(t, err)
-	_, err = ctm.BcdConsumerClient.ExecuteContract(msgBytes)
+	_, err = ctm.BcdConsumerClient.ExecuteContract(fpMsgBytes)
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
@@ -114,30 +113,10 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, consumerFpsResp)
 	require.Len(t, consumerFpsResp.Fps, 1)
-	require.Equal(t, msg.BtcStaking.NewFP[0].ConsumerID, consumerFpsResp.Fps[0].ConsumerId)
-	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsResp.Fps[0].BtcPkHex)
+	require.Equal(t, fpMsg.BtcStaking.NewFP[0].ConsumerID, consumerFpsResp.Fps[0].ConsumerId)
+	require.Equal(t, fpMsg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsResp.Fps[0].BtcPkHex)
 
-	// query delegations in smart contract
-	consumerDelsResp, err := ctm.BcdConsumerClient.QueryDelegations()
-	require.NoError(t, err)
-	require.NotNil(t, consumerDelsResp)
-	require.Len(t, consumerDelsResp.Delegations, 1)
-	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx))   // make sure to compare b64 encoded strings
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
-
-	// ensure fp has voting power in smart contract
-	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
-	require.NoError(t, err)
-	require.NotNil(t, consumerFpsByPowerResp)
-	require.Len(t, consumerFpsByPowerResp.Fps, 1)
-	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
-	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
-
+	// start finality provider daemon
 	err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
 	require.NoError(t, err)
 	fpIns, err := app.GetFinalityProviderInstance(fpPk)
@@ -146,6 +125,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure consumer finality providers are stored in Babylon
+	// this will happen after the finality provider daemon has started
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(bcdChainID)
 		if err != nil {
@@ -186,6 +166,34 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
+	// inject delegation in smart contract using admin
+	delMsg := e2eutils.GenBtcStakingDelExecMsg(fpPk.MarshalHex())
+	delMsgBytes, err := json.Marshal(delMsg)
+	require.NoError(t, err)
+	_, err = ctm.BcdConsumerClient.ExecuteContract(delMsgBytes)
+	require.NoError(t, err)
+
+	// query delegations in smart contract
+	consumerDelsResp, err := ctm.BcdConsumerClient.QueryDelegations()
+	require.NoError(t, err)
+	require.NotNil(t, consumerDelsResp)
+	require.Len(t, consumerDelsResp.Delegations, 1)
+	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx))   // make sure to compare b64 encoded strings
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+
+	// ensure fp has voting power in smart contract
+	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
+	require.NoError(t, err)
+	require.NotNil(t, consumerFpsByPowerResp)
+	require.Len(t, consumerFpsByPowerResp.Fps, 1)
+	require.Equal(t, fpMsg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
+
 	// ensure finality signature is submitted to smart contract
 	require.Eventually(t, func() bool {
 		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(lookupHeight))
@@ -201,4 +209,6 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		}
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	fmt.Println("Finality signature submitted to smart contract")
 }

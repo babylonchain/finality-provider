@@ -151,8 +151,11 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 		"babylond",
 		"start",
 		fmt.Sprintf("--home=%s", nodeDataDir),
-		"--log_level=debug",
+		"--log_level=trace",
+		"--trace",
 	)
+
+	fmt.Println("Starting babylond with command: ", startCmd.String())
 
 	startCmd.Stdout = f
 
