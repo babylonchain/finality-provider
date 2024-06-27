@@ -38,6 +38,10 @@ import (
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_c6ccca8.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
+	// it has to be a valid EVM RPC which doesn't timeout
+	opStackL2RPCAddress = "https://rpc.ankr.com/eth"
+	// it has to be a valid addr that can be passed into `sdktypes.AccAddressFromBech32()`
+	opFinalityGadgetAddress = "bbn1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqxxvh0f"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -73,9 +77,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
-	cfg.StatusUpdateInterval = 500 * time.Millisecond
-	cfg.RandomnessCommitInterval = 500 * time.Millisecond
-	cfg.FastSyncInterval = 1 * time.Second
+	cfg.StatusUpdateInterval = 2 * time.Second
+	cfg.RandomnessCommitInterval = 2 * time.Second
+	cfg.FastSyncInterval = 2 * time.Second
 	cfg.NumPubRand = 64
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
@@ -163,10 +167,8 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 
 	// fill up the config from dc config
 	return &fpcfg.OPStackL2Config{
-		// it has to be a valid EVM RPC which doesn't timeout
-		OPStackL2RPCAddress: "https://rpc.ankr.com/eth",
-		// it has to be a valid addr that can be passed into `sdktypes.AccAddressFromBech32()`
-		OPFinalityGadgetAddress: "bbn1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqxxvh0f",
+		OPStackL2RPCAddress:     opStackL2RPCAddress,
+		OPFinalityGadgetAddress: opFinalityGadgetAddress,
 		Key:                     dc.Key,
 		ChainID:                 dc.ChainID,
 		RPCAddr:                 dc.RPCAddr,

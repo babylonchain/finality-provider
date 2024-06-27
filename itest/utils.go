@@ -84,13 +84,19 @@ func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.Private
 	return covenantPrivKeys, covenantPubKeys
 }
 
-func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
+// n means expect n rounds of submissions
+func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance, n int) {
+	count := 0
 	require.Eventually(t, func() bool {
 		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
 		if err != nil {
+			t.Errorf("Failed to fetch last committed height: %v", err)
 			return false
 		}
-		return lastCommittedHeight > 0
+		if lastCommittedHeight > 0 {
+			count++
+		}
+		return count >= n
 	}, EventuallyWaitTimeOut, EventuallyPollTime)
 
 	t.Logf("Public randomness is successfully committed")

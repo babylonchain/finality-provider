@@ -168,7 +168,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 
 	// ensure pub rand is submitted to smart contract
 	require.Eventually(t, func() bool {
-		fpPubRandResp, err := ctm.BcdConsumerClient.QueryLastCommittedPublicRand(fpPk.MustToBTCPK(), 1)
+		fpPubRandResp, err := ctm.BcdConsumerClient.QueryLastPublicRandCommit(fpPk.MustToBTCPK())
 		if err != nil {
 			t.Logf("failed to query last committed public rand: %s", err.Error())
 			return false
