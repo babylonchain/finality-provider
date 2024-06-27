@@ -73,9 +73,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
-	cfg.StatusUpdateInterval = 500 * time.Millisecond
-	cfg.RandomnessCommitInterval = 500 * time.Millisecond
-	cfg.FastSyncInterval = 1 * time.Second
+	cfg.StatusUpdateInterval = 2 * time.Second
+	cfg.RandomnessCommitInterval = 2 * time.Second
+	cfg.FastSyncInterval = 2 * time.Second
 	cfg.NumPubRand = 64
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)

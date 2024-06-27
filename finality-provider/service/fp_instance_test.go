@@ -70,8 +70,9 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		require.NoError(t, err)
 
 		// mock committed pub rand
+		lastCommittedHeight := randomStartingHeight + 25
 		lastCommittedPubRand := &types.PubRandCommit{
-			StartHeight: randomStartingHeight + 25,
+			StartHeight: lastCommittedHeight,
 			NumPubRand:  1000,
 			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}

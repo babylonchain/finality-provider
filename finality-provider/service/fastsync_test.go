@@ -40,8 +40,9 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 			Return(uint64(1), nil).AnyTimes()
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
+		lastCommittedHeight := randomStartingHeight + testutil.TestPubRandNum
 		lastCommittedPubRand := &types.PubRandCommit{
-			StartHeight: randomStartingHeight + testutil.TestPubRandNum,
+			StartHeight: lastCommittedHeight,
 			NumPubRand:  1000,
 			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
