@@ -88,6 +88,7 @@ func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInst
 	require.Eventually(t, func() bool {
 		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
 		if err != nil {
+			t.Errorf("Failed to fetch last committed height: %v", err)
 			return false
 		}
 		return lastCommittedHeight > 0
