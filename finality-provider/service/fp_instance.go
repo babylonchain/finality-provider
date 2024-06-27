@@ -897,12 +897,8 @@ func (fp *FinalityProviderInstance) GetLastCommittedHeight() (uint64, error) {
 	}
 
 	// no committed randomness yet
-	if pubRandCommit == nil || (pubRandCommit.StartHeight == 0 && pubRandCommit.NumPubRand == 0) {
+	if pubRandCommit == nil {
 		return 0, nil
-	}
-
-	if pubRandCommit.NumPubRand == 0 {
-		return 0, errors.New("the field NumPubRand should always be at least one")
 	}
 
 	lastCommittedHeight := pubRandCommit.StartHeight + pubRandCommit.NumPubRand - 1
@@ -916,6 +912,11 @@ func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry() (*types.P
 		resp, err := fp.consumerCon.QueryLastPublicRandCommit(fp.GetBtcPk())
 		if err != nil {
 			return err
+		}
+		if resp != nil {
+			if err := resp.Validate(); err != nil {
+				return err
+			}
 		}
 		response = resp
 		return nil
