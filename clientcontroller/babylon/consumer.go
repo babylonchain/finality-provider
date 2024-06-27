@@ -297,16 +297,20 @@ func (bc *BabylonConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.Pu
 		return nil, fmt.Errorf("failed to query committed public randomness: %w", err)
 	}
 
-	var commit types.PubRandCommit
+	if len(res.PubRandCommitMap) > 1 {
+		return nil, fmt.Errorf("expected length to be 1, but got :%d", len(res.PubRandCommitMap))
+	}
+
+	var commit *types.PubRandCommit
 	for height, commitRes := range res.PubRandCommitMap {
-		commit = types.PubRandCommit{
+		commit = &types.PubRandCommit{
 			StartHeight: height,
 			NumPubRand:  commitRes.NumPubRand,
 			Commitment:  commitRes.Commitment,
 		}
 	}
 
-	return &commit, nil
+	return commit, nil
 }
 
 func (bc *BabylonConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
