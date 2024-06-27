@@ -51,12 +51,6 @@ type ConfigResponse struct {
 	ActivatedHeight uint64 `json:"activated_height"`
 }
 
-type LastPubRandCommitResponse struct {
-	StartHeight uint64 `json:"start_height"`
-	NumPubRand  uint64 `json:"num_pub_rand"`
-	Commitment  []byte `json:"commitment"`
-}
-
 type Proof struct {
 	Total    uint64   `json:"total"`
 	Index    uint64   `json:"index"`

@@ -390,11 +390,12 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 	}, nil
 }
 
-// QueryLastCommittedPublicRand returns the last public randomness commitments
-func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*fptypes.PubRandCommit, error) {
+// QueryLastPublicRandCommit returns the last public randomness commitments
+func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*fptypes.PubRandCommit, error) {
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	// Construct the query message
+	count := uint64(1)
 	queryMsgStruct := QueryMsgLastPubRandCommit{
 		LastPubRandCommit: LastPubRandCommitQuery{
 			BtcPkHex: fpBtcPk.MarshalHex(),
@@ -420,17 +421,29 @@ func (wc *CosmwasmConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.P
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	if len(commits) == 0 {
+		// expected when there is no PR commit at all
+		// `get_pub_rand_commit`'s return type is Vec<PubRandCommit> and it can be
+		// empty vector if no results found
+		return nil, nil
+	}
+
+	if len(commits) > 1 {
+		return nil, fmt.Errorf("expected length to be 1, but got :%d", len(commits))
+	}
+
 	// Convert the response to the expected map format
-	commitMap := make(map[uint64]*fptypes.PubRandCommit)
-	for _, commit := range commits {
-		commitCopy := commit // create a copy to avoid referencing the loop variable
-		commitMap[commit.StartHeight] = &fptypes.PubRandCommit{
-			NumPubRand: commitCopy.NumPubRand,
-			Commitment: commitCopy.Commitment,
+	var commit *fptypes.PubRandCommit = nil
+	for _, commitRes := range commits {
+		commitCopy := commitRes // create a copy to avoid referencing the loop variable
+		commit = &fptypes.PubRandCommit{
+			StartHeight: commitCopy.StartHeight,
+			NumPubRand:  commitCopy.NumPubRand,
+			Commitment:  commitCopy.Commitment,
 		}
 	}
 
-	return commitMap, nil
+	return commit, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
