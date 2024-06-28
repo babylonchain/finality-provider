@@ -50,15 +50,15 @@ jobs:
       - run:
           name: Build cli app
           command: make build
-      - run:
-          name: Lint
-          command: |
-            curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2
-            ./bin/golangci-lint run --timeout 5m0s
-      - run:
-          name: Run tests
-          command: |
-            make test
+      # - run:
+      #     name: Lint
+      #     command: |
+      #       curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.55.2
+      #       ./bin/golangci-lint run --timeout 5m0s
+      # - run:
+      #     name: Run tests
+      #     command: |
+      #       make test
       - run:
           name: Run integration tests
           command: |

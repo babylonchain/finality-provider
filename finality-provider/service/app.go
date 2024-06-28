@@ -347,8 +347,10 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 
 	select {
 	case err := <-req.errResponse:
+		fmt.Printf("\n CreateFinalityProvider err: %s", err.Error())
 		return nil, err
 	case successResponse := <-req.successResponse:
+		fmt.Printf("\n CreateFinalityProvider success: %+v", successResponse.FpInfo)
 		return &CreateFinalityProviderResult{
 			FpInfo: successResponse.FpInfo,
 		}, nil
@@ -359,6 +361,9 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 
 func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
 	// 1. check if the chain key exists
+	fmt.Printf("\n handleCreateFinalityProviderRequest req.KeyName: %s, keyring backend: %s, req.passPhrase: %s", req.keyName, app.kr.Backend(), req.passPhrase)
+	records, _ := app.kr.List()
+	fmt.Printf("\n keyring list: %+v", records)
 	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
 	if err != nil {
 		return nil, err
@@ -551,6 +556,7 @@ func (app *FinalityProviderApp) eventLoop() {
 	for {
 		select {
 		case req := <-app.createFinalityProviderRequestChan:
+			fmt.Printf("\n eventLoop req %+v", req)
 			res, err := app.handleCreateFinalityProviderRequest(req)
 			if err != nil {
 				req.errResponse <- err

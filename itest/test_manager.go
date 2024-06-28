@@ -166,6 +166,8 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		cfg.BabylonConfig.Key = fpName
 		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, passphrase, hdPath, "")
 		require.NoError(t, err)
+		fmt.Printf("\nTest fmt: cfg.BabylonConfig.KeyDirectory: %s, cfg.BabylonConfig.ChainID: %s, cfg.BabylonConfig.Ke: %s", cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key)
+		fmt.Printf("\nTest fmt: cfg.BabylonConfig.KeyringBackend: %s, passphrase: %s, hdPath: %s", cfg.BabylonConfig.KeyringBackend, passphrase, hdPath)
 
 		cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
 		require.NoError(t, err)
