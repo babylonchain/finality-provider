@@ -204,6 +204,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 		successResponse: make(chan *RegisterFinalityProviderResponse, 1),
 	}
 
+	fmt.Printf("\napp.registerFinalityProviderRequestChan <- request: %+v", request)
 	app.registerFinalityProviderRequestChan <- request
 
 	select {

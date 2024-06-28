@@ -74,6 +74,7 @@ func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams
 		cc  ClientController
 		err error
 	)
+	fmt.Printf("\nNewClientController with keyring changes bbnConfig: %+v", bbnConfig)
 	switch chainName {
 	case babylonConsumerChainName:
 		cc, err = NewBabylonController(bbnConfig, netParams, logger)
