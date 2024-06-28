@@ -19,6 +19,7 @@ import (
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
+	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
@@ -28,6 +29,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
+	"github.com/babylonchain/finality-provider/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -36,12 +38,10 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_c6ccca8.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
 	// it has to be a valid EVM RPC which doesn't timeout
 	opStackL2RPCAddress = "https://rpc.ankr.com/eth"
-	// it has to be a valid addr that can be passed into `sdktypes.AccAddressFromBech32()`
-	opFinalityGadgetAddress = "bbn1ghd753shjuwexxywmgs4xz7x2q732vcnkm6h2pyv9s6ah3hylvrqxxvh0f"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -106,6 +106,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		"admin":            opcc.CwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
 		"activated_height": 0,
+		"is_enabled":       true,
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
@@ -167,8 +168,10 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 
 	// fill up the config from dc config
 	return &fpcfg.OPStackL2Config{
-		OPStackL2RPCAddress:     opStackL2RPCAddress,
-		OPFinalityGadgetAddress: opFinalityGadgetAddress,
+		OPStackL2RPCAddress: opStackL2RPCAddress,
+		// make random contract address for now to avoid validation errors,
+		// later we will update it with the correct address in the test
+		OPFinalityGadgetAddress: datagen.GenRandomAccount().GetAddress().String(),
 		Key:                     dc.Key,
 		ChainID:                 dc.ChainID,
 		RPCAddr:                 dc.RPCAddr,
@@ -200,6 +203,79 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node has started")
 }
 
+func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
+	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
+	fpStartHeightList := make([]*uint64, 2)
+	require.Eventually(t, func() bool {
+		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[0].GetBtcPk())
+		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[1].GetBtcPk())
+
+		if fpStartHeightList[0] == nil {
+			fpStartHeightList[0] = new(uint64)
+			*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
+		}
+		if fpStartHeightList[1] == nil {
+			fpStartHeightList[1] = new(uint64)
+			*fpStartHeightList[1] = secondFpCommittedPubRand.StartHeight
+		}
+		// it is possible one FP is falling behind
+		if fpStartHeightList[0] == nil || fpStartHeightList[1] == nil {
+			return false
+		}
+
+		var diff uint64
+		if *fpStartHeightList[0] < *fpStartHeightList[1] {
+			diff = *fpStartHeightList[1] - *fpStartHeightList[0]
+		} else {
+			diff = *fpStartHeightList[0] - *fpStartHeightList[1]
+		}
+
+		// check the two FP pubrand commitments overlaps
+		if diff > ctm.FpConfig.NumPubRand-requiredBlockOverlapLen+1 {
+			if *fpStartHeightList[0] < *fpStartHeightList[1] {
+				*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
+			} else {
+				*fpStartHeightList[1] = secondFpCommittedPubRand.StartHeight
+			}
+			return false
+		}
+
+		return true
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	t.Logf("Test block height %d and %d", *fpStartHeightList[0], *fpStartHeightList[1])
+	return fpStartHeightList
+}
+
+// - generate commitment and proof for each public randomness
+// - fp sign
+// - pub rand proof
+// - submit finality signature to smart contract
+func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *service.FinalityProviderInstance, fpStartHeight *uint64, testBlock *types.BlockInfo) {
+	pubRandList, err := fp.GetPubRandList(*fpStartHeight, ctm.FpConfig.NumPubRand)
+	require.NoError(t, err)
+
+	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
+
+	fpSig, err := fp.SignFinalitySig(testBlock)
+	require.NoError(t, err)
+
+	// find the index of target block in the pubrand and proof lists where both FPs will vote
+	index := testBlock.Height - *fpStartHeight
+	proof, err := proofList[index].ToProto().Marshal()
+	require.NoError(t, err)
+
+	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
+		fp.GetBtcPk(),
+		testBlock,
+		pubRandList[index],
+		proof,
+		fpSig.ToModNScalar(),
+	)
+	require.NoError(t, err)
+	t.Logf("Submit finality signature to op finality contract %+v\n", testBlock)
+}
+
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
@@ -222,7 +298,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
-		t.Logf("Registered Finality Provider %s", fpPk.MarshalHex())
+		t.Logf("Registered Finality Provider %s for %s", fpPk.MarshalHex(), chainId)
 		require.NoError(t, err)
 		err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
 		require.NoError(t, err)
