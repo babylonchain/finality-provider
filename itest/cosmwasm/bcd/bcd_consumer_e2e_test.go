@@ -86,6 +86,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// register consumer fps to babylon
+	// this will be submitted to babylon once fp daemon starts
 	app := ctm.Fpa
 	cfg := app.GetConfig()
 	fpName := e2eutils.FpNamePrefix + bcdChainID
@@ -147,11 +148,6 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
-	require.NoError(t, err)
-	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	lookupHeight := cometLatestHeight + 20 // TODO: this is a hack, as its possible the randomness/sigs submission loops haven't started yet
-
 	// ensure pub rand is submitted to smart contract
 	require.Eventually(t, func() bool {
 		fpPubRandResp, err := ctm.BcdConsumerClient.QueryLastCommittedPublicRand(fpPk.MustToBTCPK(), 1)
@@ -194,6 +190,13 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.Equal(t, fpMsg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
 	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
 
+	// get comet latest height
+	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
+	require.NoError(t, err)
+	// TODO: this is a hack as its possible that latest comet height is less than activated height
+	//  and the sigs/finalization can only happen after activated height
+	lookupHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight + 5
+
 	// ensure finality signature is submitted to smart contract
 	require.Eventually(t, func() bool {
 		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(lookupHeight))
@@ -201,10 +204,23 @@ func TestConsumerFpLifecycle(t *testing.T) {
 			t.Logf("failed to query finality signature: %s", err.Error())
 			return false
 		}
-		if fpSigsResponse == nil {
+		if fpSigsResponse == nil || fpSigsResponse.Signature == nil || len(fpSigsResponse.Signature) == 0 {
 			return false
 		}
-		if fpSigsResponse.Signature == nil || len(fpSigsResponse.Signature) == 0 {
+		return true
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	// ensure latest comet block is finalized
+	require.Eventually(t, func() bool {
+		idxBlockedResponse, err := ctm.BcdConsumerClient.QueryIndexedBlock(uint64(lookupHeight))
+		if err != nil {
+			t.Logf("failed to query indexed block: %s", err.Error())
+			return false
+		}
+		if idxBlockedResponse == nil {
+			return false
+		}
+		if !idxBlockedResponse.Finalized {
 			return false
 		}
 		return true
