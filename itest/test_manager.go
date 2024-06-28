@@ -168,8 +168,9 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		require.NoError(t, err)
 		fmt.Printf("\nTest fmt: cfg.BabylonConfig.KeyDirectory: %s, cfg.BabylonConfig.ChainID: %s, cfg.BabylonConfig.Ke: %s", cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key)
 		fmt.Printf("\nTest fmt: cfg.BabylonConfig.KeyringBackend: %s, passphrase: %s, hdPath: %s", cfg.BabylonConfig.KeyringBackend, passphrase, hdPath)
+		fmt.Printf("\nTest fmt: Fp Addr: %s", fpBbnKeyInfo.AccAddress.String())
 
-		fmt.Printf("\nTest fmt: ls: %s", cfg.BabylonConfig.KeyDirectory)
+		fmt.Printf("\nTest fmt: ls: %s\n", cfg.BabylonConfig.KeyDirectory)
 		dirs, _ := os.ReadDir(cfg.BabylonConfig.KeyDirectory)
 		for _, file := range dirs {
 			fmt.Println(file.Name())
@@ -177,7 +178,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 
 		dirPath := filepath.Join(cfg.BabylonConfig.KeyDirectory, "keyring-test")
 
-		fmt.Printf("\nTest fmt: ls: %s", dirPath)
+		fmt.Printf("\nTest fmt: ls: %s\n", dirPath)
 		dirs, _ = os.ReadDir(dirPath)
 		for _, file := range dirs {
 			fmt.Println(file.Name())
@@ -189,6 +190,9 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 
 		// add some funds for new fp pay for fees '-'
 		err = tm.BabylonHandler.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
+		if err != nil {
+			fmt.Printf("\nerr at tm.BabylonHandler.BabylonNode.TxBankSend: %s", err.Error())
+		}
 		require.NoError(t, err)
 
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)

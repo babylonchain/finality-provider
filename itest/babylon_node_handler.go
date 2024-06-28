@@ -203,8 +203,9 @@ func (n *BabylonNode) TxBankSend(addr, coins string) error {
 	cmd := exec.Command("babylond", flags...)
 	out, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("\n outputErr %s: %s: %s", strings.Join(flags, " "), out, err.Error())
+		fmt.Printf("\n outputErr %s: \n%s: \n%s", strings.Join(flags, " "), out, err.Error())
 		return err
 	}
+	fmt.Printf("\n output: %s: %s", strings.Join(flags, " "), out)
 	return nil
 }
