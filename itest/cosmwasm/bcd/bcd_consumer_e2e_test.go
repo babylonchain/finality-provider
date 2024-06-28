@@ -3,7 +3,6 @@ package e2etest_bcd
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -21,10 +20,14 @@ import (
 // 1. Upload Babylon and BTC staking contracts to bcd chain
 // 2. Instantiate Babylon contract with admin
 // 3. Register consumer chain to Babylon
-// 4. Register finality provider to Babylon
-// 5. Inject finality provider and delegation in BTC staking contract using admin
+// 4. Inject consumer fp in BTC staking contract using admin
 // 6. Start the finality provider daemon and app
 // 7. Wait for fp daemon to submit public randomness and finality signature
+// 8. Inject consumer delegation in BTC staking contract using admin, this will give voting power to fp
+// 9. Ensure fp has voting power in smart contract
+// 10. Ensure finality sigs are being submitted by fp daemon and block is finalized
+// NOTE: the delegation is injected after ensuring pub randomness loop in fp daemon has started
+// this order is necessary otherwise pub randomness loop takes time to start and due to this blocks won't get finalized.
 func TestConsumerFpLifecycle(t *testing.T) {
 	ctm := StartBcdTestManager(t)
 	defer ctm.Stop(t)
@@ -218,6 +221,4 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		}
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	fmt.Println("Finality signature submitted to smart contract")
 }
