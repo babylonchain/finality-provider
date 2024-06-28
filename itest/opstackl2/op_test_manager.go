@@ -41,7 +41,7 @@ const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
 	// it has to be a valid EVM RPC which doesn't timeout
-	opStackL2RPCAddress = "https://rpc.ankr.com/eth"
+	opStackL2RPCAddress = "https://eth.drpc.org"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
