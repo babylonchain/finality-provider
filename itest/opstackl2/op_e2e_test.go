@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -230,7 +231,7 @@ func TestABC(t *testing.T) {
 	blockNumber := big.NewInt(1198204)
 	block, err := l2Seq.BlockByNumber(context.Background(), blockNumber)
 	require.Nil(t, err, "Error starting up system")
-	println("=== snapchain")
-	println(block.Hash())
-	println("=== snapchain")
+	fmt.Println("=== snapchain")
+	fmt.Println(block.Hash())
+	fmt.Println("=== snapchain")
 }

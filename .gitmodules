@@ -1,0 +1,3 @@
+[submodule "itest/opstackl2/lib/optimism"]
+	path = itest/opstackl2/lib/optimism
+	url = https://github.com/babylonchain/optimism
