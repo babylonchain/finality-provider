@@ -40,7 +40,6 @@ type BcdTestManager struct {
 	FpConfig          *fpcfg.Config
 	BBNClient         *bbncc.BabylonController
 	BcdHandler        *BcdNodeHandler
-	WasmApp           *wasmapp.WasmApp
 	BcdConsumerClient *cwcc.CosmwasmConsumerController
 	StakingParams     *types.StakingParams
 	EOTSServerHandler *e2eutils.EOTSServerHandler
@@ -118,7 +117,6 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 		FpConfig:          cfg,
 		BBNClient:         bc,
 		BcdHandler:        wh,
-		WasmApp:           tempApp,
 		BcdConsumerClient: wcc,
 		EOTSServerHandler: eh,
 		EOTSConfig:        eotsCfg,
