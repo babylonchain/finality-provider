@@ -2,7 +2,6 @@ package e2etest
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -160,29 +159,11 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		commission := sdkmath.LegacyZeroDec()
 		desc := newDescription(moniker)
 
-		fmt.Printf("\nkey name: %s", fpName)
 		// needs to update key in config to be able to register and sign the creation of the finality provider with the
 		// same address.
 		cfg.BabylonConfig.Key = fpName
 		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, passphrase, hdPath, "")
 		require.NoError(t, err)
-		fmt.Printf("\nTest fmt: cfg.BabylonConfig.KeyDirectory: %s, cfg.BabylonConfig.ChainID: %s, cfg.BabylonConfig.Ke: %s", cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key)
-		fmt.Printf("\nTest fmt: cfg.BabylonConfig.KeyringBackend: %s, passphrase: %s, hdPath: %s", cfg.BabylonConfig.KeyringBackend, passphrase, hdPath)
-		fmt.Printf("\nTest fmt: Fp Addr: %s", fpBbnKeyInfo.AccAddress.String())
-
-		fmt.Printf("\nTest fmt: ls: %s\n", cfg.BabylonConfig.KeyDirectory)
-		dirs, _ := os.ReadDir(cfg.BabylonConfig.KeyDirectory)
-		for _, file := range dirs {
-			fmt.Println(file.Name())
-		}
-
-		dirPath := filepath.Join(cfg.BabylonConfig.KeyDirectory, "keyring-test")
-
-		fmt.Printf("\nTest fmt: ls: %s\n", dirPath)
-		dirs, _ = os.ReadDir(dirPath)
-		for _, file := range dirs {
-			fmt.Println(file.Name())
-		}
 
 		cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
 		require.NoError(t, err)
@@ -190,17 +171,12 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 
 		// add some funds for new fp pay for fees '-'
 		err = tm.BabylonHandler.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
-		if err != nil {
-			fmt.Printf("\nerr at tm.BabylonHandler.BabylonNode.TxBankSend: %s", err.Error())
-		}
 		require.NoError(t, err)
 
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
-
-		// app update key in the cc           clientcontroller.ClientController
 
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)

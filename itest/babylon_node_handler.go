@@ -182,7 +182,11 @@ func (w *BabylonNodeHandler) Stop() error {
 }
 
 func (w *BabylonNodeHandler) GetNodeDataDir() string {
-	dir := filepath.Join(w.BabylonNode.DataDir, "node0", "babylond")
+	return w.BabylonNode.GetNodeDataDir()
+}
+
+func (n *BabylonNode) GetNodeDataDir() string {
+	dir := filepath.Join(n.DataDir, n.WalletName, "babylond")
 	return dir
 }
 
@@ -201,11 +205,9 @@ func (n *BabylonNode) TxBankSend(addr, coins string) error {
 	}
 
 	cmd := exec.Command("babylond", flags...)
-	out, err := cmd.Output()
+	_, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("\n outputErr %s: \n%s: \n%s", strings.Join(flags, " "), out, err.Error())
 		return err
 	}
-	fmt.Printf("\n output: %s: %s", strings.Join(flags, " "), out)
 	return nil
 }

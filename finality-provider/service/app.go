@@ -204,7 +204,6 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 		successResponse: make(chan *RegisterFinalityProviderResponse, 1),
 	}
 
-	fmt.Printf("\napp.registerFinalityProviderRequestChan <- request: %+v", request)
 	app.registerFinalityProviderRequestChan <- request
 
 	select {
@@ -348,10 +347,8 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 
 	select {
 	case err := <-req.errResponse:
-		fmt.Printf("\n CreateFinalityProvider err: %s", err.Error())
 		return nil, err
 	case successResponse := <-req.successResponse:
-		fmt.Printf("\n CreateFinalityProvider success: %+v", successResponse.FpInfo)
 		return &CreateFinalityProviderResult{
 			FpInfo: successResponse.FpInfo,
 		}, nil
@@ -362,9 +359,6 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 
 func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
 	// 1. check if the chain key exists
-	fmt.Printf("\n handleCreateFinalityProviderRequest req.KeyName: %s, keyring backend: %s, req.passPhrase: %s", req.keyName, app.kr.Backend(), req.passPhrase)
-	records, _ := app.kr.List()
-	fmt.Printf("\n keyring list: %+v", records)
 	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
 	if err != nil {
 		return nil, err
@@ -379,8 +373,6 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 		}
 		fpAddr = keyInfo.AccAddress
 	}
-	fmt.Printf("\nhandleCreateFinalityProviderRequest fpAddr %s", fpAddr.String())
-	fmt.Printf("\nhandleCreateFinalityProviderRequest keyName %s", req.keyName)
 
 	// 2. create EOTS key
 	fpPkBytes, err := app.eotsManager.CreateKey(req.keyName, req.passPhrase, req.hdPath)
@@ -462,17 +454,6 @@ func (app *FinalityProviderApp) loadChainKeyring(
 // to update who is the signer
 func (app *FinalityProviderApp) UpdateClientController(cc clientcontroller.ClientController) {
 	app.cc = cc
-}
-
-// UpdateBabylonConfig after update the bbn config it update the client controller
-func (app *FinalityProviderApp) UpdateBabylonConfig(bbnConfig *fpcfg.BBNConfig) error {
-	cc, err := clientcontroller.NewClientController(app.config.ChainName, bbnConfig, &app.config.BTCNetParams, app.logger)
-	if err != nil {
-		return err
-	}
-	app.cc = cc
-
-	return nil
 }
 
 // StoreFinalityProvider stores a new finality provider in the fp store.
@@ -557,7 +538,6 @@ func (app *FinalityProviderApp) eventLoop() {
 	for {
 		select {
 		case req := <-app.createFinalityProviderRequestChan:
-			fmt.Printf("\n eventLoop req %+v", req)
 			res, err := app.handleCreateFinalityProviderRequest(req)
 			if err != nil {
 				req.errResponse <- err
