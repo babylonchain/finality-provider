@@ -197,7 +197,7 @@ func (n *BabylonNode) TxBankSend(addr, coins string) error {
 		fmt.Sprintf("--home=%s", filepath.Join(n.DataDir, n.WalletName, "babylond")),
 		"--log_level=debug",
 		"--chain-id=chain-test",
-		"-b=sync", "--yes",
+		"-b=sync", "--yes", "--gas-prices=10ubbn",
 	}
 
 	cmd := exec.Command("babylond", flags...)

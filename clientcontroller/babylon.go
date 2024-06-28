@@ -151,7 +151,7 @@ func (bc *BabylonController) RegisterFinalityProvider(
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
-		fmt.Printf("\nerr on reliably send msg bc.reliablySendMsg: %s", err.Error())
+		fmt.Printf("\nERROR on reliably send msg bc.reliablySendMsg: %s", err.Error())
 		return nil, err
 	}
 	fmt.Printf("\nsucess on reliably send msg bc.reliablySendMsg")
