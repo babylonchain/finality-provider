@@ -31,6 +31,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
+
 	"go.uber.org/zap"
 )
 
@@ -39,6 +40,7 @@ type BcdTestManager struct {
 	FpConfig          *fpcfg.Config
 	BBNClient         *bbncc.BabylonController
 	BcdHandler        *BcdNodeHandler
+	WasmApp           *wasmapp.WasmApp
 	BcdConsumerClient *cwcc.CosmwasmConsumerController
 	StakingParams     *types.StakingParams
 	EOTSServerHandler *e2eutils.EOTSServerHandler
@@ -116,6 +118,7 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 		FpConfig:          cfg,
 		BBNClient:         bc,
 		BcdHandler:        wh,
+		WasmApp:           tempApp,
 		BcdConsumerClient: wcc,
 		EOTSServerHandler: eh,
 		EOTSConfig:        eotsCfg,
