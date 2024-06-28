@@ -100,6 +100,17 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr
 }
 
 func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+	kr := bc.bbnClient.GetKeyring()
+	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs: %+v", kr)
+	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring backend: %s", kr.Backend())
+	krList, _ := kr.List()
+	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring list: %+v", krList)
+	for _, v := range krList {
+		addr, _ := v.GetAddress()
+		fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring name %s - addr: %s", v.Name, addr.String())
+	}
+
+	// fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring backend: %s", kr.)
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -139,8 +150,10 @@ func (bc *BabylonController) RegisterFinalityProvider(
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
+		fmt.Printf("\nerr on reliably send msg bc.reliablySendMsg")
 		return nil, err
 	}
+	fmt.Printf("\nsucess on reliably send msg bc.reliablySendMsg")
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
