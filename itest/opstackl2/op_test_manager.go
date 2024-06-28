@@ -140,7 +140,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 
 	// 9. init SDK client
-	sdkClient, err := sdk.NewClient(sdk.Config{
+	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    -1, // only for the e2e test
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
 	})
