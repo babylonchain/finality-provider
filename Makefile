@@ -20,7 +20,7 @@ build_tags := $(BUILD_TAGS)
 build_args := $(BUILD_ARGS)
 
 PACKAGES_E2E=$(shell go list ./... | grep '/itest')
-PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest')
+PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest/opstackl2')
 
 ifeq ($(LINK_STATICALLY),true)
 	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static" -v
