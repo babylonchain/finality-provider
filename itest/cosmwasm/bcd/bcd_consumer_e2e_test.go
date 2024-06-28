@@ -151,7 +151,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 			t.Logf("failed to query last committed public rand: %s", err.Error())
 			return false
 		}
-		if fpPubRandResp == nil || len(fpPubRandResp) == 0 {
+		if len(fpPubRandResp) == 0 {
 			return false
 		}
 
