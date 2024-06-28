@@ -79,15 +79,12 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 	// and we should panic.
 	// This is checked at the start of BabylonController, so if it fails something is really wrong
 
-	// bc.bbnClient.GetKeyring().KeyByAddress()
 	keyRec, err := bc.bbnClient.GetKeyring().Key(bc.cfg.Key)
-
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
 	}
 
 	addr, err := keyRec.GetAddress()
-
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get key address: %s", err))
 	}
@@ -100,18 +97,6 @@ func (bc *BabylonController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr
 }
 
 func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
-	kr := bc.bbnClient.GetKeyring()
-	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs: %+v", kr)
-	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs bbnConfig: %+v", bc.bbnClient.GetConfig())
-	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring backend: %s", kr.Backend())
-	krList, _ := kr.List()
-	fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring list: %+v", krList)
-	for _, v := range krList {
-		addr, _ := v.GetAddress()
-		fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring name %s - addr: %s", v.Name, addr.String())
-	}
-
-	// fmt.Printf("\n(bc *BabylonController) reliablySendMsgs keyring backend: %s", kr.)
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -146,15 +131,11 @@ func (bc *BabylonController) RegisterFinalityProvider(
 		Commission:  commission,
 		Description: &sdkDescription,
 	}
-	fmt.Printf("\n RegisterFinalityProvider txSigner addr: %s", fpAddr)
-	fmt.Printf("\n RegisterFinalityProvider txSigner key: %s", bc.cfg.Key)
 
 	res, err := bc.reliablySendMsg(msg, emptyErrs, emptyErrs)
 	if err != nil {
-		fmt.Printf("\nERROR on reliably send msg bc.reliablySendMsg: %s", err.Error())
 		return nil, err
 	}
-	fmt.Printf("\nsucess on reliably send msg bc.reliablySendMsg")
 
 	return &types.TxResponse{TxHash: res.TxHash, Events: res.Events}, nil
 }
