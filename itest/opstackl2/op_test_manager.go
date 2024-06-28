@@ -40,8 +40,7 @@ import (
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
-	// it has to be a valid EVM RPC which doesn't timeout
-	opStackL2RPCAddress = "https://eth.drpc.org"
+	opStackL2RPCAddress 				 = "http://localhost:8545"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -49,6 +48,7 @@ type BaseTestManager = base_test_manager.BaseTestManager
 type OpL2ConsumerTestManager struct {
 	BaseTestManager
 	BabylonHandler    *e2eutils.BabylonNodeHandler
+	EthNodeHandler    *e2eutils.EthereumNodeHandler
 	EOTSClient        *client.EOTSManagerGRpcClient
 	EOTSConfig        *eotsconfig.Config
 	EOTSServerHandler *e2eutils.EOTSServerHandler
@@ -89,19 +89,26 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
-	// 4. new op consumer controller
+	// 4. Create local Ethereum devnet
+	ethNodeHandler, err := e2eutils.NewEthereumNodeHandler(t)
+	require.NoError(t, err)
+	t.Logf("Started local Ethereum node")
+
+	// 5. new op consumer controller
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
+	t.Logf("Started op consumer controller")
 
-	// 5. store op-finality-gadget contract
+	// 6. store op-finality-gadget contract
 	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
 	require.NoError(t, err)
+	t.Logf("Stored op finality contract")
 
 	opFinalityGadgetContractWasmId, err := getLatestCodeId(opcc)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// 6. instantiate op contract
+	// 7. instantiate op contract
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            opcc.CwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
@@ -112,6 +119,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
+	t.Logf("Instantiated op finality contract")
 
 	// get op contract address
 	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
@@ -123,7 +131,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
-	// 7. prepare EOTS manager
+	// 8. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -149,6 +157,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	ctm := &OpL2ConsumerTestManager{
 		BaseTestManager:   BaseTestManager{BBNClient: bc, CovenantPrivKeys: covenantPrivKeys},
 		BabylonHandler:    bh,
+		EthNodeHandler:    ethNodeHandler,
 		EOTSClient:        eotsCli,
 		EOTSConfig:        eotsCfg,
 		EOTSServerHandler: eh,
@@ -430,6 +439,7 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
+	ctm.EthNodeHandler.Close()
 	ctm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
