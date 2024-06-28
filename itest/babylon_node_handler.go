@@ -185,11 +185,13 @@ func (w *BabylonNodeHandler) GetNodeDataDir() string {
 	return w.BabylonNode.GetNodeDataDir()
 }
 
+// GetNodeDataDir returns the home path of the babylon node.
 func (n *BabylonNode) GetNodeDataDir() string {
 	dir := filepath.Join(n.DataDir, n.WalletName, "babylond")
 	return dir
 }
 
+// TxBankSend send transaction to a address from the node address.
 func (n *BabylonNode) TxBankSend(addr, coins string) error {
 	flags := []string{
 		"tx",
@@ -198,7 +200,7 @@ func (n *BabylonNode) TxBankSend(addr, coins string) error {
 		n.WalletName,
 		addr, coins,
 		"--keyring-backend=test",
-		fmt.Sprintf("--home=%s", filepath.Join(n.DataDir, n.WalletName, "babylond")),
+		fmt.Sprintf("--home=%s", n.GetNodeDataDir()),
 		"--log_level=debug",
 		"--chain-id=chain-test",
 		"-b=sync", "--yes", "--gas-prices=10ubbn",
