@@ -434,8 +434,7 @@ replace (
 	// github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240618010559-dc7b6269474d
 	github.com/babylonchain/babylon => ../babylon-private
 	github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20231018212520-f6cde3fc2fa4
-	// github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism 9f823ab3ed49c31d9af1f589946e76ae7b2c4e9f
-	github.com/ethereum-optimism/optimism => ../babylon-optimism
+	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v0.0.0-20240629032321-94d6d686d55b
 	github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101315.1-rc.5
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
