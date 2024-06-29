@@ -15,7 +15,6 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-
 	"github.com/stretchr/testify/require"
 )
 
