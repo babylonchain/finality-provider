@@ -138,7 +138,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
-	opSys.RollupConfig.BabylonConfig.ChainType = 0
+	// only for the e2e test
+	sdkCfgChainType := -1
+
+	opSys.RollupConfig.BabylonConfig.ChainType = sdkCfgChainType
 	opSys.RollupConfig.BabylonConfig.ContractAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
@@ -160,7 +163,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	// 10. init SDK client
 	sdkClient, err := sdk.NewClient(&sdk.Config{
-		ChainType:    -1, // only for the e2e test
+		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
 	})
 	require.NoError(t, err)
