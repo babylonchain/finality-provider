@@ -41,7 +41,8 @@ import (
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
-	// it has to be a valid EVM RPC which doesn't timeout
+	// TODO: this is hardcoded to be consistent with https://github.com/babylonchain/optimism/commit/8834264a4d4c343b449293a217218154dc05cc7a
+	// but we can make the port dynamic in the future and remove this constant
 	opStackL2RPCAddress = "http://127.0.0.1:12345"
 )
 
@@ -58,6 +59,7 @@ type OpL2ConsumerTestManager struct {
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
 	SdkClient         *sdk.BabylonQueryClient
+	OpSystem          *ope2e.System
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
@@ -88,10 +90,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 3. start op stack system
 	opSysCfg := ope2e.DefaultSystemConfig(t)
 	t.Logf("time now 1: %s", time.Now().String())
-	sys, err := opSysCfg.Start(t)
+	opSys, err := opSysCfg.Start(t)
 	t.Logf("time now 2: %s", time.Now().String())
 	require.Nil(t, err, "Error starting up op stack system")
-	defer sys.Close()
 
 	// get l2 chain id
 	// l2Seq := sys.Clients["sequencer"]
@@ -172,6 +173,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		OpL2ConsumerCtrl:  opcc,
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
+		OpSystem:          opSys,
 	}
 
 	ctm.WaitForServicesStart(t)
@@ -446,6 +448,7 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
+	ctm.OpSystem.Close()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }
