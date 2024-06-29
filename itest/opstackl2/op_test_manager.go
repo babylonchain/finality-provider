@@ -41,9 +41,6 @@ import (
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
-	// TODO: this is hardcoded to be consistent with https://github.com/babylonchain/optimism/commit/8834264a4d4c343b449293a217218154dc05cc7a
-	// but we can make the port dynamic in the future and remove this constant
-	opStackL2RPCAddress = "http://127.0.0.1:12345"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -106,7 +103,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
 	// 5. new op consumer controller
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
+	opL2Config := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
+	opL2Config.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(opL2Config, logger)
 	require.NoError(t, err)
 
 	// 6. store op-finality-gadget contract
@@ -185,7 +184,6 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 
 	// fill up the config from dc config
 	return &fpcfg.OPStackL2Config{
-		OPStackL2RPCAddress: opStackL2RPCAddress,
 		// make random contract address for now to avoid validation errors,
 		// later we will update it with the correct address in the test
 		OPFinalityGadgetAddress: datagen.GenRandomAccount().GetAddress().String(),

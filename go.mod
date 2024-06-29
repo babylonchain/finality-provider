@@ -431,7 +431,8 @@ require (
 replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240618010559-dc7b6269474d
+	// github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240618010559-dc7b6269474d
+	github.com/babylonchain/babylon => ../babylon-private
 	github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20231018212520-f6cde3fc2fa4
 	// github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism 9f823ab3ed49c31d9af1f589946e76ae7b2c4e9f
 	github.com/ethereum-optimism/optimism => ../babylon-optimism
