@@ -20,6 +20,9 @@ build_tags := $(BUILD_TAGS)
 build_args := $(BUILD_ARGS)
 
 PACKAGES_E2E=$(shell go list ./... | grep '/itest')
+# need to specify the full path to fix issue where logs won't stream to stdout
+# due to multiple packages found
+# context: https://github.com/golang/go/issues/24929
 PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest/opstackl2')
 
 ifeq ($(LINK_STATICALLY),true)
@@ -103,7 +106,7 @@ test-e2e-wasmd: clean-e2e install-babylond install-wasmd
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_wasmd
 
 test-e2e-op: clean-e2e install-babylond
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op --run ^TestOpSubmitFinalitySignature$
+	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
 
 ###############################################################################
 ###                                Protobuf                                 ###

@@ -91,12 +91,6 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	t.Logf("time now 2: %s", time.Now().String())
 	require.Nil(t, err, "Error starting up op stack system")
 
-	// get l2 chain id
-	// l2Seq := sys.Clients["sequencer"]
-	// l2ChainId, err := l2Seq.ChainID(context.Background())
-	// opConsumerId := fmt.Sprintf("op-stack-l2-%s", hex.EncodeToString(l2ChainId.Bytes()))
-	// t.Logf("op stack l2 chain id: %s", opConsumerId)
-
 	// 4. register consumer to Babylon
 	_, err = bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
 	require.NoError(t, err)

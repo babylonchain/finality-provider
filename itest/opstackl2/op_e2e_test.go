@@ -4,10 +4,7 @@
 package e2etest_op
 
 import (
-	"context"
 	"encoding/hex"
-	"fmt"
-	"math/big"
 	"math/rand"
 	"testing"
 	"time"
@@ -19,7 +16,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
-	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	"github.com/stretchr/testify/require"
 )
 
@@ -213,29 +209,4 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, false, finalized)
 	t.Logf("Test case 2: block %d is not finalized", testNextBlock.Height)
-}
-
-func TestABC(t *testing.T) {
-	fmt.Println("=== snapchain")
-	cfg := ope2e.DefaultSystemConfig(t)
-	// cfg.Loggers["verifier"] = testlog.Logger(t, log.LevelError).New("role", "verifier")
-	// cfg.Loggers["sequencer"] = testlog.Logger(t, log.LevelError).New("role", "sequencer")
-	// cfg.Loggers["batcher"] = testlog.Logger(t, log.LevelError).New("role", "batcher")
-
-	sys, err := cfg.Start(t)
-	fmt.Println("=== sequencer RPC snapchain")
-	fmt.Println(sys.EthInstances["sequencer"].HTTPEndpoint())
-	fmt.Println("=== verifier RPC snapchain")
-	fmt.Println(sys.EthInstances["verifier"].HTTPEndpoint())
-	require.Nil(t, err, "Error starting up system")
-	defer sys.Close()
-
-	time.Sleep(10 * time.Second)
-	l2Seq := sys.Clients["sequencer"]
-	blockNumber := big.NewInt(1)
-	block, err := l2Seq.BlockByNumber(context.Background(), blockNumber)
-	require.Nil(t, err, "Error fetch block")
-	fmt.Println("=== snapchain")
-	fmt.Println(block.Hash())
-	time.Sleep(1000 * time.Second)
 }
