@@ -86,9 +86,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	// 3. start op stack system
 	opSysCfg := ope2e.DefaultSystemConfig(t)
-	t.Logf("time now 1: %s", time.Now().String())
 	opSys, err := opSysCfg.Start(t)
-	t.Logf("time now 2: %s", time.Now().String())
 	require.Nil(t, err, "Error starting up op stack system")
 
 	// 4. register consumer to Babylon
