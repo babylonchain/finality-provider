@@ -109,6 +109,12 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Test panicked: %v", r)
+		}
+	}()
+
 	// A BTC delegation has to stake to at least one Babylon finality provider
 	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
 	// So we have to start Babylon chain FP
