@@ -34,6 +34,8 @@ import (
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
+	opTestLog "github.com/ethereum-optimism/optimism/op-service/testlog"
+	gethLog "github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -86,6 +88,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	// 3. start op stack system
 	opSysCfg := ope2e.DefaultSystemConfig(t)
+	// supress OP system logs
+	opSysCfg.Loggers["verifier"] = opTestLog.Logger(t, gethLog.LevelCrit).New("role", "verifier")
+	opSysCfg.Loggers["sequencer"] = opTestLog.Logger(t, gethLog.LevelCrit).New("role", "sequencer")
+	opSysCfg.Loggers["batcher"] = opTestLog.Logger(t, gethLog.LevelCrit).New("role", "watcher")
 	opSys, err := opSysCfg.Start(t)
 	require.Nil(t, err, "Error starting up op stack system")
 
