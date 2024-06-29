@@ -35,8 +35,8 @@ import (
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
-	opTestLog "github.com/ethereum-optimism/optimism/op-service/testlog"
-	gethLog "github.com/ethereum/go-ethereum/log"
+	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -90,9 +90,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 3. start op stack system
 	opSysCfg := ope2e.DefaultSystemConfig(t)
 	// supress OP system logs
-	opSysCfg.Loggers["verifier"] = opTestLog.Logger(t, gethLog.LevelError).New("role", "verifier")
-	opSysCfg.Loggers["sequencer"] = opTestLog.Logger(t, gethLog.LevelError).New("role", "sequencer")
-	opSysCfg.Loggers["batcher"] = opTestLog.Logger(t, gethLog.LevelError).New("role", "watcher")
+	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
+	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
+	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
 	opSys, err := opSysCfg.Start(t)
 	require.Nil(t, err, "Error starting up op stack system")
 
@@ -138,6 +138,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
+	opSys.RollupConfig.BabylonConfig.ChainType = 0
+	opSys.RollupConfig.BabylonConfig.ContractAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
 	// 8. prepare EOTS manager
