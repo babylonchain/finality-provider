@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -42,7 +43,6 @@ import (
 
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
-	opConsumerId                 = "op-stack-l2-12345"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -59,6 +59,7 @@ type OpL2ConsumerTestManager struct {
 	BaseDir           string
 	SdkClient         *sdk.BabylonQueryClient
 	OpSystem          *ope2e.System
+	OpChainId         string
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
@@ -96,7 +97,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.Nil(t, err, "Error starting up op stack system")
 
 	// 4. register consumer to Babylon
-	_, err = bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
+	l2ChainId, err := opSys.Clients["sequencer"].ChainID(context.Background())
+	require.NoError(t, err, "failed to get chain ID")
+	opConsumerId := fmt.Sprintf("op-stack-l2-%d", l2ChainId.Uint64())
+	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
 	require.NoError(t, err)
 	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
@@ -171,6 +175,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
 		OpSystem:          opSys,
+		OpChainId:         opConsumerId,
 	}
 
 	ctm.WaitForServicesStart(t)
@@ -292,7 +297,7 @@ func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
-	chainId := opConsumerId
+	chainId := ctm.OpChainId
 	if isBabylonFp {
 		// While using another mock value, it throws the error: the finality-provider manager has already stopped
 		chainId = e2eutils.ChainID
@@ -336,7 +341,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 					}
 				}
 			} else {
-				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(opConsumerId)
+				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.OpChainId)
 				if err != nil {
 					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
