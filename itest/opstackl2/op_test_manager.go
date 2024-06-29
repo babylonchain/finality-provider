@@ -33,6 +33,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -41,7 +42,7 @@ const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
 	opConsumerId                 = "op-stack-l2-12345"
 	// it has to be a valid EVM RPC which doesn't timeout
-	opStackL2RPCAddress = "https://eth.drpc.org"
+	opStackL2RPCAddress = "http://127.0.0.1:12345"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -84,16 +85,30 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. register consumer to Babylon
+	// 3. start op stack system
+	opSysCfg := ope2e.DefaultSystemConfig(t)
+	t.Logf("time now 1: %s", time.Now().String())
+	sys, err := opSysCfg.Start(t)
+	t.Logf("time now 2: %s", time.Now().String())
+	require.Nil(t, err, "Error starting up op stack system")
+	defer sys.Close()
+
+	// get l2 chain id
+	// l2Seq := sys.Clients["sequencer"]
+	// l2ChainId, err := l2Seq.ChainID(context.Background())
+	// opConsumerId := fmt.Sprintf("op-stack-l2-%s", hex.EncodeToString(l2ChainId.Bytes()))
+	// t.Logf("op stack l2 chain id: %s", opConsumerId)
+
+	// 4. register consumer to Babylon
 	_, err = bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
 	require.NoError(t, err)
 	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
-	// 4. new op consumer controller
+	// 5. new op consumer controller
 	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
 	require.NoError(t, err)
 
-	// 5. store op-finality-gadget contract
+	// 6. store op-finality-gadget contract
 	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
 	require.NoError(t, err)
 
@@ -101,7 +116,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// 6. instantiate op contract
+	// 7. instantiate op contract
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            opcc.CwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
@@ -123,7 +138,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
-	// 7. prepare EOTS manager
+	// 8. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -131,7 +146,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 8. prepare finality-provider
+	// 9. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
@@ -139,7 +154,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
-	// 9. init SDK client
+	// 10. init SDK client
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    -1, // only for the e2e test
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
