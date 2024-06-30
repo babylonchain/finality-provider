@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_dbd8428.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -110,7 +110,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 5. new op consumer controller
 	opL2Config := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
 	opL2Config.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(opL2Config, logger)
+	cfg.OPStackL2Config = opL2Config
+	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
+	// which might cause some problems and hard to debug issues
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg, logger)
 	require.NoError(t, err)
 
 	// 6. store op-finality-gadget contract

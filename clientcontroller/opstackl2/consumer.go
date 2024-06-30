@@ -34,15 +34,17 @@ var _ api.ConsumerController = &OPStackL2ConsumerController{}
 
 type OPStackL2ConsumerController struct {
 	Cfg        *fpcfg.OPStackL2Config
+	fpCfg      *fpcfg.Config
 	CwClient   *cwclient.Client
 	opl2Client *ethclient.Client
 	logger     *zap.Logger
 }
 
 func NewOPStackL2ConsumerController(
-	opl2Cfg *fpcfg.OPStackL2Config,
+	fpConfig *fpcfg.Config,
 	logger *zap.Logger,
 ) (*OPStackL2ConsumerController, error) {
+	opl2Cfg := fpConfig.OPStackL2Config
 	if opl2Cfg == nil {
 		return nil, fmt.Errorf("nil config for OP consumer controller")
 	}
@@ -79,6 +81,7 @@ func NewOPStackL2ConsumerController(
 
 	return &OPStackL2ConsumerController{
 		opl2Cfg,
+		fpConfig,
 		cwClient,
 		opl2Client,
 		logger,
@@ -223,10 +226,34 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height.
-// This interface function only used for checking if the FP is eligible for submitting sigs.
-// Now we can simply hardcode the voting power to a positive value.
-// TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
 func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+	queryMsg := &QueryMsg{HasPubRandCommit: &HasPubRandCommit{
+		BtcPkHex:   bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+		Height:     blockHeight,
+		NumPubRand: cc.fpCfg.NumPubRand,
+	}}
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return 0, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return 0, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	var hasPubRandCommit bool
+	err = json.Unmarshal(stateResp.Data, &hasPubRandCommit)
+	if err != nil {
+		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if !hasPubRandCommit {
+		return 0, nil
+	}
+
+	// This interface function only used for checking if the FP is eligible for submitting sigs.
+	// Now we can simply hardcode the voting power to a positive value.
+	// TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
 	return 1, nil
 }
 
