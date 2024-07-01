@@ -35,6 +35,7 @@ import (
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -64,7 +65,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := zap.NewNop()
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// 1. generate covenant committee
 	covenantQuorum := 2
@@ -76,7 +77,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
+	t.Logf("Fp home dir: %s", fpHomeDir)
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.FastSyncInterval = 2 * time.Second
@@ -112,12 +115,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
-
 	// get op contract address
 	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
-
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
@@ -161,6 +162,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	ctm.WaitForServicesStart(t)
 	return ctm
+}
+
+func createLogger(t *testing.T, level zapcore.Level) *zap.Logger {
+	config := zap.NewDevelopmentConfig()
+	config.Level = zap.NewAtomicLevelAt(level)
+	logger, err := config.Build()
+	require.NoError(t, err)
+	return logger
 }
 
 func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
@@ -423,6 +432,7 @@ func getLatestCodeId(opcc *opstackl2.OPStackL2ConsumerController) (uint64, error
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
+	t.Log("Stopping test manager")
 	var err error
 	// FpApp has to stop first or you will get "rpc error: desc = account xxx not found: key not found" error
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend

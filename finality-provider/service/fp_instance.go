@@ -725,7 +725,13 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 	// get inclusion proof
 	proofBytes, err := fp.pubRandState.GetPubRandProof(pubRand)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get inclusion proof of public randomness: %v", err)
+		return nil, fmt.Errorf(
+			"failed to get inclusion proof of public randomness %s for FP %s for block %d: %w",
+			pubRand.String(),
+			fp.btcPk.MarshalHex(),
+			b.Height,
+			err,
+		)
 	}
 
 	// send finality signature to the consumer chain
