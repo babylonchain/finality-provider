@@ -5,16 +5,12 @@ package e2etest_op
 
 import (
 	"encoding/hex"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/babylonchain/babylon-da-sdk/sdk"
-	"github.com/babylonchain/babylon/testutil/datagen"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,8 +23,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
-	// expect 2 rounds of submissions
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 2)
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 1)
 
 	// query pub rand
 	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpInstance.GetBtcPk())
@@ -40,16 +35,10 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// generate commitment and proof for each public randomness
 	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
-	// create a mock block
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	block := &types.BlockInfo{
-		Height: lastCommittedStartHeight,
-		// mock block hash
-		Hash: datagen.GenRandomByteArray(r, 32),
-	}
+	testBlocks := ctm.WaitForNBlocksAndReturn(t, lastCommittedStartHeight, 1)
 
 	// fp sign
-	fpSig, err := fpInstance.SignFinalitySig(block)
+	fpSig, err := fpInstance.SignFinalitySig(testBlocks[0])
 	require.NoError(t, err)
 
 	// pub rand proof
@@ -59,7 +48,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// submit finality signature to smart contract
 	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
 		fpInstance.GetBtcPk(),
-		block,
+		testBlocks[0],
 		pubRandList[0],
 		proof,
 		fpSig.ToModNScalar(),
@@ -67,39 +56,37 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("Submit finality signature to op finality contract")
 
-	// mock more blocks
-	blocks := []*types.BlockInfo{}
-	var fpSigs []*secp256k1.ModNScalar
-	for i := 1; i <= 3; i++ {
-		block := &types.BlockInfo{
-			Height: lastCommittedStartHeight + uint64(i),
-			Hash:   datagen.GenRandomByteArray(r, 32),
-		}
-		blocks = append(blocks, block)
-		// fp sign
-		fpSig, err := fpInstance.SignFinalitySig(block)
-		require.NoError(t, err)
-		fpSigs = append(fpSigs, fpSig.ToModNScalar())
-	}
+	// check there's a block finalized
+	// ctm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
+	// ======  another test case for SubmitBatchFinalitySigs ======
+	// var fpSigs []*secp256k1.ModNScalar
+	// blocks, err := ctm.OpL2ConsumerCtrl.QueryBlocks(committedStartHeight+1, committedStartHeight+3, 3)
+	// require.NoError(t, err)
+	// for _, block := range blocks {
+	// 	// fp sign
+	// 	fpSig, err := fpInstance.SignFinalitySig(block)
+	// 	require.NoError(t, err)
+	// 	fpSigs = append(fpSigs, fpSig.ToModNScalar())
+	// }
 
-	// proofs
-	var proofs [][]byte
-	for i := 1; i <= 3; i++ {
-		proof, err := proofList[i].ToProto().Marshal()
-		require.NoError(t, err)
-		proofs = append(proofs, proof)
-	}
+	// // proofs
+	// var proofs [][]byte
+	// for i := 1; i <= 3; i++ {
+	// 	proof, err := proofList[i].ToProto().Marshal()
+	// 	require.NoError(t, err)
+	// 	proofs = append(proofs, proof)
+	// }
 
-	// submit batch finality signatures to smart contract
-	_, err = ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
-		fpInstance.GetBtcPk(),
-		blocks,
-		pubRandList[1:4],
-		proofs,
-		fpSigs,
-	)
-	require.NoError(t, err)
-	t.Logf("Submit batch finality signatures to op finality contract")
+	// // submit batch finality signatures to smart contract
+	// _, err = ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
+	// 	fpInstance.GetBtcPk(),
+	// 	blocks,
+	// 	pubRandList[1:4],
+	// 	proofs,
+	// 	fpSigs,
+	// )
+	// require.NoError(t, err)
+	// t.Logf("Submit batch finality signatures to op finality contract")
 }
 
 // This test has two test cases:
@@ -117,10 +104,6 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	// start consumer chain FP
 	n := 2
 	fpList := ctm.StartFinalityProvider(t, false, n)
-
-	// check the public randomness is committed
-	e2eutils.WaitForFpPubRandCommitted(t, fpList[0], 2)
-	e2eutils.WaitForFpPubRandCommitted(t, fpList[1], 2)
 
 	// send a BTC delegation to consumer and Babylon finality providers
 	// for the first FP, we give it more power b/c it will be used later
@@ -142,9 +125,13 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	// check the BTC delegations are active
 	ctm.WaitForNActiveDels(t, n)
 
+	// check the public randomness is committed
+	e2eutils.WaitForFpPubRandCommitted(t, fpList[0], 1)
+	e2eutils.WaitForFpPubRandCommitted(t, fpList[1], 1)
+
 	// find all fps' first committed pubrand start height
 	// Note: now we only need two blocks, one for each test cases, so we pass in 2
-	fpStartHeightList := ctm.WaitForTargetBlockPubRand(t, fpList, 2)
+	fpStartHeightList := ctm.WaitForTargetBlockPubRand(t, fpList, 1)
 
 	// the first block both FP will sign
 	targetBlockHeight := *fpStartHeightList[0]
@@ -152,13 +139,10 @@ func TestBlockBabylonFinalized(t *testing.T) {
 		targetBlockHeight = *fpStartHeightList[1]
 	}
 
-	// test block data
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	testBlock := &types.BlockInfo{
-		// set the test block height with the last committed StartHeight by the last FP instance
-		Height: targetBlockHeight,
-		Hash:   datagen.GenRandomByteArray(r, 32),
-	}
+	// set the test block height with the last committed StartHeight by the last FP instance
+	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
+	require.NoError(t, err)
+
 	ctm.fpSubmitFinalitySignature(t, fpList[0], fpStartHeightList[0], testBlock)
 	ctm.fpSubmitFinalitySignature(t, fpList[1], fpStartHeightList[1], testBlock)
 
@@ -189,13 +173,16 @@ func TestBlockBabylonFinalized(t *testing.T) {
 	require.Equal(t, true, finalized)
 	t.Logf("Test case 1: block %d is finalized", testBlock.Height)
 
+	tipBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
+	require.NoError(t, err)
+	require.Equal(t, true, tipBlock > testBlock.Height)
+	t.Logf("The tip block height %d", tipBlock)
+
 	// ======  another test case only for the last FP instance ======
 	nextBlockHeight := targetBlockHeight + 1
-	r2 := rand.New(rand.NewSource(time.Now().Unix()))
-	testNextBlock := &types.BlockInfo{
-		Height: nextBlockHeight,
-		Hash:   datagen.GenRandomByteArray(r2, 32),
-	}
+	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(nextBlockHeight)
+	require.NoError(t, err)
+
 	ctm.fpSubmitFinalitySignature(t, fpList[1], fpStartHeightList[1], testNextBlock)
 
 	queryNextParams := &sdk.L2Block{

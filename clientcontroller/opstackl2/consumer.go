@@ -224,31 +224,13 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height.
 func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	queryMsg := &QueryMsg{PubRandCommit: &PubRandCommit{
-		BtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
-		Height:   blockHeight,
-	}}
-	jsonData, err := json.Marshal(queryMsg)
+	res, err := cc.QueryPublicRandCommit(fpPk, blockHeight)
 	if err != nil {
-		return 0, fmt.Errorf("failed marshaling to JSON: %w", err)
-	}
-	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
-	if err != nil {
-		return 0, nil
-	}
-	if stateResp.Data == nil || string(stateResp.Data) == "null" {
-		return 0, nil
-	}
-
-	var pubRandCommit *types.PubRandCommit
-	err = json.Unmarshal(stateResp.Data, &pubRandCommit)
-	if err != nil {
-		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	if err := pubRandCommit.Validate(); err != nil {
 		return 0, err
 	}
-
+	if res == nil {
+		return 0, nil
+	}
 	// This interface function only used for checking if the FP is eligible for submitting sigs.
 	// Now we can simply hardcode the voting power to a positive value.
 	// TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
@@ -382,6 +364,35 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (cc *OPStackL2ConsumerController) QueryPublicRandCommit(fpPk *btcec.PublicKey, height uint64) (*types.PubRandCommit, error) {
+	queryMsg := &QueryMsg{PubRandCommit: &PubRandCommit{
+		BtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
+		Height:   height,
+	}}
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return nil, nil
+	}
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
+	}
+
+	var resp *types.PubRandCommit
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
 	if err := resp.Validate(); err != nil {
 		return nil, err
 	}

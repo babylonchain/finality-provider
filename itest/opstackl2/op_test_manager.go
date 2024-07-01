@@ -87,7 +87,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.FastSyncInterval = 2 * time.Second
 	cfg.NumPubRand = 64
-	cfg.MinRandHeightGap = 1000
+	cfg.MinRandHeightGap = 100
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -239,6 +239,50 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Babylon node has started")
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
+	var blocks []*types.BlockInfo
+	require.Eventually(t, func() bool {
+		blocks, err := ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
+		if err != nil {
+			t.Logf("failed to get the block: %s", err.Error())
+			return false
+		}
+		if blocks == nil {
+			return false
+		}
+		return len(blocks) == n
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("The block height is %d", startHeight+uint64(n-1))
+	return blocks
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n uint) uint64 {
+	var (
+		firstFinalizedBlock *types.BlockInfo
+		err                 error
+		lastFinalizedBlock  *types.BlockInfo
+	)
+
+	require.Eventually(t, func() bool {
+		lastFinalizedBlock, err = ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		if err != nil {
+			t.Logf("failed to get the latest finalized block: %s", err.Error())
+			return false
+		}
+		if lastFinalizedBlock == nil {
+			return false
+		}
+		if firstFinalizedBlock == nil {
+			firstFinalizedBlock = lastFinalizedBlock
+		}
+		return lastFinalizedBlock.Height-firstFinalizedBlock.Height > uint64(n-1)
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
+
+	return lastFinalizedBlock.Height
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
