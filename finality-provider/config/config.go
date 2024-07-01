@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/jessevdk/go-flags"
+	"go.uber.org/zap/zapcore"
 
 	eotscfg "github.com/babylonchain/finality-provider/eotsmanager/config"
 	"github.com/babylonchain/finality-provider/metrics"
@@ -18,7 +19,7 @@ import (
 
 const (
 	defaultChainName               = "babylon"
-	defaultLogLevel                = "info"
+	defaultLogLevel                = zapcore.InfoLevel
 	defaultLogDirname              = "logs"
 	defaultLogFilename             = "fpd.log"
 	defaultFinalityProviderKeyName = "finality-provider"
@@ -91,7 +92,7 @@ func DefaultConfigWithHome(homePath string) Config {
 	pollerCfg := DefaultChainPollerConfig()
 	cfg := Config{
 		ChainName:                defaultChainName,
-		LogLevel:                 defaultLogLevel,
+		LogLevel:                 defaultLogLevel.String(),
 		DatabaseConfig:           DefaultDBConfigWithHomePath(homePath),
 		BabylonConfig:            &bbnCfg,
 		PollerConfig:             &pollerCfg,
