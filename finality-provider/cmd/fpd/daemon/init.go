@@ -54,5 +54,6 @@ func initHome(c *cli.Context) error {
 	defaultConfig := fpcfg.DefaultConfigWithHome(homePath)
 	fileParser := flags.NewParser(&defaultConfig, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).
+		WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }

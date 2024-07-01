@@ -173,7 +173,13 @@ func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, erro
 	securityContactStr := ctx.String(securityContactFlag)
 	detailsStr := ctx.String(detailsFlag)
 
-	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContactStr, detailsStr)
+	description := stakingtypes.NewDescription(
+		monikerStr,
+		identityStr,
+		websiteStr,
+		securityContactStr,
+		detailsStr,
+	)
 
 	return description.EnsureLength()
 }
@@ -291,7 +297,11 @@ func registerFp(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.RegisterFinalityProvider(context.Background(), fpPk, ctx.String(passphraseFlag))
+	res, err := rpcClient.RegisterFinalityProvider(
+		context.Background(),
+		fpPk,
+		ctx.String(passphraseFlag),
+	)
 	if err != nil {
 		return err
 	}
@@ -383,7 +393,11 @@ func loadKeyName(ctx *cli.Context) (string, error) {
 	// beforehand
 	cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
 	if err != nil {
-		return "", fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
+		return "", fmt.Errorf(
+			"failed to load config from %s: %w",
+			fpcfg.ConfigFile(ctx.String(homeFlag)),
+			err,
+		)
 	}
 
 	keyName = cfg.BabylonConfig.Key

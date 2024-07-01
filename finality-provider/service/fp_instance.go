@@ -75,7 +75,11 @@ func NewFinalityProviderInstance(
 ) (*FinalityProviderInstance, error) {
 	sfp, err := s.GetFinalityProvider(fpPk.MustToBTCPK())
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrive the finality-provider %s from DB: %w", fpPk.MarshalHex(), err)
+		return nil, fmt.Errorf(
+			"failed to retrive the finality-provider %s from DB: %w",
+			fpPk.MarshalHex(),
+			err,
+		)
 	}
 
 	// ensure the finality-provider has been registered
@@ -174,7 +178,10 @@ func (fp *FinalityProviderInstance) Stop() error {
 	close(fp.quit)
 	fp.wg.Wait()
 
-	fp.logger.Info("the finality-provider instance %s is successfully stopped", zap.String("pk", fp.GetBtcPkHex()))
+	fp.logger.Info(
+		"the finality-provider instance %s is successfully stopped",
+		zap.String("pk", fp.GetBtcPkHex()),
+	)
 
 	return nil
 }
@@ -392,7 +399,11 @@ func (fp *FinalityProviderInstance) tryFastSync(targetBlockHeight uint64) (*Fast
 	}
 
 	if startHeight > targetBlockHeight {
-		return nil, fmt.Errorf("the start height %v should not be higher than the current block %v", startHeight, targetBlockHeight)
+		return nil, fmt.Errorf(
+			"the start height %v should not be higher than the current block %v",
+			startHeight,
+			targetBlockHeight,
+		)
 	}
 
 	fp.logger.Debug("the finality-provider is entering fast sync")
@@ -468,7 +479,9 @@ func (fp *FinalityProviderInstance) checkLagging(currentBlockHeight uint64) bool
 // finalized
 // error will be returned if maximum retries have been reached or the query to
 // the consumer chain fails
-func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targetBlock *types.BlockInfo) error {
+func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(
+	targetBlock *types.BlockInfo,
+) error {
 	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the randomness is successfully committed
@@ -502,7 +515,11 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 			// periodically query the index block to be later checked whether it is Finalized
 			finalized, err := fp.consumerCon.QueryIsBlockFinalized(targetBlock.Height)
 			if err != nil {
-				return fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
+				return fmt.Errorf(
+					"failed to query block finalization at height %v: %w",
+					targetBlock.Height,
+					err,
+				)
 			}
 			if finalized {
 				fp.logger.Debug(
@@ -516,7 +533,10 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 			}
 
 		case <-fp.quit:
-			fp.logger.Debug("the finality-provider instance is closing", zap.String("pk", fp.GetBtcPkHex()))
+			fp.logger.Debug(
+				"the finality-provider instance is closing",
+				zap.String("pk", fp.GetBtcPkHex()),
+			)
 			return nil
 		}
 	}
@@ -524,7 +544,9 @@ func (fp *FinalityProviderInstance) retryCheckRandomnessUntilBlockFinalized(targ
 
 // retrySubmitFinalitySignatureUntilBlockFinalized periodically tries to submit finality signature until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
-func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinalized(targetBlock *types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinalized(
+	targetBlock *types.BlockInfo,
+) (*types.TxResponse, error) {
 	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the signature is successfully submitted
@@ -563,7 +585,11 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			// periodically query the index block to be later checked whether it is Finalized
 			finalized, err := fp.consumerCon.QueryIsBlockFinalized(targetBlock.Height)
 			if err != nil {
-				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlock.Height, err)
+				return nil, fmt.Errorf(
+					"failed to query block finalization at height %v: %w",
+					targetBlock.Height,
+					err,
+				)
 			}
 			if finalized {
 				fp.logger.Debug(
@@ -577,7 +603,10 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 			}
 
 		case <-fp.quit:
-			fp.logger.Debug("the finality-provider instance is closing", zap.String("pk", fp.GetBtcPkHex()))
+			fp.logger.Debug(
+				"the finality-provider instance is closing",
+				zap.String("pk", fp.GetBtcPkHex()),
+			)
 			return nil, nil
 		}
 	}
@@ -585,7 +614,9 @@ func (fp *FinalityProviderInstance) retrySubmitFinalitySignatureUntilBlockFinali
 
 // retryCommitPubRandUntilBlockFinalized periodically tries to commit public rand until success or the block is finalized
 // error will be returned if maximum retries have been reached or the query to the consumer chain fails
-func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(targetBlockHeight uint64) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(
+	targetBlockHeight uint64,
+) (*types.TxResponse, error) {
 	var failedCycles uint32
 
 	// we break the for loop if the block is finalized or the public rand is successfully committed
@@ -624,7 +655,11 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 			// periodically query the index block to be later checked whether it is Finalized
 			finalized, err := fp.consumerCon.QueryIsBlockFinalized(targetBlockHeight)
 			if err != nil {
-				return nil, fmt.Errorf("failed to query block finalization at height %v: %w", targetBlockHeight, err)
+				return nil, fmt.Errorf(
+					"failed to query block finalization at height %v: %w",
+					targetBlockHeight,
+					err,
+				)
 			}
 			if finalized {
 				fp.logger.Debug(
@@ -638,7 +673,10 @@ func (fp *FinalityProviderInstance) retryCommitPubRandUntilBlockFinalized(target
 			}
 
 		case <-fp.quit:
-			fp.logger.Debug("the finality-provider instance is closing", zap.String("pk", fp.GetBtcPkHex()))
+			fp.logger.Debug(
+				"the finality-provider instance is closing",
+				zap.String("pk", fp.GetBtcPkHex()),
+			)
 			return nil, nil
 		}
 	}
@@ -695,7 +733,13 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 		return nil, fmt.Errorf("failed to sign the Schnorr signature: %w", err)
 	}
 
-	res, err := fp.consumerCon.CommitPubRandList(fp.GetBtcPk(), startHeight, numPubRand, commitment, schnorrSig)
+	res, err := fp.consumerCon.CommitPubRandList(
+		fp.GetBtcPk(),
+		startHeight,
+		numPubRand,
+		commitment,
+		schnorrSig,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to commit public randomness to the consumer chain: %w", err)
 	}
@@ -709,7 +753,9 @@ func (fp *FinalityProviderInstance) CommitPubRand(tipHeight uint64) (*types.TxRe
 }
 
 // SubmitFinalitySignature builds and sends a finality signature over the given block to the consumer chain
-func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) SubmitFinalitySignature(
+	b *types.BlockInfo,
+) (*types.TxResponse, error) {
 	sig, err := fp.SignFinalitySig(b)
 	if err != nil {
 		return nil, err
@@ -729,7 +775,13 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.consumerCon.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proofBytes, sig.ToModNScalar())
+	res, err := fp.consumerCon.SubmitFinalitySig(
+		fp.GetBtcPk(),
+		b,
+		pubRand,
+		proofBytes,
+		sig.ToModNScalar(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
 	}
@@ -746,7 +798,9 @@ func (fp *FinalityProviderInstance) SubmitFinalitySignature(b *types.BlockInfo) 
 
 // SubmitBatchFinalitySignatures builds and sends a finality signature over the given block to the consumer chain
 // NOTE: the input blocks should be in the ascending order of height
-func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*types.BlockInfo) (*types.TxResponse, error) {
+func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(
+	blocks []*types.BlockInfo,
+) (*types.TxResponse, error) {
 	if len(blocks) == 0 {
 		return nil, fmt.Errorf("should not submit batch finality signature with zero block")
 	}
@@ -774,9 +828,18 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.consumerCon.SubmitBatchFinalitySigs(fp.GetBtcPk(), blocks, prList, proofBytesList, sigList)
+	res, err := fp.consumerCon.SubmitBatchFinalitySigs(
+		fp.GetBtcPk(),
+		blocks,
+		prList,
+		proofBytesList,
+		sigList,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send a batch of finality signatures to the consumer chain: %w", err)
+		return nil, fmt.Errorf(
+			"failed to send a batch of finality signatures to the consumer chain: %w",
+			err,
+		)
 	}
 
 	// update DB
@@ -789,15 +852,20 @@ func (fp *FinalityProviderInstance) SubmitBatchFinalitySignatures(blocks []*type
 // TestSubmitFinalitySignatureAndExtractPrivKey is exposed for presentation/testing purpose to allow manual sending finality signature
 // this API is the same as SubmitFinalitySignature except that we don't constraint the voting height and update status
 // Note: this should not be used in the submission loop
-func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey(b *types.BlockInfo) (*types.TxResponse, *btcec.PrivateKey, error) {
+func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey(
+	b *types.BlockInfo,
+) (*types.TxResponse, *btcec.PrivateKey, error) {
 	// check last committed height
 	lastCommittedHeight, err := fp.GetLastCommittedHeight()
 	if err != nil {
 		return nil, nil, err
 	}
 	if lastCommittedHeight < b.Height {
-		return nil, nil, fmt.Errorf("the finality-provider's last committed height %v is lower than the current block height %v",
-			lastCommittedHeight, b.Height)
+		return nil, nil, fmt.Errorf(
+			"the finality-provider's last committed height %v is lower than the current block height %v",
+			lastCommittedHeight,
+			b.Height,
+		)
 	}
 
 	// get public randomness
@@ -820,9 +888,18 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 	}
 
 	// send finality signature to the consumer chain
-	res, err := fp.consumerCon.SubmitFinalitySig(fp.GetBtcPk(), b, pubRand, proofBytes, eotsSig.ToModNScalar())
+	res, err := fp.consumerCon.SubmitFinalitySig(
+		fp.GetBtcPk(),
+		b,
+		pubRand,
+		proofBytes,
+		eotsSig.ToModNScalar(),
+	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to send finality signature to the consumer chain: %w", err)
+		return nil, nil, fmt.Errorf(
+			"failed to send finality signature to the consumer chain: %w",
+			err,
+		)
 	}
 
 	// try to extract the private key
@@ -837,7 +914,10 @@ func (fp *FinalityProviderInstance) TestSubmitFinalitySignatureAndExtractPrivKey
 			fp.logger.Debug("found slashing evidence")
 			var evidence ftypes.Evidence
 			if err := jsonpb.UnmarshalString(evidenceStr, &evidence); err != nil {
-				return nil, nil, fmt.Errorf("failed to decode evidence bytes to evidence: %s", err.Error())
+				return nil, nil, fmt.Errorf(
+					"failed to decode evidence bytes to evidence: %s",
+					err.Error(),
+				)
 			}
 			privKey, err = evidence.ExtractBTCSK()
 			if err != nil {

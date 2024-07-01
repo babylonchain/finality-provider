@@ -26,7 +26,10 @@ type ChainKeyringController struct {
 	input *strings.Reader
 }
 
-func NewChainKeyringController(ctx client.Context, name, keyringBackend string) (*ChainKeyringController, error) {
+func NewChainKeyringController(
+	ctx client.Context,
+	name, keyringBackend string,
+) (*ChainKeyringController, error) {
 	if name == "" {
 		return nil, fmt.Errorf("the key name should not be empty")
 	}
@@ -54,7 +57,11 @@ func NewChainKeyringController(ctx client.Context, name, keyringBackend string) 
 	}, nil
 }
 
-func NewChainKeyringControllerWithKeyring(kr keyring.Keyring, name string, input *strings.Reader) (*ChainKeyringController, error) {
+func NewChainKeyringControllerWithKeyring(
+	kr keyring.Keyring,
+	name string,
+	input *strings.Reader,
+) (*ChainKeyringController, error) {
 	if name == "" {
 		return nil, fmt.Errorf("the key name should not be empty")
 	}
@@ -70,7 +77,9 @@ func (kc *ChainKeyringController) GetKeyring() keyring.Keyring {
 	return kc.kr
 }
 
-func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath, mnemonic string) (*types.ChainKeyInfo, error) {
+func (kc *ChainKeyringController) CreateChainKey(
+	passphrase, hdPath, mnemonic string,
+) (*types.ChainKeyInfo, error) {
 	keyringAlgos, _ := kc.kr.SupportedAlgorithms()
 	algo, err := keyring.NewSigningAlgoFromString(secp256k1Type, keyringAlgos)
 	if err != nil {
@@ -121,7 +130,10 @@ func (kc *ChainKeyringController) CreateChainKey(passphrase, hdPath, mnemonic st
 // CreatePop creates proof-of-possession of Babylon and BTC public keys
 // the input is the bytes of BTC public key used to sign
 // this requires both keys created beforehand
-func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey, passphrase string) (*bstypes.ProofOfPossession, error) {
+func (kc *ChainKeyringController) CreatePop(
+	btcPrivKey *btcec.PrivateKey,
+	passphrase string,
+) (*bstypes.ProofOfPossession, error) {
 	bbnPrivKey, err := kc.GetChainPrivKey(passphrase)
 	if err != nil {
 		return nil, err
@@ -130,7 +142,9 @@ func (kc *ChainKeyringController) CreatePop(btcPrivKey *btcec.PrivateKey, passph
 	return bstypes.NewPoP(bbnPrivKey, btcPrivKey)
 }
 
-func (kc *ChainKeyringController) GetChainPrivKey(passphrase string) (*sdksecp256k1.PrivKey, error) {
+func (kc *ChainKeyringController) GetChainPrivKey(
+	passphrase string,
+) (*sdksecp256k1.PrivKey, error) {
 	kc.input.Reset(passphrase)
 	k, err := kc.kr.Key(kc.fpName)
 	if err != nil {

@@ -53,10 +53,19 @@ func (r *rpcServer) CreateKey(ctx context.Context, req *proto.CreateKeyRequest) 
 }
 
 // CreateRandomnessPairList returns a list of Schnorr randomness pairs
-func (r *rpcServer) CreateRandomnessPairList(ctx context.Context, req *proto.CreateRandomnessPairListRequest) (
+func (r *rpcServer) CreateRandomnessPairList(
+	ctx context.Context,
+	req *proto.CreateRandomnessPairListRequest,
+) (
 	*proto.CreateRandomnessPairListResponse, error) {
 
-	pubRandList, err := r.em.CreateRandomnessPairList(req.Uid, req.ChainId, req.StartHeight, req.Num, req.Passphrase)
+	pubRandList, err := r.em.CreateRandomnessPairList(
+		req.Uid,
+		req.ChainId,
+		req.StartHeight,
+		req.Num,
+		req.Passphrase,
+	)
 
 	if err != nil {
 		return nil, err

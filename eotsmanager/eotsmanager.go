@@ -19,7 +19,13 @@ type EOTSManager interface {
 	// or passPhrase is incorrect
 	// NOTE: the randomness is deterministically generated based on the EOTS key, chainID and
 	// block height
-	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error)
+	CreateRandomnessPairList(
+		uid []byte,
+		chainID []byte,
+		startHeight uint64,
+		num uint32,
+		passphrase string,
+	) ([]*btcec.FieldVal, error)
 
 	// KeyRecord returns the finality provider record
 	// It fails if the finality provider does not exist or passPhrase is incorrect
@@ -29,7 +35,13 @@ type EOTSManager interface {
 	// secret randomness of the give chain at the given height
 	// It fails if the finality provider does not exist or there's no randomness committed to the given height
 	// or passPhrase is incorrect
-	SignEOTS(uid []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error)
+	SignEOTS(
+		uid []byte,
+		chainID []byte,
+		msg []byte,
+		height uint64,
+		passphrase string,
+	) (*btcec.ModNScalar, error)
 
 	// SignSchnorrSig signs a Schnorr signature using the private key of the finality provider
 	// It fails if the finality provider does not exist or the message size is not 32 bytes

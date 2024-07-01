@@ -22,7 +22,10 @@ type EOTSManagerGRpcClient struct {
 }
 
 func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error) {
-	conn, err := grpc.NewClient(remoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(
+		remoteAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build gRPC connection to %s: %w", remoteAddr, err)
 	}
@@ -60,7 +63,12 @@ func (c *EOTSManagerGRpcClient) CreateKey(name, passphrase, hdPath string) ([]by
 	return res.Pk, nil
 }
 
-func (c *EOTSManagerGRpcClient) CreateRandomnessPairList(uid, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
+func (c *EOTSManagerGRpcClient) CreateRandomnessPairList(
+	uid, chainID []byte,
+	startHeight uint64,
+	num uint32,
+	passphrase string,
+) ([]*btcec.FieldVal, error) {
 	req := &proto.CreateRandomnessPairListRequest{
 		Uid:         uid,
 		ChainId:     chainID,
@@ -99,7 +107,11 @@ func (c *EOTSManagerGRpcClient) KeyRecord(uid []byte, passphrase string) (*types
 	}, nil
 }
 
-func (c *EOTSManagerGRpcClient) SignEOTS(uid, chaiID, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
+func (c *EOTSManagerGRpcClient) SignEOTS(
+	uid, chaiID, msg []byte,
+	height uint64,
+	passphrase string,
+) (*btcec.ModNScalar, error) {
 	req := &proto.SignEOTSRequest{
 		Uid:        uid,
 		ChainId:    chaiID,
@@ -118,7 +130,10 @@ func (c *EOTSManagerGRpcClient) SignEOTS(uid, chaiID, msg []byte, height uint64,
 	return &s, nil
 }
 
-func (c *EOTSManagerGRpcClient) SignSchnorrSig(uid, msg []byte, passphrase string) (*schnorr.Signature, error) {
+func (c *EOTSManagerGRpcClient) SignSchnorrSig(
+	uid, msg []byte,
+	passphrase string,
+) (*schnorr.Signature, error) {
 	req := &proto.SignSchnorrSigRequest{Uid: uid, Msg: msg, Passphrase: passphrase}
 	res, err := c.client.SignSchnorrSig(context.Background(), req)
 	if err != nil {

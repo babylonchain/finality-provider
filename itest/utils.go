@@ -67,7 +67,10 @@ func RunCommand(name string, args ...string) ([]byte, error) {
 	return output, nil
 }
 
-func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
+func GenerateCovenantCommittee(
+	numCovenants int,
+	t *testing.T,
+) ([]*btcec.PrivateKey, []*bbntypes.BIP340PubKey) {
 	var (
 		covenantPrivKeys []*btcec.PrivateKey
 		covenantPubKeys  []*bbntypes.BIP340PubKey
@@ -123,7 +126,9 @@ func DefaultFpConfig(keyringDir, homeDir string) *config.Config {
 // ParseRespBTCDelToBTCDel parses an BTC delegation response to BTC Delegation
 // adapted from
 // https://github.com/babylonchain/babylon/blob/1a3c50da64885452c8d669fcea2a2fad78c8a028/test/e2e/btc_staking_e2e_test.go#L548
-func ParseRespBTCDelToBTCDel(resp *bstypes.BTCDelegationResponse) (btcDel *bstypes.BTCDelegation, err error) {
+func ParseRespBTCDelToBTCDel(
+	resp *bstypes.BTCDelegationResponse,
+) (btcDel *bstypes.BTCDelegation, err error) {
 	stakingTx, err := hex.DecodeString(resp.StakingTxHex)
 	if err != nil {
 		return nil, err

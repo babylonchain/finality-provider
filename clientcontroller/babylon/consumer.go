@@ -87,11 +87,19 @@ func (bc *BabylonConsumerController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (bc *BabylonConsumerController) reliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonConsumerController) reliablySendMsg(
+	msg sdk.Msg,
+	expectedErrs []*sdkErr.Error,
+	unrecoverableErrs []*sdkErr.Error,
+) (*provider.RelayerTxResponse, error) {
 	return bc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
-func (bc *BabylonConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (bc *BabylonConsumerController) reliablySendMsgs(
+	msgs []sdk.Msg,
+	expectedErrs []*sdkErr.Error,
+	unrecoverableErrs []*sdkErr.Error,
+) (*provider.RelayerTxResponse, error) {
 	return bc.bbnClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -179,7 +187,11 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 	sigs []*btcec.ModNScalar,
 ) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
-		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
+		return nil, fmt.Errorf(
+			"the number of blocks %v should match the number of finality signatures %v",
+			len(blocks),
+			len(sigs),
+		)
 	}
 
 	msgs := make([]sdk.Msg, 0, len(blocks))
@@ -216,13 +228,20 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-func (bc *BabylonConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+func (bc *BabylonConsumerController) QueryFinalityProviderVotingPower(
+	fpPk *btcec.PublicKey,
+	blockHeight uint64,
+) (uint64, error) {
 	res, err := bc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
 		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 		blockHeight,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query the finality provider's voting power at height %d: %w", blockHeight, err)
+		return 0, fmt.Errorf(
+			"failed to query the finality provider's voting power at height %d: %w",
+			blockHeight,
+			err,
+		)
 	}
 
 	return res.VotingPower, nil
@@ -236,18 +255,34 @@ func (bc *BabylonConsumerController) QueryLatestFinalizedBlock() (*types.BlockIn
 	return blocks[0], err
 }
 
-func (bc *BabylonConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+func (bc *BabylonConsumerController) QueryBlocks(
+	startHeight, endHeight, limit uint64,
+) ([]*types.BlockInfo, error) {
 	if endHeight < startHeight {
-		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
+		return nil, fmt.Errorf(
+			"the startHeight %v should not be higher than the endHeight %v",
+			startHeight,
+			endHeight,
+		)
 	}
 	count := endHeight - startHeight + 1
 	if count > limit {
 		count = limit
 	}
-	return bc.queryLatestBlocks(sdk.Uint64ToBigEndian(startHeight), count, finalitytypes.QueriedBlockStatus_ANY, false)
+	return bc.queryLatestBlocks(
+		sdk.Uint64ToBigEndian(startHeight),
+		count,
+		finalitytypes.QueriedBlockStatus_ANY,
+		false,
+	)
 }
 
-func (bc *BabylonConsumerController) queryLatestBlocks(startKey []byte, count uint64, status finalitytypes.QueriedBlockStatus, reverse bool) ([]*types.BlockInfo, error) {
+func (bc *BabylonConsumerController) queryLatestBlocks(
+	startKey []byte,
+	count uint64,
+	status finalitytypes.QueriedBlockStatus,
+	reverse bool,
+) ([]*types.BlockInfo, error) {
 	var blocks []*types.BlockInfo
 	pagination := &sdkquery.PageRequest{
 		Limit:   count,
@@ -284,7 +319,9 @@ func (bc *BabylonConsumerController) QueryBlock(height uint64) (*types.BlockInfo
 }
 
 // QueryLastPublicRandCommit returns the last public randomness commitments
-func (bc *BabylonConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+func (bc *BabylonConsumerController) QueryLastPublicRandCommit(
+	fpPk *btcec.PublicKey,
+) (*types.PubRandCommit, error) {
 	fpBtcPk := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 
 	pagination := &sdkquery.PageRequest{

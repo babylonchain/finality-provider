@@ -38,7 +38,12 @@ func FuzzCreateKey(f *testing.F) {
 			require.NoError(t, err)
 		}()
 
-		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg.KeyringBackend, dbBackend, zap.NewNop())
+		lm, err := eotsmanager.NewLocalEOTSManager(
+			homeDir,
+			eotsCfg.KeyringBackend,
+			dbBackend,
+			zap.NewNop(),
+		)
 		require.NoError(t, err)
 
 		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
@@ -72,7 +77,12 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 			require.NoError(t, err)
 		}()
 		require.NoError(t, err)
-		lm, err := eotsmanager.NewLocalEOTSManager(homeDir, eotsCfg.KeyringBackend, dbBackend, zap.NewNop())
+		lm, err := eotsmanager.NewLocalEOTSManager(
+			homeDir,
+			eotsCfg.KeyringBackend,
+			dbBackend,
+			zap.NewNop(),
+		)
 		require.NoError(t, err)
 
 		fpPk, err := lm.CreateKey(fpName, passphrase, hdPath)
@@ -81,12 +91,24 @@ func FuzzCreateRandomnessPairList(f *testing.F) {
 		chainID := datagen.GenRandomByteArray(r, 10)
 		startHeight := datagen.RandomInt(r, 100)
 		num := r.Intn(10) + 1
-		pubRandList, err := lm.CreateRandomnessPairList(fpPk, chainID, startHeight, uint32(num), passphrase)
+		pubRandList, err := lm.CreateRandomnessPairList(
+			fpPk,
+			chainID,
+			startHeight,
+			uint32(num),
+			passphrase,
+		)
 		require.NoError(t, err)
 		require.Len(t, pubRandList, num)
 
 		for i := 0; i < num; i++ {
-			sig, err := lm.SignEOTS(fpPk, chainID, datagen.GenRandomByteArray(r, 32), startHeight+uint64(i), passphrase)
+			sig, err := lm.SignEOTS(
+				fpPk,
+				chainID,
+				datagen.GenRandomByteArray(r, 32),
+				startHeight+uint64(i),
+				passphrase,
+			)
 			require.NoError(t, err)
 			require.NotNil(t, sig)
 		}

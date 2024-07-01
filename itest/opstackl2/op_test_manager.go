@@ -90,7 +90,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
 	// 4. new op consumer controller
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(
+		mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()),
+		logger,
+	)
 	require.NoError(t, err)
 
 	// 5. store op-finality-gadget contract
@@ -99,7 +102,12 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	opFinalityGadgetContractWasmId, err := getLatestCodeId(opcc)
 	require.NoError(t, err)
-	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
+	require.Equal(
+		t,
+		uint64(1),
+		opFinalityGadgetContractWasmId,
+		"first deployed contract code_id should be 1",
+	)
 
 	// 6. instantiate op contract
 	opFinalityGadgetInitMsg := map[string]interface{}{
@@ -110,11 +118,18 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
-	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
+	err = instantiateWasmContract(
+		opcc,
+		opFinalityGadgetContractWasmId,
+		opFinalityGadgetInitMsgBytes,
+	)
 	require.NoError(t, err)
 
 	// get op contract address
-	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
+	resp, err := opcc.CwClient.ListContractsByCode(
+		opFinalityGadgetContractWasmId,
+		&sdkquerytypes.PageRequest{},
+	)
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 
@@ -203,12 +218,20 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node has started")
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
+func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
+	t *testing.T,
+	fpList []*service.FinalityProviderInstance,
+	requiredBlockOverlapLen uint64,
+) []*uint64 {
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
 	fpStartHeightList := make([]*uint64, 2)
 	require.Eventually(t, func() bool {
-		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[0].GetBtcPk())
-		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[1].GetBtcPk())
+		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(
+			fpList[0].GetBtcPk(),
+		)
+		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(
+			fpList[1].GetBtcPk(),
+		)
 
 		if fpStartHeightList[0] == nil {
 			fpStartHeightList[0] = new(uint64)
@@ -251,7 +274,12 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 // - fp sign
 // - pub rand proof
 // - submit finality signature to smart contract
-func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *service.FinalityProviderInstance, fpStartHeight *uint64, testBlock *types.BlockInfo) {
+func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(
+	t *testing.T,
+	fp *service.FinalityProviderInstance,
+	fpStartHeight *uint64,
+	testBlock *types.BlockInfo,
+) {
 	pubRandList, err := fp.GetPubRandList(*fpStartHeight, ctm.FpConfig.NumPubRand)
 	require.NoError(t, err)
 
@@ -276,7 +304,11 @@ func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *
 	t.Logf("Submit finality signature to op finality contract %+v\n", testBlock)
 }
 
-func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
+func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(
+	t *testing.T,
+	isBabylonFp bool,
+	n int,
+) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
 	chainId := opConsumerId
@@ -291,9 +323,24 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+		_, err := service.CreateChainKey(
+			cfg.BabylonConfig.KeyDirectory,
+			cfg.BabylonConfig.ChainID,
+			fpName,
+			keyring.BackendTest,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			"",
+		)
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(
+			fpName,
+			chainId,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			desc,
+			&commission,
+		)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -386,7 +433,11 @@ func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string)
 	return nil
 }
 
-func instantiateWasmContract(opcc *opstackl2.OPStackL2ConsumerController, codeID uint64, initMsg []byte) error {
+func instantiateWasmContract(
+	opcc *opstackl2.OPStackL2ConsumerController,
+	codeID uint64,
+	initMsg []byte,
+) error {
 	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
 		Sender: opcc.CwClient.MustGetAddr(),
 		Admin:  opcc.CwClient.MustGetAddr(),

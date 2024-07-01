@@ -88,11 +88,19 @@ func NewOPStackL2ConsumerController(
 	}, nil
 }
 
-func (cc *OPStackL2ConsumerController) ReliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (cc *OPStackL2ConsumerController) ReliablySendMsg(
+	msg sdk.Msg,
+	expectedErrs []*sdkErr.Error,
+	unrecoverableErrs []*sdkErr.Error,
+) (*provider.RelayerTxResponse, error) {
 	return cc.reliablySendMsgs([]sdk.Msg{msg}, expectedErrs, unrecoverableErrs)
 }
 
-func (cc *OPStackL2ConsumerController) reliablySendMsgs(msgs []sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
+func (cc *OPStackL2ConsumerController) reliablySendMsgs(
+	msgs []sdk.Msg,
+	expectedErrs []*sdkErr.Error,
+	unrecoverableErrs []*sdkErr.Error,
+) (*provider.RelayerTxResponse, error) {
 	return cc.CwClient.ReliablySendMsgs(
 		context.Background(),
 		msgs,
@@ -186,7 +194,11 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	sigs []*btcec.ModNScalar,
 ) (*types.TxResponse, error) {
 	if len(blocks) != len(sigs) {
-		return nil, fmt.Errorf("the number of blocks %v should match the number of finality signatures %v", len(blocks), len(sigs))
+		return nil, fmt.Errorf(
+			"the number of blocks %v should match the number of finality signatures %v",
+			len(blocks),
+			len(sigs),
+		)
 	}
 	msgs := make([]sdk.Msg, 0, len(blocks))
 	for i, block := range blocks {
@@ -229,7 +241,10 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 // This interface function only used for checking if the FP is eligible for submitting sigs.
 // Now we can simply hardcode the voting power to a positive value.
 // TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
-func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(
+	fpPk *btcec.PublicKey,
+	blockHeight uint64,
+) (uint64, error) {
 	return 1, nil
 }
 
@@ -240,7 +255,10 @@ func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.Block
 	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
-	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.FinalizedBlockNumber.Int64()))
+	l2Block, err := cc.opl2Client.HeaderByNumber(
+		ctx,
+		big.NewInt(ethrpc.FinalizedBlockNumber.Int64()),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +268,9 @@ func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.Block
 	}, nil
 }
 
-func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+func (cc *OPStackL2ConsumerController) QueryBlocks(
+	startHeight, endHeight, limit uint64,
+) ([]*types.BlockInfo, error) {
 	var blocks []*types.BlockInfo
 	var count uint64 = 0
 
@@ -301,7 +321,10 @@ func (cc *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed marshaling to JSON: %w", err)
 	}
-	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	stateResp, err := cc.CwClient.QuerySmartContractState(
+		cc.Cfg.OPFinalityGadgetAddress,
+		string(jsonData),
+	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
@@ -320,7 +343,10 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
-	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.LatestBlockNumber.Int64()))
+	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(
+		ctx,
+		big.NewInt(ethrpc.LatestBlockNumber.Int64()),
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -330,7 +356,9 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 
 // QueryLastPublicRandCommit returns the last public randomness commitments
 // It is fetched from the state of a CosmWasm contract OP finality gadget.
-func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(
+	fpPk *btcec.PublicKey,
+) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
 		LastPubRandCommit: &LastPubRandCommit{
@@ -343,7 +371,10 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
 	}
 
-	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	stateResp, err := cc.CwClient.QuerySmartContractState(
+		cc.Cfg.OPFinalityGadgetAddress,
+		string(jsonData),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}

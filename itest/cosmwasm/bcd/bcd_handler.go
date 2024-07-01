@@ -132,7 +132,15 @@ func (w *BcdNodeHandler) cleanup() error {
 }
 
 func bcdInit(homeDir string) error {
-	_, err := common.RunCommand("bcd", "init", "--home", homeDir, "--chain-id", bcdChainID, common.WasmMoniker)
+	_, err := common.RunCommand(
+		"bcd",
+		"init",
+		"--home",
+		homeDir,
+		"--chain-id",
+		bcdChainID,
+		common.WasmMoniker,
+	)
 	return err
 }
 
@@ -144,17 +152,45 @@ func bcdUpdateGenesisFile(homeDir string) error {
 }
 
 func bcdKeysAdd(homeDir string) error {
-	_, err := common.RunCommand("bcd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand(
+		"bcd",
+		"keys",
+		"add",
+		"validator",
+		"--home",
+		homeDir,
+		"--keyring-backend=test",
+	)
 	return err
 }
 
 func bcdAddValidatorGenesisAccount(homeDir string) error {
-	_, err := common.RunCommand("bcd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand(
+		"bcd",
+		"genesis",
+		"add-genesis-account",
+		"validator",
+		fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee),
+		"--home",
+		homeDir,
+		"--keyring-backend=test",
+	)
 	return err
 }
 
 func bcdGentxValidator(homeDir string) error {
-	_, err := common.RunCommand("bcd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", common.WasmStake), "--chain-id="+bcdChainID, "--amount="+fmt.Sprintf("250000000%s", common.WasmStake), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand(
+		"bcd",
+		"genesis",
+		"gentx",
+		"validator",
+		fmt.Sprintf("250000000%s", common.WasmStake),
+		"--chain-id="+bcdChainID,
+		"--amount="+fmt.Sprintf("250000000%s", common.WasmStake),
+		"--home",
+		homeDir,
+		"--keyring-backend=test",
+	)
 	return err
 }
 

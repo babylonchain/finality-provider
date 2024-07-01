@@ -136,7 +136,15 @@ func (w *WasmdNodeHandler) cleanup() error {
 }
 
 func wasmdInit(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "init", "--home", homeDir, "--chain-id", wasmdChainID, common.WasmMoniker)
+	_, err := common.RunCommand(
+		"wasmd",
+		"init",
+		"--home",
+		homeDir,
+		"--chain-id",
+		wasmdChainID,
+		common.WasmMoniker,
+	)
 	return err
 }
 
@@ -148,17 +156,45 @@ func updateGenesisFile(homeDir string) error {
 }
 
 func wasmdKeysAdd(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "keys", "add", "validator", "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand(
+		"wasmd",
+		"keys",
+		"add",
+		"validator",
+		"--home",
+		homeDir,
+		"--keyring-backend=test",
+	)
 	return err
 }
 
 func addValidatorGenesisAccount(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand(
+		"wasmd",
+		"genesis",
+		"add-genesis-account",
+		"validator",
+		fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee),
+		"--home",
+		homeDir,
+		"--keyring-backend=test",
+	)
 	return err
 }
 
 func gentxValidator(homeDir string) error {
-	_, err := common.RunCommand("wasmd", "genesis", "gentx", "validator", fmt.Sprintf("250000000%s", common.WasmStake), "--chain-id="+wasmdChainID, "--amount="+fmt.Sprintf("250000000%s", common.WasmStake), "--home", homeDir, "--keyring-backend=test")
+	_, err := common.RunCommand(
+		"wasmd",
+		"genesis",
+		"gentx",
+		"validator",
+		fmt.Sprintf("250000000%s", common.WasmStake),
+		"--chain-id="+wasmdChainID,
+		"--amount="+fmt.Sprintf("250000000%s", common.WasmStake),
+		"--home",
+		homeDir,
+		"--keyring-backend=test",
+	)
 	return err
 }
 
@@ -219,9 +255,30 @@ type TxResponse struct {
 }
 
 func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error) {
-	cmd := exec.Command("wasmd", "tx", "wasm", "store", wasmFile,
-		"--from", "validator", "--gas=auto", "--gas-prices=1ustake", "--gas-adjustment=1.3", "-y", "--chain-id", wasmdChainID,
-		"--node", w.GetRpcUrl(), "--home", w.GetHomeDir(), "-b", "sync", "-o", "json", "--keyring-backend=test")
+	cmd := exec.Command(
+		"wasmd",
+		"tx",
+		"wasm",
+		"store",
+		wasmFile,
+		"--from",
+		"validator",
+		"--gas=auto",
+		"--gas-prices=1ustake",
+		"--gas-adjustment=1.3",
+		"-y",
+		"--chain-id",
+		wasmdChainID,
+		"--node",
+		w.GetRpcUrl(),
+		"--home",
+		w.GetHomeDir(),
+		"-b",
+		"sync",
+		"-o",
+		"json",
+		"--keyring-backend=test",
+	)
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -241,7 +298,16 @@ func (w *WasmdNodeHandler) StoreWasmCode(wasmFile string) (string, string, error
 	}
 
 	time.Sleep(3 * time.Second)
-	queryOutput, err := common.RunCommand("wasmd", "--node", w.GetRpcUrl(), "q", "tx", txResp.TxHash, "-o", "json")
+	queryOutput, err := common.RunCommand(
+		"wasmd",
+		"--node",
+		w.GetRpcUrl(),
+		"q",
+		"tx",
+		txResp.TxHash,
+		"-o",
+		"json",
+	)
 	if err != nil {
 		return "", "", fmt.Errorf("error querying transaction: %v", err)
 	}
@@ -279,7 +345,14 @@ type StatusResponse struct {
 }
 
 func (w *WasmdNodeHandler) GetLatestBlockHeight() (int64, error) {
-	out, err := common.RunCommand("wasmd", "status", "--node", w.GetRpcUrl(), "--home", w.GetHomeDir())
+	out, err := common.RunCommand(
+		"wasmd",
+		"status",
+		"--node",
+		w.GetRpcUrl(),
+		"--home",
+		w.GetHomeDir(),
+	)
 	if err != nil {
 		return 0, fmt.Errorf("error running wasmd status command: %v", err)
 	}
@@ -308,7 +381,16 @@ type CodeInfo struct {
 }
 
 func (w *WasmdNodeHandler) GetLatestCodeID() (string, error) {
-	output, err := common.RunCommand("wasmd", "--node", w.GetRpcUrl(), "q", "wasm", "list-code", "-o", "json")
+	output, err := common.RunCommand(
+		"wasmd",
+		"--node",
+		w.GetRpcUrl(),
+		"q",
+		"wasm",
+		"list-code",
+		"-o",
+		"json",
+	)
 	if err != nil {
 		return "", fmt.Errorf("error running wasmd list-code command: %v", err)
 	}

@@ -43,7 +43,12 @@ func FuzzStatusUpdate(f *testing.F) {
 		ctl := gomock.NewController(t)
 		mockClientController := testutil.PrepareMockedBabylonController(t)
 		mockConsumerController := mocks.NewMockConsumerController(ctl)
-		vm, fpPk, cleanUp := newFinalityProviderManagerWithRegisteredFp(t, r, mockClientController, mockConsumerController)
+		vm, fpPk, cleanUp := newFinalityProviderManagerWithRegisteredFp(
+			t,
+			r,
+			mockClientController,
+			mockConsumerController,
+		)
 		defer cleanUp()
 
 		// setup mocks
@@ -54,17 +59,35 @@ func FuzzStatusUpdate(f *testing.F) {
 		}
 		mockConsumerController.EXPECT().Close().Return(nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryLatestBlockHeight().Return(currentHeight, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryLatestBlockHeight().
+			Return(currentHeight, nil).
+			AnyTimes()
 		mockConsumerController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryBlock(gomock.Any()).Return(currentBlockRes, nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryBlock(gomock.Any()).
+			Return(currentBlockRes, nil).
+			AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryLastPublicRandCommit(gomock.Any()).
+			Return(nil, nil).
+			AnyTimes()
 
 		votingPower := uint64(r.Intn(2))
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), currentHeight).Return(votingPower, nil).AnyTimes()
-		mockConsumerController.EXPECT().SubmitFinalitySig(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.TxResponse{TxHash: ""}, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryFinalityProviderVotingPower(gomock.Any(), currentHeight).
+			Return(votingPower, nil).
+			AnyTimes()
+		mockConsumerController.EXPECT().
+			SubmitFinalitySig(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: ""}, nil).
+			AnyTimes()
 		var slashedHeight uint64
 		if votingPower == 0 {
-			mockClientController.EXPECT().QueryFinalityProviderSlashed(gomock.Any()).Return(true, nil).AnyTimes()
+			mockClientController.EXPECT().
+				QueryFinalityProviderSlashed(gomock.Any()).
+				Return(true, nil).
+				AnyTimes()
 		}
 
 		err := vm.StartFinalityProvider(fpPk, passphrase)
@@ -86,14 +109,23 @@ func FuzzStatusUpdate(f *testing.F) {
 	})
 }
 
-func waitForStatus(t *testing.T, fpIns *service.FinalityProviderInstance, s proto.FinalityProviderStatus) {
+func waitForStatus(
+	t *testing.T,
+	fpIns *service.FinalityProviderInstance,
+	s proto.FinalityProviderStatus,
+) {
 	require.Eventually(t,
 		func() bool {
 			return fpIns.GetStatus() == s
 		}, EventuallyWaitTimeOut, EventuallyPollTime)
 }
 
-func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc ccapi.ClientController, consumerCon ccapi.ConsumerController) (*service.FinalityProviderManager, *bbntypes.BIP340PubKey, func()) {
+func newFinalityProviderManagerWithRegisteredFp(
+	t *testing.T,
+	r *rand.Rand,
+	cc ccapi.ClientController,
+	consumerCon ccapi.ConsumerController,
+) (*service.FinalityProviderManager, *bbntypes.BIP340PubKey, func()) {
 	logger := zap.NewNop()
 	// create an EOTS manager
 	eotsHomeDir := filepath.Join(t.TempDir(), "eots-home")
@@ -125,7 +157,16 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 
 	metricsCollectors := metrics.NewFpMetrics()
-	vm, err := service.NewFinalityProviderManager(fpStore, pubRandStore, &fpCfg, cc, consumerCon, em, metricsCollectors, logger)
+	vm, err := service.NewFinalityProviderManager(
+		fpStore,
+		pubRandStore,
+		&fpCfg,
+		cc,
+		consumerCon,
+		em,
+		metricsCollectors,
+		logger,
+	)
 	require.NoError(t, err)
 
 	// create registered finality-provider

@@ -90,7 +90,13 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	fpServer := service.NewFinalityProviderServer(cfg, logger, fpApp, dbBackend, shutdownInterceptor)
+	fpServer := service.NewFinalityProviderServer(
+		cfg,
+		logger,
+		fpApp,
+		dbBackend,
+		shutdownInterceptor,
+	)
 	return fpServer.RunUntilShutdown()
 }
 

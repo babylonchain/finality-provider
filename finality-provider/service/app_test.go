@@ -37,7 +37,12 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		eotsCfg := eotscfg.DefaultConfigWithHomePath(eotsHomeDir)
 		dbBackend, err := eotsCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		em, err := eotsmanager.NewLocalEOTSManager(eotsHomeDir, eotsCfg.KeyringBackend, dbBackend, logger)
+		em, err := eotsmanager.NewLocalEOTSManager(
+			eotsHomeDir,
+			eotsCfg.KeyringBackend,
+			dbBackend,
+			logger,
+		)
 		require.NoError(t, err)
 		defer func() {
 			dbBackend.Close()
@@ -48,7 +53,12 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		// Create mocked babylon client
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockConsumerController := testutil.PrepareMockedConsumerController(
+			t,
+			r,
+			randomStartingHeight,
+			currentHeight,
+		)
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
 			gomock.Any()).Return(uint64(0), nil).AnyTimes()
@@ -61,7 +71,14 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		fpCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
 		fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		app, err := service.NewFinalityProviderApp(&fpCfg, mockBabylonController, mockConsumerController, em, fpdb, logger)
+		app, err := service.NewFinalityProviderApp(
+			&fpCfg,
+			mockBabylonController,
+			mockConsumerController,
+			em,
+			fpdb,
+			logger,
+		)
 		require.NoError(t, err)
 		defer func() {
 			err = fpdb.Close()
@@ -112,13 +129,20 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, txHash, res.TxHash)
 
-		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryLastPublicRandCommit(gomock.Any()).
+			Return(nil, nil).
+			AnyTimes()
 		err = app.StartHandlingFinalityProvider(fp.GetBIP340BTCPK(), passphrase)
 		require.NoError(t, err)
 
 		fpAfterReg, err := app.GetFinalityProviderInstance(fp.GetBIP340BTCPK())
 		require.NoError(t, err)
-		require.Equal(t, proto.FinalityProviderStatus_REGISTERED, fpAfterReg.GetStoreFinalityProvider().Status)
+		require.Equal(
+			t,
+			proto.FinalityProviderStatus_REGISTERED,
+			fpAfterReg.GetStoreFinalityProvider().Status,
+		)
 
 		fpInfo, err = app.GetFinalityProviderInfo(fp.GetBIP340BTCPK())
 		require.NoError(t, err)

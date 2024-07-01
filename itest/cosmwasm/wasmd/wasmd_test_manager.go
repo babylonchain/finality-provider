@@ -80,7 +80,14 @@ func StartWasmdTestManager(t *testing.T) *WasmdTestManager {
 	cfg.ChainName = fpcc.WasmConsumerChainName
 	cfg.CosmwasmConfig.AccountPrefix = "wasm"
 	cfg.CosmwasmConfig.ChainID = wasmdChainID
-	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	tempApp := wasmapp.NewWasmApp(
+		sdklogs.NewNopLogger(),
+		dbm.NewMemDB(),
+		nil,
+		false,
+		simtestutil.NewAppOptionsWithFlagHome(t.TempDir()),
+		[]wasmkeeper.Option{},
+	)
 	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),
@@ -160,7 +167,10 @@ func (ctm *WasmdTestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func StartConsumerManagerWithFps(t *testing.T, n int) (*WasmdTestManager, []*service.FinalityProviderInstance) {
+func StartConsumerManagerWithFps(
+	t *testing.T,
+	n int,
+) (*WasmdTestManager, []*service.FinalityProviderInstance) {
 	ctm := StartWasmdTestManager(t)
 	app := ctm.Fpa
 
@@ -170,9 +180,24 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*WasmdTestManager, []*ser
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+		_, err := service.CreateChainKey(
+			cfg.BabylonConfig.KeyDirectory,
+			cfg.BabylonConfig.ChainID,
+			fpName,
+			keyring.BackendTest,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			"",
+		)
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, e2eutils.ChainID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(
+			fpName,
+			e2eutils.ChainID,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			desc,
+			&commission,
+		)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -218,7 +243,11 @@ func StartConsumerManagerWithFps(t *testing.T, n int) (*WasmdTestManager, []*ser
 	return ctm, fpInsList
 }
 
-func (ctm *WasmdTestManager) CreateFinalityProvidersForChain(t *testing.T, chainID string, n int) []*service.FinalityProviderInstance {
+func (ctm *WasmdTestManager) CreateFinalityProvidersForChain(
+	t *testing.T,
+	chainID string,
+	n int,
+) []*service.FinalityProviderInstance {
 	app := ctm.Fpa
 	cfg := app.GetConfig()
 
@@ -229,9 +258,24 @@ func (ctm *WasmdTestManager) CreateFinalityProvidersForChain(t *testing.T, chain
 		moniker := e2eutils.MonikerPrefix + chainID + "-" + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, chainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+		_, err := service.CreateChainKey(
+			cfg.BabylonConfig.KeyDirectory,
+			chainID,
+			fpName,
+			keyring.BackendTest,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			"",
+		)
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(
+			fpName,
+			chainID,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			desc,
+			&commission,
+		)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)

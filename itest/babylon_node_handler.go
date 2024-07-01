@@ -102,7 +102,11 @@ type BabylonNodeHandler struct {
 	babylonNode *babylonNode
 }
 
-func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*types.BIP340PubKey) *BabylonNodeHandler {
+func NewBabylonNodeHandler(
+	t *testing.T,
+	covenantQuorum int,
+	covenantPks []*types.BIP340PubKey,
+) *BabylonNodeHandler {
 	testDir, err := BaseDir("zBabylonTest")
 	require.NoError(t, err)
 	defer func() {

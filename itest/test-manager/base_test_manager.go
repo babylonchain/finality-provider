@@ -46,7 +46,12 @@ type TestDelegationData struct {
 	StakingAmount int64
 }
 
-func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKey, stakingTime uint16, stakingAmount int64) *TestDelegationData {
+func (tm *BaseTestManager) InsertBTCDelegation(
+	t *testing.T,
+	fpPks []*btcec.PublicKey,
+	stakingTime uint16,
+	stakingAmount int64,
+) *TestDelegationData {
 	params := tm.StakingParams
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -83,7 +88,11 @@ func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.Publ
 	require.NoError(t, err)
 	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(btcTipHeaderResp.HeaderHex)
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(
+		r,
+		tipHeader.ToBlockHeader(),
+		testStakingInfo.StakingTx,
+	)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
 	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, btcTipHeaderResp.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
@@ -104,7 +113,11 @@ func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.Publ
 	btcHeader := blockWithStakingTx.HeaderBytes
 	serializedStakingTx, err := bbntypes.SerializeBTCTx(testStakingInfo.StakingTx)
 	require.NoError(t, err)
-	txInfo := btcctypes.NewTransactionInfo(&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()}, serializedStakingTx, blockWithStakingTx.SpvProof.MerkleNodes)
+	txInfo := btcctypes.NewTransactionInfo(
+		&btcctypes.TransactionKey{Index: 1, Hash: btcHeader.Hash()},
+		serializedStakingTx,
+		blockWithStakingTx.SpvProof.MerkleNodes,
+	)
 
 	slashignSpendInfo, err := testStakingInfo.StakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
@@ -189,7 +202,10 @@ func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.Publ
 	}
 }
 
-func (tm *BaseTestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
+func (tm *BaseTestManager) WaitForNPendingDels(
+	t *testing.T,
+	n int,
+) []*bstypes.BTCDelegationResponse {
 	var (
 		dels []*bstypes.BTCDelegationResponse
 		err  error
@@ -209,7 +225,10 @@ func (tm *BaseTestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.B
 	return dels
 }
 
-func (tm *BaseTestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
+func (tm *BaseTestManager) WaitForNActiveDels(
+	t *testing.T,
+	n int,
+) []*bstypes.BTCDelegationResponse {
 	var (
 		dels []*bstypes.BTCDelegationResponse
 		err  error
@@ -229,7 +248,10 @@ func (tm *BaseTestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BT
 	return dels
 }
 
-func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bstypes.BTCDelegation) {
+func (tm *BaseTestManager) InsertCovenantSigForDelegation(
+	t *testing.T,
+	btcDel *bstypes.BTCDelegation,
+) {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx
 	stakingMsgTx, err := bbntypes.NewBTCTxFromBytes(stakingTx)
@@ -294,7 +316,10 @@ func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *
 			v,
 		)
 		require.NoError(t, err)
-		covenantAdaptorStakingSlashing1List = append(covenantAdaptorStakingSlashing1List, covenantAdaptorStakingSlashing1.MustMarshal())
+		covenantAdaptorStakingSlashing1List = append(
+			covenantAdaptorStakingSlashing1List,
+			covenantAdaptorStakingSlashing1.MustMarshal(),
+		)
 	}
 
 	covenantUnbondingSig1, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
@@ -318,7 +343,10 @@ func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *
 			v,
 		)
 		require.NoError(t, err)
-		covenantAdaptorUnbondingSlashing1List = append(covenantAdaptorUnbondingSlashing1List, covenantAdaptorUnbondingSlashing1.MustMarshal())
+		covenantAdaptorUnbondingSlashing1List = append(
+			covenantAdaptorUnbondingSlashing1List,
+			covenantAdaptorUnbondingSlashing1.MustMarshal(),
+		)
 	}
 
 	_, err = tm.BBNClient.SubmitCovenantSigs(
@@ -341,7 +369,10 @@ func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *
 			v,
 		)
 		require.NoError(t, err)
-		covenantAdaptorStakingSlashing2List = append(covenantAdaptorStakingSlashing2List, covenantAdaptorStakingSlashing2.MustMarshal())
+		covenantAdaptorStakingSlashing2List = append(
+			covenantAdaptorStakingSlashing2List,
+			covenantAdaptorStakingSlashing2.MustMarshal(),
+		)
 	}
 
 	covenantUnbondingSig2, err := btcstaking.SignTxWithOneScriptSpendInputFromTapLeaf(
@@ -365,7 +396,10 @@ func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *
 			v,
 		)
 		require.NoError(t, err)
-		covenantAdaptorUnbondingSlashing2List = append(covenantAdaptorUnbondingSlashing2List, covenantAdaptorUnbondingSlashing2.MustMarshal())
+		covenantAdaptorUnbondingSlashing2List = append(
+			covenantAdaptorUnbondingSlashing2List,
+			covenantAdaptorUnbondingSlashing2.MustMarshal(),
+		)
 	}
 
 	_, err = tm.BBNClient.SubmitCovenantSigs(

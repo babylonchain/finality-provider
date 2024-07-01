@@ -24,7 +24,12 @@ func (c *QueryClient) GetBlock(height int64) (*coretypes.ResultBlock, error) {
 }
 
 // BlockSearch searches for blocks satisfying the events specified on the events list
-func (c *QueryClient) BlockSearch(events []string, page *int, perPage *int, orderBy string) (*coretypes.ResultBlockSearch, error) {
+func (c *QueryClient) BlockSearch(
+	events []string,
+	page *int,
+	perPage *int,
+	orderBy string,
+) (*coretypes.ResultBlockSearch, error) {
 	ctx, cancel := c.getQueryContext()
 	defer cancel()
 
@@ -32,7 +37,13 @@ func (c *QueryClient) BlockSearch(events []string, page *int, perPage *int, orde
 }
 
 // TxSearch searches for transactions satisfying the events specified on the events list
-func (c *QueryClient) TxSearch(events []string, prove bool, page *int, perPage *int, orderBy string) (*coretypes.ResultTxSearch, error) {
+func (c *QueryClient) TxSearch(
+	events []string,
+	prove bool,
+	page *int,
+	perPage *int,
+	orderBy string,
+) (*coretypes.ResultTxSearch, error) {
 	ctx, cancel := c.getQueryContext()
 	defer cancel()
 
@@ -47,7 +58,10 @@ func (c *QueryClient) GetTx(hash []byte) (*coretypes.ResultTx, error) {
 	return c.RPCClient.Tx(ctx, hash, false)
 }
 
-func (c *QueryClient) Subscribe(subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
+func (c *QueryClient) Subscribe(
+	subscriber, query string,
+	outCapacity ...int,
+) (out <-chan coretypes.ResultEvent, err error) {
 	return c.RPCClient.Subscribe(context.Background(), subscriber, query, outCapacity...)
 }
 

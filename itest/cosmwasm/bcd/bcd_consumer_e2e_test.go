@@ -69,7 +69,10 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// get btc staking contract address
-	resp, err := ctm.BcdConsumerClient.ListContractsByCode(btcStakingContractWasmId, &sdkquerytypes.PageRequest{})
+	resp, err := ctm.BcdConsumerClient.ListContractsByCode(
+		btcStakingContractWasmId,
+		&sdkquerytypes.PageRequest{},
+	)
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
@@ -77,7 +80,11 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	ctm.BcdConsumerClient.SetBtcStakingContractAddress(btcStakingContractAddr.String())
 
 	// register consumer to babylon
-	_, err = ctm.BBNClient.RegisterConsumerChain(bcdChainID, "Consumer chain 1 (test)", "Test Consumer Chain 1")
+	_, err = ctm.BBNClient.RegisterConsumerChain(
+		bcdChainID,
+		"Consumer chain 1 (test)",
+		"Test Consumer Chain 1",
+	)
 	require.NoError(t, err)
 
 	// register consumer fps to babylon
@@ -87,9 +94,24 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	moniker := e2eutils.MonikerPrefix + bcdChainID
 	commission := sdkmath.LegacyZeroDec()
 	desc := e2eutils.NewDescription(moniker)
-	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+	_, err = service.CreateChainKey(
+		cfg.BabylonConfig.KeyDirectory,
+		bcdChainID,
+		fpName,
+		keyring.BackendTest,
+		e2eutils.Passphrase,
+		e2eutils.HdPath,
+		"",
+	)
 	require.NoError(t, err)
-	res, err := app.CreateFinalityProvider(fpName, bcdChainID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+	res, err := app.CreateFinalityProvider(
+		fpName,
+		bcdChainID,
+		e2eutils.Passphrase,
+		e2eutils.HdPath,
+		desc,
+		&commission,
+	)
 	require.NoError(t, err)
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 	require.NoError(t, err)
@@ -116,13 +138,32 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, consumerDelsResp)
 	require.Len(t, consumerDelsResp.Delegations, 1)
-	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Empty(
+		t,
+		consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig,
+	) // assert there is no delegator unbonding sig
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].StartHeight,
+		consumerDelsResp.Delegations[0].StartHeight,
+	)
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].EndHeight,
+		consumerDelsResp.Delegations[0].EndHeight,
+	)
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx))   // make sure to compare b64 encoded strings
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].StakingTx,
+		base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx),
+	) // make sure to compare b64 encoded strings
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].SlashingTx,
+		base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx),
+	) // make sure to compare b64 encoded strings
 
 	// ensure fp has voting power in smart contract
 	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
@@ -182,7 +223,10 @@ func TestConsumerFpLifecycle(t *testing.T) {
 
 	// ensure finality signature is submitted to smart contract
 	require.Eventually(t, func() bool {
-		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(lookupHeight))
+		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(
+			fpPk.MarshalHex(),
+			uint64(lookupHeight),
+		)
 		if err != nil {
 			t.Logf("failed to query finality signature: %s", err.Error())
 			return false

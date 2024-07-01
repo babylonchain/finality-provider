@@ -124,8 +124,18 @@ func TestBlockBabylonFinalized(t *testing.T) {
 
 	// send a BTC delegation to consumer and Babylon finality providers
 	// for the first FP, we give it more power b/c it will be used later
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fpList[0].GetBtcPk()}, e2eutils.StakingTime, 3*e2eutils.StakingAmount)
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fpList[1].GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	ctm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fpList[0].GetBtcPk()},
+		e2eutils.StakingTime,
+		3*e2eutils.StakingAmount,
+	)
+	ctm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{bbnFpList[0].GetBtcPk(), fpList[1].GetBtcPk()},
+		e2eutils.StakingTime,
+		e2eutils.StakingAmount,
+	)
 
 	// check the BTC delegations are pending
 	delsResp := ctm.WaitForNPendingDels(t, n)

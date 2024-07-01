@@ -12,7 +12,11 @@ import (
 
 // GenerateRandomness generates a random scalar with the given key and src
 // the result is deterministic with each given input
-func GenerateRandomness(key []byte, chainID []byte, height uint64) (*eots.PrivateRand, *eots.PublicRand) {
+func GenerateRandomness(
+	key []byte,
+	chainID []byte,
+	height uint64,
+) (*eots.PrivateRand, *eots.PublicRand) {
 	// calculate the randomn hash of the key concatenated with chainID and height
 	digest := hmac.New(sha256.New, key)
 	digest.Write(append(sdk.Uint64ToBigEndian(height), chainID...))
