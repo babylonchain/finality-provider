@@ -87,6 +87,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.FastSyncInterval = 2 * time.Second
 	cfg.NumPubRand = 64
+	cfg.MinRandHeightGap = 100
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 

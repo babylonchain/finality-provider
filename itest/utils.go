@@ -17,6 +17,7 @@ import (
 
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,20 +87,20 @@ func GenerateCovenantCommittee(numCovenants int, t *testing.T) ([]*btcec.Private
 
 // n means expect n rounds of submissions
 func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance, n int) {
-	count := 0
+	committedHeightSet := mapset.NewSet[uint64]()
+
 	require.Eventually(t, func() bool {
 		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
 		if err != nil {
 			t.Errorf("Failed to fetch last committed height: %v", err)
 			return false
 		}
-		if lastCommittedHeight > 0 {
-			count++
+		if lastCommittedHeight > 0 && !committedHeightSet.Contains(lastCommittedHeight) {
+			committedHeightSet.Add(lastCommittedHeight)
+			t.Logf("Public randomness for fp %s is successfully committed at height %d", fpIns.GetBtcPkHex(), lastCommittedHeight)
 		}
-		return count >= n
+		return committedHeightSet.Cardinality() >= n
 	}, EventuallyWaitTimeOut, EventuallyPollTime)
-
-	t.Logf("Public randomness is successfully committed")
 }
 
 func DefaultFpConfig(keyringDir, homeDir string) *config.Config {
