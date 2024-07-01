@@ -35,6 +35,7 @@ import (
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -64,10 +65,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	loggerConfig := zap.NewDevelopmentConfig()
-	loggerConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
-	logger, err := loggerConfig.Build()
-	require.NoError(t, err)
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// 1. generate covenant committee
 	covenantQuorum := 2
@@ -81,6 +79,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	fpHomeDir := filepath.Join(testDir, "fp-home")
 	t.Logf("Fp home dir: %s", fpHomeDir)
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.FastSyncInterval = 2 * time.Second
@@ -165,6 +164,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	ctm.WaitForServicesStart(t)
 	return ctm
+}
+
+func createLogger(t *testing.T, level zapcore.Level) *zap.Logger {
+	config := zap.NewDevelopmentConfig()
+	config.Level = zap.NewAtomicLevelAt(level)
+	logger, err := config.Build()
+	require.NoError(t, err)
+	return logger
 }
 
 func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
