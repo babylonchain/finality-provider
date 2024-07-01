@@ -126,7 +126,7 @@ func (kc *ChainKeyringController) CreatePop(fpAddr sdk.AccAddress, btcPrivKey *b
 	return bstypes.NewPoPBTC(fpAddr, btcPrivKey)
 }
 
-// Address returns the address inside the config.
+// Address returns the address from the keyring
 func (kc *ChainKeyringController) Address(passphrase string) (sdk.AccAddress, error) {
 	kc.input.Reset(passphrase)
 	k, err := kc.kr.Key(kc.fpName)
