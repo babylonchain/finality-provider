@@ -64,7 +64,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := zap.NewNop()
+	loggerConfig := zap.NewDevelopmentConfig()
+	loggerConfig.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
+	logger, err := loggerConfig.Build()
+	require.NoError(t, err)
 
 	// 1. generate covenant committee
 	covenantQuorum := 2
@@ -76,6 +79,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
+	t.Logf("Fp home dir: %s", fpHomeDir)
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
@@ -423,6 +427,7 @@ func getLatestCodeId(opcc *opstackl2.OPStackL2ConsumerController) (uint64, error
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
+	t.Log("Stopping test manager")
 	var err error
 	// FpApp has to stop first or you will get "rpc error: desc = account xxx not found: key not found" error
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
