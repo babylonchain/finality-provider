@@ -113,7 +113,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.OPStackL2Config = opL2Config
 	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
 	// which might cause some problems and hard to debug issues
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg, logger)
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
 	require.NoError(t, err)
 
 	// 6. store op-finality-gadget contract
