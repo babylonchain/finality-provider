@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_fc754df.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_33645af.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
