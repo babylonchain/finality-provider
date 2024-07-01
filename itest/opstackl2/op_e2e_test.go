@@ -36,6 +36,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
 
 	testBlocks := ctm.WaitForNBlocksAndReturn(t, lastCommittedStartHeight, 1)
+	require.Equal(t, 1, len(testBlocks))
 
 	// fp sign
 	fpSig, err := fpInstance.SignFinalitySig(testBlocks[0])
@@ -56,13 +57,11 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("Submit finality signature to op finality contract")
 
-	// check there's a block finalized
-	// ctm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 	// ======  another test case for SubmitBatchFinalitySigs ======
 	// var fpSigs []*secp256k1.ModNScalar
-	// blocks, err := ctm.OpL2ConsumerCtrl.QueryBlocks(committedStartHeight+1, committedStartHeight+3, 3)
-	// require.NoError(t, err)
-	// for _, block := range blocks {
+	// testBatchBlocks := ctm.WaitForNBlocksAndReturn(t, lastCommittedStartHeight+1, 2)
+	// require.Equal(t, 2, len(testBatchBlocks))
+	// for _, block := range testBatchBlocks {
 	// 	// fp sign
 	// 	fpSig, err := fpInstance.SignFinalitySig(block)
 	// 	require.NoError(t, err)
@@ -71,7 +70,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 
 	// // proofs
 	// var proofs [][]byte
-	// for i := 1; i <= 3; i++ {
+	// for i := 1; i <= 2; i++ {
 	// 	proof, err := proofList[i].ToProto().Marshal()
 	// 	require.NoError(t, err)
 	// 	proofs = append(proofs, proof)
@@ -80,8 +79,8 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// // submit batch finality signatures to smart contract
 	// _, err = ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
 	// 	fpInstance.GetBtcPk(),
-	// 	blocks,
-	// 	pubRandList[1:4],
+	// 	testBatchBlocks,
+	// 	pubRandList[1:3],
 	// 	proofs,
 	// 	fpSigs,
 	// )

@@ -275,7 +275,7 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
-	l2Block, err := cc.opl2Client.BlockByNumber(ctx, new(big.Int).SetUint64(height))
+	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, new(big.Int).SetUint64(height))
 	if err != nil {
 		return nil, err
 	}

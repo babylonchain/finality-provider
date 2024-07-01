@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -242,47 +243,20 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
-	var blocks []*types.BlockInfo
+	var (
+		blocks []*types.BlockInfo
+		err    error
+	)
 	require.Eventually(t, func() bool {
-		blocks, err := ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
-		if err != nil {
-			t.Logf("failed to get the block: %s", err.Error())
-			return false
-		}
-		if blocks == nil {
+		blocks, err = ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
+		if err != nil || blocks == nil {
 			return false
 		}
 		return len(blocks) == n
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("The block height is %d", startHeight+uint64(n-1))
+	require.Equal(t, n, len(blocks))
+	t.Logf("The last block is %d, %s", blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
 	return blocks
-}
-
-func (ctm *OpL2ConsumerTestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n uint) uint64 {
-	var (
-		firstFinalizedBlock *types.BlockInfo
-		err                 error
-		lastFinalizedBlock  *types.BlockInfo
-	)
-
-	require.Eventually(t, func() bool {
-		lastFinalizedBlock, err = ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
-		if err != nil {
-			t.Logf("failed to get the latest finalized block: %s", err.Error())
-			return false
-		}
-		if lastFinalizedBlock == nil {
-			return false
-		}
-		if firstFinalizedBlock == nil {
-			firstFinalizedBlock = lastFinalizedBlock
-		}
-		return lastFinalizedBlock.Height-firstFinalizedBlock.Height > uint64(n-1)
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("the block is finalized at %v", lastFinalizedBlock.Height)
-
-	return lastFinalizedBlock.Height
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
