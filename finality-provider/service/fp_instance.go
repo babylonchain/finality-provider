@@ -12,7 +12,6 @@ import (
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -27,8 +26,7 @@ import (
 )
 
 type FinalityProviderInstance struct {
-	chainPk *secp256k1.PubKey
-	btcPk   *bbntypes.BIP340PubKey
+	btcPk *bbntypes.BIP340PubKey
 
 	fpState      *fpState
 	pubRandState *pubRandState
@@ -80,7 +78,6 @@ func NewFinalityProviderInstance(
 
 	return &FinalityProviderInstance{
 		btcPk:           bbntypes.NewBIP340PubKeyFromBTCPK(sfp.BtcPk),
-		chainPk:         sfp.ChainPk,
 		fpState:         NewFpState(sfp, s),
 		pubRandState:    NewPubRandState(prStore),
 		cfg:             cfg,

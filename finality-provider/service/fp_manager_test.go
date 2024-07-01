@@ -10,7 +10,6 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -139,20 +138,19 @@ func newFinalityProviderManagerWithRegisteredFp(t *testing.T, r *rand.Rand, cc c
 	require.NoError(t, err)
 	keyInfo, err := kc.CreateChainKey(passphrase, hdPath, "")
 	require.NoError(t, err)
-	bbnPk := &secp256k1.PubKey{Key: keyInfo.PublicKey.SerializeCompressed()}
+	fpAddr := keyInfo.AccAddress
 	fpRecord, err := em.KeyRecord(btcPk.MustMarshal(), passphrase)
 	require.NoError(t, err)
-	pop, err := kc.CreatePop(fpRecord.PrivKey, passphrase)
+	pop, err := kc.CreatePop(fpAddr, fpRecord.PrivKey)
 	require.NoError(t, err)
 
 	err = fpStore.CreateFinalityProvider(
-		bbnPk,
+		fpAddr,
 		btcPk.MustToBTCPK(),
 		testutil.RandomDescription(r),
 		testutil.ZeroCommissionRate(),
 		keyName,
 		chainID,
-		pop.BabylonSig,
 		pop.BtcSig,
 	)
 	require.NoError(t, err)

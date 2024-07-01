@@ -8,8 +8,8 @@ require (
 	cosmossdk.io/errors v1.0.1
 	cosmossdk.io/math v1.3.0
 	github.com/avast/retry-go/v4 v4.5.1
-	github.com/babylonchain/babylon v0.8.6-0.20240527005816-ae2182029020
-	github.com/btcsuite/btcd v0.24.0
+	github.com/babylonchain/babylon v0.9.0-rc.2
+	github.com/btcsuite/btcd v0.24.2
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/btcsuite/btcwallet/walletdb v1.4.0
@@ -232,6 +232,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
 	github.com/strangelove-ventures/cometbft-client v0.1.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect

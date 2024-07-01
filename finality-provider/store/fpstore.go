@@ -7,7 +7,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcwallet/walletdb"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/lightningnetwork/lnd/kvdb"
 	pm "google.golang.org/protobuf/proto"
@@ -42,25 +42,24 @@ func (s *FinalityProviderStore) initBuckets() error {
 }
 
 func (s *FinalityProviderStore) CreateFinalityProvider(
-	chainPk *secp256k1.PubKey,
+	fpAddr sdk.AccAddress,
 	btcPk *btcec.PublicKey,
 	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
 	keyName, chainId string,
-	chainSig, btcSig []byte,
+	btcSig []byte,
 ) error {
 	desBytes, err := description.Marshal()
 	if err != nil {
 		return fmt.Errorf("invalid description: %w", err)
 	}
 	fp := &proto.FinalityProvider{
-		ChainPk:     chainPk.Key,
+		FpAddr:      fpAddr.String(),
 		BtcPk:       schnorr.SerializePubKey(btcPk),
 		Description: desBytes,
 		Commission:  commission.String(),
 		Pop: &proto.ProofOfPossession{
-			ChainSig: chainSig,
-			BtcSig:   btcSig,
+			BtcSig: btcSig,
 		},
 		KeyName: keyName,
 		ChainId: chainId,

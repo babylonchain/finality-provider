@@ -52,10 +52,12 @@ Below are some important parameters of the `fpd.conf` file.
 
 **Note**:
 The configuration below requires pointing to the path where this keyring is
-stored `KeyDirectory`. This `Key` field stores the key name used for interacting with
-the consumer chain and will be specified along with the
-`KeyringBackend` field in the next [step](#3-add-key-for-the-consumer-chain). So we
-can ignore the setting of the two fields in this step.
+stored `KeyDirectory`. This `Key` field stores the key name of the finality
+provider wallet that is going to be used for interacting with the consumer
+chain and to sign the messages of your finality provider. It will be specified
+along with the `KeyringBackend` field in the next
+[step](#3-add-key-for-the-consumer-chain). So we can ignore the setting of the
+two fields in this step.
 
 ```bash
 [Application Options]
@@ -66,8 +68,8 @@ EOTSManagerAddress = 127.0.0.1:12582
 RpcListener = 127.0.0.1:12581
 
 [babylon]
-# Name of the key to sign transactions with
-Key = <finality-provider-key-name>
+# Name of the key of the finality provider to sign transactions with
+Key = <finality-provider-key-name-signer>
 
 # Chain id of the chain to connect to
 # Please verify the `ChainID` from the Babylon RPC node https://rpc.testnet3.babylonchain.io/status
@@ -98,7 +100,8 @@ GasPrices = 0.002ubbn
 ## 3. Add key for the consumer chain
 
 The finality provider daemon requires the existence of a keyring that contains an
-account with Babylon token funds to pay for transactions. This key will be also used
+account for the finality provider with Babylon token funds to pay and sign
+transactions. This key identifies the finality provider and will be also used
 to pay for fees of transactions to the consumer chain.
 
 Use the following command to add the key:
@@ -160,12 +163,12 @@ in [step](#3-add-key-for-the-consumer-chain) will be used.
 fpcli create-finality-provider --key-name my-finality-provider \
                 --chain-id bbn-test-3 --moniker my-name
 {
-    "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
-    "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
-    "description": {
-        "moniker": "my-name"
-    },
-    "status": "CREATED"
+  "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
+  "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
+  "description": {
+    "moniker": "my-name"
+  },
+  "status": "CREATED"
 }
 ```
 
@@ -204,7 +207,7 @@ fpcli list-finality-providers
     "finality-providers": [
         ...
         {
-            "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
+            "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
             "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
             "description": {
                 "moniker": "my-name"
@@ -251,12 +254,9 @@ The expected result is a JSON object corresponding to the finality provider info
     "details": "other overall info"
   },
   "commission": "0.050000000000000000",
-  "babylon_pk": {
-    "key": "AtPEagBqVQUL6og0qH+H44pFf9p3WcHAva+zC2+74X8p"
-  },
+  "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
   "btc_pk": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
   "pop": {
-    "babylon_sig": "sAg34vImQTFVlZYsziw9PCCKDuRyZv38V2MX8Ij9fQhyOdpxCUZ1VEgpSlwV/dbnpDs1UOez8Ni9EcbADkmnBA==",
     "btc_sig": "sHLpEHVTyTp9K55oeHxnPlkV4unc/r1obqzKn5S1gq95oXA3AgL1jyCzd/mGb23RfKbEyABjYUdcIBtZ02l5jg=="
   },
   "master_pub_rand": "xpub661MyMwAqRbcFLhUq9uPM7GncSytVZvoNg4w7LLx1Y74GeeAZerkpV1amvGBTcw4ECmrwFsTNMNf1LFBKkA2pmd8aJ5Jmp8uKD5xgVSezBq",

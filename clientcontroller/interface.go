@@ -19,11 +19,10 @@ const (
 )
 
 type ClientController interface {
-
 	// RegisterFinalityProvider registers a finality provider to the consumer chain
-	// it returns tx hash and error
+	// it returns tx hash and error. The address of the finality provider will be
+	// the signer of the msg.
 	RegisterFinalityProvider(
-		chainPk []byte,
 		fpPk *btcec.PublicKey,
 		pop []byte,
 		commission *math.LegacyDec,
@@ -75,6 +74,7 @@ func NewClientController(chainName string, bbnConfig *fpcfg.BBNConfig, netParams
 		cc  ClientController
 		err error
 	)
+
 	switch chainName {
 	case babylonConsumerChainName:
 		cc, err = NewBabylonController(bbnConfig, netParams, logger)
