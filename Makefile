@@ -108,6 +108,16 @@ test-e2e-wasmd: clean-e2e install-babylond install-wasmd
 test-e2e-op: clean-e2e install-babylond
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
 
+DEVNET_REPO_URL := https://github.com/babylonchain/op-e2e-devnet
+TARGET_DIR := ./itest/opstackl2/.devnet-data
+
+.PHONY: get-devnet-data
+get-devnet-data:
+	@rm -rf $(TARGET_DIR)
+	@mkdir -p $(TARGET_DIR)
+	@git clone $(DEVNET_REPO_URL) $(TARGET_DIR)
+	@echo "Devnet data downloaded to $(TARGET_DIR)"
+
 ###############################################################################
 ###                                Protobuf                                 ###
 ###############################################################################
