@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_dbd8428.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_fc754df.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -143,7 +143,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
-	opcc.FpCfg.OPStackL2Config.OPFinalityGadgetAddress = resp.Contracts[0]
+	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
 	// only for the e2e test
 	sdkCfgChainType := -1
 
@@ -170,7 +170,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// 10. init SDK client
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
-		ContractAddr: opcc.FpCfg.OPStackL2Config.OPFinalityGadgetAddress,
+		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
 	})
 	require.NoError(t, err)
 
