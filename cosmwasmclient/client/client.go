@@ -21,7 +21,12 @@ type Client struct {
 	cfg      *config.CosmwasmConfig
 }
 
-func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.EncodingConfig, logger *zap.Logger) (*Client, error) {
+func New(
+	cfg *config.CosmwasmConfig,
+	chainName string,
+	encodingCfg wasmdparams.EncodingConfig,
+	logger *zap.Logger,
+) (*Client, error) {
 	var (
 		zapLogger *zap.Logger
 		err       error

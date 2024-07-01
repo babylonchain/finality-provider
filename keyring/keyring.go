@@ -12,7 +12,12 @@ import (
 	"github.com/babylonchain/finality-provider/codec"
 )
 
-func CreateKeyring(keyringDir string, chainId string, backend string, input *strings.Reader) (keyring.Keyring, error) {
+func CreateKeyring(
+	keyringDir string,
+	chainId string,
+	backend string,
+	input *strings.Reader,
+) (keyring.Keyring, error) {
 	ctx, err := CreateClientCtx(keyringDir, chainId)
 	if err != nil {
 		return nil, err

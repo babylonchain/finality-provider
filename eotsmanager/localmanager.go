@@ -39,7 +39,11 @@ type LocalEOTSManager struct {
 	metrics *metrics.EotsMetrics
 }
 
-func NewLocalEOTSManager(homeDir, keyringBackend string, dbbackend kvdb.Backend, logger *zap.Logger) (*LocalEOTSManager, error) {
+func NewLocalEOTSManager(
+	homeDir, keyringBackend string,
+	dbbackend kvdb.Backend,
+	logger *zap.Logger,
+) (*LocalEOTSManager, error) {
 	inputReader := strings.NewReader("")
 
 	es, err := store.NewEOTSStore(dbbackend)
@@ -63,7 +67,10 @@ func NewLocalEOTSManager(homeDir, keyringBackend string, dbbackend kvdb.Backend,
 	}, nil
 }
 
-func initKeyring(homeDir, keyringBackend string, inputReader *strings.Reader) (keyring.Keyring, error) {
+func initKeyring(
+	homeDir, keyringBackend string,
+	inputReader *strings.Reader,
+) (keyring.Keyring, error) {
 	return keyring.New(
 		"eots-manager",
 		keyringBackend,
@@ -102,7 +109,9 @@ func NewMnemonic() (string, error) {
 	return mnemonic, nil
 }
 
-func (lm *LocalEOTSManager) CreateKeyWithMnemonic(name, passphrase, hdPath, mnemonic string) (*bbntypes.BIP340PubKey, error) {
+func (lm *LocalEOTSManager) CreateKeyWithMnemonic(
+	name, passphrase, hdPath, mnemonic string,
+) (*bbntypes.BIP340PubKey, error) {
 	if lm.keyExists(name) {
 		return nil, eotstypes.ErrFinalityProviderAlreadyExisted
 	}
@@ -165,7 +174,13 @@ func loadBIP340PubKeyFromKeyringRecord(record *keyring.Record) (*bbntypes.BIP340
 //
 //	a simple anti-slasher mechanism could be that the manager remembers the tuple (fpPk, chainID, height) or
 //	the hash of each generated randomness and return error if the same randomness is requested tweice
-func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
+func (lm *LocalEOTSManager) CreateRandomnessPairList(
+	fpPk []byte,
+	chainID []byte,
+	startHeight uint64,
+	num uint32,
+	passphrase string,
+) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 
 	for i := uint32(0); i < num; i++ {
@@ -178,12 +193,21 @@ func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte
 		prList = append(prList, pubRand)
 	}
 	lm.metrics.IncrementEotsFpTotalGeneratedRandomnessCounter(hex.EncodeToString(fpPk))
-	lm.metrics.SetEotsFpLastGeneratedRandomnessHeight(hex.EncodeToString(fpPk), float64(startHeight))
+	lm.metrics.SetEotsFpLastGeneratedRandomnessHeight(
+		hex.EncodeToString(fpPk),
+		float64(startHeight),
+	)
 
 	return prList, nil
 }
 
-func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error) {
+func (lm *LocalEOTSManager) SignEOTS(
+	fpPk []byte,
+	chainID []byte,
+	msg []byte,
+	height uint64,
+	passphrase string,
+) (*btcec.ModNScalar, error) {
 	privRand, _, err := lm.getRandomnessPair(fpPk, chainID, height, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private randomness: %w", err)
@@ -201,7 +225,11 @@ func (lm *LocalEOTSManager) SignEOTS(fpPk []byte, chainID []byte, msg []byte, he
 	return eots.Sign(privKey, privRand, msg)
 }
 
-func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase string) (*schnorr.Signature, error) {
+func (lm *LocalEOTSManager) SignSchnorrSig(
+	fpPk []byte,
+	msg []byte,
+	passphrase string,
+) (*schnorr.Signature, error) {
 	privKey, err := lm.getEOTSPrivKey(fpPk, passphrase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EOTS private key: %w", err)
@@ -211,13 +239,20 @@ func (lm *LocalEOTSManager) SignSchnorrSig(fpPk []byte, msg []byte, passphrase s
 }
 
 // signSchnorrSigFromPrivKey signs a Schnorr signature using the private key and updates metrics by the fpPk
-func (lm *LocalEOTSManager) signSchnorrSigFromPrivKey(privKey *btcec.PrivateKey, fpPk []byte, msg []byte) (*schnorr.Signature, error) {
+func (lm *LocalEOTSManager) signSchnorrSigFromPrivKey(
+	privKey *btcec.PrivateKey,
+	fpPk []byte,
+	msg []byte,
+) (*schnorr.Signature, error) {
 	// Update metrics
 	lm.metrics.IncrementEotsFpTotalSchnorrSignCounter(hex.EncodeToString(fpPk))
 	return schnorr.Sign(privKey, msg)
 }
 
-func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(keyName, passphrase string, msg []byte) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
+func (lm *LocalEOTSManager) SignSchnorrSigFromKeyname(
+	keyName, passphrase string,
+	msg []byte,
+) (*schnorr.Signature, *bbntypes.BIP340PubKey, error) {
 	lm.input.Reset(passphrase)
 	k, err := lm.kr.Key(keyName)
 	if err != nil {
@@ -246,17 +281,29 @@ func (lm *LocalEOTSManager) Close() error {
 }
 
 // getRandomnessPair returns a randomness pair generated based on the given finality provider key, chainID and height
-func (lm *LocalEOTSManager) getRandomnessPair(fpPk []byte, chainID []byte, height uint64, passphrase string) (*eots.PrivateRand, *eots.PublicRand, error) {
+func (lm *LocalEOTSManager) getRandomnessPair(
+	fpPk []byte,
+	chainID []byte,
+	height uint64,
+	passphrase string,
+) (*eots.PrivateRand, *eots.PublicRand, error) {
 	record, err := lm.KeyRecord(fpPk, passphrase)
 	if err != nil {
 		return nil, nil, err
 	}
-	privRand, pubRand := randgenerator.GenerateRandomness(record.PrivKey.Serialize(), chainID, height)
+	privRand, pubRand := randgenerator.GenerateRandomness(
+		record.PrivKey.Serialize(),
+		chainID,
+		height,
+	)
 	return privRand, pubRand, nil
 }
 
 // TODO: we ignore passPhrase in local implementation for now
-func (lm *LocalEOTSManager) KeyRecord(fpPk []byte, passphrase string) (*eotstypes.KeyRecord, error) {
+func (lm *LocalEOTSManager) KeyRecord(
+	fpPk []byte,
+	passphrase string,
+) (*eotstypes.KeyRecord, error) {
 	name, err := lm.es.GetEOTSKeyName(fpPk)
 	if err != nil {
 		return nil, err
@@ -272,7 +319,10 @@ func (lm *LocalEOTSManager) KeyRecord(fpPk []byte, passphrase string) (*eotstype
 	}, nil
 }
 
-func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btcec.PrivateKey, error) {
+func (lm *LocalEOTSManager) getEOTSPrivKey(
+	fpPk []byte,
+	passphrase string,
+) (*btcec.PrivateKey, error) {
 	keyName, err := lm.es.GetEOTSKeyName(fpPk)
 	if err != nil {
 		return nil, err

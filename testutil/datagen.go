@@ -106,16 +106,36 @@ func GenBlocks(r *rand.Rand, startHeight, endHeight uint64) []*types.BlockInfo {
 }
 
 // GenStoredFinalityProvider generates a random finality-provider from the keyring and store it in DB
-func GenStoredFinalityProvider(r *rand.Rand, t *testing.T, app *service.FinalityProviderApp, passphrase, hdPath string) *store.StoredFinalityProvider {
+func GenStoredFinalityProvider(
+	r *rand.Rand,
+	t *testing.T,
+	app *service.FinalityProviderApp,
+	passphrase, hdPath string,
+) *store.StoredFinalityProvider {
 	// generate keyring
 	keyName := GenRandomHexStr(r, 4)
 	chainID := GenRandomHexStr(r, 4)
 
 	cfg := app.GetConfig()
-	_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, keyName, keyring.BackendTest, passphrase, hdPath, "")
+	_, err := service.CreateChainKey(
+		cfg.BabylonConfig.KeyDirectory,
+		cfg.BabylonConfig.ChainID,
+		keyName,
+		keyring.BackendTest,
+		passphrase,
+		hdPath,
+		"",
+	)
 	require.NoError(t, err)
 
-	res, err := app.CreateFinalityProvider(keyName, chainID, passphrase, hdPath, RandomDescription(r), ZeroCommissionRate())
+	res, err := app.CreateFinalityProvider(
+		keyName,
+		chainID,
+		passphrase,
+		hdPath,
+		RandomDescription(r),
+		ZeroCommissionRate(),
+	)
 	require.NoError(t, err)
 
 	btcPk, err := bbn.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)

@@ -14,8 +14,8 @@ const (
 )
 
 type Config struct {
-	Host           string        `long:"host" description:"IP of the Prometheus server"`
-	Port           int           `long:"port" description:"Port of the Prometheus server"`
+	Host           string        `long:"host"           description:"IP of the Prometheus server"`
+	Port           int           `long:"port"           description:"Port of the Prometheus server"`
 	UpdateInterval time.Duration `long:"updateinterval" description:"The interval of Prometheus metrics updated"`
 }
 

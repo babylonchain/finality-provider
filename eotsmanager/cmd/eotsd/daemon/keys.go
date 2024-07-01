@@ -18,8 +18,8 @@ import (
 )
 
 type KeyOutput struct {
-	Name      string `json:"name" yaml:"name"`
-	PubKeyHex string `json:"pub_key_hex" yaml:"pub_key_hex"`
+	Name      string `json:"name"               yaml:"name"`
+	PubKeyHex string `json:"pub_key_hex"        yaml:"pub_key_hex"`
 	Mnemonic  string `json:"mnemonic,omitempty" yaml:"mnemonic"`
 }
 

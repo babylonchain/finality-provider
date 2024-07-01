@@ -74,7 +74,10 @@ func (r *rpcServer) RegisterWithGrpcServer(grpcServer *grpc.Server) error {
 }
 
 // GetInfo returns general information relating to the active daemon
-func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetInfoResponse, error) {
+func (r *rpcServer) GetInfo(
+	context.Context,
+	*proto.GetInfoRequest,
+) (*proto.GetInfoResponse, error) {
 
 	return &proto.GetInfoResponse{
 		Version: version.Version(),
@@ -82,7 +85,10 @@ func (r *rpcServer) GetInfo(context.Context, *proto.GetInfoRequest) (*proto.GetI
 }
 
 // CreateFinalityProvider generates a finality-provider object and saves it in the database
-func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.CreateFinalityProviderRequest) (
+func (r *rpcServer) CreateFinalityProvider(
+	ctx context.Context,
+	req *proto.CreateFinalityProviderRequest,
+) (
 	*proto.CreateFinalityProviderResponse, error) {
 
 	commissionRate, err := math.LegacyNewDecFromStr(req.Commission)
@@ -115,7 +121,10 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 }
 
 // RegisterFinalityProvider sends a transactions to Babylon to register a BTC finality-provider
-func (r *rpcServer) RegisterFinalityProvider(ctx context.Context, req *proto.RegisterFinalityProviderRequest) (
+func (r *rpcServer) RegisterFinalityProvider(
+	ctx context.Context,
+	req *proto.RegisterFinalityProviderRequest,
+) (
 	*proto.RegisterFinalityProviderResponse, error) {
 
 	txRes, err := r.app.RegisterFinalityProvider(req.BtcPk)
@@ -125,7 +134,11 @@ func (r *rpcServer) RegisterFinalityProvider(ctx context.Context, req *proto.Reg
 
 	// the finality-provider instance should be started right after registration
 	if err := r.app.StartHandlingFinalityProvider(txRes.btcPubKey, req.Passphrase); err != nil {
-		return nil, fmt.Errorf("failed to start the registered finality-provider %s: %w", hex.EncodeToString(txRes.bbnPubKey.Key), err)
+		return nil, fmt.Errorf(
+			"failed to start the registered finality-provider %s: %w",
+			hex.EncodeToString(txRes.bbnPubKey.Key),
+			err,
+		)
 	}
 
 	return &proto.RegisterFinalityProviderResponse{TxHash: txRes.TxHash}, nil
@@ -133,7 +146,10 @@ func (r *rpcServer) RegisterFinalityProvider(ctx context.Context, req *proto.Reg
 
 // AddFinalitySignature adds a manually constructed finality signature to Babylon
 // NOTE: this is only used for presentation/testing purposes
-func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFinalitySignatureRequest) (
+func (r *rpcServer) AddFinalitySignature(
+	ctx context.Context,
+	req *proto.AddFinalitySignatureRequest,
+) (
 	*proto.AddFinalitySignatureResponse, error) {
 
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(req.BtcPk)
@@ -183,7 +199,10 @@ func (r *rpcServer) AddFinalitySignature(ctx context.Context, req *proto.AddFina
 }
 
 // QueryFinalityProvider queries the information of the finality-provider
-func (r *rpcServer) QueryFinalityProvider(ctx context.Context, req *proto.QueryFinalityProviderRequest) (
+func (r *rpcServer) QueryFinalityProvider(
+	ctx context.Context,
+	req *proto.QueryFinalityProviderRequest,
+) (
 	*proto.QueryFinalityProviderResponse, error) {
 
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(req.BtcPk)
@@ -199,7 +218,10 @@ func (r *rpcServer) QueryFinalityProvider(ctx context.Context, req *proto.QueryF
 }
 
 // QueryFinalityProviderList queries the information of a list of finality providers
-func (r *rpcServer) QueryFinalityProviderList(ctx context.Context, req *proto.QueryFinalityProviderListRequest) (
+func (r *rpcServer) QueryFinalityProviderList(
+	ctx context.Context,
+	req *proto.QueryFinalityProviderListRequest,
+) (
 	*proto.QueryFinalityProviderListResponse, error) {
 
 	fps, err := r.app.ListAllFinalityProvidersInfo()
@@ -211,7 +233,10 @@ func (r *rpcServer) QueryFinalityProviderList(ctx context.Context, req *proto.Qu
 }
 
 // SignMessageFromChainKey signs a message from the chain keyring.
-func (r *rpcServer) SignMessageFromChainKey(ctx context.Context, req *proto.SignMessageFromChainKeyRequest) (
+func (r *rpcServer) SignMessageFromChainKey(
+	ctx context.Context,
+	req *proto.SignMessageFromChainKeyRequest,
+) (
 	*proto.SignMessageFromChainKeyResponse, error) {
 	signature, err := r.app.SignRawMsg(req.KeyName, req.Passphrase, req.HdPath, req.MsgToSign)
 	if err != nil {

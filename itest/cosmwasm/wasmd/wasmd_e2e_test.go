@@ -67,7 +67,10 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	require.NoError(t, err)
 
 	// get btc staking contract address
-	resp, err := ctm.WasmdConsumerClient.ListContractsByCode(btcStakingContractWasmId, &sdkquerytypes.PageRequest{})
+	resp, err := ctm.WasmdConsumerClient.ListContractsByCode(
+		btcStakingContractWasmId,
+		&sdkquerytypes.PageRequest{},
+	)
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
 	btcStakingContractAddr := sdk.MustAccAddressFromBech32(resp.Contracts[0])
@@ -100,13 +103,32 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, consumerDelsResp)
 	require.Len(t, consumerDelsResp.Delegations, 1)
-	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Empty(
+		t,
+		consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig,
+	) // assert there is no delegator unbonding sig
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].StartHeight,
+		consumerDelsResp.Delegations[0].StartHeight,
+	)
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].EndHeight,
+		consumerDelsResp.Delegations[0].EndHeight,
+	)
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx))   // make sure to compare b64 encoded strings
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].StakingTx,
+		base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx),
+	) // make sure to compare b64 encoded strings
+	require.Equal(
+		t,
+		msg.BtcStaking.ActiveDel[0].SlashingTx,
+		base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx),
+	) // make sure to compare b64 encoded strings
 
 	// ensure fp has voting power in smart contract
 	consumerFpsByPowerResp, err := ctm.WasmdConsumerClient.QueryFinalityProvidersByPower()
@@ -133,14 +155,26 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	wasmdNodeStatus, err := ctm.WasmdConsumerClient.GetCometNodeStatus()
 	require.NoError(t, err)
 	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	finalitySigMsg := common.GenFinalitySigExecMsg(uint64(1), uint64(cometLatestHeight), randList, fpSk)
+	finalitySigMsg := common.GenFinalitySigExecMsg(
+		uint64(1),
+		uint64(cometLatestHeight),
+		randList,
+		fpSk,
+	)
 	finalitySigMsgBytes, err := json.Marshal(finalitySigMsg)
 	require.NoError(t, err)
 	_, err = ctm.WasmdConsumerClient.ExecuteContract(finalitySigMsgBytes)
 	require.NoError(t, err)
-	fpSigsResponse, err := ctm.WasmdConsumerClient.QueryFinalitySignature(msgPub.FpBtcPk.MarshalHex(), uint64(cometLatestHeight))
+	fpSigsResponse, err := ctm.WasmdConsumerClient.QueryFinalitySignature(
+		msgPub.FpBtcPk.MarshalHex(),
+		uint64(cometLatestHeight),
+	)
 	require.NoError(t, err)
 	require.NotNil(t, fpSigsResponse)
 	require.NotNil(t, fpSigsResponse.Signature)
-	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
+	require.Equal(
+		t,
+		finalitySigMsg.SubmitFinalitySignature.Signature,
+		base64.StdEncoding.EncodeToString(fpSigsResponse.Signature),
+	)
 }

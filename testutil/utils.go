@@ -18,7 +18,11 @@ func ZeroCommissionRate() *sdkmath.LegacyDec {
 	return &zeroCom
 }
 
-func PrepareMockedConsumerController(t *testing.T, r *rand.Rand, startHeight, currentHeight uint64) *mocks.MockConsumerController {
+func PrepareMockedConsumerController(
+	t *testing.T,
+	r *rand.Rand,
+	startHeight, currentHeight uint64,
+) *mocks.MockConsumerController {
 	ctl := gomock.NewController(t)
 	mockConsumerController := mocks.NewMockConsumerController(ctl)
 

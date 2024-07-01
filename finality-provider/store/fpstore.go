@@ -104,7 +104,10 @@ func saveFinalityProvider(
 	return fpBucket.Put(fp.BtcPk, marshalled)
 }
 
-func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto.FinalityProviderStatus) error {
+func (s *FinalityProviderStore) SetFpStatus(
+	btcPk *btcec.PublicKey,
+	status proto.FinalityProviderStatus,
+) error {
 	setFpStatus := func(fp *proto.FinalityProvider) error {
 		fp.Status = status
 		return nil
@@ -115,7 +118,10 @@ func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto
 
 // SetFpLastVotedHeight sets the last voted height to the stored last voted height and last processed height
 // only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
-func (s *FinalityProviderStore) SetFpLastVotedHeight(btcPk *btcec.PublicKey, lastVotedHeight uint64) error {
+func (s *FinalityProviderStore) SetFpLastVotedHeight(
+	btcPk *btcec.PublicKey,
+	lastVotedHeight uint64,
+) error {
 	setFpLastVotedHeight := func(fp *proto.FinalityProvider) error {
 		if fp.LastVotedHeight < lastVotedHeight {
 			fp.LastVotedHeight = lastVotedHeight
@@ -132,7 +138,10 @@ func (s *FinalityProviderStore) SetFpLastVotedHeight(btcPk *btcec.PublicKey, las
 
 // SetFpLastProcessedHeight sets the last processed height to the stored last processed height
 // only if it is larger than the stored one. This is to ensure the stored state to increase monotonically
-func (s *FinalityProviderStore) SetFpLastProcessedHeight(btcPk *btcec.PublicKey, lastProcessedHeight uint64) error {
+func (s *FinalityProviderStore) SetFpLastProcessedHeight(
+	btcPk *btcec.PublicKey,
+	lastProcessedHeight uint64,
+) error {
 	setFpLastProcessedHeight := func(fp *proto.FinalityProvider) error {
 		if fp.LastProcessedHeight < lastProcessedHeight {
 			fp.LastProcessedHeight = lastProcessedHeight
@@ -173,7 +182,9 @@ func (s *FinalityProviderStore) setFinalityProviderState(
 	})
 }
 
-func (s *FinalityProviderStore) GetFinalityProvider(btcPk *btcec.PublicKey) (*StoredFinalityProvider, error) {
+func (s *FinalityProviderStore) GetFinalityProvider(
+	btcPk *btcec.PublicKey,
+) (*StoredFinalityProvider, error) {
 	var storedFp *StoredFinalityProvider
 	pkBytes := schnorr.SerializePubKey(btcPk)
 

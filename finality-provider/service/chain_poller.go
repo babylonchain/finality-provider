@@ -198,7 +198,11 @@ func (cp *ChainPoller) validateStartHeight(startHeight uint64) error {
 
 	// Allow the start height to be the next chain height
 	if startHeight > currentBestChainHeight+1 {
-		return fmt.Errorf("start height %d is more than the next chain tip height %d", startHeight, currentBestChainHeight+1)
+		return fmt.Errorf(
+			"start height %d is more than the next chain tip height %d",
+			startHeight,
+			currentBestChainHeight+1,
+		)
 	}
 
 	return nil
@@ -210,7 +214,10 @@ func (cp *ChainPoller) waitForActivation() {
 	for {
 		activatedHeight, err := cp.consumerCon.QueryActivatedHeight()
 		if err != nil {
-			cp.logger.Debug("failed to query the consumer chain for the activated height", zap.Error(err))
+			cp.logger.Debug(
+				"failed to query the consumer chain for the activated height",
+				zap.Error(err),
+			)
 		} else {
 			if cp.nextHeight < activatedHeight {
 				cp.nextHeight = activatedHeight

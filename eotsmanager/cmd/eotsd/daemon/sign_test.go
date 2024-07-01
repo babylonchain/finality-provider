@@ -42,7 +42,12 @@ func FuzzSignAndVerifySchnorrSig(f *testing.F) {
 		keyName := testutil.GenRandomHexStr(r, 10)
 		keyNameFlag := fmt.Sprintf("--key-name=%s", keyName)
 
-		outputKeysAdd := appRunWithOutput(r, t, app, []string{"eotsd", "keys", "add", hFlag, keyNameFlag})
+		outputKeysAdd := appRunWithOutput(
+			r,
+			t,
+			app,
+			[]string{"eotsd", "keys", "add", hFlag, keyNameFlag},
+		)
 		keyOutJson := searchInTxt(outputKeysAdd, "for recovery):")
 
 		var keyOut dcli.KeyOutput
@@ -54,11 +59,27 @@ func FuzzSignAndVerifySchnorrSig(f *testing.F) {
 
 		btcPkFlag := fmt.Sprintf("--btc-pk=%s", keyOut.PubKeyHex)
 		dataSignedBtcPk := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, btcPkFlag})
-		err = app.Run([]string{"eotsd", "verify-schnorr-sig", fpInfoPath, btcPkFlag, fmt.Sprintf("--signature=%s", dataSignedBtcPk.SchnorrSignatureHex)})
+		err = app.Run(
+			[]string{
+				"eotsd",
+				"verify-schnorr-sig",
+				fpInfoPath,
+				btcPkFlag,
+				fmt.Sprintf("--signature=%s", dataSignedBtcPk.SchnorrSignatureHex),
+			},
+		)
 		require.NoError(t, err)
 
 		dataSignedKeyName := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, keyNameFlag})
-		err = app.Run([]string{"eotsd", "verify-schnorr-sig", fpInfoPath, btcPkFlag, fmt.Sprintf("--signature=%s", dataSignedKeyName.SchnorrSignatureHex)})
+		err = app.Run(
+			[]string{
+				"eotsd",
+				"verify-schnorr-sig",
+				fpInfoPath,
+				btcPkFlag,
+				fmt.Sprintf("--signature=%s", dataSignedKeyName.SchnorrSignatureHex),
+			},
+		)
 		require.NoError(t, err)
 
 		// check if both generated signatures match
@@ -67,20 +88,43 @@ func FuzzSignAndVerifySchnorrSig(f *testing.F) {
 		require.Equal(t, dataSignedBtcPk.SignedDataHashHex, dataSignedKeyName.SignedDataHashHex)
 
 		// sign with both keys and btc-pk, should give btc-pk preference
-		dataSignedBoth := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, btcPkFlag, keyNameFlag})
+		dataSignedBoth := appRunSignSchnorr(
+			r,
+			t,
+			app,
+			[]string{fpInfoPath, hFlag, btcPkFlag, keyNameFlag},
+		)
 		require.Equal(t, dataSignedBoth, dataSignedKeyName)
 
 		// the keyname can even be from a invalid keyname, since it gives btc-pk preference
 		badKeyname := "badKeyName"
-		dataSignedBothBadKeyName := appRunSignSchnorr(r, t, app, []string{fpInfoPath, hFlag, btcPkFlag, fmt.Sprintf("--key-name=%s", badKeyname)})
+		dataSignedBothBadKeyName := appRunSignSchnorr(
+			r,
+			t,
+			app,
+			[]string{fpInfoPath, hFlag, btcPkFlag, fmt.Sprintf("--key-name=%s", badKeyname)},
+		)
 		require.Equal(t, badKeyname, dataSignedBothBadKeyName.KeyName)
 		require.Equal(t, dataSignedBtcPk.PubKeyHex, dataSignedBothBadKeyName.PubKeyHex)
-		require.Equal(t, dataSignedBtcPk.SchnorrSignatureHex, dataSignedBothBadKeyName.SchnorrSignatureHex)
-		require.Equal(t, dataSignedBtcPk.SignedDataHashHex, dataSignedBothBadKeyName.SignedDataHashHex)
+		require.Equal(
+			t,
+			dataSignedBtcPk.SchnorrSignatureHex,
+			dataSignedBothBadKeyName.SchnorrSignatureHex,
+		)
+		require.Equal(
+			t,
+			dataSignedBtcPk.SignedDataHashHex,
+			dataSignedBothBadKeyName.SignedDataHashHex,
+		)
 	})
 }
 
-func appRunSignSchnorr(r *rand.Rand, t *testing.T, app *cli.App, arguments []string) dcli.DataSigned {
+func appRunSignSchnorr(
+	r *rand.Rand,
+	t *testing.T,
+	app *cli.App,
+	arguments []string,
+) dcli.DataSigned {
 	args := []string{"eotsd", "sign-schnorr"}
 	args = append(args, arguments...)
 	outputSign := appRunWithOutput(r, t, app, args)
@@ -93,7 +137,12 @@ func appRunSignSchnorr(r *rand.Rand, t *testing.T, app *cli.App, arguments []str
 	return dataSigned
 }
 
-func appRunWithOutput(r *rand.Rand, t *testing.T, app *cli.App, arguments []string) (output string) {
+func appRunWithOutput(
+	r *rand.Rand,
+	t *testing.T,
+	app *cli.App,
+	arguments []string,
+) (output string) {
 	outPut := filepath.Join(t.TempDir(), fmt.Sprintf("%s-out.txt", testutil.GenRandomHexStr(r, 10)))
 	outPutFile, err := os.Create(outPut)
 	require.NoError(t, err)
@@ -149,7 +198,13 @@ func writeFpInfoToFile(r *rand.Rand, t *testing.T, fpInfoPath, btcPk string) {
 func testApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "eotsd"
-	app.Commands = append(app.Commands, dcli.StartCommand, dcli.InitCommand, dcli.SignSchnorrSig, dcli.VerifySchnorrSig)
+	app.Commands = append(
+		app.Commands,
+		dcli.StartCommand,
+		dcli.InitCommand,
+		dcli.SignSchnorrSig,
+		dcli.VerifySchnorrSig,
+	)
 	app.Commands = append(app.Commands, dcli.KeysCommands...)
 	return app
 }

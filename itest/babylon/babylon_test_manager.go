@@ -113,7 +113,10 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
+func StartManagerWithFinalityProvider(
+	t *testing.T,
+	n int,
+) (*TestManager, []*service.FinalityProviderInstance) {
 	tm := StartManager(t)
 	app := tm.Fpa
 
@@ -123,9 +126,24 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+		_, err := service.CreateChainKey(
+			cfg.BabylonConfig.KeyDirectory,
+			cfg.BabylonConfig.ChainID,
+			fpName,
+			keyring.BackendTest,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			"",
+		)
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, e2eutils.ChainID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(
+			fpName,
+			e2eutils.ChainID,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			desc,
+			&commission,
+		)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -215,7 +233,10 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 }
 
-func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
+func (tm *TestManager) WaitForFpVoteCast(
+	t *testing.T,
+	fpIns *service.FinalityProviderInstance,
+) uint64 {
 	var lastVotedHeight uint64
 	require.Eventually(t, func() bool {
 		if fpIns.GetLastVotedHeight() > 0 {
@@ -265,7 +286,11 @@ func (tm *TestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey
 	t.Logf("the finality-provider instance %s is shutdown", pk.MarshalHex())
 }
 
-func (tm *TestManager) StopAndRestartFpAfterNBlocks(t *testing.T, n uint, fpIns *service.FinalityProviderInstance) {
+func (tm *TestManager) StopAndRestartFpAfterNBlocks(
+	t *testing.T,
+	n uint,
+	fpIns *service.FinalityProviderInstance,
+) {
 	blockBeforeStopHeight, err := tm.BBNConsumerClient.QueryLatestBlockHeight()
 	require.NoError(t, err)
 	err = fpIns.Stop()

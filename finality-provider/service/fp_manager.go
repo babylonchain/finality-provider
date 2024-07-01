@@ -28,7 +28,11 @@ type CriticalError struct {
 }
 
 func (ce *CriticalError) Error() string {
-	return fmt.Sprintf("critical err on finality-provider %s: %s", ce.fpBtcPk.MarshalHex(), ce.err.Error())
+	return fmt.Sprintf(
+		"critical err on finality-provider %s: %s",
+		ce.fpBtcPk.MarshalHex(),
+		ce.err.Error(),
+	)
 }
 
 type FinalityProviderManager struct {
@@ -101,7 +105,10 @@ func (fpm *FinalityProviderManager) monitorCriticalErr() {
 			}
 			// cannot use error.Is because the unwrapped error
 			// is not the expected error type
-			if strings.Contains(criticalErr.err.Error(), btcstakingtypes.ErrFpAlreadySlashed.Error()) {
+			if strings.Contains(
+				criticalErr.err.Error(),
+				btcstakingtypes.ErrFpAlreadySlashed.Error(),
+			) {
 				fpm.setFinalityProviderSlashed(fpi)
 				fpm.logger.Debug("the finality-provider has been slashed",
 					zap.String("pk", criticalErr.fpBtcPk.MarshalHex()))
@@ -205,11 +212,20 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 func (fpm *FinalityProviderManager) setFinalityProviderSlashed(fpi *FinalityProviderInstance) {
 	fpi.MustSetStatus(proto.FinalityProviderStatus_SLASHED)
 	if err := fpm.removeFinalityProviderInstance(fpi.GetBtcPkBIP340()); err != nil {
-		panic(fmt.Errorf("failed to terminate a slashed finality-provider %s: %w", fpi.GetBtcPkHex(), err))
+		panic(
+			fmt.Errorf(
+				"failed to terminate a slashed finality-provider %s: %w",
+				fpi.GetBtcPkHex(),
+				err,
+			),
+		)
 	}
 }
 
-func (fpm *FinalityProviderManager) StartFinalityProvider(fpPk *bbntypes.BIP340PubKey, passphrase string) error {
+func (fpm *FinalityProviderManager) StartFinalityProvider(
+	fpPk *bbntypes.BIP340PubKey,
+	passphrase string,
+) error {
 	if !fpm.isStarted.Load() {
 		fpm.isStarted.Store(true)
 
@@ -221,7 +237,10 @@ func (fpm *FinalityProviderManager) StartFinalityProvider(fpPk *bbntypes.BIP340P
 	}
 
 	if fpm.numOfRunningFinalityProviders() >= int(fpm.config.MaxNumFinalityProviders) {
-		return fmt.Errorf("reaching maximum number of running finality providers %v", fpm.config.MaxNumFinalityProviders)
+		return fmt.Errorf(
+			"reaching maximum number of running finality providers %v",
+			fpm.config.MaxNumFinalityProviders,
+		)
 	}
 
 	if err := fpm.addFinalityProviderInstance(fpPk, passphrase); err != nil {
@@ -248,7 +267,8 @@ func (fpm *FinalityProviderManager) StartAll() error {
 	}
 
 	for _, fp := range storedFps {
-		if fp.Status == proto.FinalityProviderStatus_CREATED || fp.Status == proto.FinalityProviderStatus_SLASHED {
+		if fp.Status == proto.FinalityProviderStatus_CREATED ||
+			fp.Status == proto.FinalityProviderStatus_SLASHED {
 			fpm.logger.Info("the finality provider cannot be started with status",
 				zap.String("btc-pk", fp.GetBIP340BTCPK().MarshalHex()),
 				zap.String("status", fp.Status.String()))
@@ -298,7 +318,9 @@ func (fpm *FinalityProviderManager) ListFinalityProviderInstances() []*FinalityP
 	return fpisList
 }
 
-func (fpm *FinalityProviderManager) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+func (fpm *FinalityProviderManager) ListFinalityProviderInstancesForChain(
+	chainID string,
+) []*FinalityProviderInstance {
 	fpm.mu.Lock()
 	defer fpm.mu.Unlock()
 
@@ -332,7 +354,9 @@ func (fpm *FinalityProviderManager) AllFinalityProviders() ([]*proto.FinalityPro
 	return fpsInfo, nil
 }
 
-func (fpm *FinalityProviderManager) FinalityProviderInfo(fpPk *bbntypes.BIP340PubKey) (*proto.FinalityProviderInfo, error) {
+func (fpm *FinalityProviderManager) FinalityProviderInfo(
+	fpPk *bbntypes.BIP340PubKey,
+) (*proto.FinalityProviderInfo, error) {
 	storedFp, err := fpm.fps.GetFinalityProvider(fpPk.MustToBTCPK())
 	if err != nil {
 		return nil, err
@@ -355,7 +379,9 @@ func (fpm *FinalityProviderManager) IsFinalityProviderRunning(fpPk *bbntypes.BIP
 	return exists
 }
 
-func (fpm *FinalityProviderManager) GetFinalityProviderInstance(fpPk *bbntypes.BIP340PubKey) (*FinalityProviderInstance, error) {
+func (fpm *FinalityProviderManager) GetFinalityProviderInstance(
+	fpPk *bbntypes.BIP340PubKey,
+) (*FinalityProviderInstance, error) {
 	fpm.mu.Lock()
 	defer fpm.mu.Unlock()
 
@@ -368,7 +394,9 @@ func (fpm *FinalityProviderManager) GetFinalityProviderInstance(fpPk *bbntypes.B
 	return v, nil
 }
 
-func (fpm *FinalityProviderManager) removeFinalityProviderInstance(fpPk *bbntypes.BIP340PubKey) error {
+func (fpm *FinalityProviderManager) removeFinalityProviderInstance(
+	fpPk *bbntypes.BIP340PubKey,
+) error {
 	fpm.mu.Lock()
 	defer fpm.mu.Unlock()
 
@@ -408,7 +436,19 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 		return fmt.Errorf("finality-provider instance already exists")
 	}
 
-	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.pubRandStore, fpm.cc, fpm.consumerCon, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
+	fpIns, err := NewFinalityProviderInstance(
+		pk,
+		fpm.config,
+		fpm.fps,
+		fpm.pubRandStore,
+		fpm.cc,
+		fpm.consumerCon,
+		fpm.em,
+		fpm.metrics,
+		passphrase,
+		fpm.criticalErrChan,
+		fpm.logger,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider %s instance: %w", pkHex, err)
 	}

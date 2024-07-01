@@ -83,7 +83,14 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	cfg.CosmwasmConfig.ChainID = bcdChainID
 	cfg.CosmwasmConfig.RPCAddr = fmt.Sprintf("http://localhost:%d", bcdRpcPort)
 	// tempApp := bcdapp.NewTmpApp() // TODO: investigate why wasmapp works and bcdapp doesn't
-	tempApp := wasmapp.NewWasmApp(sdklogs.NewNopLogger(), dbm.NewMemDB(), nil, false, simtestutil.NewAppOptionsWithFlagHome(t.TempDir()), []wasmkeeper.Option{})
+	tempApp := wasmapp.NewWasmApp(
+		sdklogs.NewNopLogger(),
+		dbm.NewMemDB(),
+		nil,
+		false,
+		simtestutil.NewAppOptionsWithFlagHome(t.TempDir()),
+		[]wasmkeeper.Option{},
+	)
 	encodingCfg := wasmparams.EncodingConfig{
 		InterfaceRegistry: tempApp.InterfaceRegistry(),
 		Codec:             tempApp.AppCodec(),
@@ -163,7 +170,11 @@ func (ctm *BcdTestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consumerId string, n int) []*service.FinalityProviderInstance {
+func (ctm *BcdTestManager) CreateConsumerFinalityProviders(
+	t *testing.T,
+	consumerId string,
+	n int,
+) []*service.FinalityProviderInstance {
 	app := ctm.Fpa
 	cfg := app.GetConfig()
 
@@ -174,9 +185,24 @@ func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consume
 		moniker := e2eutils.MonikerPrefix + consumerId + "-" + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, consumerId, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+		_, err := service.CreateChainKey(
+			cfg.BabylonConfig.KeyDirectory,
+			consumerId,
+			fpName,
+			keyring.BackendTest,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			"",
+		)
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, consumerId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(
+			fpName,
+			consumerId,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			desc,
+			&commission,
+		)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)

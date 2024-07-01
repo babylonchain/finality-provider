@@ -42,7 +42,10 @@ func (c *Client) accessKeyWithLock(accessFunc func()) error {
 
 	// unlock and release access
 	if err := lock.Unlock(); err != nil {
-		return fmt.Errorf("error unlocking file system lock (%s), please manually delete", lockFilePath)
+		return fmt.Errorf(
+			"error unlocking file system lock (%s), please manually delete",
+			lockFilePath,
+		)
 	}
 
 	return nil

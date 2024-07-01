@@ -28,7 +28,10 @@ func NewClientController(config *fpcfg.Config, logger *zap.Logger) (api.ClientCo
 	return cc, err
 }
 
-func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (api.ConsumerController, error) {
+func NewConsumerController(
+	config *fpcfg.Config,
+	logger *zap.Logger,
+) (api.ConsumerController, error) {
 	var (
 		ccc api.ConsumerController
 		err error
@@ -36,7 +39,11 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (api.Consum
 
 	switch config.ChainName {
 	case BabylonConsumerChainName:
-		ccc, err = babylon.NewBabylonConsumerController(config.BabylonConfig, &config.BTCNetParams, logger)
+		ccc, err = babylon.NewBabylonConsumerController(
+			config.BabylonConfig,
+			&config.BTCNetParams,
+			logger,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Babylon rpc client: %w", err)
 		}
@@ -47,7 +54,11 @@ func NewConsumerController(config *fpcfg.Config, logger *zap.Logger) (api.Consum
 		}
 	case WasmConsumerChainName:
 		wasmEncodingCfg := cosmwasmcfg.GetWasmdEncodingConfig()
-		ccc, err = cosmwasm.NewCosmwasmConsumerController(config.CosmwasmConfig, wasmEncodingCfg, logger)
+		ccc, err = cosmwasm.NewCosmwasmConsumerController(
+			config.CosmwasmConfig,
+			wasmEncodingCfg,
+			logger,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Wasm rpc client: %w", err)
 		}

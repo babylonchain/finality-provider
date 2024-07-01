@@ -54,14 +54,24 @@ func (c *Client) SendMsgsToMempool(ctx context.Context, msgs []sdk.Msg) error {
 // ReliablySendMsg reliable sends a message to the chain.
 // It utilizes a file lock as well as a keyring lock to ensure atomic access.
 // TODO: needs tests
-func (c *Client) ReliablySendMsg(ctx context.Context, msg sdk.Msg, expectedErrors []*errors.Error, unrecoverableErrors []*errors.Error) (*pv.RelayerTxResponse, error) {
+func (c *Client) ReliablySendMsg(
+	ctx context.Context,
+	msg sdk.Msg,
+	expectedErrors []*errors.Error,
+	unrecoverableErrors []*errors.Error,
+) (*pv.RelayerTxResponse, error) {
 	return c.ReliablySendMsgs(ctx, []sdk.Msg{msg}, expectedErrors, unrecoverableErrors)
 }
 
 // ReliablySendMsgs reliably sends a list of messages to the chain.
 // It utilizes a file lock as well as a keyring lock to ensure atomic access.
 // TODO: needs tests
-func (c *Client) ReliablySendMsgs(ctx context.Context, msgs []sdk.Msg, expectedErrors []*errors.Error, unrecoverableErrors []*errors.Error) (*pv.RelayerTxResponse, error) {
+func (c *Client) ReliablySendMsgs(
+	ctx context.Context,
+	msgs []sdk.Msg,
+	expectedErrors []*errors.Error,
+	unrecoverableErrors []*errors.Error,
+) (*pv.RelayerTxResponse, error) {
 	var (
 		rlyResp     *pv.RelayerTxResponse
 		callbackErr error

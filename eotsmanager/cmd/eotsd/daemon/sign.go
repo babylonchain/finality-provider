@@ -134,7 +134,11 @@ func SignSchnorr(ctx *cli.Context) error {
 	}
 
 	if len(fpPkStr) == 0 && len(keyName) == 0 {
-		return fmt.Errorf("at least one of the flags: %s, %s needs to be informed", keyNameFlag, fpPkFlag)
+		return fmt.Errorf(
+			"at least one of the flags: %s, %s needs to be informed",
+			keyNameFlag,
+			fpPkFlag,
+		)
 	}
 
 	homePath, err := getHomeFlag(ctx)

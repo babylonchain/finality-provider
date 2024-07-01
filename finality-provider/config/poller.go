@@ -9,10 +9,10 @@ var (
 )
 
 type ChainPollerConfig struct {
-	BufferSize                     uint32        `long:"buffersize" description:"The maximum number of Babylon blocks that can be stored in the buffer"`
-	PollInterval                   time.Duration `long:"pollinterval" description:"The interval between each polling of Babylon blocks"`
+	BufferSize                     uint32        `long:"buffersize"                     description:"The maximum number of Babylon blocks that can be stored in the buffer"`
+	PollInterval                   time.Duration `long:"pollinterval"                   description:"The interval between each polling of Babylon blocks"`
 	StaticChainScanningStartHeight uint64        `long:"staticchainscanningstartheight" description:"The static height from which we start polling the chain"`
-	AutoChainScanningMode          bool          `long:"autochainscanningmode" description:"Automatically discover the height from which to start polling the chain"`
+	AutoChainScanningMode          bool          `long:"autochainscanningmode"          description:"Automatically discover the height from which to start polling the chain"`
 }
 
 func DefaultChainPollerConfig() ChainPollerConfig {

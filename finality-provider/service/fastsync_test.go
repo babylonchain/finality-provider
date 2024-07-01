@@ -24,20 +24,39 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
-		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockConsumerController := testutil.PrepareMockedConsumerController(
+			t,
+			r,
+			randomStartingHeight,
+			currentHeight,
+		)
 		mockBabylonController := testutil.PrepareMockedBabylonController(t)
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockBabylonController, mockConsumerController, randomStartingHeight)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(
+			t,
+			r,
+			mockBabylonController,
+			mockConsumerController,
+			randomStartingHeight,
+		)
 		defer cleanUp()
 
 		// commit pub rand
-		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).Times(1)
-		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+		mockConsumerController.EXPECT().
+			QueryLastPublicRandCommit(gomock.Any()).
+			Return(nil, nil).
+			Times(1)
+		mockConsumerController.EXPECT().
+			CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil, nil).
+			Times(1)
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
 
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
+			Return(uint64(1), nil).
+			AnyTimes()
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
 		lastCommittedHeight := randomStartingHeight + testutil.TestPubRandNum
@@ -46,16 +65,27 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 			NumPubRand:  1000,
 			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryLastPublicRandCommit(gomock.Any()).
+			Return(lastCommittedPubRand, nil).
+			AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(finalizedBlock, nil).AnyTimes()
+		finalizedBlock := &types.BlockInfo{
+			Height: finalizedHeight,
+			Hash:   testutil.GenRandomByteArray(r, 32),
+		}
+		mockConsumerController.EXPECT().
+			QueryLatestFinalizedBlock().
+			Return(finalizedBlock, nil).
+			AnyTimes()
 		mockConsumerController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockConsumerController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks, gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks, gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).
+			AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -77,37 +107,69 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 100)
 		finalizedHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		currentHeight := finalizedHeight + uint64(r.Int63n(10)+1)
-		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockConsumerController := testutil.PrepareMockedConsumerController(
+			t,
+			r,
+			randomStartingHeight,
+			currentHeight,
+		)
 		mockBabylonController := testutil.PrepareMockedBabylonController(t)
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
-		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockBabylonController, mockConsumerController, randomStartingHeight)
+		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(
+			t,
+			r,
+			mockBabylonController,
+			mockConsumerController,
+			randomStartingHeight,
+		)
 		defer cleanUp()
 
 		// commit pub rand
-		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).Times(1)
-		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+		mockConsumerController.EXPECT().
+			QueryLastPublicRandCommit(gomock.Any()).
+			Return(nil, nil).
+			Times(1)
+		mockConsumerController.EXPECT().
+			CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil, nil).
+			Times(1)
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
 
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
+			Return(uint64(1), nil).
+			AnyTimes()
 		// the last height with pub rand is a random value inside [finalizedHeight+1, currentHeight]
-		lastHeightWithPubRand := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
+		lastHeightWithPubRand := uint64(
+			rand.Intn(int(currentHeight)-int(finalizedHeight)),
+		) + finalizedHeight + 1
 		lastCommittedPubRand := &types.PubRandCommit{
 			StartHeight: lastHeightWithPubRand - 10,
 			NumPubRand:  10 + 1,
 			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			QueryLastPublicRandCommit(gomock.Any()).
+			Return(lastCommittedPubRand, nil).
+			AnyTimes()
 
 		catchUpBlocks := testutil.GenBlocks(r, finalizedHeight+1, currentHeight)
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
-		finalizedBlock := &types.BlockInfo{Height: finalizedHeight, Hash: testutil.GenRandomByteArray(r, 32)}
-		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(finalizedBlock, nil).AnyTimes()
+		finalizedBlock := &types.BlockInfo{
+			Height: finalizedHeight,
+			Hash:   testutil.GenRandomByteArray(r, 32),
+		}
+		mockConsumerController.EXPECT().
+			QueryLatestFinalizedBlock().
+			Return(finalizedBlock, nil).
+			AnyTimes()
 		mockConsumerController.EXPECT().QueryBlocks(finalizedHeight+1, currentHeight, uint64(10)).
 			Return(catchUpBlocks, nil)
-		mockConsumerController.EXPECT().SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks[:lastHeightWithPubRand-finalizedHeight], gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
+		mockConsumerController.EXPECT().
+			SubmitBatchFinalitySigs(fpIns.GetBtcPk(), catchUpBlocks[:lastHeightWithPubRand-finalizedHeight], gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).
+			AnyTimes()
 		result, err := fpIns.FastSync(finalizedHeight+1, currentHeight)
 		require.NoError(t, err)
 		require.NotNil(t, result)

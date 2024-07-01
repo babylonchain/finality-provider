@@ -17,7 +17,9 @@ type FastSyncResult struct {
 // FastSync attempts to send a batch of finality signatures
 // from the maximum of the last voted height and the last finalized height
 // to the current height
-func (fp *FinalityProviderInstance) FastSync(startHeight, endHeight uint64) (*FastSyncResult, error) {
+func (fp *FinalityProviderInstance) FastSync(
+	startHeight, endHeight uint64,
+) (*FastSyncResult, error) {
 	if fp.inSync.Swap(true) {
 		return nil, fmt.Errorf("the finality-provider has already been in fast sync")
 	}

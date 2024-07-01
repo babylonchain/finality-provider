@@ -43,7 +43,10 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	return executeMessage
 }
 
-func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
+func GenPubRandomnessExecMsg(
+	fpHex, commitment, sig string,
+	startHeight, numPubRand uint64,
+) cosmwasm.ExecMsg {
 	// create the ExecMsg instance with CommitPublicRandomness set
 	executeMessage := cosmwasm.ExecMsg{
 		CommitPublicRandomness: &cosmwasm.CommitPublicRandomness{
@@ -58,7 +61,11 @@ func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubR
 	return executeMessage
 }
 
-func GenFinalitySigExecMsg(startHeight, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) cosmwasm.ExecMsg {
+func GenFinalitySigExecMsg(
+	startHeight, blockHeight uint64,
+	randListInfo *datagen.RandListInfo,
+	sk *btcec.PrivateKey,
+) cosmwasm.ExecMsg {
 	fmsg := genAddFinalitySig(startHeight, blockHeight, randListInfo, sk)
 	msg := cosmwasm.ExecMsg{
 		SubmitFinalitySignature: &cosmwasm.SubmitFinalitySignature{
@@ -157,7 +164,9 @@ func genRandomBtcDelegation() (*bstypes.Params, cosmwasm.ActiveBtcDelegation) {
 	return bsParams, activeDel
 }
 
-func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) cosmwasm.ActiveBtcDelegation {
+func convertBTCDelegationToActiveBtcDelegation(
+	mockDel *bstypes.BTCDelegation,
+) cosmwasm.ActiveBtcDelegation {
 	var fpBtcPkList []string
 	for _, pk := range mockDel.FpBtcPkList {
 		fpBtcPkList = append(fpBtcPkList, pk.MarshalHex())
@@ -196,9 +205,15 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 	}
 
 	undelegationInfo := cosmwasm.BtcUndelegationInfo{
-		UnbondingTx:           base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.UnbondingTx),
-		SlashingTx:            base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.SlashingTx.MustMarshal()),
-		DelegatorSlashingSig:  base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal()),
+		UnbondingTx: base64.StdEncoding.EncodeToString(
+			mockDel.BtcUndelegation.UnbondingTx,
+		),
+		SlashingTx: base64.StdEncoding.EncodeToString(
+			mockDel.BtcUndelegation.SlashingTx.MustMarshal(),
+		),
+		DelegatorSlashingSig: base64.StdEncoding.EncodeToString(
+			mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal(),
+		),
 		CovenantUnbondingSigs: covenantUnbondingSigs,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 	}
@@ -220,7 +235,12 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 	}
 }
 
-func GenCommitPubRandListMsg(r *rand.Rand, fpSk *btcec.PrivateKey, startHeight uint64, numPubRand uint64) (*datagen.RandListInfo, *ftypes.MsgCommitPubRandList, error) {
+func GenCommitPubRandListMsg(
+	r *rand.Rand,
+	fpSk *btcec.PrivateKey,
+	startHeight uint64,
+	numPubRand uint64,
+) (*datagen.RandListInfo, *ftypes.MsgCommitPubRandList, error) {
 	randListInfo, err := genRandomPubRandList(r, numPubRand)
 	if err != nil {
 		return nil, nil, err
@@ -267,10 +287,20 @@ func genRandomPubRandList(r *rand.Rand, numPubRand uint64) (*datagen.RandListInf
 	// generate the commitment to these public randomness
 	commitment, proofList := merkle.ProofsFromByteSlices(prByteList)
 
-	return &datagen.RandListInfo{SRList: srList, PRList: prList, Commitment: commitment, ProofList: proofList}, nil
+	return &datagen.RandListInfo{
+		SRList:     srList,
+		PRList:     prList,
+		Commitment: commitment,
+		ProofList:  proofList,
+	}, nil
 }
 
-func genAddFinalitySig(startHeight uint64, blockHeight uint64, randListInfo *datagen.RandListInfo, sk *btcec.PrivateKey) *ftypes.MsgAddFinalitySig {
+func genAddFinalitySig(
+	startHeight uint64,
+	blockHeight uint64,
+	randListInfo *datagen.RandListInfo,
+	sk *btcec.PrivateKey,
+) *ftypes.MsgAddFinalitySig {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	blockHash := datagen.GenRandomByteArray(r, 32)
 

@@ -17,8 +17,8 @@ import (
 )
 
 type KeyOutput struct {
-	Name     string `json:"name" yaml:"name"`
-	Address  string `json:"address" yaml:"address"`
+	Name     string `json:"name"               yaml:"name"`
+	Address  string `json:"address"            yaml:"address"`
 	Mnemonic string `json:"mnemonic,omitempty" yaml:"mnemonic"`
 }
 
@@ -131,7 +131,8 @@ func addKey(ctx *cli.Context) error {
 	cfg.BabylonConfig.KeyringBackend = keyBackend
 	fileParser := flags.NewParser(cfg, flags.Default)
 
-	return flags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
+	return flags.NewIniParser(fileParser).
+		WriteFile(fpcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }
 
 func printRespJSON(resp interface{}) {

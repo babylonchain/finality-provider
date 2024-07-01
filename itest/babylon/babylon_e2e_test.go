@@ -31,7 +31,12 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpIns, 1)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	_ = tm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{fpIns.GetBtcPk()},
+		e2eutils.StakingTime,
+		e2eutils.StakingAmount,
+	)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
@@ -63,7 +68,12 @@ func TestDoubleSigning(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpIns, 1)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	_ = tm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{fpIns.GetBtcPk()},
+		e2eutils.StakingTime,
+		e2eutils.StakingAmount,
+	)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
@@ -94,7 +104,10 @@ func TestDoubleSigning(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, extractedKey)
 	localKey := tm.GetFpPrivKey(t, fpIns.GetBtcPkBIP340().MustMarshal())
-	require.True(t, localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key))
+	require.True(
+		t,
+		localKey.Key.Equals(&extractedKey.Key) || localKey.Key.Negate().Equals(&extractedKey.Key),
+	)
 
 	t.Logf("the equivocation attack is successful")
 
@@ -121,7 +134,12 @@ func TestMultipleFinalityProviders(t *testing.T) {
 		// check the public randomness is committed
 		e2eutils.WaitForFpPubRandCommitted(t, fpi, 1)
 		// send a BTC delegation
-		_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+		_ = tm.InsertBTCDelegation(
+			t,
+			[]*btcec.PublicKey{fpi.GetBtcPk()},
+			e2eutils.StakingTime,
+			e2eutils.StakingAmount,
+		)
 	}
 
 	// check the BTC delegations are pending
@@ -154,7 +172,12 @@ func TestFastSync(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpIns, 1)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	_ = tm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{fpIns.GetBtcPk()},
+		e2eutils.StakingTime,
+		e2eutils.StakingAmount,
+	)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)

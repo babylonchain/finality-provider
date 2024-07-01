@@ -34,13 +34,31 @@ type ClientController interface {
 type ConsumerController interface {
 	// CommitPubRandList commits a list of EOTS public randomness the consumer chain
 	// it returns tx hash and error
-	CommitPubRandList(fpPk *btcec.PublicKey, startHeight uint64, numPubRand uint64, commitment []byte, sig *schnorr.Signature) (*types.TxResponse, error)
+	CommitPubRandList(
+		fpPk *btcec.PublicKey,
+		startHeight uint64,
+		numPubRand uint64,
+		commitment []byte,
+		sig *schnorr.Signature,
+	) (*types.TxResponse, error)
 
 	// SubmitFinalitySig submits the finality signature to the consumer chain
-	SubmitFinalitySig(fpPk *btcec.PublicKey, block *types.BlockInfo, pubRand *btcec.FieldVal, proof []byte, sig *btcec.ModNScalar) (*types.TxResponse, error)
+	SubmitFinalitySig(
+		fpPk *btcec.PublicKey,
+		block *types.BlockInfo,
+		pubRand *btcec.FieldVal,
+		proof []byte,
+		sig *btcec.ModNScalar,
+	) (*types.TxResponse, error)
 
 	// SubmitBatchFinalitySigs submits a batch of finality signatures to the consumer chain
-	SubmitBatchFinalitySigs(fpPk *btcec.PublicKey, blocks []*types.BlockInfo, pubRandList []*btcec.FieldVal, proofList [][]byte, sigs []*btcec.ModNScalar) (*types.TxResponse, error)
+	SubmitBatchFinalitySigs(
+		fpPk *btcec.PublicKey,
+		blocks []*types.BlockInfo,
+		pubRandList []*btcec.FieldVal,
+		proofList [][]byte,
+		sigs []*btcec.ModNScalar,
+	) (*types.TxResponse, error)
 
 	// Note: the following queries are only for PoC
 

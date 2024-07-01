@@ -277,11 +277,17 @@ func (fm *FpMetrics) UpdateFpMetrics(fps []*store.StoredFinalityProvider) {
 		fm.RecordFpStatus(fp.GetBIP340BTCPK().MarshalHex(), fp.Status)
 
 		if lastVoteTime, ok := fm.previousVoteByFp[fp.GetBIP340BTCPK().MarshalHex()]; ok {
-			fm.RecordFpSecondsSinceLastVote(fp.GetBIP340BTCPK().MarshalHex(), time.Since(*lastVoteTime).Seconds())
+			fm.RecordFpSecondsSinceLastVote(
+				fp.GetBIP340BTCPK().MarshalHex(),
+				time.Since(*lastVoteTime).Seconds(),
+			)
 		}
 
 		if lastRandomnessTime, ok := fm.previousRandomnessByFp[fp.GetBIP340BTCPK().MarshalHex()]; ok {
-			fm.RecordFpSecondsSinceLastRandomness(fp.GetBIP340BTCPK().MarshalHex(), time.Since(*lastRandomnessTime).Seconds())
+			fm.RecordFpSecondsSinceLastRandomness(
+				fp.GetBIP340BTCPK().MarshalHex(),
+				time.Since(*lastRandomnessTime).Seconds(),
+			)
 		}
 	}
 }

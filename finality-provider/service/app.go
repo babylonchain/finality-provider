@@ -66,7 +66,11 @@ func NewFinalityProviderAppFromConfig(
 	}
 	consumerCon, err := fpcc.NewConsumerController(cfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
+		return nil, fmt.Errorf(
+			"failed to create rpc client for the consumer chain %s: %v",
+			cfg.ChainName,
+			err,
+		)
 	}
 	// if the EOTSManagerAddress is empty, run a local EOTS manager;
 	// otherwise connect a remote one with a gRPC client
@@ -75,7 +79,10 @@ func NewFinalityProviderAppFromConfig(
 		return nil, fmt.Errorf("failed to create EOTS manager client: %w", err)
 	}
 
-	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", cfg.EOTSManagerAddress))
+	logger.Info(
+		"successfully connected to a remote EOTS manager",
+		zap.String("address", cfg.EOTSManagerAddress),
+	)
 
 	return NewFinalityProviderApp(cfg, cc, consumerCon, em, db, logger)
 }
@@ -110,7 +117,16 @@ func NewFinalityProviderApp(
 
 	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, pubRandStore, config, cc, consumerCon, em, fpMetrics, logger)
+	fpm, err := NewFinalityProviderManager(
+		fpStore,
+		pubRandStore,
+		config,
+		cc,
+		consumerCon,
+		em,
+		fpMetrics,
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
@@ -158,7 +174,9 @@ func (app *FinalityProviderApp) ListFinalityProviderInstances() []*FinalityProvi
 	return app.fpManager.ListFinalityProviderInstances()
 }
 
-func (app *FinalityProviderApp) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+func (app *FinalityProviderApp) ListFinalityProviderInstancesForChain(
+	chainID string,
+) []*FinalityProviderInstance {
 	return app.fpManager.ListFinalityProviderInstancesForChain(chainID)
 }
 
@@ -166,16 +184,22 @@ func (app *FinalityProviderApp) ListAllFinalityProvidersInfo() ([]*proto.Finalit
 	return app.fpManager.AllFinalityProviders()
 }
 
-func (app *FinalityProviderApp) GetFinalityProviderInfo(fpPk *bbntypes.BIP340PubKey) (*proto.FinalityProviderInfo, error) {
+func (app *FinalityProviderApp) GetFinalityProviderInfo(
+	fpPk *bbntypes.BIP340PubKey,
+) (*proto.FinalityProviderInfo, error) {
 	return app.fpManager.FinalityProviderInfo(fpPk)
 }
 
 // GetFinalityProviderInstance returns the finality-provider instance with the given Babylon public key
-func (app *FinalityProviderApp) GetFinalityProviderInstance(fpPk *bbntypes.BIP340PubKey) (*FinalityProviderInstance, error) {
+func (app *FinalityProviderApp) GetFinalityProviderInstance(
+	fpPk *bbntypes.BIP340PubKey,
+) (*FinalityProviderInstance, error) {
 	return app.fpManager.GetFinalityProviderInstance(fpPk)
 }
 
-func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*RegisterFinalityProviderResponse, error) {
+func (app *FinalityProviderApp) RegisterFinalityProvider(
+	fpPkStr string,
+) (*RegisterFinalityProviderResponse, error) {
 	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(fpPkStr)
 	if err != nil {
 		return nil, err
@@ -226,7 +250,10 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 
 // StartHandlingFinalityProvider starts a finality-provider instance with the given Babylon public key
 // Note: this should be called right after the finality-provider is registered
-func (app *FinalityProviderApp) StartHandlingFinalityProvider(fpPk *bbntypes.BIP340PubKey, passphrase string) error {
+func (app *FinalityProviderApp) StartHandlingFinalityProvider(
+	fpPk *bbntypes.BIP340PubKey,
+	passphrase string,
+) error {
 	return app.fpManager.StartFinalityProvider(fpPk, passphrase)
 }
 
@@ -365,7 +392,9 @@ func (app *FinalityProviderApp) CreateFinalityProvider(
 	}
 }
 
-func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createFinalityProviderRequest) (*createFinalityProviderResponse, error) {
+func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(
+	req *createFinalityProviderRequest,
+) (*createFinalityProviderResponse, error) {
 	// 1. check if the chain key exists
 	kr, err := fpkr.NewChainKeyringControllerWithKeyring(app.kr, req.keyName, app.input)
 	if err != nil {
@@ -399,7 +428,10 @@ func (app *FinalityProviderApp) handleCreateFinalityProviderRequest(req *createF
 	// 3. create proof-of-possession
 	pop, err := kr.CreatePop(fpRecord.PrivKey, req.passPhrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create proof-of-possession of the finality-provider: %w", err)
+		return nil, fmt.Errorf(
+			"failed to create proof-of-possession of the finality-provider: %w",
+			err,
+		)
 	}
 
 	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), req.description, req.commission, req.keyName, req.chainID, pop.BabylonSig, pop.BtcSig); err != nil {
@@ -487,7 +519,10 @@ func (app *FinalityProviderApp) StoreFinalityProvider(
 	// 3. create proof-of-possession
 	pop, err := kr.CreatePop(fpRecord.PrivKey, passPhrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create proof-of-possession of the finality provider: %w", err)
+		return nil, fmt.Errorf(
+			"failed to create proof-of-possession of the finality provider: %w",
+			err,
+		)
 	}
 
 	if err := app.fps.CreateFinalityProvider(chainPk, fpPk.MustToBTCPK(), description, commission, keyName, chainID, pop.BabylonSig, pop.BtcSig); err != nil {
@@ -509,7 +544,9 @@ func (app *FinalityProviderApp) StoreFinalityProvider(
 	return storedFp, nil
 }
 
-func CreateChainKey(keyringDir, chainID, keyName, backend, passphrase, hdPath, mnemonic string) (*types.ChainKeyInfo, error) {
+func CreateChainKey(
+	keyringDir, chainID, keyName, backend, passphrase, hdPath, mnemonic string,
+) (*types.ChainKeyInfo, error) {
 	sdkCtx, err := fpkr.CreateClientCtx(
 		keyringDir, chainID,
 	)
@@ -546,14 +583,20 @@ func (app *FinalityProviderApp) eventLoop() {
 
 		case ev := <-app.finalityProviderRegisteredEventChan:
 			// change the status of the finality-provider to registered
-			err := app.fps.SetFpStatus(ev.btcPubKey.MustToBTCPK(), proto.FinalityProviderStatus_REGISTERED)
+			err := app.fps.SetFpStatus(
+				ev.btcPubKey.MustToBTCPK(),
+				proto.FinalityProviderStatus_REGISTERED,
+			)
 			if err != nil {
 				app.logger.Fatal("failed to set finality-provider status to REGISTERED",
 					zap.String("pk", ev.btcPubKey.MarshalHex()),
 					zap.Error(err),
 				)
 			}
-			app.fpManager.metrics.RecordFpStatus(ev.btcPubKey.MarshalHex(), proto.FinalityProviderStatus_REGISTERED)
+			app.fpManager.metrics.RecordFpStatus(
+				ev.btcPubKey.MarshalHex(),
+				proto.FinalityProviderStatus_REGISTERED,
+			)
 
 			// return to the caller
 			ev.successResponse <- &RegisterFinalityProviderResponse{

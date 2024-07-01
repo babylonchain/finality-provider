@@ -17,8 +17,13 @@ type FinalityProviderServiceGRpcClient struct {
 	client proto.FinalityProvidersClient
 }
 
-func NewFinalityProviderServiceGRpcClient(remoteAddr string) (*FinalityProviderServiceGRpcClient, func(), error) {
-	conn, err := grpc.NewClient(remoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewFinalityProviderServiceGRpcClient(
+	remoteAddr string,
+) (*FinalityProviderServiceGRpcClient, func(), error) {
+	conn, err := grpc.NewClient(
+		remoteAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build gRPC connection to %s: %w", remoteAddr, err)
 	}
@@ -32,7 +37,9 @@ func NewFinalityProviderServiceGRpcClient(remoteAddr string) (*FinalityProviderS
 	}, cleanUp, nil
 }
 
-func (c *FinalityProviderServiceGRpcClient) GetInfo(ctx context.Context) (*proto.GetInfoResponse, error) {
+func (c *FinalityProviderServiceGRpcClient) GetInfo(
+	ctx context.Context,
+) (*proto.GetInfoResponse, error) {
 	req := &proto.GetInfoRequest{}
 	res, err := c.client.GetInfo(ctx, req)
 	if err != nil {
@@ -86,7 +93,12 @@ func (c *FinalityProviderServiceGRpcClient) CreateFinalityProvider(
 	return res, nil
 }
 
-func (c *FinalityProviderServiceGRpcClient) AddFinalitySignature(ctx context.Context, fpPk string, height uint64, appHash []byte) (*proto.AddFinalitySignatureResponse, error) {
+func (c *FinalityProviderServiceGRpcClient) AddFinalitySignature(
+	ctx context.Context,
+	fpPk string,
+	height uint64,
+	appHash []byte,
+) (*proto.AddFinalitySignatureResponse, error) {
 	req := &proto.AddFinalitySignatureRequest{
 		BtcPk:   fpPk,
 		Height:  height,
@@ -101,7 +113,9 @@ func (c *FinalityProviderServiceGRpcClient) AddFinalitySignature(ctx context.Con
 	return res, nil
 }
 
-func (c *FinalityProviderServiceGRpcClient) QueryFinalityProviderList(ctx context.Context) (*proto.QueryFinalityProviderListResponse, error) {
+func (c *FinalityProviderServiceGRpcClient) QueryFinalityProviderList(
+	ctx context.Context,
+) (*proto.QueryFinalityProviderListResponse, error) {
 	req := &proto.QueryFinalityProviderListRequest{}
 	res, err := c.client.QueryFinalityProviderList(ctx, req)
 	if err != nil {
@@ -111,7 +125,10 @@ func (c *FinalityProviderServiceGRpcClient) QueryFinalityProviderList(ctx contex
 	return res, nil
 }
 
-func (c *FinalityProviderServiceGRpcClient) QueryFinalityProviderInfo(ctx context.Context, fpPk *bbntypes.BIP340PubKey) (*proto.QueryFinalityProviderResponse, error) {
+func (c *FinalityProviderServiceGRpcClient) QueryFinalityProviderInfo(
+	ctx context.Context,
+	fpPk *bbntypes.BIP340PubKey,
+) (*proto.QueryFinalityProviderResponse, error) {
 	req := &proto.QueryFinalityProviderRequest{BtcPk: fpPk.MarshalHex()}
 	res, err := c.client.QueryFinalityProvider(ctx, req)
 	if err != nil {

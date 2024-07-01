@@ -11,7 +11,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func (fp *FinalityProviderInstance) GetPubRandList(startHeight uint64, numPubRand uint64) ([]*btcec.FieldVal, error) {
+func (fp *FinalityProviderInstance) GetPubRandList(
+	startHeight uint64,
+	numPubRand uint64,
+) ([]*btcec.FieldVal, error) {
 	pubRandList, err := fp.em.CreateRandomnessPairList(
 		fp.btcPk.MustMarshal(),
 		fp.GetChainID(),
@@ -27,7 +30,11 @@ func (fp *FinalityProviderInstance) GetPubRandList(startHeight uint64, numPubRan
 }
 
 // TODO: have this function in Babylon side
-func getHashToSignForCommitPubRand(startHeight uint64, numPubRand uint64, commitment []byte) ([]byte, error) {
+func getHashToSignForCommitPubRand(
+	startHeight uint64,
+	numPubRand uint64,
+	commitment []byte,
+) ([]byte, error) {
 	hasher := tmhash.New()
 	if _, err := hasher.Write(sdk.Uint64ToBigEndian(startHeight)); err != nil {
 		return nil, err
@@ -41,7 +48,11 @@ func getHashToSignForCommitPubRand(startHeight uint64, numPubRand uint64, commit
 	return hasher.Sum(nil), nil
 }
 
-func (fp *FinalityProviderInstance) SignPubRandCommit(startHeight uint64, numPubRand uint64, commitment []byte) (*schnorr.Signature, error) {
+func (fp *FinalityProviderInstance) SignPubRandCommit(
+	startHeight uint64,
+	numPubRand uint64,
+	commitment []byte,
+) (*schnorr.Signature, error) {
 	hash, err := getHashToSignForCommitPubRand(startHeight, numPubRand, commitment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the commit public randomness message: %w", err)
@@ -56,10 +67,18 @@ func getMsgToSignForVote(blockHeight uint64, blockHash []byte) []byte {
 	return append(sdk.Uint64ToBigEndian(blockHeight), blockHash...)
 }
 
-func (fp *FinalityProviderInstance) SignFinalitySig(b *types.BlockInfo) (*bbntypes.SchnorrEOTSSig, error) {
+func (fp *FinalityProviderInstance) SignFinalitySig(
+	b *types.BlockInfo,
+) (*bbntypes.SchnorrEOTSSig, error) {
 	// build proper finality signature request
 	msgToSign := getMsgToSignForVote(b.Height, b.Hash)
-	sig, err := fp.em.SignEOTS(fp.btcPk.MustMarshal(), fp.GetChainID(), msgToSign, b.Height, fp.passphrase)
+	sig, err := fp.em.SignEOTS(
+		fp.btcPk.MustMarshal(),
+		fp.GetChainID(),
+		msgToSign,
+		b.Height,
+		fp.passphrase,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign EOTS: %w", err)
 	}
