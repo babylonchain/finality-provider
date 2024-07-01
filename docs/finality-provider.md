@@ -54,7 +54,7 @@ Below are some important parameters of the `fpd.conf` file.
 The configuration below requires pointing to the path where this keyring is
 stored `KeyDirectory`. This `Key` field stores the key name of the finality
 provider wallet that is going to be used for interacting with the consumer
-chain and to sign the messages of your finality provider, it will be specified
+chain and to sign the messages of your finality provider. It will be specified
 along with the `KeyringBackend` field in the next
 [step](#3-add-key-for-the-consumer-chain). So we can ignore the setting of the
 two fields in this step.
