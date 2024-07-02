@@ -275,10 +275,10 @@ func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *s
 func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
 	fpStartHeightList := make([]*uint64, 2)
-	require.Eventually(t, func() bool {
-		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryFirstPublicRandCommit(fpList[0].GetBtcPk())
-		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryFirstPublicRandCommit(fpList[1].GetBtcPk())
+	firstFpCommittedPubRand, _ := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[0].GetBtcPk())
+	secondFpCommittedPubRand, _ := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[1].GetBtcPk())
 
+	require.Eventually(t, func() bool {
 		if fpStartHeightList[0] == nil {
 			fpStartHeightList[0] = new(uint64)
 			*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
@@ -413,6 +413,43 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 	require.Equal(t, n, len(resFpList))
 
 	return resFpList
+}
+
+func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+	queryMsg := &opstackl2.QueryMsg{
+		FirstPubRandCommit: &opstackl2.FirstPubRandCommit{
+			BtcPkHex: fpPubKey.MarshalHex(),
+		},
+	}
+
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+
+	stateResp, err := opcc.CwClient.QuerySmartContractState(opcc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
+	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
+	}
+
+	var resp *types.PubRandCommit
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
