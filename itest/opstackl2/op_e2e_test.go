@@ -209,8 +209,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// ======  another test case only for the last FP instance sign ======
 	// select a suitable height as the next block height:
 	// * the last FP instance had committed the pub rand (e.g. < LastPublicRandCommitHeight)
-	// * not wait too long for the test to finish (e.g. 32, NumPubRand is 64)
-	testNextBlockHeight := *fpStartHeightList[1] + 32
+	// * not wait too long to avoid timeout in `WaitForFpVoteAtHeight`
+	testNextBlockHeight := *fpStartHeightList[1] + 2
 	t.Logf("Test next block height %d", testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
