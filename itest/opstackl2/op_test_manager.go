@@ -424,15 +424,6 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 	return resFpList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {
-	require.Eventually(t, func() bool {
-		_, err := ctm.FpApp.GetFinalityProviderInstance(pk)
-		return err != nil
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("The finality-provider instance %s is shutdown", pk.MarshalHex())
-}
-
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
