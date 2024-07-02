@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -34,16 +35,16 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
+	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_1947cc6.wasm"
-	opConsumerId                 = "op-stack-l2-12345"
-	// it has to be a valid EVM RPC which doesn't timeout
-	opStackL2RPCAddress = "https://eth.drpc.org"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_33645af.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -59,6 +60,8 @@ type OpL2ConsumerTestManager struct {
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
 	SdkClient         *sdk.BabylonQueryClient
+	OpSystem          *ope2e.System
+	OpChainId         string
 }
 
 func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
@@ -83,21 +86,39 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
-	cfg.FastSyncInterval = 2 * time.Second
+	cfg.FastSyncInterval = 0 // disable fast sync
 	cfg.NumPubRand = 64
+	cfg.MinRandHeightGap = 1000
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. register consumer to Babylon
-	_, err = bc.RegisterConsumerChain(opConsumerId, opConsumerId, opConsumerId)
+	// 3. start op stack system
+	opSysCfg := ope2e.DefaultSystemConfig(t)
+	// supress OP system logs
+	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
+	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
+	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
+	opSys, err := opSysCfg.Start(t)
+	require.Nil(t, err, "Error starting up op stack system")
+
+	// 4. register consumer to Babylon
+	l2ChainId, err := opSys.Clients["sequencer"].ChainID(context.Background())
+	require.NoError(t, err, "failed to get chain ID")
+	opConsumerId := fmt.Sprintf("op-stack-l2-%d", l2ChainId.Uint64())
+	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
 	require.NoError(t, err)
 	t.Logf("Register consumer %s to Babylon", opConsumerId)
 
-	// 4. new op consumer controller
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir()), logger)
+	// 5. new op consumer controller
+	opL2Config := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
+	opL2Config.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
+	cfg.OPStackL2Config = opL2Config
+	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
+	// which might cause some problems and hard to debug issues
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
 	require.NoError(t, err)
 
-	// 5. store op-finality-gadget contract
+	// 6. store op-finality-gadget contract
 	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
 	require.NoError(t, err)
 
@@ -105,7 +126,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// 6. instantiate op contract
+	// 7. instantiate op contract
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            opcc.CwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
@@ -123,9 +144,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
+	// only for the e2e test
+	sdkCfgChainType := -1
+
+	opSys.RollupConfig.BabylonConfig.ChainType = sdkCfgChainType
+	opSys.RollupConfig.BabylonConfig.ContractAddress = resp.Contracts[0]
 	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
 
-	// 7. prepare EOTS manager
+	// 8. prepare EOTS manager
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -133,7 +159,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 8. prepare finality-provider
+	// 9. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
@@ -141,9 +167,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
-	// 9. init SDK client
+	// 10. init SDK client
 	sdkClient, err := sdk.NewClient(&sdk.Config{
-		ChainType:    -1, // only for the e2e test
+		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
 	})
 	require.NoError(t, err)
@@ -159,6 +185,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		OpL2ConsumerCtrl:  opcc,
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
+		OpSystem:          opSys,
+		OpChainId:         opConsumerId,
 	}
 
 	ctm.WaitForServicesStart(t)
@@ -178,7 +206,6 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 
 	// fill up the config from dc config
 	return &fpcfg.OPStackL2Config{
-		OPStackL2RPCAddress: opStackL2RPCAddress,
 		// make random contract address for now to avoid validation errors,
 		// later we will update it with the correct address in the test
 		OPFinalityGadgetAddress: datagen.GenRandomAccount().GetAddress().String(),
@@ -309,7 +336,7 @@ func (ctm *OpL2ConsumerTestManager) RegisterBBNFinalityProvider(t *testing.T) *b
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
-	chainId := opConsumerId
+	chainId := ctm.OpChainId
 	if isBabylonFp {
 		// While using another mock value, it throws the error: the finality-provider manager has already stopped
 		chainId = e2eutils.ChainID
@@ -353,7 +380,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 					}
 				}
 			} else {
-				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(opConsumerId)
+				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.OpChainId)
 				if err != nil {
 					t.Logf("failed to query finality providers from Babylon %s", err.Error())
 					return false
@@ -462,6 +489,7 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
+	ctm.OpSystem.Close()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }
