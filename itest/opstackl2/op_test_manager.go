@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -43,7 +44,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_33645af.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -87,7 +88,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.FastSyncInterval = 2 * time.Second
 	cfg.NumPubRand = 64
-	cfg.MinRandHeightGap = 1000
+	cfg.MinRandHeightGap = 100
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -239,12 +240,42 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node has started")
 }
 
+func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
+	var (
+		blocks []*types.BlockInfo
+		err    error
+	)
+	require.Eventually(t, func() bool {
+		blocks, err = ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
+		if err != nil || blocks == nil {
+			return false
+		}
+		return len(blocks) == n
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	require.Equal(t, n, len(blocks))
+	t.Logf("The last block is %d, %s", blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
+	return blocks
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *service.FinalityProviderInstance, height uint64) {
+	lastVotedHeight := fpIns.GetLastVotedHeight()
+	require.Eventually(t, func() bool {
+		if lastVotedHeight >= height {
+			return true
+		} else {
+			lastVotedHeight = fpIns.GetLastVotedHeight()
+			return false
+		}
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("Fp %s voted at height %d", fpIns.GetBtcPkHex(), height)
+}
+
 func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
 	fpStartHeightList := make([]*uint64, 2)
 	require.Eventually(t, func() bool {
-		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[0].GetBtcPk())
-		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[1].GetBtcPk())
+		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryFirstPublicRandCommit(fpList[0].GetBtcPk())
+		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryFirstPublicRandCommit(fpList[1].GetBtcPk())
 
 		if fpStartHeightList[0] == nil {
 			fpStartHeightList[0] = new(uint64)
@@ -281,35 +312,6 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 
 	t.Logf("Test block height %d and %d", *fpStartHeightList[0], *fpStartHeightList[1])
 	return fpStartHeightList
-}
-
-// - generate commitment and proof for each public randomness
-// - fp sign
-// - pub rand proof
-// - submit finality signature to smart contract
-func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *service.FinalityProviderInstance, fpStartHeight *uint64, testBlock *types.BlockInfo) {
-	pubRandList, err := fp.GetPubRandList(*fpStartHeight, ctm.FpConfig.NumPubRand)
-	require.NoError(t, err)
-
-	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
-
-	fpSig, err := fp.SignFinalitySig(testBlock)
-	require.NoError(t, err)
-
-	// find the index of target block in the pubrand and proof lists where both FPs will vote
-	index := testBlock.Height - *fpStartHeight
-	proof, err := proofList[index].ToProto().Marshal()
-	require.NoError(t, err)
-
-	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
-		fp.GetBtcPk(),
-		testBlock,
-		pubRandList[index],
-		proof,
-		fpSig.ToModNScalar(),
-	)
-	require.NoError(t, err)
-	t.Logf("Submit finality signature to op finality contract %+v\n", testBlock)
 }
 
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {

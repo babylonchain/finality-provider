@@ -271,7 +271,7 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
-	l2Block, err := cc.opl2Client.BlockByNumber(ctx, new(big.Int).SetUint64(height))
+	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, new(big.Int).SetUint64(height))
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +334,43 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
 		LastPubRandCommit: &LastPubRandCommit{
+			BtcPkHex: fpPubKey.MarshalHex(),
+		},
+	}
+
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+
+	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
+	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
+	}
+
+	var resp *types.PubRandCommit
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (cc *OPStackL2ConsumerController) QueryFirstPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+	queryMsg := &QueryMsg{
+		FirstPubRandCommit: &FirstPubRandCommit{
 			BtcPkHex: fpPubKey.MarshalHex(),
 		},
 	}
