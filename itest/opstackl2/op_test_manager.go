@@ -172,6 +172,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
+		BitcoinRpc:   opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc,
 	})
 	require.NoError(t, err)
 
