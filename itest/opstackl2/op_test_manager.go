@@ -259,6 +259,19 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startH
 	return blocks
 }
 
+func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *service.FinalityProviderInstance, height uint64) {
+	lastVotedHeight := fpIns.GetLastVotedHeight()
+	require.Eventually(t, func() bool {
+		if lastVotedHeight >= height {
+			return true
+		} else {
+			lastVotedHeight = fpIns.GetLastVotedHeight()
+			return false
+		}
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("Fp %s voted at height %d", fpIns.GetBtcPkHex(), height)
+}
+
 func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
 	fpStartHeightList := make([]*uint64, 2)

@@ -169,13 +169,16 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 		targetBlockHeight = *fpStartHeightList[1]
 	}
 
-	// set the test block height with the last committed StartHeight by the last FP instance
+	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
+	// stop the first FP instance
+	fpStopErr := fpList[0].Stop()
+	require.NoError(t, fpStopErr)
+	t.Logf("Stop the first FP instance")
+
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
+
 	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
-
-	ctm.fpSubmitFinalitySignature(t, fpList[0], fpStartHeightList[0], testBlock)
-	ctm.fpSubmitFinalitySignature(t, fpList[1], fpStartHeightList[1], testBlock)
-
 	queryParams := &sdk.L2Block{
 		BlockHeight: testBlock.Height,
 		BlockHash:   hex.EncodeToString(testBlock.Hash),
@@ -203,17 +206,16 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	require.Equal(t, true, finalized)
 	t.Logf("Test case 1: block %d is finalized", testBlock.Height)
 
-	// ======  another test case only for the last FP instance ======
-	// stop the first FP instance
-	fpStopErr := fpList[0].Stop()
-	require.NoError(t, fpStopErr)
+	// ======  another test case only for the last FP instance sign ======
+	// select a suitable height as the next block height:
+	// * the last FP instance had committed the pub rand (e.g. < LastPublicRandCommitHeight)
+	// * not wait too long for the test to finish (e.g. 32, NumPubRand is 64)
+	testNextBlockHeight := *fpStartHeightList[1] + 32
+	t.Logf("Test next block height %d", testNextBlockHeight)
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
-	lastVotedHeight := ctm.WaitForFpVoteCast(t, fpList[1])
-	testNextBlocks := ctm.WaitForNBlocksAndReturn(t, lastVotedHeight, 1)
-	require.Equal(t, 1, len(testNextBlocks))
-	testNextBlock := testNextBlocks[0]
-	t.Logf("Test next block height %d", testNextBlock.Height)
-
+	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
+	require.NoError(t, err)
 	queryNextParams := &sdk.L2Block{
 		BlockHeight:    testNextBlock.Height,
 		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
