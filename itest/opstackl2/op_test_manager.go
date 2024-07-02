@@ -316,35 +316,6 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 	return fpStartHeightList
 }
 
-// - generate commitment and proof for each public randomness
-// - fp sign
-// - pub rand proof
-// - submit finality signature to smart contract
-func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *service.FinalityProviderInstance, fpStartHeight *uint64, testBlock *types.BlockInfo) {
-	pubRandList, err := fp.GetPubRandList(*fpStartHeight, ctm.FpConfig.NumPubRand)
-	require.NoError(t, err)
-
-	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
-
-	fpSig, err := fp.SignFinalitySig(testBlock)
-	require.NoError(t, err)
-
-	// find the index of target block in the pubrand and proof lists where both FPs will vote
-	index := testBlock.Height - *fpStartHeight
-	proof, err := proofList[index].ToProto().Marshal()
-	require.NoError(t, err)
-
-	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
-		fp.GetBtcPk(),
-		testBlock,
-		pubRandList[index],
-		proof,
-		fpSig.ToModNScalar(),
-	)
-	require.NoError(t, err)
-	t.Logf("Fp %s submit finality signature for height %d", fp.GetBtcPkHex(), testBlock.Height)
-}
-
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
