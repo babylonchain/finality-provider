@@ -46,6 +46,9 @@ func NewOPStackL2ConsumerController(
 	if opl2Cfg == nil {
 		return nil, fmt.Errorf("nil config for OP consumer controller")
 	}
+	if err := opl2Cfg.Validate(); err != nil {
+		return nil, err
+	}
 	cwConfig := opl2Cfg.ToCosmwasmConfig()
 	if err := cwConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)

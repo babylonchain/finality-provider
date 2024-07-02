@@ -137,12 +137,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
-
 	// get op contract address
 	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
 	require.NoError(t, err)
 	require.Len(t, resp.Contracts, 1)
-
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
 	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
