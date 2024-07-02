@@ -32,7 +32,6 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 
 		// commit pub rand
 		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).Times(1)
-		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
 
@@ -85,7 +84,6 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 
 		// commit pub rand
 		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).Times(1)
-		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
 
