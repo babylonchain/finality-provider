@@ -203,6 +203,10 @@ workflows:
     jobs:
       - check-mock-gen
       - build_lint_test
+      - test_e2e_babylon
+      - test_e2e_bcd
+      - test_e2e_wasmd
+      - test_e2e_op
       - build_docker:
           filters:
             tags:
