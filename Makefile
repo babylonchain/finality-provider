@@ -20,7 +20,10 @@ build_tags := $(BUILD_TAGS)
 build_args := $(BUILD_ARGS)
 
 PACKAGES_E2E=$(shell go list ./... | grep '/itest')
-PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest')
+# need to specify the full path to fix issue where logs won't stream to stdout
+# due to multiple packages found
+# context: https://github.com/golang/go/issues/24929
+PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest/opstackl2')
 
 ifeq ($(LINK_STATICALLY),true)
 	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static" -v
@@ -104,6 +107,16 @@ test-e2e-wasmd: clean-e2e install-babylond install-wasmd
 
 test-e2e-op: clean-e2e install-babylond
 	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
+
+DEVNET_REPO_URL := https://github.com/babylonchain/op-e2e-devnet
+TARGET_DIR := ./itest/opstackl2/devnet-data
+
+.PHONY: op-e2e-devnet
+op-e2e-devnet:
+	@rm -rf $(TARGET_DIR)
+	@mkdir -p $(TARGET_DIR)
+	@git clone $(DEVNET_REPO_URL) $(TARGET_DIR)
+	@echo "Devnet data downloaded to $(TARGET_DIR)"
 
 ###############################################################################
 ###                                Protobuf                                 ###
