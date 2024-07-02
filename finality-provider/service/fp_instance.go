@@ -943,8 +943,8 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 	}
 
 	// Set initial block to the maximum of
-	//    - last processed height
-	//    - the latest Babylon finalised height
+	//    - last processed height + 1
+	//    - the latest Babylon finalised height + 1
 	// The above is to ensure that:
 	//
 	//	(1) Any finality-provider that is eligible to vote for a block,
