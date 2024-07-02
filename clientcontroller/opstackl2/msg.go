@@ -38,18 +38,12 @@ type SubmitFinalitySignatureResponse struct {
 type QueryMsg struct {
 	Config            *Config            `json:"config,omitempty"`
 	LastPubRandCommit *LastPubRandCommit `json:"last_pub_rand_commit,omitempty"`
-	PubRandCommit     *PubRandCommit     `json:"pub_rand_commit,omitempty"`
 }
 
 type Config struct{}
 
 type LastPubRandCommit struct {
 	BtcPkHex string `json:"btc_pk_hex"`
-}
-
-type PubRandCommit struct {
-	BtcPkHex string `json:"btc_pk_hex"`
-	Height   uint64 `json:"height"`
 }
 
 type ConfigResponse struct {

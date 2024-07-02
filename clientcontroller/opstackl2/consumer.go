@@ -226,35 +226,10 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 }
 
 // QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height.
+// This interface function only used for checking if the FP is eligible for submitting sigs.
+// Now we can simply hardcode the voting power to a positive value.
+// TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
 func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	queryMsg := &QueryMsg{PubRandCommit: &PubRandCommit{
-		BtcPkHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
-		Height:   blockHeight,
-	}}
-	jsonData, err := json.Marshal(queryMsg)
-	if err != nil {
-		return 0, fmt.Errorf("failed marshaling to JSON: %w", err)
-	}
-	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
-	if err != nil {
-		return 0, nil
-	}
-	if stateResp.Data == nil || string(stateResp.Data) == "null" {
-		return 0, nil
-	}
-
-	var pubRandCommit *types.PubRandCommit
-	err = json.Unmarshal(stateResp.Data, &pubRandCommit)
-	if err != nil {
-		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	if err := pubRandCommit.Validate(); err != nil {
-		return 0, err
-	}
-
-	// This interface function only used for checking if the FP is eligible for submitting sigs.
-	// Now we can simply hardcode the voting power to a positive value.
-	// TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
 	return 1, nil
 }
 
