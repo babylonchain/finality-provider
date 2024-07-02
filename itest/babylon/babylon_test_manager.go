@@ -215,20 +215,6 @@ func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num i
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 }
 
-func (tm *TestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
-	var lastVotedHeight uint64
-	require.Eventually(t, func() bool {
-		if fpIns.GetLastVotedHeight() > 0 {
-			lastVotedHeight = fpIns.GetLastVotedHeight()
-			return true
-		} else {
-			return false
-		}
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	return lastVotedHeight
-}
-
 func (tm *TestManager) WaitForNFinalizedBlocksAndReturnTipHeight(t *testing.T, n uint) uint64 {
 	var (
 		firstFinalizedBlock *types.BlockInfo

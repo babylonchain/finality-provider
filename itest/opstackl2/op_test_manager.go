@@ -44,7 +44,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_33645af.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -263,8 +263,8 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
 	fpStartHeightList := make([]*uint64, 2)
 	require.Eventually(t, func() bool {
-		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[0].GetBtcPk())
-		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[1].GetBtcPk())
+		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryFirstPublicRandCommit(fpList[0].GetBtcPk())
+		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryFirstPublicRandCommit(fpList[1].GetBtcPk())
 
 		if fpStartHeightList[0] == nil {
 			fpStartHeightList[0] = new(uint64)
@@ -329,7 +329,7 @@ func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *
 		fpSig.ToModNScalar(),
 	)
 	require.NoError(t, err)
-	t.Logf("Submit finality signature to op finality contract %+v\n", testBlock)
+	t.Logf("Fp %s submit finality signature for height %d", fp.GetBtcPkHex(), testBlock.Height)
 }
 
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
@@ -409,6 +409,15 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 	require.Equal(t, n, len(resFpList))
 
 	return resFpList
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForFpShutDown(t *testing.T, pk *bbntypes.BIP340PubKey) {
+	require.Eventually(t, func() bool {
+		_, err := ctm.FpApp.GetFinalityProviderInstance(pk)
+		return err != nil
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	t.Logf("The finality-provider instance %s is shutdown", pk.MarshalHex())
 }
 
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {

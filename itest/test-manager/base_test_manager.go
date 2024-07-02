@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
+	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
 )
 
@@ -376,4 +377,18 @@ func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *
 		covenantAdaptorUnbondingSlashing2List,
 	)
 	require.NoError(t, err)
+}
+
+func (tm *BaseTestManager) WaitForFpVoteCast(t *testing.T, fpIns *service.FinalityProviderInstance) uint64 {
+	var lastVotedHeight uint64
+	require.Eventually(t, func() bool {
+		if fpIns.GetLastVotedHeight() > 0 {
+			lastVotedHeight = fpIns.GetLastVotedHeight()
+			return true
+		} else {
+			return false
+		}
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	return lastVotedHeight
 }

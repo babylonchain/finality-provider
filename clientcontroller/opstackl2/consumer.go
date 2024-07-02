@@ -400,6 +400,43 @@ func (cc *OPStackL2ConsumerController) QueryPublicRandCommit(fpPk *btcec.PublicK
 	return resp, nil
 }
 
+func (cc *OPStackL2ConsumerController) QueryFirstPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+	queryMsg := &QueryMsg{
+		FirstPubRandCommit: &FirstPubRandCommit{
+			BtcPkHex: fpPubKey.MarshalHex(),
+		},
+	}
+
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+
+	stateResp, err := cc.CwClient.QuerySmartContractState(cc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
+	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
+	}
+
+	var resp *types.PubRandCommit
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
 	var aunts []string
 	for _, aunt := range cmtProof.Aunts {

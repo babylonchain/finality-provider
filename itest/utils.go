@@ -94,7 +94,6 @@ func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInst
 			t.Errorf("Failed to fetch last committed height: %v", err)
 			return false
 		}
-
 		_, exists := committedHeightSet[lastCommittedHeight]
 		if lastCommittedHeight > 0 && !exists {
 			committedHeightSet[lastCommittedHeight] = true
