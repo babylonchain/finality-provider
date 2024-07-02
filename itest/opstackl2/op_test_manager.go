@@ -32,6 +32,7 @@ import (
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
 	"github.com/babylonchain/finality-provider/types"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -86,9 +87,9 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
-	cfg.FastSyncInterval = 2 * time.Second
+	cfg.FastSyncInterval = 0 // disable fast sync
 	cfg.NumPubRand = 64
-	cfg.MinRandHeightGap = 100
+	cfg.MinRandHeightGap = 1000
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -312,6 +313,26 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 
 	t.Logf("Test block height %d and %d", *fpStartHeightList[0], *fpStartHeightList[1])
 	return fpStartHeightList
+}
+
+func (ctm *OpL2ConsumerTestManager) RegisterBBNFinalityProvider(t *testing.T) *btcec.PublicKey {
+	app := ctm.FpApp
+	chainId := e2eutils.ChainID
+	fpName := chainId + "-" + e2eutils.FpNamePrefix
+	moniker := chainId + "-" + e2eutils.MonikerPrefix
+	commission := sdkmath.LegacyZeroDec()
+	desc := e2eutils.NewDescription(moniker)
+	cfg := app.GetConfig()
+	_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+	require.NoError(t, err)
+	res, err := app.CreateFinalityProvider(fpName, chainId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+	require.NoError(t, err)
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+	require.NoError(t, err)
+	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+	require.NoError(t, err)
+	t.Logf("Registered Finality Provider %s for %s", fpPk.MarshalHex(), chainId)
+	return fpPk.MustToBTCPK()
 }
 
 func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
