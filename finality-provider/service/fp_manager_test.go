@@ -25,7 +25,6 @@ import (
 	"github.com/babylonchain/finality-provider/keyring"
 	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil"
-	"github.com/babylonchain/finality-provider/testutil/mocks"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/babylonchain/finality-provider/util"
 )
@@ -40,22 +39,19 @@ func FuzzStatusUpdate(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64) {
 		r := rand.New(rand.NewSource(seed))
 
-		ctl := gomock.NewController(t)
 		mockClientController := testutil.PrepareMockedBabylonController(t)
-		mockConsumerController := mocks.NewMockConsumerController(ctl)
+		randomStartingHeight := uint64(r.Int63n(100) + 100)
+		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+1)
+		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
 		vm, fpPk, cleanUp := newFinalityProviderManagerWithRegisteredFp(t, r, mockClientController, mockConsumerController)
 		defer cleanUp()
 
 		// setup mocks
-		currentHeight := uint64(r.Int63n(100) + 1)
 		currentBlockRes := &types.BlockInfo{
 			Height: currentHeight,
 			Hash:   datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().Close().Return(nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryLatestBlockHeight().Return(currentHeight, nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryActivatedHeight().Return(uint64(1), nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryBlock(gomock.Any()).Return(currentBlockRes, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).AnyTimes()
 
