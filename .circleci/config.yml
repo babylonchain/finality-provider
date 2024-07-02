@@ -80,10 +80,6 @@ jobs:
           key: go-mod-v6-{{ checksum "go.sum" }}
           path: "/home/circleci/.go_workspace/pkg/mod"
       - run:
-          name: Download OP e2e devnet test data
-          command: |
-            make op-e2e-devnet
-      - run:
           name: Run integration tests
           command: |
             make test-e2e-babylon
