@@ -111,8 +111,8 @@ test-e2e-op: clean-e2e install-babylond
 DEVNET_REPO_URL := https://github.com/babylonchain/op-e2e-devnet
 TARGET_DIR := ./itest/opstackl2/.devnet-data
 
-.PHONY: get-devnet-data
-get-devnet-data:
+.PHONY: op-e2e-devnet
+op-e2e-devnet:
 	@rm -rf $(TARGET_DIR)
 	@mkdir -p $(TARGET_DIR)
 	@git clone $(DEVNET_REPO_URL) $(TARGET_DIR)
