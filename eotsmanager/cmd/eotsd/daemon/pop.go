@@ -15,6 +15,10 @@ import (
 	"github.com/urfave/cli"
 )
 
+func init() {
+	bbnparams.SetAddressPrefixes()
+}
+
 // PoPExport the data for exporting the PoP.
 // The PubKeyHex is the public key of the finality provider BTC key to load
 // the private key and sign the AddressSiged.
@@ -61,8 +65,6 @@ var ExportPoPCommand = cli.Command{
 }
 
 func ExportPoP(ctx *cli.Context) error {
-	bbnparams.SetAddressPrefixes()
-
 	keyName := ctx.String(keyNameFlag)
 	fpPkStr := ctx.String(fpPkFlag)
 	passphrase := ctx.String(passphraseFlag)
