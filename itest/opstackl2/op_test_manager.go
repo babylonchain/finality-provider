@@ -243,10 +243,9 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
-	var (
-		blocks []*types.BlockInfo
-		err    error
-	)
+	var blocks []*types.BlockInfo
+	var err error
+
 	require.Eventually(t, func() bool {
 		blocks, err = ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
 		if err != nil || blocks == nil {
@@ -255,19 +254,14 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startH
 		return len(blocks) == n
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	require.Equal(t, n, len(blocks))
-	t.Logf("The last block is %d, %s", blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
+	t.Logf("The last block of %d blocks is %d, %s", n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
 	return blocks
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *service.FinalityProviderInstance, height uint64) {
-	lastVotedHeight := fpIns.GetLastVotedHeight()
 	require.Eventually(t, func() bool {
-		if lastVotedHeight >= height {
-			return true
-		} else {
-			lastVotedHeight = fpIns.GetLastVotedHeight()
-			return false
-		}
+		lastVotedHeight := fpIns.GetLastVotedHeight()
+		return lastVotedHeight >= height
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Fp %s voted at height %d", fpIns.GetBtcPkHex(), height)
 }
