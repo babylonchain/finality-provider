@@ -6,6 +6,7 @@ import (
 	"github.com/cometbft/cometbft/crypto/tmhash"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	bbnparams "github.com/babylonchain/babylon/app/params"
 	bbn "github.com/babylonchain/babylon/types"
 	btcstktypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/babylonchain/finality-provider/eotsmanager"
@@ -60,6 +61,8 @@ var ExportPoPCommand = cli.Command{
 }
 
 func ExportPoP(ctx *cli.Context) error {
+	bbnparams.SetAddressPrefixes()
+
 	keyName := ctx.String(keyNameFlag)
 	fpPkStr := ctx.String(fpPkFlag)
 	passphrase := ctx.String(passphraseFlag)
