@@ -4,7 +4,6 @@
 package e2etest_bcd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -122,7 +121,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, consumerDelsResp.Delegations[0].StakingTx)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, consumerDelsResp.Delegations[0].SlashingTx)
 
 	// ensure fp has voting power in smart contract
 	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
