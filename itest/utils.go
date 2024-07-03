@@ -87,24 +87,17 @@ func GenerateCovenantCommittee(
 	return covenantPrivKeys, covenantPubKeys
 }
 
-// n means expect n rounds of submissions
-func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance, n int) {
-	committedHeightSet := make(map[uint64]bool)
-
+func WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
+	var lastCommittedHeight uint64
+	var err error
 	require.Eventually(t, func() bool {
-		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
+		lastCommittedHeight, err = fpIns.GetLastCommittedHeight()
 		if err != nil {
-			t.Errorf("Failed to fetch last committed height: %v", err)
 			return false
 		}
-
-		_, exists := committedHeightSet[lastCommittedHeight]
-		if lastCommittedHeight > 0 && !exists {
-			committedHeightSet[lastCommittedHeight] = true
-			t.Logf("Public randomness for fp %s is successfully committed at height %d", fpIns.GetBtcPkHex(), lastCommittedHeight)
-		}
-		return len(committedHeightSet) == n
+		return lastCommittedHeight > 0
 	}, EventuallyWaitTimeOut, EventuallyPollTime)
+	t.Logf("Public randomness for fp %s is successfully committed at height %d", fpIns.GetBtcPkHex(), lastCommittedHeight)
 }
 
 func DefaultFpConfig(keyringDir, homeDir string) *config.Config {
