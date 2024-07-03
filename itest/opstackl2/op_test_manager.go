@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -44,7 +45,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_33645af.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -171,6 +172,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
+		BitcoinRpc:   opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc,
 	})
 	require.NoError(t, err)
 
@@ -240,77 +242,84 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node has started")
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
-	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
-	fpStartHeightList := make([]*uint64, 2)
+func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
+	var blocks []*types.BlockInfo
+	var err error
+
 	require.Eventually(t, func() bool {
-		firstFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[0].GetBtcPk())
-		secondFpCommittedPubRand, _ := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[1].GetBtcPk())
-
-		if fpStartHeightList[0] == nil {
-			fpStartHeightList[0] = new(uint64)
-			*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
-		}
-		if fpStartHeightList[1] == nil {
-			fpStartHeightList[1] = new(uint64)
-			*fpStartHeightList[1] = secondFpCommittedPubRand.StartHeight
-		}
-		// it is possible one FP is falling behind
-		if fpStartHeightList[0] == nil || fpStartHeightList[1] == nil {
+		blocks, err = ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
+		if err != nil || blocks == nil {
 			return false
 		}
-
-		var diff uint64
-		if *fpStartHeightList[0] < *fpStartHeightList[1] {
-			diff = *fpStartHeightList[1] - *fpStartHeightList[0]
-		} else {
-			diff = *fpStartHeightList[0] - *fpStartHeightList[1]
-		}
-
-		// check the two FP pubrand commitments overlaps
-		if diff > ctm.FpConfig.NumPubRand-requiredBlockOverlapLen+1 {
-			if *fpStartHeightList[0] < *fpStartHeightList[1] {
-				*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
-			} else {
-				*fpStartHeightList[1] = secondFpCommittedPubRand.StartHeight
-			}
-			return false
-		}
-
-		return true
+		return len(blocks) == n
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("Test block height %d and %d", *fpStartHeightList[0], *fpStartHeightList[1])
-	return fpStartHeightList
+	require.Equal(t, n, len(blocks))
+	t.Logf("The last block of %d blocks is %d, %s", n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
+	return blocks
 }
 
-// - generate commitment and proof for each public randomness
-// - fp sign
-// - pub rand proof
-// - submit finality signature to smart contract
-func (ctm *OpL2ConsumerTestManager) fpSubmitFinalitySignature(t *testing.T, fp *service.FinalityProviderInstance, fpStartHeight *uint64, testBlock *types.BlockInfo) {
-	pubRandList, err := fp.GetPubRandList(*fpStartHeight, ctm.FpConfig.NumPubRand)
-	require.NoError(t, err)
+func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *service.FinalityProviderInstance, height uint64) {
+	require.Eventually(t, func() bool {
+		lastVotedHeight := fpIns.GetLastVotedHeight()
+		return lastVotedHeight >= height
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("Fp %s voted at height %d", fpIns.GetBtcPkHex(), height)
+}
 
-	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
+/* wait for the target block height that the two FPs both have PubRand commitments
+ * the algorithm should be:
+ * 1. wait until both FPs have their first PubRand commitments. get the start height of the commitments
+ * 2. for the FP that has the smaller start height, wait until it catches up to the other FP's first PubRand commitment
+ */
+// TODO: there are always two FPs, so we can simplify the logic and data structure
+func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance) uint64 {
+	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
+	var firstFpCommittedPubRand, secondFpCommittedPubRand, targetBlockHeight uint64
 
-	fpSig, err := fp.SignFinalitySig(testBlock)
-	require.NoError(t, err)
+	// wait until both FPs have their first PubRand commitments
+	require.Eventually(t, func() bool {
+		if firstFpCommittedPubRand != 0 && secondFpCommittedPubRand != 0 {
+			return true
+		}
+		if firstFpCommittedPubRand == 0 {
+			firstPRCommit, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[0].GetBtcPk())
+			require.NoError(t, err)
+			if firstPRCommit != nil {
+				firstFpCommittedPubRand = firstPRCommit.StartHeight
+			}
+		}
+		if secondFpCommittedPubRand == 0 {
+			secondPRCommit, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[1].GetBtcPk())
+			require.NoError(t, err)
+			if secondPRCommit != nil {
+				secondFpCommittedPubRand = secondPRCommit.StartHeight
+			}
+		}
+		return false
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	// find the index of target block in the pubrand and proof lists where both FPs will vote
-	index := testBlock.Height - *fpStartHeight
-	proof, err := proofList[index].ToProto().Marshal()
-	require.NoError(t, err)
+	// find the FP with the smaller first committed pubrand index in `fpList`
+	i := 0
+	targetBlockHeight = secondFpCommittedPubRand
+	if firstFpCommittedPubRand > secondFpCommittedPubRand {
+		i = 1
+		targetBlockHeight = firstFpCommittedPubRand
+	}
 
-	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
-		fp.GetBtcPk(),
-		testBlock,
-		pubRandList[index],
-		proof,
-		fpSig.ToModNScalar(),
-	)
-	require.NoError(t, err)
-	t.Logf("Submit finality signature to op finality contract %+v\n", testBlock)
+	// wait until the two FPs have overlap in their PubRand commitments
+	require.Eventually(t, func() bool {
+		committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[i].GetBtcPk())
+		require.NoError(t, err)
+		if committedPubRand == nil {
+			return false
+		}
+
+		// we found overlap between the two FPs' PubRand commitments
+		return committedPubRand.StartHeight+committedPubRand.NumPubRand-1 >= targetBlockHeight
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	t.Logf("The target block height is %d", targetBlockHeight)
+	return targetBlockHeight
 }
 
 func (ctm *OpL2ConsumerTestManager) RegisterBBNFinalityProvider(t *testing.T) *btcec.PublicKey {
@@ -410,6 +419,43 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 	require.Equal(t, n, len(resFpList))
 
 	return resFpList
+}
+
+func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
+	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
+	queryMsg := &opstackl2.QueryMsg{
+		FirstPubRandCommit: &opstackl2.FirstPubRandCommit{
+			BtcPkHex: fpPubKey.MarshalHex(),
+		},
+	}
+
+	jsonData, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshaling to JSON: %w", err)
+	}
+
+	stateResp, err := opcc.CwClient.QuerySmartContractState(opcc.Cfg.OPFinalityGadgetAddress, string(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
+	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+		return nil, nil
+	}
+
+	var resp *types.PubRandCommit
+	err = json.Unmarshal(stateResp.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if err := resp.Validate(); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
