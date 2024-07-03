@@ -119,8 +119,8 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
 	msg2 := common.GenPubRandomnessExecMsg(
 		msgPub.FpBtcPk.MarshalHex(),
-		base64.StdEncoding.EncodeToString(msgPub.Commitment),
-		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+		msgPub.Commitment,
+		msgPub.Sig.MustMarshal(),
 		msgPub.StartHeight,
 		msgPub.NumPubRand,
 	)

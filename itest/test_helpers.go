@@ -43,7 +43,7 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	return executeMessage
 }
 
-func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
+func GenPubRandomnessExecMsg(fpHex string, commitment, sig []byte, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
 	// create the ExecMsg instance with CommitPublicRandomness set
 	executeMessage := cosmwasm.ExecMsg{
 		CommitPublicRandomness: &cosmwasm.CommitPublicRandomness{

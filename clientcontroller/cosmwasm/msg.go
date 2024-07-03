@@ -140,8 +140,8 @@ type CommitPublicRandomness struct {
 	FPPubKeyHex string `json:"fp_pubkey_hex"`
 	StartHeight uint64 `json:"start_height"`
 	NumPubRand  uint64 `json:"num_pub_rand"`
-	Commitment  string `json:"commitment"`
-	Signature   string `json:"signature"`
+	Commitment  []byte `json:"commitment"`
+	Signature   []byte `json:"signature"`
 }
 
 type SubmitFinalitySignature struct {

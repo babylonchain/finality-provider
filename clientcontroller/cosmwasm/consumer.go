@@ -91,8 +91,8 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
-			Commitment:  base64.StdEncoding.EncodeToString(commitment),
-			Signature:   base64.StdEncoding.EncodeToString(bip340Sig),
+			Commitment:  commitment,
+			Signature:   bip340Sig,
 		},
 	}
 
