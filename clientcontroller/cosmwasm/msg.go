@@ -147,10 +147,10 @@ type CommitPublicRandomness struct {
 type SubmitFinalitySignature struct {
 	FpPubkeyHex string `json:"fp_pubkey_hex"`
 	Height      uint64 `json:"height"`
-	PubRand     string `json:"pub_rand"`   // base64 encoded
-	Proof       Proof  `json:"proof"`      // nested struct
-	BlockHash   string `json:"block_hash"` // base64 encoded
-	Signature   string `json:"signature"`  // base64 encoded
+	PubRand     []byte `json:"pub_rand"`
+	Proof       Proof  `json:"proof"` // nested struct
+	BlockHash   []byte `json:"block_hash"`
+	Signature   []byte `json:"signature"`
 }
 
 type Proof struct {

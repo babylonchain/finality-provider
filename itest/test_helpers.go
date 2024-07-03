@@ -64,10 +64,10 @@ func GenFinalitySigExecMsg(startHeight, blockHeight uint64, randListInfo *datage
 		SubmitFinalitySignature: &cosmwasm.SubmitFinalitySignature{
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
 			Height:      fmsg.BlockHeight,
-			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
+			PubRand:     fmsg.PubRand.MustMarshal(),
 			Proof:       cosmwasm.ConvertProof(*fmsg.Proof),
-			BlockHash:   base64.StdEncoding.EncodeToString(fmsg.BlockAppHash),
-			Signature:   base64.StdEncoding.EncodeToString(fmsg.FinalitySig.MustMarshal()),
+			BlockHash:   fmsg.BlockAppHash,
+			Signature:   fmsg.FinalitySig.MustMarshal(),
 		},
 	}
 

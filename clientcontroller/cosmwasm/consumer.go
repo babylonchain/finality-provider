@@ -127,10 +127,10 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		SubmitFinalitySignature: &SubmitFinalitySignature{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
-			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
+			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
 			Proof:       ConvertProof(cmtProof),
-			BlockHash:   base64.StdEncoding.EncodeToString(block.Hash),
-			Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal()),
+			BlockHash:   block.Hash,
+			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
 		},
 	}
 
@@ -166,10 +166,10 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 			SubmitFinalitySignature: &SubmitFinalitySignature{
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
-				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
+				PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal(),
 				Proof:       ConvertProof(cmtProof),
-				BlockHash:   base64.StdEncoding.EncodeToString(b.Hash),
-				Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal()),
+				BlockHash:   b.Hash,
+				Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal(),
 			},
 		}
 
