@@ -9,6 +9,7 @@ import (
 
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbn "github.com/babylonchain/babylon/types"
+	btcstktypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	dcli "github.com/babylonchain/finality-provider/eotsmanager/cmd/eotsd/daemon"
 	"github.com/babylonchain/finality-provider/testutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -44,12 +45,15 @@ func FuzzPoPExport(f *testing.F) {
 
 		btcPkFlag := fmt.Sprintf("--btc-pk=%s", keyOut.PubKeyHex)
 		exportedPoP := appRunPoPExport(r, t, app, []string{bbnAddr.String(), hFlag, btcPkFlag})
+		pop, err := btcstktypes.NewPoPBTCFromHex(exportedPoP.PoPHex)
+		require.NoError(t, err)
+
 		require.NotNil(t, exportedPoP)
-		require.NoError(t, exportedPoP.PoP.ValidateBasic())
+		require.NoError(t, pop.ValidateBasic())
 
 		btcPubKey, err := bbn.NewBIP340PubKeyFromHex(exportedPoP.PubKeyHex)
 		require.NoError(t, err)
-		require.NoError(t, exportedPoP.PoP.Verify(bbnAddr, btcPubKey, &chaincfg.MainNetParams))
+		require.NoError(t, pop.Verify(bbnAddr, btcPubKey, &chaincfg.SigNetParams))
 	})
 }
 

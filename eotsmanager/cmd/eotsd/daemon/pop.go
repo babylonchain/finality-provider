@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cometbft/cometbft/crypto/tmhash"
@@ -19,20 +18,19 @@ import (
 // The PubKeyHex is the public key of the finality provider BTC key to load
 // the private key and sign the AddressSiged.
 type PoPExport struct {
-	PubKeyHex     string                           `json:"pub_key_hex"`
-	PoP           btcstktypes.ProofOfPossessionBTC `json:"pop"`
-	PoPHex        string                           `json:"pop_hex"`
-	AddressSigned string                           `json:"address_signed"`
+	PubKeyHex      string `json:"pub_key_hex"`
+	PoPHex         string `json:"pop_hex"`
+	BabylonAddress string `json:"babylon_address"`
 }
 
 var ExportPoPCommand = cli.Command{
 	Name:      "pop-export",
-	Usage:     "Exports the Proof of Possession by Signing over the finality provider address with the EOTS private key.",
+	Usage:     "Exports the Proof of Possession by signing over the finality provider's Babylon address with the EOTS private key.",
 	UsageText: "pop-export [bbn-address]",
 	Description: `Parse the address received as argument, hash it with
-	sha256 and sign based on the Schnorr key associated with the key-name or btc-pk flag.
+	sha256 and sign based on the EOTS key associated with the key-name or btc-pk flag.
 	If the both flags are supplied, btc-pk takes priority. Use the generated signature
-	to build a Proof of Possession and exports it.`,
+	to build a Proof of Possession and export it.`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  homeFlag,
@@ -69,10 +67,6 @@ func ExportPoP(ctx *cli.Context) error {
 
 	args := ctx.Args()
 	bbnAddressStr := args.First()
-	if len(bbnAddressStr) == 0 {
-		return errors.New("invalid argument, please provide a valid bbn address as argument")
-	}
-
 	bbnAddr, err := sdk.AccAddressFromBech32(bbnAddressStr)
 	if err != nil {
 		return fmt.Errorf("invalid argument %s, please provide a valid bbn address as argument, err: %w", bbnAddressStr, err)
@@ -131,10 +125,9 @@ func ExportPoP(ctx *cli.Context) error {
 	}
 
 	printRespJSON(PoPExport{
-		PubKeyHex:     pubKey.MarshalHex(),
-		PoP:           pop,
-		PoPHex:        popHex,
-		AddressSigned: bbnAddr.String(),
+		PubKeyHex:      pubKey.MarshalHex(),
+		PoPHex:         popHex,
+		BabylonAddress: bbnAddr.String(),
 	})
 
 	return nil
