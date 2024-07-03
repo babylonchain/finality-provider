@@ -4,7 +4,6 @@
 package e2etest_wasmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"math/rand"
 	"testing"
@@ -142,5 +141,5 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, fpSigsResponse)
 	require.NotNil(t, fpSigsResponse.Signature)
-	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
+	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, fpSigsResponse.Signature)
 }
