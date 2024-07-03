@@ -424,7 +424,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &opstackl2.QueryMsg{
-		FirstPubRandCommit: &opstackl2.FirstPubRandCommit{
+		FirstPubRandCommit: &opstackl2.PubRandCommit{
 			BtcPkHex: fpPubKey.MarshalHex(),
 		},
 	}

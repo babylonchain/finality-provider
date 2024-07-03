@@ -333,7 +333,7 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
-		LastPubRandCommit: &LastPubRandCommit{
+		LastPubRandCommit: &PubRandCommit{
 			BtcPkHex: fpPubKey.MarshalHex(),
 		},
 	}
