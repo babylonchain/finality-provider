@@ -113,7 +113,7 @@ type ActiveBtcDelegation struct {
 	TotalSat             uint64                      `json:"total_sat"`
 	StakingTx            []byte                      `json:"staking_tx"`
 	SlashingTx           []byte                      `json:"slashing_tx"`
-	DelegatorSlashingSig string                      `json:"delegator_slashing_sig"`
+	DelegatorSlashingSig []byte                      `json:"delegator_slashing_sig"`
 	CovenantSigs         []CovenantAdaptorSignatures `json:"covenant_sigs"`
 	StakingOutputIdx     uint32                      `json:"staking_output_idx"`
 	UnbondingTime        uint32                      `json:"unbonding_time"`

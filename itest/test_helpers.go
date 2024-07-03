@@ -211,7 +211,7 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 		TotalSat:             mockDel.TotalSat,
 		StakingTx:            mockDel.StakingTx,
 		SlashingTx:           mockDel.SlashingTx.MustMarshal(),
-		DelegatorSlashingSig: base64.StdEncoding.EncodeToString(mockDel.DelegatorSig.MustMarshal()),
+		DelegatorSlashingSig: mockDel.DelegatorSig.MustMarshal(),
 		CovenantSigs:         covenantSigs,
 		StakingOutputIdx:     mockDel.StakingOutputIdx,
 		UnbondingTime:        mockDel.UnbondingTime,
