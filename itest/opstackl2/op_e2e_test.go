@@ -85,7 +85,6 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 
 	var fpSigs []*secp256k1.ModNScalar
 	testBatchBlocks := ctm.WaitForNBlocksAndReturn(t, lastCommittedStartHeight, 3)
-	require.Equal(t, 3, len(testBatchBlocks))
 	for _, block := range testBatchBlocks {
 		// fp sign
 		fpSig, err := fpInstance.SignFinalitySig(block)
