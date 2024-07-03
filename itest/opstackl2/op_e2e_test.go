@@ -60,7 +60,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		BlockTimestamp: BlockTimestamp,
 	}
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.ErrorIs(t, err, sdk.NoFpHasVotingPowerError)
+	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)
 }
 
 func TestOpSubmitBatchFinalitySigs(t *testing.T) {
@@ -174,7 +174,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	require.Equal(t, true, finalized)
 	t.Logf("Test case 1: block %d is finalized", testBlock.Height)
 
-	// ======  another test case only for the last FP instance sign ======
+	// ===  another test case only for the last FP instance sign ===
 	// first make sure the first FP is stopped
 	require.Eventually(t, func() bool {
 		return !fpList[0].IsRunning()
