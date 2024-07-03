@@ -60,7 +60,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		BlockTimestamp: BlockTimestamp,
 	}
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.EqualError(t, err, "no FP has voting power for the consumer chain")
+	require.ErrorIs(t, err, sdk.NoFpHasVotingPowerError)
 }
 
 func TestOpSubmitBatchFinalitySigs(t *testing.T) {
