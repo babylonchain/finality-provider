@@ -15,6 +15,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+/*
+this is BTC height 10's timestamp: https://mempool.space/block/10
+
+we use it b/c in InsertBTCDelegation(), it inserts at BTC block 0 because
+- `tm.BBNClient.QueryBtcLightClientTip()` returns block 0
+- `params.ComfirmationTimeBlocks` defaults to be 6, meaning the delegation
+becomes active around block 6
+
+Note: the staking time is default defined in utils.go to be 100 blocks:
+StakingTime           = uint16(100)
+
+since we only mock the first few BTC blocks and inject into the local
+babylon chain, the delegation will be active forever. So even if we choose
+a very large real BTC mainnet's block timestamp, the test will still pass.
+
+But to be safe, we decided to choose the timestamp of block 10.
+*/
+var BlockTimestamp = uint64(1231473952)
+
 // tests the finality signature submission to the op-finality-gadget contract
 func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
@@ -24,50 +43,24 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 1)
-
-	// query pub rand
-	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpInstance.GetBtcPk())
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
+	// query the first committed pub rand
+	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
 	require.NoError(t, err)
-	lastCommittedStartHeight := committedPubRand.StartHeight
-	t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
-	pubRandList, err := fpInstance.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
-	require.NoError(t, err)
-	// generate commitment and proof for each public randomness
-	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
-
-	testBlocks := ctm.WaitForNBlocksAndReturn(t, lastCommittedStartHeight, 1)
-	require.Equal(t, 1, len(testBlocks))
+	committedStartHeight := committedPubRand.StartHeight
+	t.Logf("First committed pubrandList startHeight %d", committedStartHeight)
+	testBlocks := ctm.WaitForNBlocksAndReturn(t, committedStartHeight, 1)
 	testBlock := testBlocks[0]
 
-	// fp sign
-	fpSig, err := fpInstance.SignFinalitySig(testBlock)
-	require.NoError(t, err)
-
-	// pub rand proof
-	proof, err := proofList[0].ToProto().Marshal()
-	require.NoError(t, err)
-
-	// submit finality signature to smart contract
-	_, err = ctm.OpL2ConsumerCtrl.SubmitFinalitySig(
-		fpInstance.GetBtcPk(),
-		testBlock,
-		pubRandList[0],
-		proof,
-		fpSig.ToModNScalar(),
-	)
-	require.NoError(t, err)
-	t.Logf("Submit finality signature to op finality contract")
-
+	// wait for the fp sign
+	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
 	queryParams := &sdk.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
-		BlockTimestamp: uint64(1231473952),
+		BlockTimestamp: BlockTimestamp,
 	}
-	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.NoError(t, err)
-	require.Equal(t, true, finalized)
-	t.Logf("Test case: block %d is finalized", testBlock.Height)
+	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
+	require.EqualError(t, err, "no FP has voting power for the consumer chain")
 }
 
 func TestOpSubmitBatchFinalitySigs(t *testing.T) {
@@ -78,7 +71,7 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, 1)
 	fpInstance := fpList[0]
 
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance, 1)
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 
 	// query pub rand
 	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpInstance.GetBtcPk())
@@ -137,8 +130,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	fpList := ctm.StartFinalityProvider(t, false, n)
 
 	// check the public randomness is committed
-	e2eutils.WaitForFpPubRandCommitted(t, fpList[0], 1)
-	e2eutils.WaitForFpPubRandCommitted(t, fpList[1], 1)
+	e2eutils.WaitForFpPubRandCommitted(t, fpList[0])
+	e2eutils.WaitForFpPubRandCommitted(t, fpList[1])
 
 	// send a BTC delegation to consumer and Babylon finality providers
 	// for the first FP, we give it more power b/c it will be used later
@@ -180,25 +173,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
 	queryParams := &sdk.L2Block{
-		BlockHeight: testBlock.Height,
-		BlockHash:   hex.EncodeToString(testBlock.Hash),
-		/*
-			this is BTC height 10's timestamp: https://mempool.space/block/10
-
-			we use it b/c in InsertBTCDelegation(), it inserts at BTC block 0 because
-			- `tm.BBNClient.QueryBtcLightClientTip()` returns block 0
-			- `params.ComfirmationTimeBlocks` defaults to be 6, meaning the delegation
-			becomes active around block 6
-
-			Note: the staking time is default defined in utils.go to be 100 blocks:
-			StakingTime           = uint16(100)
-
-			since we only mock the first few BTC blocks and inject into the local
-			babylon chain, the delegation will be active forever. So even if we choose
-			a very large real BTC mainnet's block timestamp, the test will still pass.
-
-			But to be safe, we decided to choose the timestamp of block 10.
-		*/
+		BlockHeight:    testBlock.Height,
+		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: uint64(1231473952),
 	}
 	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
