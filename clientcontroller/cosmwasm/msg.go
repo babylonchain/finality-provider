@@ -79,31 +79,31 @@ type FinalityProviderDescription struct {
 }
 
 type PubKey struct {
-	Key string `json:"key"`
+	Key []byte `json:"key"`
 }
 
 type ProofOfPossession struct {
 	BTCSigType int32  `json:"btc_sig_type"`
-	BabylonSig string `json:"babylon_sig"`
-	BTCSig     string `json:"btc_sig"`
+	BabylonSig []byte `json:"babylon_sig"`
+	BTCSig     []byte `json:"btc_sig"`
 }
 
 type CovenantAdaptorSignatures struct {
-	CovPK       string   `json:"cov_pk"`
-	AdaptorSigs []string `json:"adaptor_sigs"`
+	CovPK       []byte   `json:"cov_pk"`
+	AdaptorSigs [][]byte `json:"adaptor_sigs"`
 }
 
 type SignatureInfo struct {
-	PK  string `json:"pk"`
-	Sig string `json:"sig"`
+	PK  []byte `json:"pk"`
+	Sig []byte `json:"sig"`
 }
 
 type BtcUndelegationInfo struct {
-	UnbondingTx           string                      `json:"unbonding_tx"`
-	DelegatorUnbondingSig string                      `json:"delegator_unbonding_sig"`
+	UnbondingTx           []byte                      `json:"unbonding_tx"`
+	DelegatorUnbondingSig []byte                      `json:"delegator_unbonding_sig"`
 	CovenantUnbondingSigs []SignatureInfo             `json:"covenant_unbonding_sig_list"`
-	SlashingTx            string                      `json:"slashing_tx"`
-	DelegatorSlashingSig  string                      `json:"delegator_slashing_sig"`
+	SlashingTx            []byte                      `json:"slashing_tx"`
+	DelegatorSlashingSig  []byte                      `json:"delegator_slashing_sig"`
 	CovenantSlashingSigs  []CovenantAdaptorSignatures `json:"covenant_slashing_sigs"`
 }
 

@@ -1,7 +1,6 @@
 package e2e_utils
 
 import (
-	"encoding/base64"
 	"math/rand"
 	"testing"
 	"time"
@@ -85,13 +84,13 @@ func genRandomFinalityProvider() cosmwasm.NewFinalityProvider {
 		},
 		Commission: "0.05",
 		BabylonPK: &cosmwasm.PubKey{
-			Key: base64.StdEncoding.EncodeToString([]byte("mock_pub_rand")),
+			Key: []byte("mock_pub_rand"),
 		},
 		BTCPKHex: "1",
 		Pop: &cosmwasm.ProofOfPossession{
 			BTCSigType: 0,
-			BabylonSig: base64.StdEncoding.EncodeToString([]byte("mock_babylon_sig")),
-			BTCSig:     base64.StdEncoding.EncodeToString([]byte("mock_btc_sig")),
+			BabylonSig: []byte("mock_babylon_sig"),
+			BTCSig:     []byte("mock_btc_sig"),
 		},
 		ConsumerID: "osmosis-1",
 	}
@@ -165,40 +164,32 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 
 	var covenantSigs []cosmwasm.CovenantAdaptorSignatures
 	for _, cs := range mockDel.CovenantSigs {
-		var adaptorSigs []string
-		for _, sig := range cs.AdaptorSigs {
-			adaptorSigs = append(adaptorSigs, base64.StdEncoding.EncodeToString(sig))
-		}
 		covenantSigs = append(covenantSigs, cosmwasm.CovenantAdaptorSignatures{
-			CovPK:       cs.CovPk.MarshalHex(),
-			AdaptorSigs: adaptorSigs,
+			CovPK:       cs.CovPk.MustMarshal(),
+			AdaptorSigs: cs.AdaptorSigs,
 		})
 	}
 
 	var covenantUnbondingSigs []cosmwasm.SignatureInfo
 	for _, sigInfo := range mockDel.BtcUndelegation.CovenantUnbondingSigList {
 		covenantUnbondingSigs = append(covenantUnbondingSigs, cosmwasm.SignatureInfo{
-			PK:  sigInfo.Pk.MarshalHex(),
-			Sig: base64.StdEncoding.EncodeToString(sigInfo.Sig.MustMarshal()),
+			PK:  sigInfo.Pk.MustMarshal(),
+			Sig: sigInfo.Sig.MustMarshal(),
 		})
 	}
 
 	var covenantSlashingSigs []cosmwasm.CovenantAdaptorSignatures
 	for _, cs := range mockDel.BtcUndelegation.CovenantSlashingSigs {
-		var adaptorSigs []string
-		for _, sig := range cs.AdaptorSigs {
-			adaptorSigs = append(adaptorSigs, base64.StdEncoding.EncodeToString(sig))
-		}
 		covenantSlashingSigs = append(covenantSlashingSigs, cosmwasm.CovenantAdaptorSignatures{
-			CovPK:       cs.CovPk.MarshalHex(),
-			AdaptorSigs: adaptorSigs,
+			CovPK:       cs.CovPk.MustMarshal(),
+			AdaptorSigs: cs.AdaptorSigs,
 		})
 	}
 
 	undelegationInfo := cosmwasm.BtcUndelegationInfo{
-		UnbondingTx:           base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.UnbondingTx),
-		SlashingTx:            base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.SlashingTx.MustMarshal()),
-		DelegatorSlashingSig:  base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal()),
+		UnbondingTx:           mockDel.BtcUndelegation.UnbondingTx,
+		SlashingTx:            mockDel.BtcUndelegation.SlashingTx.MustMarshal(),
+		DelegatorSlashingSig:  mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal(),
 		CovenantUnbondingSigs: covenantUnbondingSigs,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 	}
