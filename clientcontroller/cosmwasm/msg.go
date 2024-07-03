@@ -1,5 +1,7 @@
 package cosmwasm
 
+import cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
+
 type ConsumerFpsResponse struct {
 	Fps []SingleConsumerFpResponse `json:"fps"`
 }
@@ -145,19 +147,12 @@ type CommitPublicRandomness struct {
 }
 
 type SubmitFinalitySignature struct {
-	FpPubkeyHex string `json:"fp_pubkey_hex"`
-	Height      uint64 `json:"height"`
-	PubRand     []byte `json:"pub_rand"`
-	Proof       Proof  `json:"proof"` // nested struct
-	BlockHash   []byte `json:"block_hash"`
-	Signature   []byte `json:"signature"`
-}
-
-type Proof struct {
-	Total    uint64   `json:"total"`
-	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
+	FpPubkeyHex string          `json:"fp_pubkey_hex"`
+	Height      uint64          `json:"height"`
+	PubRand     []byte          `json:"pub_rand"`
+	Proof       cmtcrypto.Proof `json:"proof"` // nested struct
+	BlockHash   []byte          `json:"block_hash"`
+	Signature   []byte          `json:"signature"`
 }
 
 type ExecMsg struct {

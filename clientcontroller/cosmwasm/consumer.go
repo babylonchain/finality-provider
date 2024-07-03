@@ -2,7 +2,6 @@ package cosmwasm
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -128,7 +127,7 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
-			Proof:       ConvertProof(cmtProof),
+			Proof:       cmtProof,
 			BlockHash:   block.Hash,
 			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
 		},
@@ -167,7 +166,7 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
 				PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal(),
-				Proof:       ConvertProof(cmtProof),
+				Proof:       cmtProof,
 				BlockHash:   b.Hash,
 				Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal(),
 			},
@@ -719,18 +718,4 @@ func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
 		return nil
 	}
 	return bytes
-}
-
-func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
-	var aunts []string
-	for _, aunt := range cmtProof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
-	return Proof{
-		Total:    uint64(cmtProof.Total),
-		Index:    uint64(cmtProof.Index),
-		LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
-		Aunts:    aunts,
-	}
 }

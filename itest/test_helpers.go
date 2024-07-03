@@ -65,7 +65,7 @@ func GenFinalitySigExecMsg(startHeight, blockHeight uint64, randListInfo *datage
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
 			Height:      fmsg.BlockHeight,
 			PubRand:     fmsg.PubRand.MustMarshal(),
-			Proof:       cosmwasm.ConvertProof(*fmsg.Proof),
+			Proof:       *fmsg.Proof,
 			BlockHash:   fmsg.BlockAppHash,
 			Signature:   fmsg.FinalitySig.MustMarshal(),
 		},
