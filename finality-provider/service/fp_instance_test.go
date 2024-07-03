@@ -30,18 +30,18 @@ func FuzzCommitPubRandList(f *testing.F) {
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
 		startingBlock := &types.BlockInfo{Height: randomStartingHeight, Hash: testutil.GenRandomByteArray(r, 32)}
+		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonController := testutil.PrepareMockedBabylonController(t)
-		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockConsumerController := testutil.PrepareMockedConsumerControllerWithTxHash(t, r, randomStartingHeight, currentHeight, expectedTxHash)
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), gomock.Any()).
 			Return(uint64(0), nil).AnyTimes()
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockBabylonController, mockConsumerController, randomStartingHeight)
 		defer cleanUp()
 
-		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockConsumerController.EXPECT().
 			CommitPubRandList(fpIns.GetBtcPk(), startingBlock.Height+1, gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).AnyTimes()
 		res, err := fpIns.CommitPubRand(startingBlock.Height)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
@@ -64,19 +64,18 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		defer cleanUp()
 
 		// commit pub rand
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).Times(1)
-		mockConsumerController.EXPECT().CommitPubRandList(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).Times(1)
+		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).Times(1)
 		_, err := fpIns.CommitPubRand(startingBlock.Height)
 		require.NoError(t, err)
 
 		// mock committed pub rand
 		lastCommittedHeight := randomStartingHeight + 25
-		lastCommittedPubRandMap := make(map[uint64]*types.PubRandCommit)
-		lastCommittedPubRandMap[lastCommittedHeight] = &types.PubRandCommit{
-			NumPubRand: 1000,
-			Commitment: datagen.GenRandomByteArray(r, 32),
+		lastCommittedPubRand := &types.PubRandCommit{
+			StartHeight: lastCommittedHeight,
+			NumPubRand:  1000,
+			Commitment:  datagen.GenRandomByteArray(r, 32),
 		}
-		mockConsumerController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(lastCommittedPubRandMap, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
 		// mock voting power and commit pub rand
 		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
 			Return(uint64(1), nil).AnyTimes()

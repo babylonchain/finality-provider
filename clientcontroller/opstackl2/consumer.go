@@ -46,6 +46,9 @@ func NewOPStackL2ConsumerController(
 	if opl2Cfg == nil {
 		return nil, fmt.Errorf("nil config for OP consumer controller")
 	}
+	if err := opl2Cfg.Validate(); err != nil {
+		return nil, err
+	}
 	cwConfig := opl2Cfg.ToCosmwasmConfig()
 	if err := cwConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
@@ -268,7 +271,7 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
 	defer cancel()
 
-	l2Block, err := cc.opl2Client.BlockByNumber(ctx, new(big.Int).SetUint64(height))
+	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, new(big.Int).SetUint64(height))
 	if err != nil {
 		return nil, err
 	}
@@ -325,9 +328,9 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 	return l2LatestBlock.Number.Uint64(), nil
 }
 
-// QueryLastCommittedPublicRand returns the last public randomness commitments
+// QueryLastPublicRandCommit returns the last public randomness commitments
 // It is fetched from the state of a CosmWasm contract OP finality gadget.
-func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.PublicKey, count uint64) (map[uint64]*types.PubRandCommit, error) {
+func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
 		LastPubRandCommit: &LastPubRandCommit{
@@ -351,18 +354,17 @@ func (cc *OPStackL2ConsumerController) QueryLastCommittedPublicRand(fpPk *btcec.
 		return nil, nil
 	}
 
-	var resp LastPubRandCommitResponse
+	var resp *types.PubRandCommit
 	err = json.Unmarshal(stateResp.Data, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	respMap := make(map[uint64]*types.PubRandCommit)
-	respMap[resp.StartHeight] = &types.PubRandCommit{
-		NumPubRand: resp.NumPubRand,
-		Commitment: resp.Commitment,
+
+	if err := resp.Validate(); err != nil {
+		return nil, err
 	}
 
-	return respMap, nil
+	return resp, nil
 }
 
 func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
