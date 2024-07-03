@@ -1,3 +1,6 @@
+//go:build e2e_bcd
+// +build e2e_bcd
+
 package e2etest_bcd
 
 import (
@@ -151,7 +154,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 			t.Logf("failed to query last committed public rand: %s", err.Error())
 			return false
 		}
-		if len(fpPubRandResp) == 0 {
+		if fpPubRandResp == nil {
 			return false
 		}
 
