@@ -190,6 +190,7 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 		UnbondingTx:           mockDel.BtcUndelegation.UnbondingTx,
 		SlashingTx:            mockDel.BtcUndelegation.SlashingTx.MustMarshal(),
 		DelegatorSlashingSig:  mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal(),
+		DelegatorUnbondingSig: make([]byte, 0), // FIXME: Add delegator unbonding sig proper
 		CovenantUnbondingSigs: covenantUnbondingSigs,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 	}
