@@ -70,7 +70,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.ErrorLevel)
+	logger := createLogger(t, zapcore.DebugLevel)
 
 	// 1. generate covenant committee
 	covenantQuorum := 2
@@ -424,7 +424,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &opstackl2.QueryMsg{
-		FirstPubRandCommit: &opstackl2.FirstPubRandCommit{
+		FirstPubRandCommit: &opstackl2.PubRandCommit{
 			BtcPkHex: fpPubKey.MarshalHex(),
 		},
 	}
