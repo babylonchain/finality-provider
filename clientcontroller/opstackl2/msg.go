@@ -1,5 +1,7 @@
 package opstackl2
 
+import "github.com/cometbft/cometbft/proto/tendermint/crypto"
+
 type CommitPublicRandomnessMsg struct {
 	CommitPublicRandomness CommitPublicRandomnessMsgParams `json:"commit_public_randomness"`
 }
@@ -22,12 +24,12 @@ type SubmitFinalitySignatureMsg struct {
 }
 
 type SubmitFinalitySignatureMsgParams struct {
-	FpPubkeyHex string `json:"fp_pubkey_hex"`
-	Height      uint64 `json:"height"`
-	PubRand     []byte `json:"pub_rand"`
-	Proof       Proof  `json:"proof"`
-	BlockHash   []byte `json:"block_hash"`
-	Signature   []byte `json:"signature"`
+	FpPubkeyHex string       `json:"fp_pubkey_hex"`
+	Height      uint64       `json:"height"`
+	PubRand     []byte       `json:"pub_rand"`
+	Proof       crypto.Proof `json:"proof"`
+	BlockHash   []byte       `json:"block_hash"`
+	Signature   []byte       `json:"signature"`
 }
 
 // TODO: need to update based on contract implementation
@@ -50,11 +52,4 @@ type PubRandCommit struct {
 type ConfigResponse struct {
 	ConsumerId      string `json:"consumer_id"`
 	ActivatedHeight uint64 `json:"activated_height"`
-}
-
-type Proof struct {
-	Total    uint64   `json:"total"`
-	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
 }
