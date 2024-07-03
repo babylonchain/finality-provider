@@ -272,48 +272,60 @@ func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *s
 	t.Logf("Fp %s voted at height %d", fpIns.GetBtcPkHex(), height)
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance, requiredBlockOverlapLen uint64) []*uint64 {
+/* wait for the target block height that the two FPs both have PubRand commitments
+ * the algorithm should be:
+ * 1. wait until both FPs have their first PubRand commitments. get the start height of the commitments
+ * 2. for the FP that has the smaller start height, wait until it catches up to the other FP's first PubRand commitment
+ */
+// TODO: there are always two FPs, so we can simplify the logic and data structure
+func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpList []*service.FinalityProviderInstance) uint64 {
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
-	fpStartHeightList := make([]*uint64, 2)
-	firstFpCommittedPubRand, _ := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[0].GetBtcPk())
-	secondFpCommittedPubRand, _ := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[1].GetBtcPk())
+	var firstFpCommittedPubRand, secondFpCommittedPubRand, targetBlockHeight uint64
 
+	// wait until both FPs have their first PubRand commitments
 	require.Eventually(t, func() bool {
-		if fpStartHeightList[0] == nil {
-			fpStartHeightList[0] = new(uint64)
-			*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
+		if firstFpCommittedPubRand != 0 && secondFpCommittedPubRand != 0 {
+			return true
 		}
-		if fpStartHeightList[1] == nil {
-			fpStartHeightList[1] = new(uint64)
-			*fpStartHeightList[1] = secondFpCommittedPubRand.StartHeight
-		}
-		// it is possible one FP is falling behind
-		if fpStartHeightList[0] == nil || fpStartHeightList[1] == nil {
-			return false
-		}
-
-		var diff uint64
-		if *fpStartHeightList[0] < *fpStartHeightList[1] {
-			diff = *fpStartHeightList[1] - *fpStartHeightList[0]
-		} else {
-			diff = *fpStartHeightList[0] - *fpStartHeightList[1]
-		}
-
-		// check the two FP pubrand commitments overlaps
-		if diff > ctm.FpConfig.NumPubRand-requiredBlockOverlapLen+1 {
-			if *fpStartHeightList[0] < *fpStartHeightList[1] {
-				*fpStartHeightList[0] = firstFpCommittedPubRand.StartHeight
-			} else {
-				*fpStartHeightList[1] = secondFpCommittedPubRand.StartHeight
+		if firstFpCommittedPubRand == 0 {
+			firstPRCommit, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[0].GetBtcPk())
+			require.NoError(t, err)
+			if firstPRCommit != nil {
+				firstFpCommittedPubRand = firstPRCommit.StartHeight
 			}
-			return false
 		}
-
-		return true
+		if secondFpCommittedPubRand == 0 {
+			secondPRCommit, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpList[1].GetBtcPk())
+			require.NoError(t, err)
+			if secondPRCommit != nil {
+				secondFpCommittedPubRand = secondPRCommit.StartHeight
+			}
+		}
+		return false
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	t.Logf("Test block height %d and %d", *fpStartHeightList[0], *fpStartHeightList[1])
-	return fpStartHeightList
+	// find the FP with the smaller first committed pubrand index in `fpList`
+	i := 0
+	targetBlockHeight = secondFpCommittedPubRand
+	if firstFpCommittedPubRand > secondFpCommittedPubRand {
+		i = 1
+		targetBlockHeight = firstFpCommittedPubRand
+	}
+
+	// wait until the two FPs have overlap in their PubRand commitments
+	require.Eventually(t, func() bool {
+		committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpList[i].GetBtcPk())
+		require.NoError(t, err)
+		if committedPubRand == nil {
+			return false
+		}
+
+		// we found overlap between the two FPs' PubRand commitments
+		return committedPubRand.StartHeight+committedPubRand.NumPubRand-1 >= targetBlockHeight
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	t.Logf("The target block height is %d", targetBlockHeight)
+	return targetBlockHeight
 }
 
 func (ctm *OpL2ConsumerTestManager) RegisterBBNFinalityProvider(t *testing.T) *btcec.PublicKey {

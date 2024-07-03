@@ -153,15 +153,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// check the BTC delegations are active
 	ctm.WaitForNActiveDels(t, n)
 
-	// find all fps' first committed pubrand start height
-	// TODO: no need to return a list. can just return targetBlockHeight
-	fpStartHeightList := ctm.WaitForTargetBlockPubRand(t, fpList, 1)
-
 	// the first block both FP will sign
-	targetBlockHeight := *fpStartHeightList[0]
-	if targetBlockHeight < *fpStartHeightList[1] {
-		targetBlockHeight = *fpStartHeightList[1]
-	}
+	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
 
 	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
 	// stop the first FP instance
