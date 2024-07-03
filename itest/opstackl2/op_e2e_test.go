@@ -161,6 +161,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	ctm.WaitForNActiveDels(t, n)
 
 	// find all fps' first committed pubrand start height
+	// TODO: no need to return a list. can just return targetBlockHeight
 	fpStartHeightList := ctm.WaitForTargetBlockPubRand(t, fpList, 1)
 
 	// the first block both FP will sign
@@ -173,7 +174,6 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// stop the first FP instance
 	fpStopErr := fpList[0].Stop()
 	require.NoError(t, fpStopErr)
-	t.Logf("Stop the first FP instance")
 
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
 
@@ -207,10 +207,14 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	t.Logf("Test case 1: block %d is finalized", testBlock.Height)
 
 	// ======  another test case only for the last FP instance sign ======
-	// select a suitable height as the next block height:
-	// * the last FP instance had committed the pub rand (e.g. < LastPublicRandCommitHeight)
-	// * not wait too long to avoid timeout in `WaitForFpVoteAtHeight`
-	testNextBlockHeight := *fpStartHeightList[1] + 2
+	// first make sure the first FP is stopped
+	require.Eventually(t, func() bool {
+		return !fpList[0].IsRunning()
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("Stopped the first FP instance")
+
+	// select a block that the first FP has not processed yet to give to the second FP to sign
+	testNextBlockHeight := fpList[0].GetLastProcessedHeight() + 1
 	t.Logf("Test next block height %d", testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
