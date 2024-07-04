@@ -5,7 +5,6 @@ package e2etest_bcd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -176,7 +175,7 @@ func bcdUpdateGenesisFile(homeDir string) error {
 	}
 
 	// Read and print the updated genesis.json to verify changes
-	content, err := ioutil.ReadFile(genesisPath)
+	content, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return fmt.Errorf("failed to read updated genesis.json: %w", err)
 	}
