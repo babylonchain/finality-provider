@@ -36,6 +36,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
+	jsonutil "github.com/babylonchain/finality-provider/testutil/json"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -51,6 +52,7 @@ import (
 
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
+	devnetL1JsonPath             = "../devnetL1.json"
 	L2BlockTime                  = 2 * time.Second
 )
 
@@ -114,7 +116,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	// instantiate op contract
 	// TODO: read the chain ID from the devnetL1.json file
-	opConsumerId := fmt.Sprintf("op-stack-l2-%d", uint64(901))
+	l2ChainID, err := jsonutil.ReadJSONValueToUint64(
+		devnetL1JsonPath, "l2ChainID")
+	require.NoError(t, err)
+	opConsumerId := fmt.Sprintf("op-stack-l2-%d", l2ChainID)
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            cwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
@@ -139,8 +144,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	sdkCfgChainType := -1 // only for the e2e test
 	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = sdkCfgChainType
 	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
-	// TODO: read the Bitcoin Rpc from the devnetL1.json file
-	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc = "https://rpc.ankr.com/btc"
+	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc, err = jsonutil.ReadJSONValueToString(
+		devnetL1JsonPath, "babylonFinalityGadgetBitcoinRpc")
+	require.NoError(t, err)
+
 	opSys, err := opSysCfg.Start(t)
 	require.Nil(t, err, "Error starting up op stack system")
 
