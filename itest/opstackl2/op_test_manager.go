@@ -566,10 +566,10 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
 	err = ctm.FpApp.Stop()
 	require.NoError(t, err)
+	ctm.OpSystem.Close()
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
-	ctm.OpSystem.Close()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }
