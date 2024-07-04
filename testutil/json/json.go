@@ -58,10 +58,19 @@ func ReadJSONValueToUint64(filePath string, key string) (uint64, error) {
 		return 0, err
 	}
 
-	// Convert the value to a uint64
-	uint64Value, ok := value.(uint64)
+	// Check if the value is a float64 (default type for JSON numbers)
+	// https://stackoverflow.com/a/41136623/1991574
+	float64Value, ok := value.(float64)
 	if !ok {
-		return 0, fmt.Errorf("value is not a uint64: %v", value)
+		return 0, fmt.Errorf("value is not a float64 (and thus not a JSON number): %T, %v", value, value)
+	}
+
+	// Convert the float64 to uint64
+	uint64Value := uint64(float64Value)
+
+	// Check if the value is an integer
+	if float64Value != float64(uint64(uint64Value)) {
+		return 0, fmt.Errorf("value is not an integer: %v", float64Value)
 	}
 
 	return uint64Value, nil

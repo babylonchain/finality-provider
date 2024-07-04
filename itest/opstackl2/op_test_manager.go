@@ -52,7 +52,7 @@ import (
 
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
-	devnetL1JsonPath             = "../devnetL1.json"
+	devnetL1JsonPath             = "./devnet-data/devnetL1.json"
 	L2BlockTime                  = 2 * time.Second
 )
 
