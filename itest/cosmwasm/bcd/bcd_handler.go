@@ -1,12 +1,17 @@
+//go:build e2e_bcd
+// +build e2e_bcd
+
 package e2etest_bcd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	common "github.com/babylonchain/finality-provider/itest"
@@ -139,6 +144,7 @@ func bcdInit(homeDir string) error {
 
 func bcdUpdateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
+	fmt.Println("Home directory path:", homeDir)
 
 	// Update "stake" placeholder
 	sedCmd1 := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
@@ -167,6 +173,20 @@ func bcdUpdateGenesisFile(homeDir string) error {
 	_, err = common.RunCommand("sh", "-c", sedCmd3)
 	if err != nil {
 		return fmt.Errorf("failed to update btc_staking_contract_address in genesis.json: %w", err)
+	}
+
+	// Read and print the updated genesis.json to verify changes
+	content, err := ioutil.ReadFile(genesisPath)
+	if err != nil {
+		return fmt.Errorf("failed to read updated genesis.json: %w", err)
+	}
+
+	fmt.Println("Updated genesis.json content:")
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "babylon_contract_address") || strings.Contains(line, "btc_staking_contract_address") {
+			fmt.Println(line)
+		}
 	}
 
 	return nil
