@@ -5,8 +5,6 @@ package e2etest_op
 
 import (
 	"bytes"
-	"compress/gzip"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,18 +16,13 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	wasmdparams "github.com/CosmWasm/wasmd/app/params"
-	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
-	bbnapp "github.com/babylonchain/babylon/app"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
 	opconsumer "github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
-	cwclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
-	cwconfig "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -40,7 +33,6 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -104,13 +96,13 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// create cw client
 	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
 	cwConfig := opL2ConsumerConfig.ToCosmwasmConfig()
-	cwClient, err := newCwClient(&cwConfig, logger)
+	cwClient, err := opconsumer.NewCwClient(&cwConfig, logger)
 	require.NoError(t, err)
 
 	// store op-finality-gadget contract
-	err = storeWasmCode(cwClient, opFinalityGadgetContractPath)
+	err = cwClient.StoreWasmCode(opFinalityGadgetContractPath)
 	require.NoError(t, err)
-	opFinalityGadgetContractWasmId, err := getLatestCodeId(cwClient)
+	opFinalityGadgetContractWasmId, err := cwClient.GetLatestCodeId()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
@@ -128,7 +120,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
-	err = instantiateWasmContract(cwClient, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
+	err = cwClient.InstantiateContract(opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
 	listContractsResponse, err := cwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
 	require.NoError(t, err)
@@ -472,98 +464,6 @@ func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpP
 	}
 
 	return resp, nil
-}
-
-func newCwClient(cwConfig *cwconfig.CosmwasmConfig, logger *zap.Logger) (*cwclient.Client, error) {
-	if err := cwConfig.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
-	}
-
-	bbnEncodingCfg := bbnapp.GetEncodingConfig()
-	cwEncodingCfg := wasmdparams.EncodingConfig{
-		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
-		Codec:             bbnEncodingCfg.Codec,
-		TxConfig:          bbnEncodingCfg.TxConfig,
-		Amino:             bbnEncodingCfg.Amino,
-	}
-
-	cwClient, err := cwclient.New(
-		cwConfig,
-		opconsumer.BabylonChainName,
-		cwEncodingCfg,
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create CW client: %w", err)
-	}
-	return cwClient, nil
-}
-
-func storeWasmCode(cwClient *cwclient.Client, wasmFile string) error {
-	wasmCode, err := os.ReadFile(wasmFile)
-	if err != nil {
-		return err
-	}
-	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		_, err = gz.Write(wasmCode)
-		if err != nil {
-			return err
-		}
-		err = gz.Close()
-		if err != nil {
-			return err
-		}
-		wasmCode = buf.Bytes()
-	}
-
-	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       cwClient.MustGetAddr(),
-		WASMByteCode: wasmCode,
-	}
-	_, err = cwClient.ReliablySendMsg(context.Background(), storeMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func instantiateWasmContract(cwClient *cwclient.Client, codeID uint64, initMsg []byte) error {
-	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: cwClient.MustGetAddr(),
-		Admin:  cwClient.MustGetAddr(),
-		CodeID: codeID,
-		Label:  "op-test",
-		Msg:    initMsg,
-		Funds:  nil,
-	}
-
-	_, err := cwClient.ReliablySendMsg(context.Background(), instantiateMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// returns the latest wasm code id.
-func getLatestCodeId(cwClient *cwclient.Client) (uint64, error) {
-	pagination := &sdkquery.PageRequest{
-		Limit:   1,
-		Reverse: true,
-	}
-	resp, err := cwClient.ListCodes(pagination)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(resp.CodeInfos) == 0 {
-		return 0, fmt.Errorf("no codes found")
-	}
-
-	return resp.CodeInfos[0].CodeID, nil
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
