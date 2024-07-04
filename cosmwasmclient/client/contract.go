@@ -48,7 +48,7 @@ func (cwClient *Client) InstantiateContract(codeID uint64, initMsg []byte) error
 		Sender: cwClient.MustGetAddr(),
 		Admin:  cwClient.MustGetAddr(),
 		CodeID: codeID,
-		Label:  "op-test",
+		Label:  "cw",
 		Msg:    initMsg,
 		Funds:  nil,
 	}
