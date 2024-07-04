@@ -119,7 +119,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		"admin":            cwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
 		"activated_height": 0,
-		"is_enabled":       false,
+		"is_enabled":       true,
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
@@ -133,8 +133,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// start op stack system
 	opSysCfg := ope2e.DefaultSystemConfig(t)
 	// supress OP system logs
-	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelInfo).New("role", "verifier")
-	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelInfo).New("role", "sequencer")
+	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
+	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
 	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
 	sdkCfgChainType := -1 // only for the e2e test
 	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = sdkCfgChainType
