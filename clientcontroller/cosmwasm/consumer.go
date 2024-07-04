@@ -1,15 +1,11 @@
 package cosmwasm
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
-	"strings"
 
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
@@ -678,73 +674,19 @@ func (wc *CosmwasmConsumerController) QuerySmartContractState(contractAddress st
 // StoreWasmCode stores the wasm code on the consumer chain
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) StoreWasmCode(wasmFile string) error {
-	wasmCode, err := os.ReadFile(wasmFile)
-	if err != nil {
-		return err
-	}
-	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		_, err = gz.Write(wasmCode)
-		if err != nil {
-			return err
-		}
-		err = gz.Close()
-		if err != nil {
-			return err
-		}
-		wasmCode = buf.Bytes()
-	}
-
-	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       wc.cwClient.MustGetAddr(),
-		WASMByteCode: wasmCode,
-	}
-	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return wc.cwClient.StoreWasmCode(wasmFile)
 }
 
 // InstantiateContract instantiates a contract with the given code id and init msg
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
-	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: wc.cwClient.MustGetAddr(),
-		Admin:  wc.cwClient.MustGetAddr(),
-		CodeID: codeID,
-		Label:  "ibc-test",
-		Msg:    initMsg,
-		Funds:  nil,
-	}
-
-	_, err := wc.reliablySendMsg(instantiateMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return wc.cwClient.InstantiateContract(codeID, initMsg)
 }
 
 // GetLatestCodeId returns the latest wasm code id.
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) GetLatestCodeId() (uint64, error) {
-	pagination := &sdkquerytypes.PageRequest{
-		Limit:   1,
-		Reverse: true,
-	}
-	resp, err := wc.cwClient.ListCodes(pagination)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(resp.CodeInfos) == 0 {
-		return 0, fmt.Errorf("no codes found")
-	}
-
-	return resp.CodeInfos[0].CodeID, nil
+	return wc.cwClient.GetLatestCodeId()
 }
 
 // ListContractsByCode lists all contracts by wasm code id
