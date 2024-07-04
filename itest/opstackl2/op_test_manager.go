@@ -18,13 +18,18 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	wasmdparams "github.com/CosmWasm/wasmd/app/params"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
+	bbnapp "github.com/babylonchain/babylon/app"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
+	opconsumer "github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
+	cwclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
+	cwconfig "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -46,6 +51,7 @@ import (
 
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
+	L2BlockTime                  = 2 * time.Second
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -72,12 +78,12 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	logger := createLogger(t, zapcore.DebugLevel)
 
-	// 1. generate covenant committee
+	// generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
 	covenantPrivKeys, covenantPubKeys := e2eutils.GenerateCovenantCommittee(numCovenants, t)
 
-	// 2. prepare Babylon node
+	// prepare Babylon node
 	bh := e2eutils.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
@@ -93,66 +99,69 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. start op stack system
-	opSysCfg := ope2e.DefaultSystemConfig(t)
-	// supress OP system logs
-	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
-	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
-	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
-	opSys, err := opSysCfg.Start(t)
-	require.Nil(t, err, "Error starting up op stack system")
-
-	// 4. register consumer to Babylon
-	l2ChainId, err := opSys.Clients["sequencer"].ChainID(context.Background())
-	require.NoError(t, err, "failed to get chain ID")
-	opConsumerId := fmt.Sprintf("op-stack-l2-%d", l2ChainId.Uint64())
-	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
-	require.NoError(t, err)
-	t.Logf("Register consumer %s to Babylon", opConsumerId)
-
-	// 5. new op consumer controller
-	opL2Config := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
-	opL2Config.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
-	cfg.OPStackL2Config = opL2Config
-	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
-	// which might cause some problems and hard to debug issues
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
+	// create cw client
+	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
+	cwConfig := opL2ConsumerConfig.ToCosmwasmConfig()
+	cwClient, err := newCwClient(&cwConfig, logger)
 	require.NoError(t, err)
 
-	// 6. store op-finality-gadget contract
-	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
+	// store op-finality-gadget contract
+	err = storeWasmCode(cwClient, opFinalityGadgetContractPath)
 	require.NoError(t, err)
-
-	opFinalityGadgetContractWasmId, err := getLatestCodeId(opcc)
+	opFinalityGadgetContractWasmId, err := getLatestCodeId(cwClient)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// 7. instantiate op contract
+	// instantiate op contract
+	// TODO: read the chain ID from the devnetL1.json file
+	opConsumerId := fmt.Sprintf("op-stack-l2-%d", uint64(901))
 	opFinalityGadgetInitMsg := map[string]interface{}{
-		"admin":            opcc.CwClient.MustGetAddr(),
+		"admin":            cwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
 		"activated_height": 0,
 		"is_enabled":       true,
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
-	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
+	err = instantiateWasmContract(cwClient, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
-	// get op contract address
-	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
+	listContractsResponse, err := cwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
 	require.NoError(t, err)
-	require.Len(t, resp.Contracts, 1)
+	require.Len(t, listContractsResponse.Contracts, 1)
+	cwContractAddress := listContractsResponse.Contracts[0]
+
+	// start op stack system
+	opSysCfg := ope2e.DefaultSystemConfig(t)
+	// supress OP system logs
+	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
+	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
+	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
+	sdkCfgChainType := -1 // only for the e2e test
+	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = sdkCfgChainType
+	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
+	// TODO: read the Bitcoin Rpc from the devnetL1.json file
+	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc = "https://rpc.ankr.com/btc"
+	opSys, err := opSysCfg.Start(t)
+	require.Nil(t, err, "Error starting up op stack system")
+
+	// register consumer to Babylon
+	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
+	require.NoError(t, err)
+	t.Logf("Register consumer %s to Babylon", opConsumerId)
+
+	// new op consumer controller
+	opL2ConsumerConfig.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
+	cfg.OPStackL2Config = opL2ConsumerConfig
+	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
+	// which might cause some problems and hard to debug issues
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
+	require.NoError(t, err)
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
-	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
-	// only for the e2e test
-	sdkCfgChainType := -1
+	opcc.Cfg.OPFinalityGadgetAddress = cwContractAddress
 
-	opSys.RollupConfig.BabylonConfig.ChainType = sdkCfgChainType
-	opSys.RollupConfig.BabylonConfig.ContractAddress = resp.Contracts[0]
-	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
-
-	// 8. prepare EOTS manager
+	// prepare EOTS manager
+	// TODO: start it eralier
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -160,7 +169,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 9. prepare finality-provider
+	// prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
@@ -168,7 +177,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
-	// 10. init SDK client
+	// init SDK client
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
@@ -252,7 +261,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startH
 			return false
 		}
 		return len(blocks) == n
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
 	require.Equal(t, n, len(blocks))
 	t.Logf("The last block of %d blocks is %d, %s", n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
 	return blocks
@@ -458,7 +467,32 @@ func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpP
 	return resp, nil
 }
 
-func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
+func newCwClient(cwConfig *cwconfig.CosmwasmConfig, logger *zap.Logger) (*cwclient.Client, error) {
+	if err := cwConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
+	}
+
+	bbnEncodingCfg := bbnapp.GetEncodingConfig()
+	cwEncodingCfg := wasmdparams.EncodingConfig{
+		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
+		Codec:             bbnEncodingCfg.Codec,
+		TxConfig:          bbnEncodingCfg.TxConfig,
+		Amino:             bbnEncodingCfg.Amino,
+	}
+
+	cwClient, err := cwclient.New(
+		cwConfig,
+		opconsumer.BabylonChainName,
+		cwEncodingCfg,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CW client: %w", err)
+	}
+	return cwClient, nil
+}
+
+func storeWasmCode(cwClient *cwclient.Client, wasmFile string) error {
 	wasmCode, err := os.ReadFile(wasmFile)
 	if err != nil {
 		return err
@@ -478,10 +512,10 @@ func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string)
 	}
 
 	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       opcc.CwClient.MustGetAddr(),
+		Sender:       cwClient.MustGetAddr(),
 		WASMByteCode: wasmCode,
 	}
-	_, err = opcc.ReliablySendMsg(storeMsg, nil, nil)
+	_, err = cwClient.ReliablySendMsg(context.Background(), storeMsg, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -489,17 +523,17 @@ func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string)
 	return nil
 }
 
-func instantiateWasmContract(opcc *opstackl2.OPStackL2ConsumerController, codeID uint64, initMsg []byte) error {
+func instantiateWasmContract(cwClient *cwclient.Client, codeID uint64, initMsg []byte) error {
 	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: opcc.CwClient.MustGetAddr(),
-		Admin:  opcc.CwClient.MustGetAddr(),
+		Sender: cwClient.MustGetAddr(),
+		Admin:  cwClient.MustGetAddr(),
 		CodeID: codeID,
 		Label:  "op-test",
 		Msg:    initMsg,
 		Funds:  nil,
 	}
 
-	_, err := opcc.ReliablySendMsg(instantiateMsg, nil, nil)
+	_, err := cwClient.ReliablySendMsg(context.Background(), instantiateMsg, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -508,12 +542,12 @@ func instantiateWasmContract(opcc *opstackl2.OPStackL2ConsumerController, codeID
 }
 
 // returns the latest wasm code id.
-func getLatestCodeId(opcc *opstackl2.OPStackL2ConsumerController) (uint64, error) {
+func getLatestCodeId(cwClient *cwclient.Client) (uint64, error) {
 	pagination := &sdkquery.PageRequest{
 		Limit:   1,
 		Reverse: true,
 	}
-	resp, err := opcc.CwClient.ListCodes(pagination)
+	resp, err := cwClient.ListCodes(pagination)
 	if err != nil {
 		return 0, err
 	}
@@ -532,10 +566,10 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
 	err = ctm.FpApp.Stop()
 	require.NoError(t, err)
+	ctm.OpSystem.Close()
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
-	ctm.OpSystem.Close()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }
