@@ -14,6 +14,7 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	cwclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
+	cwconfig "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -50,26 +51,10 @@ func NewOPStackL2ConsumerController(
 		return nil, err
 	}
 	cwConfig := opl2Cfg.ToCosmwasmConfig()
-	if err := cwConfig.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
-	}
 
-	bbnEncodingCfg := bbnapp.GetEncodingConfig()
-	cwEncodingCfg := wasmdparams.EncodingConfig{
-		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
-		Codec:             bbnEncodingCfg.Codec,
-		TxConfig:          bbnEncodingCfg.TxConfig,
-		Amino:             bbnEncodingCfg.Amino,
-	}
-
-	cwClient, err := cwclient.New(
-		&cwConfig,
-		BabylonChainName,
-		cwEncodingCfg,
-		logger,
-	)
+	cwClient, err := NewCwClient(&cwConfig, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
+		return nil, fmt.Errorf("failed to create CW client: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), opl2Cfg.Timeout)
@@ -86,6 +71,29 @@ func NewOPStackL2ConsumerController(
 		opl2Client,
 		logger,
 	}, nil
+}
+
+func NewCwClient(cwConfig *cwconfig.CosmwasmConfig, logger *zap.Logger) (*cwclient.Client, error) {
+	if err := cwConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
+	}
+
+	bbnEncodingCfg := bbnapp.GetEncodingConfig()
+	cwEncodingCfg := wasmdparams.EncodingConfig{
+		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
+		Codec:             bbnEncodingCfg.Codec,
+		TxConfig:          bbnEncodingCfg.TxConfig,
+		Amino:             bbnEncodingCfg.Amino,
+	}
+
+	cwClient, err := cwclient.New(
+		cwConfig,
+		BabylonChainName,
+		cwEncodingCfg,
+		logger,
+	)
+
+	return cwClient, err
 }
 
 func (cc *OPStackL2ConsumerController) ReliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
