@@ -42,6 +42,11 @@ require (
 )
 
 require (
+	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
+	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
+)
+
+require (
 	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -197,7 +202,7 @@ require (
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -432,7 +437,7 @@ replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
 	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240629034230-f5dbfa1d9875
-	github.com/babylonchain/babylon-da-sdk => github.com/babylonchain/babylon-da-sdk v0.0.0-20240703174540-4746669089a6
+	github.com/babylonchain/babylon-da-sdk => github.com/babylonchain/babylon-da-sdk v0.0.0-20240704160019-ec5dcf968c1e
 	github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20231018212520-f6cde3fc2fa4
 	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v0.0.0-20240703175008-878e7e6ccc3b
 	github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101315.1-rc.5

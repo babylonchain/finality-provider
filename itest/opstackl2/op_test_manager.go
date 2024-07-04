@@ -19,6 +19,7 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/babylonchain/babylon-da-sdk/btcclient"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -169,10 +170,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 
 	// 10. init SDK client
+	// We pass in an external Bitcoin RPC address but otherwise use the default configs.
+	// The RPC url must be trimmed to remove the http:// or https:// prefix.
+	btcConfig := btcclient.DefaultBTCConfig()
+	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
-		BitcoinRpc:   opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc,
+		BTCConfig: btcConfig,
 	})
 	require.NoError(t, err)
 
@@ -228,6 +233,11 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 		OutputFormat: dc.OutputFormat,
 		SignModeStr:  dc.SignModeStr,
 	}
+}
+
+func trimLeadingHttp(s string) string {
+	t := strings.TrimPrefix(s, "http://")
+	return strings.TrimPrefix(t, "https://")
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
