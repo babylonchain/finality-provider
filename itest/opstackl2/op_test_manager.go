@@ -16,7 +16,6 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/babylonchain/babylon-da-sdk/btcclient"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
@@ -45,7 +44,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_42eb9bf.wasm"
 	devnetL1JsonPath             = "./devnet-data/devnetL1.json"
 	L2BlockTime                  = 2 * time.Second
 )
