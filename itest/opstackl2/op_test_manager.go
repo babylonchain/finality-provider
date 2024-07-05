@@ -16,6 +16,7 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/babylonchain/babylon-da-sdk/btcclient"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/testutil/datagen"
@@ -43,7 +44,7 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_42eb9bf.wasm"
 	devnetL1JsonPath             = "./devnet-data/devnetL1.json"
 	L2BlockTime                  = 2 * time.Second
 )
@@ -60,7 +61,7 @@ type OpL2ConsumerTestManager struct {
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
-	SdkClient         *sdk.BabylonQueryClient
+	SdkClient         *sdk.BabylonFinalityGadgetClient
 	OpSystem          *ope2e.System
 	OpChainId         string
 }
@@ -176,11 +177,15 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
-	// init SDK client
+	// 10. init SDK client
+	// We pass in an external Bitcoin RPC address but otherwise use the default configs.
+	// The RPC url must be trimmed to remove the http:// or https:// prefix.
+	btcConfig := btcclient.DefaultBTCConfig()
+	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
-		BitcoinRpc:   opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc,
+		BTCConfig:    btcConfig,
 	})
 	require.NoError(t, err)
 
@@ -236,6 +241,11 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 		OutputFormat: dc.OutputFormat,
 		SignModeStr:  dc.SignModeStr,
 	}
+}
+
+func trimLeadingHttp(s string) string {
+	t := strings.TrimPrefix(s, "http://")
+	return strings.TrimPrefix(t, "https://")
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
