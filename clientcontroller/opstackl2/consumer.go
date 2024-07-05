@@ -235,13 +235,11 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	if err != nil {
 		return nil, err
 	}
-	for _, block := range blocks {
-		cc.logger.Debug(
-			"Successfully submitted finality signatures in a batch",
-			zap.Uint64("height", block.Height),
-			zap.String("block_hash", hex.EncodeToString(block.Hash)),
-		)
-	}
+	cc.logger.Debug(
+		"Successfully submitted finality signatures in a batch",
+		zap.Uint64("start_height", blocks[0].Height),
+		zap.Uint64("end_height", blocks[len(blocks)-1].Height),
+	)
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
