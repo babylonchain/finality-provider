@@ -5,6 +5,7 @@ package e2etest_bcd
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -257,9 +258,12 @@ func bcdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 	f, err := os.Create(filepath.Join(testDir, "bcd.log"))
 	require.NoError(t, err)
 
+	// Create a multi-writer to write to both the log file and the console
+	mw := io.MultiWriter(os.Stdout, f)
+
 	cmd := exec.Command("bcd", args...)
-	cmd.Stdout = f
-	cmd.Stderr = f
+	cmd.Stdout = mw
+	cmd.Stderr = mw
 
 	return cmd
 }
