@@ -61,7 +61,7 @@ type OpL2ConsumerTestManager struct {
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
-	SdkClient         *sdk.BabylonQueryClient
+	SdkClient         *sdk.BabylonFinalityGadgetClient
 	OpSystem          *ope2e.System
 	OpChainId         string
 }
@@ -88,7 +88,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
-	// cfg.FastSyncInterval = 0 // disable fast sync
+	cfg.FastSyncInterval = 0 // disable fast sync
 	cfg.NumPubRand = 64
 	cfg.MinRandHeightGap = 1000
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -185,7 +185,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
-		BTCConfig: btcConfig,
+		BTCConfig:    btcConfig,
 	})
 	require.NoError(t, err)
 
