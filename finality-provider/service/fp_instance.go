@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -171,7 +172,7 @@ func (fp *FinalityProviderInstance) Stop() error {
 	close(fp.quit)
 	fp.wg.Wait()
 
-	fp.logger.Info("the finality-provider instance %s is successfully stopped", zap.String("pk", fp.GetBtcPkHex()))
+	fp.logger.Info("the finality-provider instance is successfully stopped", zap.String("pk", fp.GetBtcPkHex()))
 
 	return nil
 }
@@ -190,6 +191,7 @@ func (fp *FinalityProviderInstance) finalitySigSubmissionLoop() {
 				"the finality-provider received a new block, start processing",
 				zap.String("pk", fp.GetBtcPkHex()),
 				zap.Uint64("height", b.Height),
+				zap.String("block_hash", hex.EncodeToString(b.Hash)),
 			)
 
 			// check whether the block has been processed before
