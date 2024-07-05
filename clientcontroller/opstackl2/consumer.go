@@ -237,7 +237,7 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	}
 	for _, block := range blocks {
 		cc.logger.Debug(
-			"Submit batch finality signatures",
+			"Successfully submitted finality signatures in a batch",
 			zap.Uint64("height", block.Height),
 			zap.String("block_hash", hex.EncodeToString(block.Hash)),
 		)
