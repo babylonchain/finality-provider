@@ -300,8 +300,8 @@ github.com/babylonchain/babylon-da-sdk v0.0.0-20240705141841-e18d8f028ec9 h1:/Df
 github.com/babylonchain/babylon-da-sdk v0.0.0-20240705141841-e18d8f028ec9/go.mod h1:0kTt9a/njIMLOtiBlr7WMRYM8gTFuTEOnhK05oL/N5g=
 github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead h1:LyyrFtdSbx0a5ZLHA/qMNMjAxZltfnNJgj5+uEgqZdI=
 github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead/go.mod h1:Tdi+29Y+DzCaaz0V0sBRXF1tXXLnH6JHJsOG8uktWLU=
-github.com/babylonchain/babylon-sdk/demo v0.0.0-20240628002428-0a58d82eef68 h1:UXM8I8EPmeRdLMoYERNVMX8DFhWmvRBfLcG2lEUcwqI=
-github.com/babylonchain/babylon-sdk/demo v0.0.0-20240628002428-0a58d82eef68/go.mod h1:X4QovCWMwqMjoTriu18w4gfqX1sYqOWRnZwXGYD8bnE=
+github.com/babylonchain/babylon-sdk/demo v0.0.0-20240705193549-b84c438d3d20 h1:lfbtQpRCLse6Pr66i/eft+mBsaPBO2jH+7UVUF8vMiI=
+github.com/babylonchain/babylon-sdk/demo v0.0.0-20240705193549-b84c438d3d20/go.mod h1:X4QovCWMwqMjoTriu18w4gfqX1sYqOWRnZwXGYD8bnE=
 github.com/babylonchain/babylon-sdk/x v0.0.0-20240624102351-3a809d4fdcce h1:UYg5QEbMUBt3IIVdcTDXqVTsj1iJoFQBfGC+e6uEtZg=
 github.com/babylonchain/babylon-sdk/x v0.0.0-20240624102351-3a809d4fdcce/go.mod h1:Ojrlnwh9z7fvmTUzYH4Tk+8hWSctCrZYWiC5+t4X32I=
 github.com/babylonchain/optimism v0.0.0-20240705144333-0e1916f9e050 h1:5pn1kf5U19i5QRFU44Skmvp1tjM/W4KvTjPzTMi7DRE=
