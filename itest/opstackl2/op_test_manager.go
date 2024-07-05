@@ -177,7 +177,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
-	// 10. init SDK client
+	// init SDK client
 	// We pass in an external Bitcoin RPC address but otherwise use the default configs.
 	// The RPC url must be trimmed to remove the http:// or https:// prefix.
 	btcConfig := btcclient.DefaultBTCConfig()
