@@ -42,6 +42,46 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	return executeMessage
 }
 
+func GenBtcStakingFpExecMsg(fpHex string) cosmwasm.ExecMsg {
+	// generate random finality provider
+	newFp := genRandomFinalityProvider()
+
+	// replace field so finality provider is linked
+	newFp.BTCPKHex = fpHex
+
+	// create the ExecMsg instance with BtcStaking set for NewFP
+	executeMessage := cosmwasm.ExecMsg{
+		BtcStaking: &cosmwasm.BtcStaking{
+			NewFP:       []cosmwasm.NewFinalityProvider{newFp},
+			ActiveDel:   []cosmwasm.ActiveBtcDelegation{},
+			SlashedDel:  []cosmwasm.SlashedBtcDelegation{},
+			UnbondedDel: []cosmwasm.UnbondedBtcDelegation{},
+		},
+	}
+
+	return executeMessage
+}
+
+func GenBtcStakingDelExecMsg(fpHex string) cosmwasm.ExecMsg {
+	// generate random delegation
+	_, newDel := genRandomBtcDelegation()
+
+	// replace field so delegation is linked to finality provider
+	newDel.FpBtcPkList = []string{fpHex}
+
+	// create the ExecMsg instance with BtcStaking set for ActiveDel
+	executeMessage := cosmwasm.ExecMsg{
+		BtcStaking: &cosmwasm.BtcStaking{
+			NewFP:       []cosmwasm.NewFinalityProvider{},
+			ActiveDel:   []cosmwasm.ActiveBtcDelegation{newDel},
+			SlashedDel:  []cosmwasm.SlashedBtcDelegation{},
+			UnbondedDel: []cosmwasm.UnbondedBtcDelegation{},
+		},
+	}
+
+	return executeMessage
+}
+
 func GenPubRandomnessExecMsg(fpHex string, commitment, sig []byte, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
 	// create the ExecMsg instance with CommitPublicRandomness set
 	executeMessage := cosmwasm.ExecMsg{

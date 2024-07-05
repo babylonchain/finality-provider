@@ -22,10 +22,14 @@ import (
 // 1. Upload Babylon and BTC staking contracts to bcd chain
 // 2. Instantiate Babylon contract with admin
 // 3. Register consumer chain to Babylon
-// 4. Register finality provider to Babylon
-// 5. Inject finality provider and delegation in BTC staking contract using admin
+// 4. Inject consumer fp in BTC staking contract using admin
 // 6. Start the finality provider daemon and app
 // 7. Wait for fp daemon to submit public randomness and finality signature
+// 8. Inject consumer delegation in BTC staking contract using admin, this will give voting power to fp
+// 9. Ensure fp has voting power in smart contract
+// 10. Ensure finality sigs are being submitted by fp daemon and block is finalized
+// NOTE: the delegation is injected after ensuring pub randomness loop in fp daemon has started
+// this order is necessary otherwise pub randomness loop takes time to start and due to this blocks won't get finalized.
 func TestConsumerFpLifecycle(t *testing.T) {
 	ctm := StartBcdTestManager(t)
 	defer ctm.Stop(t)
@@ -80,6 +84,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// register consumer fps to babylon
+	// this will be submitted to babylon once fp daemon starts
 	app := ctm.Fpa
 	cfg := app.GetConfig()
 	fpName := e2eutils.FpNamePrefix + bcdChainID
@@ -95,11 +100,11 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 	require.NoError(t, err)
 
-	// inject fp and delegation in smart contract using admin
-	msg := e2eutils.GenBtcStakingExecMsg(fpPk.MarshalHex())
-	msgBytes, err := json.Marshal(msg)
+	// inject fp in smart contract using admin
+	fpMsg := e2eutils.GenBtcStakingFpExecMsg(fpPk.MarshalHex())
+	fpMsgBytes, err := json.Marshal(fpMsg)
 	require.NoError(t, err)
-	_, err = ctm.BcdConsumerClient.ExecuteContract(msgBytes)
+	_, err = ctm.BcdConsumerClient.ExecuteContract(fpMsgBytes)
 	require.NoError(t, err)
 
 	// query finality providers in smart contract
@@ -107,30 +112,10 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, consumerFpsResp)
 	require.Len(t, consumerFpsResp.Fps, 1)
-	require.Equal(t, msg.BtcStaking.NewFP[0].ConsumerID, consumerFpsResp.Fps[0].ConsumerId)
-	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsResp.Fps[0].BtcPkHex)
+	require.Equal(t, fpMsg.BtcStaking.NewFP[0].ConsumerID, consumerFpsResp.Fps[0].ConsumerId)
+	require.Equal(t, fpMsg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsResp.Fps[0].BtcPkHex)
 
-	// query delegations in smart contract
-	consumerDelsResp, err := ctm.BcdConsumerClient.QueryDelegations()
-	require.NoError(t, err)
-	require.NotNil(t, consumerDelsResp)
-	require.Len(t, consumerDelsResp.Delegations, 1)
-	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, consumerDelsResp.Delegations[0].StakingTx)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, consumerDelsResp.Delegations[0].SlashingTx)
-
-	// ensure fp has voting power in smart contract
-	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
-	require.NoError(t, err)
-	require.NotNil(t, consumerFpsByPowerResp)
-	require.Len(t, consumerFpsByPowerResp.Fps, 1)
-	require.Equal(t, msg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
-	require.Equal(t, consumerDelsResp.Delegations[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
-
+	// start finality provider daemon
 	err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
 	require.NoError(t, err)
 	fpIns, err := app.GetFinalityProviderInstance(fpPk)
@@ -139,6 +124,7 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// ensure consumer finality providers are stored in Babylon
+	// this will happen after the finality provider daemon has started
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(bcdChainID)
 		if err != nil {
@@ -160,11 +146,6 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
-	require.NoError(t, err)
-	cometLatestHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight
-	lookupHeight := cometLatestHeight + 20 // TODO: this is a hack, as its possible the randomness/sigs submission loops haven't started yet
-
 	// ensure pub rand is submitted to smart contract
 	require.Eventually(t, func() bool {
 		fpPubRandResp, err := ctm.BcdConsumerClient.QueryLastPublicRandCommit(fpPk.MustToBTCPK())
@@ -179,6 +160,41 @@ func TestConsumerFpLifecycle(t *testing.T) {
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
+	// inject delegation in smart contract using admin
+	delMsg := e2eutils.GenBtcStakingDelExecMsg(fpPk.MarshalHex())
+	delMsgBytes, err := json.Marshal(delMsg)
+	require.NoError(t, err)
+	_, err = ctm.BcdConsumerClient.ExecuteContract(delMsgBytes)
+	require.NoError(t, err)
+
+	// query delegations in smart contract
+	consumerDelsResp, err := ctm.BcdConsumerClient.QueryDelegations()
+	require.NoError(t, err)
+	require.NotNil(t, consumerDelsResp)
+	require.Len(t, consumerDelsResp.Delegations, 1)
+	require.Empty(t, consumerDelsResp.Delegations[0].UndelegationInfo.DelegatorUnbondingSig) // assert there is no delegator unbonding sig
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].BTCPkHex, consumerDelsResp.Delegations[0].BtcPkHex)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].StakingTx, consumerDelsResp.Delegations[0].StakingTx)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].SlashingTx, consumerDelsResp.Delegations[0].SlashingTx)
+
+	// ensure fp has voting power in smart contract
+	consumerFpsByPowerResp, err := ctm.BcdConsumerClient.QueryFinalityProvidersByPower()
+	require.NoError(t, err)
+	require.NotNil(t, consumerFpsByPowerResp)
+	require.Len(t, consumerFpsByPowerResp.Fps, 1)
+	require.Equal(t, fpMsg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsByPowerResp.Fps[0].BtcPkHex)
+	require.Equal(t, delMsg.BtcStaking.ActiveDel[0].TotalSat, consumerFpsByPowerResp.Fps[0].Power)
+
+	// get comet latest height
+	wasmdNodeStatus, err := ctm.BcdConsumerClient.GetCometNodeStatus()
+	require.NoError(t, err)
+	// TODO: this is a hack as its possible that latest comet height is less than activated height
+	//  and the sigs/finalization can only happen after activated height
+	lookupHeight := wasmdNodeStatus.SyncInfo.LatestBlockHeight + 5
+
 	// ensure finality signature is submitted to smart contract
 	require.Eventually(t, func() bool {
 		fpSigsResponse, err := ctm.BcdConsumerClient.QueryFinalitySignature(fpPk.MarshalHex(), uint64(lookupHeight))
@@ -186,10 +202,23 @@ func TestConsumerFpLifecycle(t *testing.T) {
 			t.Logf("failed to query finality signature: %s", err.Error())
 			return false
 		}
-		if fpSigsResponse == nil {
+		if fpSigsResponse == nil || fpSigsResponse.Signature == nil || len(fpSigsResponse.Signature) == 0 {
 			return false
 		}
-		if fpSigsResponse.Signature == nil || len(fpSigsResponse.Signature) == 0 {
+		return true
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+
+	// ensure latest comet block is finalized
+	require.Eventually(t, func() bool {
+		idxBlockedResponse, err := ctm.BcdConsumerClient.QueryIndexedBlock(uint64(lookupHeight))
+		if err != nil {
+			t.Logf("failed to query indexed block: %s", err.Error())
+			return false
+		}
+		if idxBlockedResponse == nil {
+			return false
+		}
+		if !idxBlockedResponse.Finalized {
 			return false
 		}
 		return true
