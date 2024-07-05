@@ -2,7 +2,7 @@ package opstackl2
 
 import (
 	"context"
-	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -14,6 +14,7 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	"github.com/babylonchain/finality-provider/clientcontroller/api"
 	cwclient "github.com/babylonchain/finality-provider/cosmwasmclient/client"
+	cwconfig "github.com/babylonchain/finality-provider/cosmwasmclient/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -50,26 +51,10 @@ func NewOPStackL2ConsumerController(
 		return nil, err
 	}
 	cwConfig := opl2Cfg.ToCosmwasmConfig()
-	if err := cwConfig.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
-	}
 
-	bbnEncodingCfg := bbnapp.GetEncodingConfig()
-	cwEncodingCfg := wasmdparams.EncodingConfig{
-		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
-		Codec:             bbnEncodingCfg.Codec,
-		TxConfig:          bbnEncodingCfg.TxConfig,
-		Amino:             bbnEncodingCfg.Amino,
-	}
-
-	cwClient, err := cwclient.New(
-		&cwConfig,
-		BabylonChainName,
-		cwEncodingCfg,
-		logger,
-	)
+	cwClient, err := NewCwClient(&cwConfig, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Babylon client: %w", err)
+		return nil, fmt.Errorf("failed to create CW client: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), opl2Cfg.Timeout)
@@ -86,6 +71,29 @@ func NewOPStackL2ConsumerController(
 		opl2Client,
 		logger,
 	}, nil
+}
+
+func NewCwClient(cwConfig *cwconfig.CosmwasmConfig, logger *zap.Logger) (*cwclient.Client, error) {
+	if err := cwConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config for OP consumer controller: %w", err)
+	}
+
+	bbnEncodingCfg := bbnapp.GetEncodingConfig()
+	cwEncodingCfg := wasmdparams.EncodingConfig{
+		InterfaceRegistry: bbnEncodingCfg.InterfaceRegistry,
+		Codec:             bbnEncodingCfg.Codec,
+		TxConfig:          bbnEncodingCfg.TxConfig,
+		Amino:             bbnEncodingCfg.Amino,
+	}
+
+	cwClient, err := cwclient.New(
+		cwConfig,
+		BabylonChainName,
+		cwEncodingCfg,
+		logger,
+	)
+
+	return cwClient, err
 }
 
 func (cc *OPStackL2ConsumerController) ReliablySendMsg(msg sdk.Msg, expectedErrs []*sdkErr.Error, unrecoverableErrs []*sdkErr.Error) (*provider.RelayerTxResponse, error) {
@@ -174,6 +182,11 @@ func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 	if err != nil {
 		return nil, err
 	}
+	cc.logger.Debug(
+		"Successfully submitted finality signature",
+		zap.Uint64("height", block.Height),
+		zap.String("block_hash", hex.EncodeToString(block.Hash)),
+	)
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
@@ -221,7 +234,11 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	if err != nil {
 		return nil, err
 	}
-
+	cc.logger.Debug(
+		"Successfully submitted finality signatures in a batch",
+		zap.Uint64("start_height", blocks[0].Height),
+		zap.Uint64("end_height", blocks[len(blocks)-1].Height),
+	)
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
@@ -275,9 +292,16 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	if err != nil {
 		return nil, err
 	}
+
+	blockHashBytes := l2Block.Hash().Bytes()
+	cc.logger.Debug(
+		"QueryBlock",
+		zap.Uint64("height", height),
+		zap.String("block_hash", hex.EncodeToString(blockHashBytes)),
+	)
 	return &types.BlockInfo{
 		Height: height,
-		Hash:   l2Block.Hash().Bytes(),
+		Hash:   blockHashBytes,
 	}, nil
 }
 
@@ -333,7 +357,7 @@ func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) 
 func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &QueryMsg{
-		LastPubRandCommit: &LastPubRandCommit{
+		LastPubRandCommit: &PubRandCommit{
 			BtcPkHex: fpPubKey.MarshalHex(),
 		},
 	}
@@ -368,16 +392,11 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 }
 
 func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
-	var aunts []string
-	for _, aunt := range cmtProof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
 	return Proof{
 		Total:    uint64(cmtProof.Total),
 		Index:    uint64(cmtProof.Index),
-		LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
-		Aunts:    aunts,
+		LeafHash: cmtProof.LeafHash,
+		Aunts:    cmtProof.Aunts,
 	}
 }
 

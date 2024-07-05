@@ -1,15 +1,10 @@
 package cosmwasm
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
-	"strings"
 
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
@@ -95,8 +90,8 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
-			Commitment:  base64.StdEncoding.EncodeToString(commitment),
-			Signature:   base64.StdEncoding.EncodeToString(bip340Sig),
+			Commitment:  commitment,
+			Signature:   bip340Sig,
 		},
 	}
 
@@ -131,10 +126,10 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		SubmitFinalitySignature: &SubmitFinalitySignature{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
-			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
-			Proof:       ConvertProof(cmtProof),
-			BlockHash:   base64.StdEncoding.EncodeToString(block.Hash),
-			Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal()),
+			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
+			Proof:       cmtProof,
+			BlockHash:   block.Hash,
+			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
 		},
 	}
 
@@ -170,10 +165,10 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 			SubmitFinalitySignature: &SubmitFinalitySignature{
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
-				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
-				Proof:       ConvertProof(cmtProof),
-				BlockHash:   base64.StdEncoding.EncodeToString(b.Hash),
-				Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal()),
+				PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal(),
+				Proof:       cmtProof,
+				BlockHash:   b.Hash,
+				Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal(),
 			},
 		}
 
@@ -677,73 +672,19 @@ func (wc *CosmwasmConsumerController) QuerySmartContractState(contractAddress st
 // StoreWasmCode stores the wasm code on the consumer chain
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) StoreWasmCode(wasmFile string) error {
-	wasmCode, err := os.ReadFile(wasmFile)
-	if err != nil {
-		return err
-	}
-	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		_, err = gz.Write(wasmCode)
-		if err != nil {
-			return err
-		}
-		err = gz.Close()
-		if err != nil {
-			return err
-		}
-		wasmCode = buf.Bytes()
-	}
-
-	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       wc.cwClient.MustGetAddr(),
-		WASMByteCode: wasmCode,
-	}
-	_, err = wc.reliablySendMsg(storeMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return wc.cwClient.StoreWasmCode(wasmFile)
 }
 
 // InstantiateContract instantiates a contract with the given code id and init msg
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) InstantiateContract(codeID uint64, initMsg []byte) error {
-	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: wc.cwClient.MustGetAddr(),
-		Admin:  wc.cwClient.MustGetAddr(),
-		CodeID: codeID,
-		Label:  "ibc-test",
-		Msg:    initMsg,
-		Funds:  nil,
-	}
-
-	_, err := wc.reliablySendMsg(instantiateMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return wc.cwClient.InstantiateContract(codeID, initMsg)
 }
 
 // GetLatestCodeId returns the latest wasm code id.
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) GetLatestCodeId() (uint64, error) {
-	pagination := &sdkquerytypes.PageRequest{
-		Limit:   1,
-		Reverse: true,
-	}
-	resp, err := wc.cwClient.ListCodes(pagination)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(resp.CodeInfos) == 0 {
-		return 0, fmt.Errorf("no codes found")
-	}
-
-	return resp.CodeInfos[0].CodeID, nil
+	return wc.cwClient.GetLatestCodeId()
 }
 
 // ListContractsByCode lists all contracts by wasm code id
@@ -776,18 +717,4 @@ func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
 		return nil
 	}
 	return bytes
-}
-
-func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
-	var aunts []string
-	for _, aunt := range cmtProof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
-	return Proof{
-		Total:    uint64(cmtProof.Total),
-		Index:    uint64(cmtProof.Index),
-		LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
-		Aunts:    aunts,
-	}
 }

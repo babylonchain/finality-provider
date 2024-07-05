@@ -5,8 +5,6 @@ package e2etest_op
 
 import (
 	"bytes"
-	"compress/gzip"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,23 +16,24 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	wasmdtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/babylonchain/babylon-da-sdk/btcclient"
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
 	"github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
+	opconsumer "github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
+	jsonutil "github.com/babylonchain/finality-provider/testutil/json"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdkquery "github.com/cosmos/cosmos-sdk/types/query"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -45,7 +44,9 @@ import (
 )
 
 const (
-	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_48d6604.wasm"
+	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_42eb9bf.wasm"
+	devnetL1JsonPath             = "./devnet-data/devnetL1.json"
+	L2BlockTime                  = 2 * time.Second
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -60,7 +61,7 @@ type OpL2ConsumerTestManager struct {
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
-	SdkClient         *sdk.BabylonQueryClient
+	SdkClient         *sdk.BabylonFinalityGadgetClient
 	OpSystem          *ope2e.System
 	OpChainId         string
 }
@@ -70,14 +71,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.ErrorLevel)
+	logger := createLogger(t, zapcore.DebugLevel)
 
-	// 1. generate covenant committee
+	// generate covenant committee
 	covenantQuorum := 2
 	numCovenants := 3
 	covenantPrivKeys, covenantPubKeys := e2eutils.GenerateCovenantCommittee(numCovenants, t)
 
-	// 2. prepare Babylon node
+	// prepare Babylon node
 	bh := e2eutils.NewBabylonNodeHandler(t, covenantQuorum, covenantPubKeys)
 	err = bh.Start()
 	require.NoError(t, err)
@@ -93,66 +94,74 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. start op stack system
-	opSysCfg := ope2e.DefaultSystemConfig(t)
-	// supress OP system logs
-	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
-	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
-	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
-	opSys, err := opSysCfg.Start(t)
-	require.Nil(t, err, "Error starting up op stack system")
-
-	// 4. register consumer to Babylon
-	l2ChainId, err := opSys.Clients["sequencer"].ChainID(context.Background())
-	require.NoError(t, err, "failed to get chain ID")
-	opConsumerId := fmt.Sprintf("op-stack-l2-%d", l2ChainId.Uint64())
-	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
-	require.NoError(t, err)
-	t.Logf("Register consumer %s to Babylon", opConsumerId)
-
-	// 5. new op consumer controller
-	opL2Config := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
-	opL2Config.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
-	cfg.OPStackL2Config = opL2Config
-	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
-	// which might cause some problems and hard to debug issues
-	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
+	// create cw client
+	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
+	cwConfig := opL2ConsumerConfig.ToCosmwasmConfig()
+	cwClient, err := opconsumer.NewCwClient(&cwConfig, logger)
 	require.NoError(t, err)
 
-	// 6. store op-finality-gadget contract
-	err = storeWasmCode(opcc, opFinalityGadgetContractPath)
+	// store op-finality-gadget contract
+	err = cwClient.StoreWasmCode(opFinalityGadgetContractPath)
 	require.NoError(t, err)
-
-	opFinalityGadgetContractWasmId, err := getLatestCodeId(opcc)
+	opFinalityGadgetContractWasmId, err := cwClient.GetLatestCodeId()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// 7. instantiate op contract
+	// instantiate op contract
+	// TODO: read the chain ID from the devnetL1.json file
+	l2ChainID, err := jsonutil.ReadJSONValueToUint64(
+		devnetL1JsonPath, "l2ChainID")
+	require.NoError(t, err)
+	opConsumerId := fmt.Sprintf("op-stack-l2-%d", l2ChainID)
 	opFinalityGadgetInitMsg := map[string]interface{}{
-		"admin":            opcc.CwClient.MustGetAddr(),
+		"admin":            cwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
 		"activated_height": 0,
 		"is_enabled":       true,
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
 	require.NoError(t, err)
-	err = instantiateWasmContract(opcc, opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
+	err = cwClient.InstantiateContract(opFinalityGadgetContractWasmId, opFinalityGadgetInitMsgBytes)
 	require.NoError(t, err)
-	// get op contract address
-	resp, err := opcc.CwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
+	listContractsResponse, err := cwClient.ListContractsByCode(opFinalityGadgetContractWasmId, &sdkquerytypes.PageRequest{})
 	require.NoError(t, err)
-	require.Len(t, resp.Contracts, 1)
+	require.Len(t, listContractsResponse.Contracts, 1)
+	cwContractAddress := listContractsResponse.Contracts[0]
+
+	// start op stack system
+	opSysCfg := ope2e.DefaultSystemConfig(t)
+	// supress OP system logs
+	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
+	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
+	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
+	sdkCfgChainType := -1 // only for the e2e test
+	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = sdkCfgChainType
+	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
+	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc, err = jsonutil.ReadJSONValueToString(
+		devnetL1JsonPath, "babylonFinalityGadgetBitcoinRpc")
+	require.NoError(t, err)
+
+	opSys, err := opSysCfg.Start(t)
+	require.Nil(t, err, "Error starting up op stack system")
+
+	// register consumer to Babylon
+	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
+	require.NoError(t, err)
+	t.Logf("Register consumer %s to Babylon", opConsumerId)
+
+	// new op consumer controller
+	opL2ConsumerConfig.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
+	cfg.OPStackL2Config = opL2ConsumerConfig
+	// TODO: I am a bit worried that this cfg is now used for both BBN and OP FPs
+	// which might cause some problems and hard to debug issues
+	opcc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
+	require.NoError(t, err)
 	// update the contract address in config to replace a placeholder address
 	// previously used to bypass the validation
-	opcc.Cfg.OPFinalityGadgetAddress = resp.Contracts[0]
-	// only for the e2e test
-	sdkCfgChainType := -1
+	opcc.Cfg.OPFinalityGadgetAddress = cwContractAddress
 
-	opSys.RollupConfig.BabylonConfig.ChainType = sdkCfgChainType
-	opSys.RollupConfig.BabylonConfig.ContractAddress = resp.Contracts[0]
-	t.Logf("Deployed op finality contract address: %s", resp.Contracts[0])
-
-	// 8. prepare EOTS manager
+	// prepare EOTS manager
+	// TODO: start it eralier
 	eotsHomeDir := filepath.Join(testDir, "eots-home")
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
@@ -160,7 +169,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
 	require.NoError(t, err)
 
-	// 9. prepare finality-provider
+	// prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
 	require.NoError(t, err)
 	fpApp, err := service.NewFinalityProviderApp(cfg, bc, opcc, eotsCli, fpdb, logger)
@@ -169,10 +178,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 
 	// 10. init SDK client
+	// We pass in an external Bitcoin RPC address but otherwise use the default configs.
+	// The RPC url must be trimmed to remove the http:// or https:// prefix.
+	btcConfig := btcclient.DefaultBTCConfig()
+	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    sdkCfgChainType,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
-		BitcoinRpc:   opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc,
+		BTCConfig:    btcConfig,
 	})
 	require.NoError(t, err)
 
@@ -230,6 +243,11 @@ func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 	}
 }
 
+func trimLeadingHttp(s string) string {
+	t := strings.TrimPrefix(s, "http://")
+	return strings.TrimPrefix(t, "https://")
+}
+
 func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	require.Eventually(t, func() bool {
 		params, err := ctm.BBNClient.QueryStakingParams()
@@ -252,7 +270,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startH
 			return false
 		}
 		return len(blocks) == n
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
 	require.Equal(t, n, len(blocks))
 	t.Logf("The last block of %d blocks is %d, %s", n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
 	return blocks
@@ -424,7 +442,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpPk *btcec.PublicKey) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
 	queryMsg := &opstackl2.QueryMsg{
-		FirstPubRandCommit: &opstackl2.FirstPubRandCommit{
+		FirstPubRandCommit: &opstackl2.PubRandCommit{
 			BtcPkHex: fpPubKey.MarshalHex(),
 		},
 	}
@@ -458,73 +476,6 @@ func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpP
 	return resp, nil
 }
 
-func storeWasmCode(opcc *opstackl2.OPStackL2ConsumerController, wasmFile string) error {
-	wasmCode, err := os.ReadFile(wasmFile)
-	if err != nil {
-		return err
-	}
-	if strings.HasSuffix(wasmFile, "wasm") { // compress for gas limit
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		_, err = gz.Write(wasmCode)
-		if err != nil {
-			return err
-		}
-		err = gz.Close()
-		if err != nil {
-			return err
-		}
-		wasmCode = buf.Bytes()
-	}
-
-	storeMsg := &wasmdtypes.MsgStoreCode{
-		Sender:       opcc.CwClient.MustGetAddr(),
-		WASMByteCode: wasmCode,
-	}
-	_, err = opcc.ReliablySendMsg(storeMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func instantiateWasmContract(opcc *opstackl2.OPStackL2ConsumerController, codeID uint64, initMsg []byte) error {
-	instantiateMsg := &wasmdtypes.MsgInstantiateContract{
-		Sender: opcc.CwClient.MustGetAddr(),
-		Admin:  opcc.CwClient.MustGetAddr(),
-		CodeID: codeID,
-		Label:  "op-test",
-		Msg:    initMsg,
-		Funds:  nil,
-	}
-
-	_, err := opcc.ReliablySendMsg(instantiateMsg, nil, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// returns the latest wasm code id.
-func getLatestCodeId(opcc *opstackl2.OPStackL2ConsumerController) (uint64, error) {
-	pagination := &sdkquery.PageRequest{
-		Limit:   1,
-		Reverse: true,
-	}
-	resp, err := opcc.CwClient.ListCodes(pagination)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(resp.CodeInfos) == 0 {
-		return 0, fmt.Errorf("no codes found")
-	}
-
-	return resp.CodeInfos[0].CodeID, nil
-}
-
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	t.Log("Stopping test manager")
 	var err error
@@ -532,10 +483,10 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
 	err = ctm.FpApp.Stop()
 	require.NoError(t, err)
+	ctm.OpSystem.Close()
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
-	ctm.OpSystem.Close()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }

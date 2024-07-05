@@ -36,18 +36,14 @@ type SubmitFinalitySignatureResponse struct {
 }
 
 type QueryMsg struct {
-	Config             *Config             `json:"config,omitempty"`
-	LastPubRandCommit  *LastPubRandCommit  `json:"last_pub_rand_commit,omitempty"`
-	FirstPubRandCommit *FirstPubRandCommit `json:"first_pub_rand_commit,omitempty"`
+	Config             *Config        `json:"config,omitempty"`
+	FirstPubRandCommit *PubRandCommit `json:"first_pub_rand_commit,omitempty"`
+	LastPubRandCommit  *PubRandCommit `json:"last_pub_rand_commit,omitempty"`
 }
 
 type Config struct{}
 
-type LastPubRandCommit struct {
-	BtcPkHex string `json:"btc_pk_hex"`
-}
-
-type FirstPubRandCommit struct {
+type PubRandCommit struct {
 	BtcPkHex string `json:"btc_pk_hex"`
 }
 
@@ -56,9 +52,12 @@ type ConfigResponse struct {
 	ActivatedHeight uint64 `json:"activated_height"`
 }
 
+// FIXME: Remove this ancillary struct.
+// Only required because the e2e tests are using a zero index, which is removed by the `json:"omitempty"` annotation in
+// the original cmtcrypto Proof
 type Proof struct {
 	Total    uint64   `json:"total"`
 	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
+	LeafHash []byte   `json:"leaf_hash"`
+	Aunts    [][]byte `json:"aunts"`
 }

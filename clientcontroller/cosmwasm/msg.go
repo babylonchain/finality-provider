@@ -1,5 +1,7 @@
 package cosmwasm
 
+import cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
+
 type ConsumerFpsResponse struct {
 	Fps []SingleConsumerFpResponse `json:"fps"`
 }
@@ -77,31 +79,31 @@ type FinalityProviderDescription struct {
 }
 
 type PubKey struct {
-	Key string `json:"key"`
+	Key []byte `json:"key"`
 }
 
 type ProofOfPossession struct {
 	BTCSigType int32  `json:"btc_sig_type"`
-	BabylonSig string `json:"babylon_sig"`
-	BTCSig     string `json:"btc_sig"`
+	BabylonSig []byte `json:"babylon_sig"`
+	BTCSig     []byte `json:"btc_sig"`
 }
 
 type CovenantAdaptorSignatures struct {
-	CovPK       string   `json:"cov_pk"`
-	AdaptorSigs []string `json:"adaptor_sigs"`
+	CovPK       []byte   `json:"cov_pk"`
+	AdaptorSigs [][]byte `json:"adaptor_sigs"`
 }
 
 type SignatureInfo struct {
-	PK  string `json:"pk"`
-	Sig string `json:"sig"`
+	PK  []byte `json:"pk"`
+	Sig []byte `json:"sig"`
 }
 
 type BtcUndelegationInfo struct {
-	UnbondingTx           string                      `json:"unbonding_tx"`
-	DelegatorUnbondingSig string                      `json:"delegator_unbonding_sig"`
+	UnbondingTx           []byte                      `json:"unbonding_tx"`
+	DelegatorUnbondingSig []byte                      `json:"delegator_unbonding_sig"`
 	CovenantUnbondingSigs []SignatureInfo             `json:"covenant_unbonding_sig_list"`
-	SlashingTx            string                      `json:"slashing_tx"`
-	DelegatorSlashingSig  string                      `json:"delegator_slashing_sig"`
+	SlashingTx            []byte                      `json:"slashing_tx"`
+	DelegatorSlashingSig  []byte                      `json:"delegator_slashing_sig"`
 	CovenantSlashingSigs  []CovenantAdaptorSignatures `json:"covenant_slashing_sigs"`
 }
 
@@ -111,9 +113,9 @@ type ActiveBtcDelegation struct {
 	StartHeight          uint64                      `json:"start_height"`
 	EndHeight            uint64                      `json:"end_height"`
 	TotalSat             uint64                      `json:"total_sat"`
-	StakingTx            string                      `json:"staking_tx"`
-	SlashingTx           string                      `json:"slashing_tx"`
-	DelegatorSlashingSig string                      `json:"delegator_slashing_sig"`
+	StakingTx            []byte                      `json:"staking_tx"`
+	SlashingTx           []byte                      `json:"slashing_tx"`
+	DelegatorSlashingSig []byte                      `json:"delegator_slashing_sig"`
 	CovenantSigs         []CovenantAdaptorSignatures `json:"covenant_sigs"`
 	StakingOutputIdx     uint32                      `json:"staking_output_idx"`
 	UnbondingTime        uint32                      `json:"unbonding_time"`
@@ -140,24 +142,17 @@ type CommitPublicRandomness struct {
 	FPPubKeyHex string `json:"fp_pubkey_hex"`
 	StartHeight uint64 `json:"start_height"`
 	NumPubRand  uint64 `json:"num_pub_rand"`
-	Commitment  string `json:"commitment"`
-	Signature   string `json:"signature"`
+	Commitment  []byte `json:"commitment"`
+	Signature   []byte `json:"signature"`
 }
 
 type SubmitFinalitySignature struct {
-	FpPubkeyHex string `json:"fp_pubkey_hex"`
-	Height      uint64 `json:"height"`
-	PubRand     string `json:"pub_rand"`   // base64 encoded
-	Proof       Proof  `json:"proof"`      // nested struct
-	BlockHash   string `json:"block_hash"` // base64 encoded
-	Signature   string `json:"signature"`  // base64 encoded
-}
-
-type Proof struct {
-	Total    uint64   `json:"total"`
-	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
+	FpPubkeyHex string          `json:"fp_pubkey_hex"`
+	Height      uint64          `json:"height"`
+	PubRand     []byte          `json:"pub_rand"`
+	Proof       cmtcrypto.Proof `json:"proof"` // nested struct
+	BlockHash   []byte          `json:"block_hash"`
+	Signature   []byte          `json:"signature"`
 }
 
 type ExecMsg struct {
