@@ -1,3 +1,6 @@
+//go:build e2e_bcd
+// +build e2e_bcd
+
 package e2etest_bcd
 
 import (
@@ -31,6 +34,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
+
 	"go.uber.org/zap"
 )
 
@@ -49,12 +54,20 @@ type BcdTestManager struct {
 	baseDir           string
 }
 
+func createLogger(t *testing.T, level zapcore.Level) *zap.Logger {
+	config := zap.NewDevelopmentConfig()
+	config.Level = zap.NewAtomicLevelAt(level)
+	logger, err := config.Build()
+	require.NoError(t, err)
+	return logger
+}
+
 func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	// Setup consumer test manager
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := zap.NewNop()
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// 1. generate covenant committee
 	covenantQuorum := 2

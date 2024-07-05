@@ -1,12 +1,17 @@
+//go:build e2e_bcd
+// +build e2e_bcd
+
 package e2etest_bcd
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	common "github.com/babylonchain/finality-provider/itest"
@@ -37,6 +42,7 @@ func NewBcdNodeHandler(t *testing.T) *BcdNodeHandler {
 
 	setupBcd(t, testDir)
 	cmd := bcdStartCmd(t, testDir)
+	fmt.Println("Starting bcd with command:", cmd.String())
 	return &BcdNodeHandler{
 		cmd:     cmd,
 		pidFile: "", // empty for now, will be set after start
@@ -138,9 +144,52 @@ func bcdInit(homeDir string) error {
 
 func bcdUpdateGenesisFile(homeDir string) error {
 	genesisPath := filepath.Join(homeDir, "config", "genesis.json")
-	sedCmd := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
-	_, err := common.RunCommand("sh", "-c", sedCmd)
-	return err
+	fmt.Println("Home directory path:", homeDir)
+
+	// Update "stake" placeholder
+	sedCmd1 := fmt.Sprintf("sed -i. 's/\"stake\"/\"%s\"/' %s", common.WasmStake, genesisPath)
+	fmt.Println("Executing command:", sedCmd1)
+	_, err := common.RunCommand("sh", "-c", sedCmd1)
+	if err != nil {
+		return fmt.Errorf("failed to update stake in genesis.json: %w", err)
+	}
+
+	// TODO: this is a hack to update babylon module params in bcd chain
+	//  this is needed to ensure tallying and block finalization works properly
+	babylonContractAddr := "bbnc14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9syx25zf"
+	btcStakingContractAddr := "bbnc1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqgn0kq0"
+
+	// Update babylon_contract_address
+	sedCmd2 := fmt.Sprintf("sed -i. 's/\"babylon_contract_address\": \"\"/\"babylon_contract_address\": \"%s\"/' %s", babylonContractAddr, genesisPath)
+	fmt.Println("Executing command:", sedCmd2)
+	_, err = common.RunCommand("sh", "-c", sedCmd2)
+	if err != nil {
+		return fmt.Errorf("failed to update babylon_contract_address in genesis.json: %w", err)
+	}
+
+	// Update btc_staking_contract_address
+	sedCmd3 := fmt.Sprintf("sed -i. 's/\"btc_staking_contract_address\": \"\"/\"btc_staking_contract_address\": \"%s\"/' %s", btcStakingContractAddr, genesisPath)
+	fmt.Println("Executing command:", sedCmd3)
+	_, err = common.RunCommand("sh", "-c", sedCmd3)
+	if err != nil {
+		return fmt.Errorf("failed to update btc_staking_contract_address in genesis.json: %w", err)
+	}
+
+	// Read and print the updated genesis.json to verify changes
+	content, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return fmt.Errorf("failed to read updated genesis.json: %w", err)
+	}
+
+	fmt.Println("Updated genesis.json content:")
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "babylon_contract_address") || strings.Contains(line, "btc_staking_contract_address") {
+			fmt.Println(line)
+		}
+	}
+
+	return nil
 }
 
 func bcdKeysAdd(homeDir string) error {
@@ -151,6 +200,16 @@ func bcdKeysAdd(homeDir string) error {
 func bcdAddValidatorGenesisAccount(homeDir string) error {
 	_, err := common.RunCommand("bcd", "genesis", "add-genesis-account", "validator", fmt.Sprintf("1000000000000%s,1000000000000%s", common.WasmStake, common.WasmFee), "--home", homeDir, "--keyring-backend=test")
 	return err
+}
+
+func bcdVersion() error {
+	cmd := exec.Command("bcd", "version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %w", err)
+	}
+	fmt.Printf("bcd version:\n%s\n", string(output))
+	return nil
 }
 
 func bcdGentxValidator(homeDir string) error {
@@ -181,6 +240,9 @@ func setupBcd(t *testing.T, testDir string) {
 
 	err = bcdCollectGentxs(testDir)
 	require.NoError(t, err)
+
+	err = bcdVersion()
+	require.NoError(t, err)
 }
 
 func bcdStartCmd(t *testing.T, testDir string) *exec.Cmd {
@@ -189,16 +251,19 @@ func bcdStartCmd(t *testing.T, testDir string) *exec.Cmd {
 		"--home", testDir,
 		"--rpc.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", bcdRpcPort),
 		"--p2p.laddr", fmt.Sprintf("tcp://0.0.0.0:%d", bcdP2pPort),
-		"--log_level=info",
+		"--log_level=trace",
 		"--trace",
 	}
 
 	f, err := os.Create(filepath.Join(testDir, "bcd.log"))
 	require.NoError(t, err)
 
+	// Create a multi-writer to write to both the log file and the console
+	mw := io.MultiWriter(os.Stdout, f)
+
 	cmd := exec.Command("bcd", args...)
-	cmd.Stdout = f
-	cmd.Stderr = f
+	cmd.Stdout = mw
+	cmd.Stderr = mw
 
 	return cmd
 }

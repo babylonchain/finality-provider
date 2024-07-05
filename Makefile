@@ -24,6 +24,7 @@ PACKAGES_E2E=$(shell go list ./... | grep '/itest')
 # due to multiple packages found
 # context: https://github.com/golang/go/issues/24929
 PACKAGES_E2E_OP=$(shell go list -tags=e2e_op ./... | grep '/itest/opstackl2')
+PACKAGES_E2E_BCD=$(shell go list -tags=e2e_bcd ./... | grep '/itest/cosmwasm/bcd')
 
 ifeq ($(LINK_STATICALLY),true)
 	ldflags += -linkmode=external -extldflags "-Wl,-z,muldefs -static" -v
@@ -97,16 +98,16 @@ clean-e2e:
 test-e2e: test-e2e-babylon test-e2e-wasmd test-e2e-bcd test-e2e-op
 
 test-e2e-babylon: clean-e2e install-babylond
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon
+	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon
 
 test-e2e-bcd: clean-e2e install-babylond install-bcd
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_bcd
+	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_BCD) -count=1 --tags=e2e_bcd
 
 test-e2e-wasmd: clean-e2e install-babylond install-wasmd
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_wasmd
+	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_wasmd
 
 test-e2e-op: clean-e2e install-babylond
-	go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
+	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
 
 DEVNET_REPO_URL := https://github.com/babylonchain/op-e2e-devnet
 TARGET_DIR := ./itest/opstackl2/devnet-data

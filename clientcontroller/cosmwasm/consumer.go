@@ -333,8 +333,7 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint6
 	return blocks, nil
 }
 
-//nolint:unused
-func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*IndexedBlock, error) {
+func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*IndexedBlock, error) {
 	// Construct the query message
 	queryMsgStruct := QueryMsgBlock{
 		Block: BlockQuery{
@@ -364,7 +363,7 @@ func (wc *CosmwasmConsumerController) queryIndexedBlock(height uint64) (*Indexed
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
 	//// Use the helper function to get the IndexedBlock
-	//resp, err := wc.queryIndexedBlock(height)
+	//resp, err := wc.QueryIndexedBlock(height)
 	//if err != nil {
 	//	return nil, err
 	//}
@@ -447,7 +446,7 @@ func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publ
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
 	//// Use the helper function to get the IndexedBlock
-	//resp, err := wc.queryIndexedBlock(height)
+	//resp, err := wc.QueryIndexedBlock(height)
 	//if err != nil {
 	//	return false, err
 	//}
