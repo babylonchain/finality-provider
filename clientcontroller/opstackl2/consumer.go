@@ -162,7 +162,7 @@ func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
 			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
-			Proof:       cmtProof,
+			Proof:       ConvertProof(cmtProof),
 			BlockHash:   block.Hash,
 			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
 		},
@@ -207,7 +207,7 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      block.Height,
 				PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal(),
-				Proof:       cmtProof,
+				Proof:       ConvertProof(cmtProof),
 				BlockHash:   block.Hash,
 				Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal(),
 			},
@@ -372,6 +372,15 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	}
 
 	return resp, nil
+}
+
+func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
+	return Proof{
+		Total:    uint64(cmtProof.Total),
+		Index:    uint64(cmtProof.Index),
+		LeafHash: cmtProof.LeafHash,
+		Aunts:    cmtProof.Aunts,
+	}
 }
 
 func (cc *OPStackL2ConsumerController) Close() error {

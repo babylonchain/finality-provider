@@ -1,7 +1,5 @@
 package opstackl2
 
-import "github.com/cometbft/cometbft/proto/tendermint/crypto"
-
 type CommitPublicRandomnessMsg struct {
 	CommitPublicRandomness CommitPublicRandomnessMsgParams `json:"commit_public_randomness"`
 }
@@ -24,12 +22,12 @@ type SubmitFinalitySignatureMsg struct {
 }
 
 type SubmitFinalitySignatureMsgParams struct {
-	FpPubkeyHex string       `json:"fp_pubkey_hex"`
-	Height      uint64       `json:"height"`
-	PubRand     []byte       `json:"pub_rand"`
-	Proof       crypto.Proof `json:"proof"`
-	BlockHash   []byte       `json:"block_hash"`
-	Signature   []byte       `json:"signature"`
+	FpPubkeyHex string `json:"fp_pubkey_hex"`
+	Height      uint64 `json:"height"`
+	PubRand     []byte `json:"pub_rand"`
+	Proof       Proof  `json:"proof"`
+	BlockHash   []byte `json:"block_hash"`
+	Signature   []byte `json:"signature"`
 }
 
 // TODO: need to update based on contract implementation
@@ -52,4 +50,14 @@ type PubRandCommit struct {
 type ConfigResponse struct {
 	ConsumerId      string `json:"consumer_id"`
 	ActivatedHeight uint64 `json:"activated_height"`
+}
+
+// FIXME: Remove this ancillary struct.
+// Only required because the e2e tests are using a zero index, which is removed by the `json:"omitempty"` annotation in
+// the original cmtcrypto Proof
+type Proof struct {
+	Total    uint64   `json:"total"`
+	Index    uint64   `json:"index"`
+	LeafHash []byte   `json:"leaf_hash"`
+	Aunts    [][]byte `json:"aunts"`
 }
