@@ -21,7 +21,7 @@ require (
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5
 	github.com/cosmos/cosmos-sdk v0.50.6
 	github.com/cosmos/go-bip39 v1.0.0
-	github.com/cosmos/gogoproto v1.4.12
+	github.com/cosmos/gogoproto v1.5.0
 	github.com/cosmos/relayer/v2 v2.5.2
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0
 	github.com/ethereum/go-ethereum v1.13.15
@@ -436,10 +436,10 @@ require (
 replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240705163204-3b36f1653933
 	github.com/babylonchain/babylon-da-sdk => github.com/babylonchain/babylon-da-sdk v0.0.0-20240705141841-e18d8f028ec9
 	github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20231018212520-f6cde3fc2fa4
-	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v0.0.0-20240705144333-0e1916f9e050
+	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v0.0.0-20240705164125-8bc110086c79
 	github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101315.1-rc.5
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7

@@ -266,8 +266,8 @@ github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX
 github.com/aws/aws-sdk-go v1.44.312 h1:llrElfzeqG/YOLFFKjg1xNpZCFJ2xraIi3PqSuP+95k=
 github.com/aws/aws-sdk-go v1.44.312/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
-github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead h1:LyyrFtdSbx0a5ZLHA/qMNMjAxZltfnNJgj5+uEgqZdI=
-github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead/go.mod h1:Tdi+29Y+DzCaaz0V0sBRXF1tXXLnH6JHJsOG8uktWLU=
+github.com/babylonchain/babylon-private v0.8.6-0.20240705163204-3b36f1653933 h1:ucjzmsGu0DKq0SYXQgN1wwpXzw+Au7JqwNuZi8O6Mec=
+github.com/babylonchain/babylon-private v0.8.6-0.20240705163204-3b36f1653933/go.mod h1:qEXxQS13x9jQJgCACcPbu/Bb1r220NuMqMkFz3CsJKM=
 github.com/babylonchain/babylon-sdk/demo v0.0.0-20240624102351-3a809d4fdcce h1:73v+DHCPD4Wi42O2NPJfor+adBiNRkAVddf27idbHrQ=
 github.com/babylonchain/babylon-sdk/demo v0.0.0-20240624102351-3a809d4fdcce/go.mod h1:X4QovCWMwqMjoTriu18w4gfqX1sYqOWRnZwXGYD8bnE=
 github.com/babylonchain/babylon-sdk/x v0.0.0-20240624102351-3a809d4fdcce h1:UYg5QEbMUBt3IIVdcTDXqVTsj1iJoFQBfGC+e6uEtZg=
@@ -391,8 +391,8 @@ github.com/cosmos/go-bip39 v1.0.0/go.mod h1:RNJv0H/pOIVgxw6KS7QeX2a0Uo0aKUlfhZ4x
 github.com/cosmos/gogogateway v1.2.0 h1:Ae/OivNhp8DqBi/sh2A8a1D0y638GpL3tkmLQAiKxTE=
 github.com/cosmos/gogogateway v1.2.0/go.mod h1:iQpLkGWxYcnCdz5iAdLcRBSw3h7NXeOkZ4GUkT+tbFI=
 github.com/cosmos/gogoproto v1.4.2/go.mod h1:cLxOsn1ljAHSV527CHOtaIP91kK6cCrZETRBrkzItWU=
-github.com/cosmos/gogoproto v1.4.12 h1:vB6Lbe/rtnYGjQuFxkPiPYiCybqFT8QvLipDZP8JpFE=
-github.com/cosmos/gogoproto v1.4.12/go.mod h1:LnZob1bXRdUoqMMtwYlcR3wjiElmlC+FkjaZRv1/eLY=
+github.com/cosmos/gogoproto v1.5.0 h1:SDVwzEqZDDBoslaeZg+dGE55hdzHfgUA40pEanMh52o=
+github.com/cosmos/gogoproto v1.5.0/go.mod h1:iUM31aofn3ymidYG6bUR5ZFrk+Om8p5s754eMUcyp8I=
 github.com/cosmos/iavl v1.1.2 h1:zL9FK7C4L/P4IF1Dm5fIwz0WXCnn7Bp1M2FxH0ayM7Y=
 github.com/cosmos/iavl v1.1.2/go.mod h1:jLeUvm6bGT1YutCaL2fIar/8vGUE8cPZvh/gXEWDaDM=
 github.com/cosmos/ibc-go/modules/capability v1.0.0 h1:r/l++byFtn7jHYa09zlAdSeevo8ci1mVZNO9+V0xsLE=

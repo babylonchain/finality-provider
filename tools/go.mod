@@ -68,7 +68,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.50.6 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
-	github.com/cosmos/gogoproto v1.4.12 // indirect
+	github.com/cosmos/gogoproto v1.5.0 // indirect
 	github.com/cosmos/iavl v1.1.2 // indirect
 	github.com/cosmos/ibc-go/modules/capability v1.0.0 // indirect
 	github.com/cosmos/ibc-go/v8 v8.2.0 // indirect
@@ -225,6 +225,6 @@ require (
 replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240705163204-3b36f1653933
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
