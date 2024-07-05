@@ -2,6 +2,7 @@ package opstackl2
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -181,6 +182,11 @@ func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 	if err != nil {
 		return nil, err
 	}
+	cc.logger.Debug(
+		"Successfully submitted finality signature",
+		zap.Uint64("height", block.Height),
+		zap.String("block_hash", hex.EncodeToString(block.Hash)),
+	)
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
@@ -228,7 +234,11 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	if err != nil {
 		return nil, err
 	}
-
+	cc.logger.Debug(
+		"Successfully submitted finality signatures in a batch",
+		zap.Uint64("start_height", blocks[0].Height),
+		zap.Uint64("end_height", blocks[len(blocks)-1].Height),
+	)
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
@@ -282,9 +292,16 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	if err != nil {
 		return nil, err
 	}
+
+	blockHashBytes := l2Block.Hash().Bytes()
+	cc.logger.Debug(
+		"QueryBlock",
+		zap.Uint64("height", height),
+		zap.String("block_hash", hex.EncodeToString(blockHashBytes)),
+	)
 	return &types.BlockInfo{
 		Height: height,
-		Hash:   l2Block.Hash().Bytes(),
+		Hash:   blockHashBytes,
 	}, nil
 }
 
