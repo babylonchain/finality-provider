@@ -2,7 +2,6 @@ package opstackl2
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -393,16 +392,11 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 }
 
 func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
-	var aunts []string
-	for _, aunt := range cmtProof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
 	return Proof{
 		Total:    uint64(cmtProof.Total),
 		Index:    uint64(cmtProof.Index),
-		LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
-		Aunts:    aunts,
+		LeafHash: cmtProof.LeafHash,
+		Aunts:    cmtProof.Aunts,
 	}
 }
 

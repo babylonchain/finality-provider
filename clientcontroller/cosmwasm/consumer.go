@@ -2,7 +2,6 @@ package cosmwasm
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -91,8 +90,8 @@ func (wc *CosmwasmConsumerController) CommitPubRandList(
 			FPPubKeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			StartHeight: startHeight,
 			NumPubRand:  numPubRand,
-			Commitment:  base64.StdEncoding.EncodeToString(commitment),
-			Signature:   base64.StdEncoding.EncodeToString(bip340Sig),
+			Commitment:  commitment,
+			Signature:   bip340Sig,
 		},
 	}
 
@@ -127,10 +126,10 @@ func (wc *CosmwasmConsumerController) SubmitFinalitySig(
 		SubmitFinalitySignature: &SubmitFinalitySignature{
 			FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 			Height:      block.Height,
-			PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal()),
-			Proof:       ConvertProof(cmtProof),
-			BlockHash:   base64.StdEncoding.EncodeToString(block.Hash),
-			Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal()),
+			PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRand).MustMarshal(),
+			Proof:       cmtProof,
+			BlockHash:   block.Hash,
+			Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sig).MustMarshal(),
 		},
 	}
 
@@ -166,10 +165,10 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 			SubmitFinalitySignature: &SubmitFinalitySignature{
 				FpPubkeyHex: bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 				Height:      b.Height,
-				PubRand:     base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal()),
-				Proof:       ConvertProof(cmtProof),
-				BlockHash:   base64.StdEncoding.EncodeToString(b.Hash),
-				Signature:   base64.StdEncoding.EncodeToString(bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal()),
+				PubRand:     bbntypes.NewSchnorrPubRandFromFieldVal(pubRandList[i]).MustMarshal(),
+				Proof:       cmtProof,
+				BlockHash:   b.Hash,
+				Signature:   bbntypes.NewSchnorrEOTSSigFromModNScalar(sigs[i]).MustMarshal(),
 			},
 		}
 
@@ -719,18 +718,4 @@ func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
 		return nil
 	}
 	return bytes
-}
-
-func ConvertProof(cmtProof cmtcrypto.Proof) Proof {
-	var aunts []string
-	for _, aunt := range cmtProof.Aunts {
-		aunts = append(aunts, base64.StdEncoding.EncodeToString(aunt))
-	}
-
-	return Proof{
-		Total:    uint64(cmtProof.Total),
-		Index:    uint64(cmtProof.Index),
-		LeafHash: base64.StdEncoding.EncodeToString(cmtProof.LeafHash),
-		Aunts:    aunts,
-	}
 }

@@ -4,7 +4,6 @@
 package e2etest_wasmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"math/rand"
 	"testing"
@@ -105,8 +104,8 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].StartHeight, consumerDelsResp.Delegations[0].StartHeight)
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].EndHeight, consumerDelsResp.Delegations[0].EndHeight)
 	require.Equal(t, msg.BtcStaking.ActiveDel[0].TotalSat, consumerDelsResp.Delegations[0].TotalSat)
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].StakingTx))   // make sure to compare b64 encoded strings
-	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, base64.StdEncoding.EncodeToString(consumerDelsResp.Delegations[0].SlashingTx)) // make sure to compare b64 encoded strings
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].StakingTx, consumerDelsResp.Delegations[0].StakingTx)
+	require.Equal(t, msg.BtcStaking.ActiveDel[0].SlashingTx, consumerDelsResp.Delegations[0].SlashingTx)
 
 	// ensure fp has voting power in smart contract
 	consumerFpsByPowerResp, err := ctm.WasmdConsumerClient.QueryFinalityProvidersByPower()
@@ -119,8 +118,8 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	// inject pub rand commitment in smart contract (admin is not required, although in the tests admin and sender are the same)
 	msg2 := common.GenPubRandomnessExecMsg(
 		msgPub.FpBtcPk.MarshalHex(),
-		base64.StdEncoding.EncodeToString(msgPub.Commitment),
-		base64.StdEncoding.EncodeToString(msgPub.Sig.MustMarshal()),
+		msgPub.Commitment,
+		msgPub.Sig.MustMarshal(),
 		msgPub.StartHeight,
 		msgPub.NumPubRand,
 	)
@@ -142,5 +141,5 @@ func TestConsumerFpDataInjection(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, fpSigsResponse)
 	require.NotNil(t, fpSigsResponse.Signature)
-	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, base64.StdEncoding.EncodeToString(fpSigsResponse.Signature))
+	require.Equal(t, finalitySigMsg.SubmitFinalitySignature.Signature, fpSigsResponse.Signature)
 }

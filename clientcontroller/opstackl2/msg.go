@@ -52,9 +52,12 @@ type ConfigResponse struct {
 	ActivatedHeight uint64 `json:"activated_height"`
 }
 
+// FIXME: Remove this ancillary struct.
+// Only required because the e2e tests are using a zero index, which is removed by the `json:"omitempty"` annotation in
+// the original cmtcrypto Proof
 type Proof struct {
 	Total    uint64   `json:"total"`
 	Index    uint64   `json:"index"`
-	LeafHash string   `json:"leaf_hash"`
-	Aunts    []string `json:"aunts"`
+	LeafHash []byte   `json:"leaf_hash"`
+	Aunts    [][]byte `json:"aunts"`
 }

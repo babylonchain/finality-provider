@@ -1,7 +1,6 @@
 package e2e_utils
 
 import (
-	"encoding/base64"
 	"math/rand"
 	"testing"
 	"time"
@@ -43,7 +42,7 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	return executeMessage
 }
 
-func GenPubRandomnessExecMsg(fpHex, commitment, sig string, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
+func GenPubRandomnessExecMsg(fpHex string, commitment, sig []byte, startHeight, numPubRand uint64) cosmwasm.ExecMsg {
 	// create the ExecMsg instance with CommitPublicRandomness set
 	executeMessage := cosmwasm.ExecMsg{
 		CommitPublicRandomness: &cosmwasm.CommitPublicRandomness{
@@ -64,10 +63,10 @@ func GenFinalitySigExecMsg(startHeight, blockHeight uint64, randListInfo *datage
 		SubmitFinalitySignature: &cosmwasm.SubmitFinalitySignature{
 			FpPubkeyHex: fmsg.FpBtcPk.MarshalHex(),
 			Height:      fmsg.BlockHeight,
-			PubRand:     base64.StdEncoding.EncodeToString(fmsg.PubRand.MustMarshal()),
-			Proof:       cosmwasm.ConvertProof(*fmsg.Proof),
-			BlockHash:   base64.StdEncoding.EncodeToString(fmsg.BlockAppHash),
-			Signature:   base64.StdEncoding.EncodeToString(fmsg.FinalitySig.MustMarshal()),
+			PubRand:     fmsg.PubRand.MustMarshal(),
+			Proof:       *fmsg.Proof,
+			BlockHash:   fmsg.BlockAppHash,
+			Signature:   fmsg.FinalitySig.MustMarshal(),
 		},
 	}
 
@@ -85,13 +84,13 @@ func genRandomFinalityProvider() cosmwasm.NewFinalityProvider {
 		},
 		Commission: "0.05",
 		BabylonPK: &cosmwasm.PubKey{
-			Key: base64.StdEncoding.EncodeToString([]byte("mock_pub_rand")),
+			Key: []byte("mock_pub_rand"),
 		},
 		BTCPKHex: "1",
 		Pop: &cosmwasm.ProofOfPossession{
 			BTCSigType: 0,
-			BabylonSig: base64.StdEncoding.EncodeToString([]byte("mock_babylon_sig")),
-			BTCSig:     base64.StdEncoding.EncodeToString([]byte("mock_btc_sig")),
+			BabylonSig: []byte("mock_babylon_sig"),
+			BTCSig:     []byte("mock_btc_sig"),
 		},
 		ConsumerID: "osmosis-1",
 	}
@@ -165,40 +164,33 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 
 	var covenantSigs []cosmwasm.CovenantAdaptorSignatures
 	for _, cs := range mockDel.CovenantSigs {
-		var adaptorSigs []string
-		for _, sig := range cs.AdaptorSigs {
-			adaptorSigs = append(adaptorSigs, base64.StdEncoding.EncodeToString(sig))
-		}
 		covenantSigs = append(covenantSigs, cosmwasm.CovenantAdaptorSignatures{
-			CovPK:       cs.CovPk.MarshalHex(),
-			AdaptorSigs: adaptorSigs,
+			CovPK:       cs.CovPk.MustMarshal(),
+			AdaptorSigs: cs.AdaptorSigs,
 		})
 	}
 
 	var covenantUnbondingSigs []cosmwasm.SignatureInfo
 	for _, sigInfo := range mockDel.BtcUndelegation.CovenantUnbondingSigList {
 		covenantUnbondingSigs = append(covenantUnbondingSigs, cosmwasm.SignatureInfo{
-			PK:  sigInfo.Pk.MarshalHex(),
-			Sig: base64.StdEncoding.EncodeToString(sigInfo.Sig.MustMarshal()),
+			PK:  sigInfo.Pk.MustMarshal(),
+			Sig: sigInfo.Sig.MustMarshal(),
 		})
 	}
 
 	var covenantSlashingSigs []cosmwasm.CovenantAdaptorSignatures
 	for _, cs := range mockDel.BtcUndelegation.CovenantSlashingSigs {
-		var adaptorSigs []string
-		for _, sig := range cs.AdaptorSigs {
-			adaptorSigs = append(adaptorSigs, base64.StdEncoding.EncodeToString(sig))
-		}
 		covenantSlashingSigs = append(covenantSlashingSigs, cosmwasm.CovenantAdaptorSignatures{
-			CovPK:       cs.CovPk.MarshalHex(),
-			AdaptorSigs: adaptorSigs,
+			CovPK:       cs.CovPk.MustMarshal(),
+			AdaptorSigs: cs.AdaptorSigs,
 		})
 	}
 
 	undelegationInfo := cosmwasm.BtcUndelegationInfo{
-		UnbondingTx:           base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.UnbondingTx),
-		SlashingTx:            base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.SlashingTx.MustMarshal()),
-		DelegatorSlashingSig:  base64.StdEncoding.EncodeToString(mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal()),
+		UnbondingTx:           mockDel.BtcUndelegation.UnbondingTx,
+		SlashingTx:            mockDel.BtcUndelegation.SlashingTx.MustMarshal(),
+		DelegatorSlashingSig:  mockDel.BtcUndelegation.DelegatorSlashingSig.MustMarshal(),
+		DelegatorUnbondingSig: make([]byte, 0), // FIXME: Add delegator unbonding sig proper
 		CovenantUnbondingSigs: covenantUnbondingSigs,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 	}
@@ -209,9 +201,9 @@ func convertBTCDelegationToActiveBtcDelegation(mockDel *bstypes.BTCDelegation) c
 		StartHeight:          mockDel.StartHeight,
 		EndHeight:            mockDel.EndHeight,
 		TotalSat:             mockDel.TotalSat,
-		StakingTx:            base64.StdEncoding.EncodeToString(mockDel.StakingTx),
-		SlashingTx:           base64.StdEncoding.EncodeToString(mockDel.SlashingTx.MustMarshal()),
-		DelegatorSlashingSig: base64.StdEncoding.EncodeToString(mockDel.DelegatorSig.MustMarshal()),
+		StakingTx:            mockDel.StakingTx,
+		SlashingTx:           mockDel.SlashingTx.MustMarshal(),
+		DelegatorSlashingSig: mockDel.DelegatorSig.MustMarshal(),
 		CovenantSigs:         covenantSigs,
 		StakingOutputIdx:     mockDel.StakingOutputIdx,
 		UnbondingTime:        mockDel.UnbondingTime,
