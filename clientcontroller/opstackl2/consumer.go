@@ -184,7 +184,7 @@ func (cc *OPStackL2ConsumerController) SubmitFinalitySig(
 		return nil, err
 	}
 	cc.logger.Debug(
-		"Submit finality signature",
+		"Successfully submitted finality signature",
 		zap.Uint64("height", block.Height),
 		zap.String("block_hash", hex.EncodeToString(block.Hash)),
 	)
