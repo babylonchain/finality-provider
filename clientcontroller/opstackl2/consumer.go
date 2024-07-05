@@ -299,6 +299,7 @@ func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockIn
 	blockHashBytes := l2Block.Hash().Bytes()
 	cc.logger.Debug(
 		"QueryBlock",
+		zap.Uint64("height", height),
 		zap.String("block_hash", hex.EncodeToString(blockHashBytes)),
 	)
 	return &types.BlockInfo{
