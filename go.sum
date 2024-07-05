@@ -304,8 +304,8 @@ github.com/babylonchain/babylon-sdk/demo v0.0.0-20240624102351-3a809d4fdcce h1:7
 github.com/babylonchain/babylon-sdk/demo v0.0.0-20240624102351-3a809d4fdcce/go.mod h1:X4QovCWMwqMjoTriu18w4gfqX1sYqOWRnZwXGYD8bnE=
 github.com/babylonchain/babylon-sdk/x v0.0.0-20240624102351-3a809d4fdcce h1:UYg5QEbMUBt3IIVdcTDXqVTsj1iJoFQBfGC+e6uEtZg=
 github.com/babylonchain/babylon-sdk/x v0.0.0-20240624102351-3a809d4fdcce/go.mod h1:Ojrlnwh9z7fvmTUzYH4Tk+8hWSctCrZYWiC5+t4X32I=
-github.com/babylonchain/optimism v0.0.0-20240705164125-8bc110086c79 h1:mPp33uR/K6rmc5p1OEpyI408XSiJituEwAIjVGxh90o=
-github.com/babylonchain/optimism v0.0.0-20240705164125-8bc110086c79/go.mod h1:9+gzw1bYc2+GBpRSXXCeq9rASi6F8R4DeZtfDQ+JrVY=
+github.com/babylonchain/optimism v0.0.0-20240705185458-a1dfbac5b1d9 h1:JPJ5iutBeg90Z+g99e1KfvnirNY8U43PvySj/+QEOBA=
+github.com/babylonchain/optimism v0.0.0-20240705185458-a1dfbac5b1d9/go.mod h1:9+gzw1bYc2+GBpRSXXCeq9rASi6F8R4DeZtfDQ+JrVY=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.5 h1:VvXlSJBzZpA/zum6Sj74hxwYI2DIxRWuNIoXAzHZz5o=
