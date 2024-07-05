@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/babylonchain/finality-provider/metrics"
 
@@ -31,6 +32,7 @@ const (
 var _ EOTSManager = &LocalEOTSManager{}
 
 type LocalEOTSManager struct {
+	mu     sync.Mutex
 	kr     keyring.Keyring
 	es     *store.EOTSStore
 	logger *zap.Logger
@@ -273,6 +275,8 @@ func (lm *LocalEOTSManager) KeyRecord(fpPk []byte, passphrase string) (*eotstype
 }
 
 func (lm *LocalEOTSManager) getEOTSPrivKey(fpPk []byte, passphrase string) (*btcec.PrivateKey, error) {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
 	keyName, err := lm.es.GetEOTSKeyName(fpPk)
 	if err != nil {
 		return nil, err
