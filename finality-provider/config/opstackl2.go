@@ -6,7 +6,7 @@ import (
 	"time"
 
 	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/btcutil/bech32"
 )
 
 type OPStackL2Config struct {
@@ -33,10 +33,7 @@ func (cfg *OPStackL2Config) Validate() error {
 	if cfg.OPStackL2RPCAddress == "" {
 		return fmt.Errorf("opstackl2-rpc-address is required")
 	}
-	if cfg.OPFinalityGadgetAddress == "" {
-		return fmt.Errorf("the contract address of the op-finality-gadget is required")
-	}
-	_, err := sdktypes.AccAddressFromBech32(cfg.OPFinalityGadgetAddress)
+	_, _, err := bech32.Decode(cfg.OPFinalityGadgetAddress, len(cfg.OPFinalityGadgetAddress))
 	if err != nil {
 		return fmt.Errorf("op-finality-gadget: invalid bech32 address: %w", err)
 	}
