@@ -109,7 +109,7 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 		fpSigs,
 	)
 	require.NoError(t, err)
-	t.Logf("Submit batch finality signatures to op finality contract")
+	t.Logf("Successfully submitted batch finality signatures to op finality contract")
 }
 
 // This test has two test cases:
