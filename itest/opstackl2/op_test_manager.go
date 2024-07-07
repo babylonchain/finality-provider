@@ -72,7 +72,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.ErrorLevel)
+	logger := createLogger(t, zapcore.DebugLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -89,8 +89,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
 	cfg.RandomnessCommitInterval = 2 * time.Second
-	cfg.PollerConfig.PollInterval = 2 * time.Second
-	cfg.FastSyncInterval = 5 * time.Second
+	cfg.FastSyncInterval = 0 // disable fast sync
 	cfg.NumPubRand = 64
 	cfg.MinRandHeightGap = 1000
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
@@ -461,7 +460,7 @@ func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpP
 
 	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
 	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
-	if stateResp.Data == nil {
+	if stateResp.Data == nil || string(stateResp.Data) == "null" {
 		return nil, nil
 	}
 
@@ -469,10 +468,6 @@ func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpP
 	err = json.Unmarshal(stateResp.Data, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if resp == nil {
-		return nil, nil
 	}
 
 	if err := resp.Validate(); err != nil {
