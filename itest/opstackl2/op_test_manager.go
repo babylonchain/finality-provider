@@ -176,7 +176,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = fpApp.Start()
 	require.NoError(t, err)
 
-	// 10. init SDK client
+	// init SDK client
 	// We pass in an external Bitcoin RPC address but otherwise use the default configs.
 	// The RPC url must be trimmed to remove the http:// or https:// prefix.
 	btcConfig := btcclient.DefaultBTCConfig()
@@ -271,7 +271,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startH
 		return len(blocks) == n
 	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
 	require.Equal(t, n, len(blocks))
-	t.Logf("The last block of %d blocks is %d, %s", n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
+	t.Logf("Successfully waited for %d block(s). The last block's hash at height %d: %s", n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
 	return blocks
 }
 
