@@ -359,14 +359,10 @@ func (ctm *OpL2ConsumerTestManager) RegisterBBNFinalityProvider(t *testing.T) *b
 	return fpPk.MustToBTCPK()
 }
 
-func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylonFp bool, n int) []*service.FinalityProviderInstance {
+func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) []*service.FinalityProviderInstance {
 	app := ctm.FpApp
 
 	chainId := ctm.OpChainId
-	if isBabylonFp {
-		// While using another mock value, it throws the error: the finality-provider manager has already stopped
-		chainId = e2eutils.ChainID
-	}
 
 	for i := 0; i < n; i++ {
 		fpName := chainId + "-" + e2eutils.FpNamePrefix + strconv.Itoa(i)
@@ -391,33 +387,17 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, isBabylo
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			if isBabylonFp {
-				fps, err := ctm.BBNClient.QueryFinalityProviders()
-				if err != nil {
-					t.Logf("failed to query finality providers from Babylon %s", err.Error())
+			fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.OpChainId)
+			if err != nil {
+				t.Logf("failed to query finality providers from Babylon %s", err.Error())
+				return false
+			}
+			if len(fps) != i+1 {
+				return false
+			}
+			for _, fp := range fps {
+				if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
 					return false
-				}
-				if len(fps) != i+1 {
-					return false
-				}
-				for _, fp := range fps {
-					if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
-						return false
-					}
-				}
-			} else {
-				fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.OpChainId)
-				if err != nil {
-					t.Logf("failed to query finality providers from Babylon %s", err.Error())
-					return false
-				}
-				if len(fps) != i+1 {
-					return false
-				}
-				for _, fp := range fps {
-					if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
-						return false
-					}
 				}
 			}
 			return true
