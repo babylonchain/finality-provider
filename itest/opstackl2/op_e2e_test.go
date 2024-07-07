@@ -9,6 +9,7 @@ import (
 
 	"github.com/babylonchain/babylon-da-sdk/sdk"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
+	"github.com/babylonchain/finality-provider/testutil/log"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -48,7 +49,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	committedStartHeight := committedPubRand.StartHeight
-	t.Logf("First committed pubrandList startHeight %d", committedStartHeight)
+	log.Logf(t, "First committed pubrandList startHeight %d", committedStartHeight)
 	testBlocks := ctm.WaitForNBlocksAndReturn(t, committedStartHeight, 1)
 	testBlock := testBlocks[0]
 
@@ -77,7 +78,7 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	lastCommittedStartHeight := committedPubRand.StartHeight
-	t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
+	log.Logf(t, "Last committed pubrandList startHeight %d", lastCommittedStartHeight)
 	pubRandList, err := fpInstance.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
 	require.NoError(t, err)
 	// generate commitment and proof for each public randomness
@@ -109,7 +110,7 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 		fpSigs,
 	)
 	require.NoError(t, err)
-	t.Logf("Submit batch finality signatures to op finality contract")
+	log.Logf(t, "Submit batch finality signatures to op finality contract")
 }
 
 // This test has two test cases:
@@ -172,18 +173,18 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.NoError(t, err)
 	require.Equal(t, true, finalized)
-	t.Logf("Test case 1: block %d is finalized", testBlock.Height)
+	log.Logf(t, "Test case 1: block %d is finalized", testBlock.Height)
 
 	// ===  another test case only for the last FP instance sign ===
 	// first make sure the first FP is stopped
 	require.Eventually(t, func() bool {
 		return !fpList[0].IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Stopped the first FP instance")
+	log.Logf(t, "Stopped the first FP instance")
 
 	// select a block that the first FP has not processed yet to give to the second FP to sign
 	testNextBlockHeight := fpList[0].GetLastProcessedHeight() + 1
-	t.Logf("Test next block height %d", testNextBlockHeight)
+	log.Logf(t, "Test next block height %d", testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
 	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
@@ -197,5 +198,5 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	nextFinalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryNextParams)
 	require.NoError(t, err)
 	require.Equal(t, false, nextFinalized)
-	t.Logf("Test case 2: block %d is not finalized", testNextBlock.Height)
+	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
 }
