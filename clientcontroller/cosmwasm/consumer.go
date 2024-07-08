@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	sdkErr "cosmossdk.io/errors"
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
@@ -570,40 +569,6 @@ func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo,
 		Height: uint64(chainInfo.BlockMetas[0].Header.Height),
 		Hash:   chainInfo.BlockMetas[0].Header.AppHash,
 	}, nil
-}
-
-//nolint:unused
-func (wc *CosmwasmConsumerController) queryCometBlocksInRange(startHeight, endHeight uint64) ([]*fptypes.BlockInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
-	defer cancel()
-
-	// this will return 20 items at max in the descending order (highest first)
-	chainInfo, err := wc.cwClient.RPCClient.BlockchainInfo(ctx, int64(startHeight), int64(endHeight))
-	if err != nil {
-		return nil, err
-	}
-
-	// If no blocks found, return an empty slice
-	if len(chainInfo.BlockMetas) == 0 {
-		return nil, fmt.Errorf("no comet blocks found in the range")
-	}
-
-	// Process the blocks and convert them to BlockInfo
-	var blocks []*fptypes.BlockInfo
-	for _, blockMeta := range chainInfo.BlockMetas {
-		block := &fptypes.BlockInfo{
-			Height: uint64(blockMeta.Header.Height),
-			Hash:   blockMeta.Header.AppHash,
-		}
-		blocks = append(blocks, block)
-	}
-
-	// Sort the blocks by height in ascending order
-	sort.Slice(blocks, func(i, j int) bool {
-		return blocks[i].Height < blocks[j].Height
-	})
-
-	return blocks, nil
 }
 
 func (wc *CosmwasmConsumerController) Close() error {
