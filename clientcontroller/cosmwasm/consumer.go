@@ -572,6 +572,7 @@ func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo,
 	}, nil
 }
 
+//nolint:unused
 func (wc *CosmwasmConsumerController) queryCometBlocksInRange(startHeight, endHeight uint64) ([]*fptypes.BlockInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), wc.cfg.Timeout)
 	defer cancel()
