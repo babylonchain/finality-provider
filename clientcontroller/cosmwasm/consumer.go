@@ -246,32 +246,17 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	//isFinalized := true
-	//limit := uint64(1)
-	//blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if len(blocks) == 0 {
-	//	return nil, fmt.Errorf("no finalized blocks found")
-	//}
-	//
-	//return blocks[0], nil
+	isFinalized := true
+	limit := uint64(1)
+	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("no finalized blocks found")
+	}
 
-	// TODO: temporary hack get the block from comet
-	latestHeight, err := wc.QueryLatestBlockHeight()
-	if err != nil {
-		return nil, err
-	}
-	qHeight := latestHeight / 3
-	if qHeight == 0 {
-		qHeight = 1
-	}
-	block, err := wc.QueryBlock(qHeight)
-	if err != nil {
-		return nil, err
-	}
-	return block, nil
+	return blocks[0], nil
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
