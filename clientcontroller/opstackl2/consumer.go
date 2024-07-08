@@ -57,10 +57,7 @@ func NewOPStackL2ConsumerController(
 		return nil, fmt.Errorf("failed to create CW client: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), opl2Cfg.Timeout)
-	defer cancel()
-
-	opl2Client, err := ethclient.DialContext(ctx, opl2Cfg.OPStackL2RPCAddress)
+	opl2Client, err := ethclient.Dial(opl2Cfg.OPStackL2RPCAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OPStack L2 client: %w", err)
 	}
@@ -254,10 +251,7 @@ func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *bt
 // TODO: return the BTC finalized L2 block, it is tricky b/c it's not recorded anywhere so we can
 // use some exponential strategy to search
 func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
-	defer cancel()
-
-	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.FinalizedBlockNumber.Int64()))
+	l2Block, err := cc.opl2Client.HeaderByNumber(context.Background(), big.NewInt(ethrpc.FinalizedBlockNumber.Int64()))
 	if err != nil {
 		return nil, err
 	}
@@ -285,10 +279,7 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 
 // QueryBlock returns the L2 block number and block hash with the given block number from a RPC call
 func (cc *OPStackL2ConsumerController) QueryBlock(height uint64) (*types.BlockInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
-	defer cancel()
-
-	l2Block, err := cc.opl2Client.HeaderByNumber(ctx, new(big.Int).SetUint64(height))
+	l2Block, err := cc.opl2Client.HeaderByNumber(context.Background(), new(big.Int).SetUint64(height))
 	if err != nil {
 		return nil, err
 	}
@@ -341,10 +332,7 @@ func (cc *OPStackL2ConsumerController) QueryActivatedHeight() (uint64, error) {
 
 // QueryLatestBlockHeight gets the latest L2 block number from a RPC call
 func (cc *OPStackL2ConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cc.Cfg.Timeout)
-	defer cancel()
-
-	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(ctx, big.NewInt(ethrpc.LatestBlockNumber.Int64()))
+	l2LatestBlock, err := cc.opl2Client.HeaderByNumber(context.Background(), big.NewInt(ethrpc.LatestBlockNumber.Int64()))
 	if err != nil {
 		return 0, err
 	}
@@ -371,10 +359,7 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	if err != nil {
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
-
-	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
-	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
-	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+	if len(stateResp.Data) == 0 {
 		return nil, nil
 	}
 
@@ -383,7 +368,9 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
+	if resp == nil {
+		return nil, nil
+	}
 	if err := resp.Validate(); err != nil {
 		return nil, err
 	}
