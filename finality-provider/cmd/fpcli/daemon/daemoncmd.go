@@ -10,6 +10,7 @@ import (
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/spf13/cobra"
 	"github.com/urfave/cli"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -21,22 +22,25 @@ var (
 	defaultAppHashStr       = "fd903d9baeb3ab1c734ee003de75f676c5a9a8d0574647e5385834d57d3e79ec"
 )
 
-var GetDaemonInfoCmd = cli.Command{
-	Name:      "get-info",
-	ShortName: "gi",
-	Usage:     "Get information of the running daemon.",
-	Action:    getInfo,
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-	},
+// CommandGetDaemonInfo returns the get-info command by connecting to the fpd daemon.
+func CommandGetDaemonInfo() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "get-info",
+		Short:   "Get information of the running fpd daemon.",
+		Example: fmt.Sprintf(`fpcli get-info --daemon-address %s`, defaultFpdDaemonAddress),
+		Args:    cobra.NoArgs,
+		RunE:    runCommandGetDaemonInfo,
+	}
+	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	return cmd
 }
 
-func getInfo(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
+func runCommandGetDaemonInfo(cmd *cobra.Command, args []string) error {
+	daemonAddress, err := cmd.Flags().GetString(fpdDaemonAddressFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpdDaemonAddressFlag, err)
+	}
+
 	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
@@ -44,13 +48,11 @@ func getInfo(ctx *cli.Context) error {
 	defer cleanUp()
 
 	info, err := client.GetInfo(context.Background())
-
 	if err != nil {
 		return err
 	}
 
 	printRespJSON(info)
-
 	return nil
 }
 

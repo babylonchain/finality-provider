@@ -4,31 +4,39 @@ import (
 	"fmt"
 	"os"
 
-	dcli "github.com/babylonchain/finality-provider/finality-provider/cmd/fpcli/daemon"
-	"github.com/urfave/cli"
+	"github.com/spf13/cobra"
+
+	"github.com/cosmos/cosmos-sdk/client"
+
+	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
+	"github.com/babylonchain/finality-provider/finality-provider/cmd/fpcli/daemon"
 )
 
-func fatal(err error) {
-	fmt.Fprintf(os.Stderr, "[fpd] %v\n", err)
-	os.Exit(1)
+// NewRootCmd creates a new root command for fpd. It is called once in the main function.
+func NewRootCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:               "fpcli",
+		Short:             "fpcli - Control plane for the Finality Provider Daemon (fpd).",
+		Long:              `fpcli can create requests and make actions that evolve the Finality Provider Daemon (fpd).`,
+		SilenceErrors:     false,
+		PersistentPreRunE: fpcmd.PersistClientCtx(client.Context{}),
+	}
 }
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "fpcli"
-	app.Usage = "Control plane for the Finality Provider Daemon (fpd)."
-
-	app.Commands = append(app.Commands,
-		dcli.GetDaemonInfoCmd,
-		dcli.CreateFpDaemonCmd,
-		dcli.LsFpDaemonCmd,
-		dcli.FpInfoDaemonCmd,
-		dcli.RegisterFpDaemonCmd,
-		dcli.AddFinalitySigDaemonCmd,
-		dcli.ExportFinalityProvider,
-	)
-
-	if err := app.Run(os.Args); err != nil {
-		fatal(err)
+	cmd := NewRootCmd()
+	cmd.AddCommand(daemon.CommandGetDaemonInfo())
+	// 	app.Commands = append(app.Commands,
+	// 		dcli.GetDaemonInfoCmd,
+	// 		dcli.CreateFpDaemonCmd,
+	// 		dcli.LsFpDaemonCmd,
+	// 		dcli.FpInfoDaemonCmd,
+	// 		dcli.RegisterFpDaemonCmd,
+	// 		dcli.AddFinalitySigDaemonCmd,
+	// 		dcli.ExportFinalityProvider,
+	// 	)
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your fpcli '%s'", err)
+		os.Exit(1)
 	}
 }
