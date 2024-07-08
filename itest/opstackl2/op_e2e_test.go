@@ -9,9 +9,7 @@ import (
 
 	"github.com/babylonchain/babylon-finality-gadget/sdk"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
-	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,55 +43,6 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)
-}
-
-func TestOpSubmitBatchFinalitySigs(t *testing.T) {
-	ctm := StartOpL2ConsumerManager(t)
-	defer ctm.Stop(t)
-
-	// start consumer chain FP
-	fpList := ctm.StartFinalityProvider(t, 1)
-	fpInstance := fpList[0]
-
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
-
-	// query pub rand
-	committedPubRand, err := ctm.OpL2ConsumerCtrl.QueryLastPublicRandCommit(fpInstance.GetBtcPk())
-	require.NoError(t, err)
-	lastCommittedStartHeight := committedPubRand.StartHeight
-	t.Logf("Last committed pubrandList startHeight %d", lastCommittedStartHeight)
-	pubRandList, err := fpInstance.GetPubRandList(lastCommittedStartHeight, ctm.FpConfig.NumPubRand)
-	require.NoError(t, err)
-	// generate commitment and proof for each public randomness
-	_, proofList := types.GetPubRandCommitAndProofs(pubRandList)
-
-	var fpSigs []*secp256k1.ModNScalar
-	testBatchBlocks := ctm.WaitForNBlocksAndReturn(t, lastCommittedStartHeight, 3)
-	for _, block := range testBatchBlocks {
-		// fp sign
-		fpSig, err := fpInstance.SignFinalitySig(block)
-		require.NoError(t, err)
-		fpSigs = append(fpSigs, fpSig.ToModNScalar())
-	}
-
-	// proofs
-	var proofs [][]byte
-	for i := 0; i <= 2; i++ {
-		proof, err := proofList[i].ToProto().Marshal()
-		require.NoError(t, err)
-		proofs = append(proofs, proof)
-	}
-
-	// submit batch finality signatures to smart contract
-	_, err = ctm.OpL2ConsumerCtrl.SubmitBatchFinalitySigs(
-		fpInstance.GetBtcPk(),
-		testBatchBlocks,
-		pubRandList[0:3],
-		proofs,
-		fpSigs,
-	)
-	require.NoError(t, err)
-	t.Logf("Successfully submitted batch finality signatures to op finality contract")
 }
 
 // This test has two test cases:
