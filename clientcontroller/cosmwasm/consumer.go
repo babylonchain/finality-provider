@@ -262,21 +262,17 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	//if endHeight < startHeight {
-	//	return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
-	//}
-	//count := endHeight - startHeight + 1
-	//if count > limit {
-	//	count = limit
-	//}
-	//
-	//return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
+	if endHeight < startHeight {
+		return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
+	}
+	count := endHeight - startHeight + 1
+	if count > limit {
+		count = limit
+	}
 
-	// TODO: temporary hack get the block from comet
-	return wc.queryCometBlocksInRange(startHeight, endHeight)
+	return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
 }
 
-//nolint:unused
 func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
 	// Construct the query message
 	queryMsg := QueryMsgBlocks{
@@ -369,6 +365,16 @@ func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockI
 		Height: uint64(block.Block.Header.Height),
 		Hash:   block.Block.Header.AppHash,
 	}, nil
+
+	//resp, err := wc.QueryIndexedBlock(height)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//// Convert to BlockInfo and return
+	//return &fptypes.BlockInfo{
+	//	Height: resp.Height,
+	//	Hash:   resp.AppHash,
+	//}, nil
 }
 
 // QueryLastPublicRandCommit returns the last public randomness commitments
@@ -469,6 +475,7 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 		return 0, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 	if resp.Height == 0 {
+		// FP poller expects an error when the activated height is 0
 		return 0, fmt.Errorf("BTC staking is not activated yet")
 	}
 
@@ -477,25 +484,19 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	//reverse := true
-	//count := uint64(1)
-	//blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//if len(blocks) == 0 {
-	//	return 0, fmt.Errorf("no blocks found")
-	//}
-	//
-	//return blocks[0].Height, nil
-
-	// TODO: temporary hack get the block from comet
-	block, err := wc.queryCometBestBlock()
-	if err != nil {
-		return 0, err
+	reverse := true
+	count := uint64(1)
+	blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
+	if err != nil || len(blocks) == 0 {
+		// try query comet block if the index block query is not available
+		block, err := wc.queryCometBestBlock()
+		if err != nil {
+			return 0, err
+		}
+		return block.Height, nil
 	}
-	return block.Height, err
+
+	return blocks[0].Height, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryFinalitySignature(fpBtcPkHex string, height uint64) (*FinalitySignatureResponse, error) {
