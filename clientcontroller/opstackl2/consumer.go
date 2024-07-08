@@ -371,10 +371,7 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	if err != nil {
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
-
-	// If CosmWasm contract's return data is None, the corresponding JSON representation is a four-character string "null"
-	// and the json.Unmarshal() does NOT raise an error, we should explicitly check for this condition
-	if stateResp.Data == nil || string(stateResp.Data) == "null" {
+	if len(stateResp.Data) == 0 {
 		return nil, nil
 	}
 
@@ -383,7 +380,9 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
+	if resp == nil {
+		return nil, nil
+	}
 	if err := resp.Validate(); err != nil {
 		return nil, err
 	}

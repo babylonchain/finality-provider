@@ -15,32 +15,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-/*
-this is BTC height 10's timestamp: https://mempool.space/block/10
-
-we use it b/c in InsertBTCDelegation(), it inserts at BTC block 0 because
-- `tm.BBNClient.QueryBtcLightClientTip()` returns block 0
-- `params.ComfirmationTimeBlocks` defaults to be 6, meaning the delegation
-becomes active around block 6
-
-Note: the staking time is default defined in utils.go to be 100 blocks:
-StakingTime           = uint16(100)
-
-since we only mock the first few BTC blocks and inject into the local
-babylon chain, the delegation will be active forever. So even if we choose
-a very large real BTC mainnet's block timestamp, the test will still pass.
-
-But to be safe, we decided to choose the timestamp of block 10.
-*/
-var BlockTimestamp = uint64(1231473952)
-
 // tests the finality signature submission to the op-finality-gadget contract
 func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
 	// start consumer chain FP
-	fpList := ctm.StartFinalityProvider(t, false, 1)
+	fpList := ctm.StartFinalityProvider(t, 1)
 	fpInstance := fpList[0]
 
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
@@ -57,8 +38,11 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	queryParams := &sdk.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
-		BlockTimestamp: BlockTimestamp,
+		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
 	}
+
+	// note: QueryFinalityProviderVotingPower is hardcode to return 1 so FPs can still submit finality sigs even if they
+	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)
 }
@@ -68,7 +52,7 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 	defer ctm.Stop(t)
 
 	// start consumer chain FP
-	fpList := ctm.StartFinalityProvider(t, false, 1)
+	fpList := ctm.StartFinalityProvider(t, 1)
 	fpInstance := fpList[0]
 
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
@@ -109,7 +93,7 @@ func TestOpSubmitBatchFinalitySigs(t *testing.T) {
 		fpSigs,
 	)
 	require.NoError(t, err)
-	t.Logf("Submit batch finality signatures to op finality contract")
+	t.Logf("Successfully submitted batch finality signatures to op finality contract")
 }
 
 // This test has two test cases:
@@ -126,7 +110,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	// start consumer chain FP
 	n := 2
-	fpList := ctm.StartFinalityProvider(t, false, n)
+	fpList := ctm.StartFinalityProvider(t, n)
 
 	// check the public randomness is committed
 	e2eutils.WaitForFpPubRandCommitted(t, fpList[0])
@@ -167,7 +151,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	queryParams := &sdk.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
-		BlockTimestamp: uint64(1231473952),
+		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
 	}
 	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.NoError(t, err)
@@ -191,7 +175,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	queryNextParams := &sdk.L2Block{
 		BlockHeight:    testNextBlock.Height,
 		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
-		BlockTimestamp: uint64(1231473952),
+		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
 	}
 	// testNextBlock only have 1/4 total voting power
 	nextFinalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryNextParams)
