@@ -371,7 +371,7 @@ func (cc *OPStackL2ConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Pub
 	if err != nil {
 		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
 	}
-	if stateResp.Data == nil {
+	if len(stateResp.Data) == 0 {
 		return nil, nil
 	}
 
