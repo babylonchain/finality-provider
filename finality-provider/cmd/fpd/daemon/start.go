@@ -8,6 +8,7 @@ import (
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/signal"
+	"github.com/spf13/cobra"
 	"github.com/urfave/cli"
 	"go.uber.org/zap"
 
@@ -17,7 +18,20 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var StartCommand = cli.Command{
+// Commands registers a sub-tree of commands to interact with
+// local private key storage.
+func Commands() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "start",
+		Short:   "Start the finality-provider app daemon.",
+		Long:    `Start the finality-provider app. Note that eotsd should be started beforehand`,
+		Example: `fpd start`,
+		RunE:    runCmdStart,
+	}
+	return cmd
+}
+
+var StartCommandUrfave = cli.Command{
 	Name:        "start",
 	Usage:       "Start the finality-provider app",
 	Description: "Start the finality-provider app. Note that eotsd should be started beforehand",
@@ -42,6 +56,10 @@ var StartCommand = cli.Command{
 		},
 	},
 	Action: start,
+}
+
+func runCmdStart(cmd *cobra.Command, args []string) error {
+	return nil
 }
 
 func start(ctx *cli.Context) error {
