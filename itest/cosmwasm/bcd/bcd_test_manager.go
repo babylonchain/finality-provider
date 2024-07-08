@@ -83,6 +83,8 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
+	cfg.FastSyncInterval = 0 // disable fast sync
+
 	// 3. setup wasmd node
 	wh := NewBcdNodeHandler(t)
 	err = wh.Start()
