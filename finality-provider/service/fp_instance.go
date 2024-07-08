@@ -954,15 +954,15 @@ func (fp *FinalityProviderInstance) getPollerStartingHeight() (uint64, error) {
 	//	(2) The finality providers do not submit signatures for any already
 	//	 finalised blocks.
 	initialBlockToGet := fp.GetLastProcessedHeight()
-	latestFinalisedBlock, err := fp.latestFinalizedBlockWithRetry()
+	latestFinalizedBlock, err := fp.latestFinalizedBlockWithRetry()
 	if err != nil {
 		return 0, err
 	}
 
-	// find max(initialBlockToGet, latestFinalisedBlock.Height)
+	// find max(initialBlockToGet, latestFinalizedBlock.Height)
 	maxHeight := initialBlockToGet
-	if latestFinalisedBlock != nil && latestFinalisedBlock.Height > initialBlockToGet {
-		maxHeight = latestFinalisedBlock.Height
+	if latestFinalizedBlock != nil && latestFinalizedBlock.Height > initialBlockToGet {
+		maxHeight = latestFinalizedBlock.Height
 	}
 
 	return maxHeight + 1, nil
@@ -1015,11 +1015,11 @@ func (fp *FinalityProviderInstance) lastCommittedPublicRandWithRetry() (*types.P
 func (fp *FinalityProviderInstance) latestFinalizedBlockWithRetry() (*types.BlockInfo, error) {
 	var response *types.BlockInfo
 	if err := retry.Do(func() error {
-		latestFinalisedBlock, err := fp.consumerCon.QueryLatestFinalizedBlock()
+		latestFinalizedBlock, err := fp.consumerCon.QueryLatestFinalizedBlock()
 		if err != nil {
 			return err
 		}
-		response = latestFinalisedBlock
+		response = latestFinalizedBlock
 		return nil
 	}, RtyAtt, RtyDel, RtyErr, retry.OnRetry(func(n uint, err error) {
 		fp.logger.Debug(

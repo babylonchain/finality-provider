@@ -210,6 +210,7 @@ func (cp *ChainPoller) waitForActivation() {
 	for {
 		activatedHeight, err := cp.consumerCon.QueryActivatedHeight()
 		if err != nil {
+			// TODO: distinguish between "BTC staking is not activated" and other errors
 			cp.logger.Debug("failed to query the consumer chain for the activated height", zap.Error(err))
 		} else {
 			if cp.nextHeight < activatedHeight {
