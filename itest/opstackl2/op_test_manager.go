@@ -16,8 +16,8 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon-da-sdk/btcclient"
-	"github.com/babylonchain/babylon-da-sdk/sdk"
+	"github.com/babylonchain/babylon-finality-gadget/btcclient"
+	"github.com/babylonchain/babylon-finality-gadget/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
