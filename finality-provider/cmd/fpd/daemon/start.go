@@ -7,9 +7,9 @@ import (
 
 	"github.com/babylonchain/babylon/types"
 	"github.com/btcsuite/btcwallet/walletdb"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/spf13/cobra"
-	"github.com/urfave/cli"
 	"go.uber.org/zap"
 
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -18,57 +18,53 @@ import (
 	"github.com/babylonchain/finality-provider/util"
 )
 
-// Commands registers a sub-tree of commands to interact with
-// local private key storage.
-func Commands() *cobra.Command {
+// CommandStart returns the start command of fpd daemon.
+func CommandStart() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "start",
 		Short:   "Start the finality-provider app daemon.",
 		Long:    `Start the finality-provider app. Note that eotsd should be started beforehand`,
-		Example: `fpd start`,
-		RunE:    runCmdStart,
+		Example: `fpd start --home /home/user/.fpd`,
+		Args:    cobra.NoArgs,
+		RunE:    runStartCmdPrepare,
 	}
+	cmd.Flags().String(fpPkFlag, "", "The public key of the finality-provider to start")
+	cmd.Flags().String(passphraseFlag, "", "The pass phrase used to decrypt the private key")
+	cmd.Flags().String(rpcListenerFlag, "", "The address that the RPC server listens to")
 	return cmd
 }
 
-var StartCommandUrfave = cli.Command{
-	Name:        "start",
-	Usage:       "Start the finality-provider app",
-	Description: "Start the finality-provider app. Note that eotsd should be started beforehand",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  passphraseFlag,
-			Usage: "The pass phrase used to decrypt the private key",
-			Value: defaultPassphrase,
-		},
-		cli.StringFlag{
-			Name:  homeFlag,
-			Usage: "The path to the finality-provider home directory",
-			Value: fpcfg.DefaultFpdDir,
-		},
-		cli.StringFlag{
-			Name:  fpPkFlag,
-			Usage: "The public key of the finality-provider to start",
-		},
-		cli.StringFlag{
-			Name:  rpcListenerFlag,
-			Usage: "The address that the RPC server listens to",
-		},
-	},
-	Action: start,
+func runStartCmdPrepare(cmd *cobra.Command, args []string) error {
+	clientCtx, err := client.GetClientQueryContext(cmd)
+	if err != nil {
+		return err
+	}
+
+	return runStartCmd(clientCtx, cmd, args)
 }
 
-func runCmdStart(cmd *cobra.Command, args []string) error {
-	return nil
-}
-
-func start(ctx *cli.Context) error {
-	homePath, err := filepath.Abs(ctx.String(homeFlag))
+func runStartCmd(ctx client.Context, cmd *cobra.Command, args []string) error {
+	homePath, err := filepath.Abs(ctx.HomeDir)
 	if err != nil {
 		return err
 	}
 	homePath = util.CleanAndExpandPath(homePath)
-	rpcListener := ctx.String(rpcListenerFlag)
+	flags := cmd.Flags()
+
+	fpStr, err := flags.GetString(fpPkFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpPkFlag, err)
+	}
+
+	rpcListener, err := flags.GetString(rpcListenerFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", rpcListenerFlag, err)
+	}
+
+	passphrase, err := flags.GetString(passphraseFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", passphraseFlag, err)
+	}
 
 	cfg, err := fpcfg.LoadConfig(homePath)
 	if err != nil {
@@ -93,12 +89,12 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create db backend: %w", err)
 	}
 
-	fpApp, err := loadApp(ctx, logger, cfg, dbBackend)
+	fpApp, err := loadApp(logger, cfg, dbBackend)
 	if err != nil {
 		return fmt.Errorf("failed to load app: %w", err)
 	}
 
-	if err := startApp(ctx, fpApp); err != nil {
+	if err := startApp(fpApp, fpStr, passphrase); err != nil {
 		return fmt.Errorf("failed to start app: %w", err)
 	}
 
@@ -114,7 +110,6 @@ func start(ctx *cli.Context) error {
 
 // loadApp initialize an finality provider app based on config and flags set.
 func loadApp(
-	ctx *cli.Context,
 	logger *zap.Logger,
 	cfg *fpcfg.Config,
 	dbBackend walletdb.DB,
@@ -134,8 +129,8 @@ func loadApp(
 
 // startApp starts the app and the handle of finality providers if needed based on flags.
 func startApp(
-	ctx *cli.Context,
 	fpApp *service.FinalityProviderApp,
+	fpPkStr, passphrase string,
 ) error {
 	// only start the app without starting any finality-provider instance
 	// as there might be no finality-provider registered yet
@@ -143,7 +138,6 @@ func startApp(
 		return fmt.Errorf("failed to start the finality-provider app: %w", err)
 	}
 
-	fpPkStr := ctx.String(fpPkFlag)
 	if fpPkStr != "" {
 		// start the finality-provider instance with the given public key
 		fpPk, err := types.NewBIP340PubKeyFromHex(fpPkStr)
@@ -151,7 +145,7 @@ func startApp(
 			return fmt.Errorf("invalid finality-provider public key %s: %w", fpPkStr, err)
 		}
 
-		if err := fpApp.StartHandlingFinalityProvider(fpPk, ctx.String(passphraseFlag)); err != nil {
+		if err := fpApp.StartHandlingFinalityProvider(fpPk, passphrase); err != nil {
 			return fmt.Errorf("failed to start the finality-provider instance %s: %w", fpPkStr, err)
 		}
 	}

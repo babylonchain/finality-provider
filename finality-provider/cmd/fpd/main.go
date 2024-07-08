@@ -11,10 +11,11 @@ import (
 	"github.com/spf13/cobra"
 
 	appparams "github.com/babylonchain/babylon/app/params"
+	"github.com/babylonchain/finality-provider/finality-provider/cmd/fpd/daemon"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 )
 
-// NewRootCmd creates a new root command for simd. It is called once in the main function.
+// NewRootCmd creates a new root command for fpd. It is called once in the main function.
 func NewRootCmd() *cobra.Command {
 	var (
 		clientCtx client.Context
@@ -57,7 +58,7 @@ func NewRootCmd() *cobra.Command {
 
 func main() {
 	cmd := NewRootCmd()
-	cmd.AddCommand(keys.Commands())
+	cmd.AddCommand(keys.Commands(), daemon.CommandStart(), daemon.CommandInit())
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your fpd CLI '%s'", err)
