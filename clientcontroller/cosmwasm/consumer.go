@@ -253,7 +253,9 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 		return nil, err
 	}
 	if len(blocks) == 0 {
-		return nil, fmt.Errorf("no finalized blocks found")
+		// do not return error here as FP handles this situation by
+		// not running fast sync
+		return nil, nil
 	}
 
 	return blocks[0], nil
