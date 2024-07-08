@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	dcli "github.com/babylonchain/finality-provider/finality-provider/cmd/fpd/daemon"
-	"github.com/urfave/cli"
+	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/spf13/cobra"
 )
 
 func fatal(err error) {
@@ -13,14 +13,21 @@ func fatal(err error) {
 	os.Exit(1)
 }
 
-func main() {
-	app := cli.NewApp()
-	app.Name = "fpd"
-	app.Usage = "Finality Provider Daemon (fpd)."
-	app.Commands = append(app.Commands, dcli.StartCommand, dcli.InitCommand)
-	app.Commands = append(app.Commands, dcli.KeysCommands...)
+var rootCmd = &cobra.Command{
+	Use:   "fpd",
+	Short: "fpd - Finality Provider Daemon (fpd).",
+	Long:  `fpd is the daemon to handle finality provider submission of randomness from BTC to proof of stake chains`,
+	// Run: func(cmd *cobra.Command, args []string) {
 
-	if err := app.Run(os.Args); err != nil {
-		fatal(err)
+	// },
+}
+
+func main() {
+	// app.Commands = append(app.Commands, dcli.StartCommand, dcli.InitCommand)
+	// app.Commands = append(app.Commands, dcli.KeysCommands...)
+	rootCmd.AddCommand(keys.Commands())
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your CLI '%s'", err)
+		os.Exit(1)
 	}
 }
