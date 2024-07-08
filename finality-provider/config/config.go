@@ -175,7 +175,7 @@ func LoadConfig(homePath string) (*Config, error) {
 }
 
 // Validate checks the given configuration to be sane. This makes sure no
-// illegal values or combination of values are set. All file system paths are
+// illegal values or a combination of values are set. All file system paths are
 // normalized. The cleaned up config is returned on success.
 func (cfg *Config) Validate() error {
 	if cfg.EOTSManagerAddress == "" {

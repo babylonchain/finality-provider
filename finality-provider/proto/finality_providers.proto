@@ -52,7 +52,7 @@ message CreateFinalityProviderRequest {
     string passphrase = 2;
     // hd_path is the hd path for private key derivation
     string hd_path = 3;
-    // chain_id is the identifier of the consumer chain that the finality provider connected to
+    // chain_id is the identifier of the consumer chain that the finality provider is connected to
     string chain_id = 4;
     // description defines the description terms for the finality provider
     bytes description = 5;
