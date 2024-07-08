@@ -107,11 +107,8 @@ to pay for fees of transactions to the consumer chain.
 Use the following command to add the key:
 
 ```bash
-fpd keys add --key-name my-finality-provider --chain-id bbn-test-3
+fpd keys add my-finality-provider
 ```
-
-**Note**: Please verify the `chain-id` from the Babylon RPC
-node https://rpc.testnet3.babylonchain.io/status
 
 After executing the above command, the key name will be saved in the config file
 created in [step](#2-configuration).
