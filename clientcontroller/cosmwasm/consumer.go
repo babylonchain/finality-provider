@@ -345,36 +345,17 @@ func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*Indexed
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	//// Use the helper function to get the IndexedBlock
-	//resp, err := wc.QueryIndexedBlock(height)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Convert to BlockInfo and return
-	//return &fptypes.BlockInfo{
-	//	Height: resp.Height,
-	//	Hash:   resp.AppHash,
-	//}, nil
-
-	// TODO: temporary hack get the block from comet
-	block, err := wc.cwClient.GetBlock(int64(height))
+	// Use the helper function to get the IndexedBlock
+	resp, err := wc.QueryIndexedBlock(height)
 	if err != nil {
 		return nil, err
 	}
-	return &fptypes.BlockInfo{
-		Height: uint64(block.Block.Header.Height),
-		Hash:   block.Block.Header.AppHash,
-	}, nil
 
-	//resp, err := wc.QueryIndexedBlock(height)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Convert to BlockInfo and return
-	//return &fptypes.BlockInfo{
-	//	Height: resp.Height,
-	//	Hash:   resp.AppHash,
-	//}, nil
+	// Convert to BlockInfo and return
+	return &fptypes.BlockInfo{
+		Height: resp.Height,
+		Hash:   resp.AppHash,
+	}, nil
 }
 
 // QueryLastPublicRandCommit returns the last public randomness commitments
