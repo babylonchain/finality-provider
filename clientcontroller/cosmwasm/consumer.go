@@ -432,21 +432,14 @@ func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publ
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	//// Use the helper function to get the IndexedBlock
-	//resp, err := wc.QueryIndexedBlock(height)
-	//if err != nil {
-	//	return false, err
-	//}
-	//
-	//// Return the finalized status
-	//return resp.Finalized, nil
-
-	// TODO: temporary hack get the block from comet
-	_, err := wc.queryCometBestBlock()
+	// Use the helper function to get the IndexedBlock
+	resp, err := wc.QueryIndexedBlock(height)
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+
+	// Return the finalized status
+	return resp.Finalized, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
