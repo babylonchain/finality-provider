@@ -264,6 +264,9 @@ func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.Block
 }
 
 func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
+	if startHeight > endHeight {
+		return nil, fmt.Errorf("the start height %v should not be higher than the end height %v", startHeight, endHeight)
+	}
 	// limit the number of blocks to query
 	count := endHeight - startHeight + 1
 	if limit > 0 && count >= limit {
@@ -293,15 +296,13 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 			return nil, fmt.Errorf("got null header for block %d", startHeight+uint64(i))
 		}
 	}
-
 	// convert to types.BlockInfo
-	blocks := make([]*types.BlockInfo, count)
-	for _, header := range blockHeaders {
-		block := &types.BlockInfo{
+	blocks := make([]*types.BlockInfo, len(blockHeaders))
+	for i, header := range blockHeaders {
+		blocks[i] = &types.BlockInfo{
 			Height: header.Number.Uint64(),
 			Hash:   header.Hash().Bytes(),
 		}
-		blocks = append(blocks, block)
 	}
 	cc.logger.Debug(
 		"Successfully batch query blocks",
