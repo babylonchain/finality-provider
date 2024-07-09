@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/config"
 	"github.com/spf13/cobra"
 
 	appparams "github.com/babylonchain/babylon/app/params"
@@ -16,18 +15,8 @@ func PersistClientCtx(clientCtx client.Context) func(cmd *cobra.Command, _ []str
 		cmd.SetOut(cmd.OutOrStdout())
 		cmd.SetErr(cmd.ErrOrStderr())
 
-		clientCtx = clientCtx.WithCmdContext(cmd.Context()).WithViper("")
+		clientCtx = clientCtx.WithCmdContext(cmd.Context())
 		clientCtx.Codec = encCfg.Codec
-		clientCtx, err := client.ReadPersistentCommandFlags(clientCtx, cmd.Flags())
-		if err != nil {
-			return err
-		}
-
-		clientCtx, err = config.ReadFromClientConfig(clientCtx)
-		if err != nil {
-			return err
-		}
-
 		if err := client.SetCmdClientContextHandler(clientCtx, cmd); err != nil {
 			return err
 		}

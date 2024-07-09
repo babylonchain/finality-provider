@@ -71,6 +71,10 @@ func CommandCreateFP() *cobra.Command {
 	return cmd
 }
 
+func runCommandCreateFP(cmd *cobra.Command, args []string) error {
+	return nil
+}
+
 var CreateFpDaemonCmd = cli.Command{
 	Name:      "create-finality-provider",
 	ShortName: "cfp",

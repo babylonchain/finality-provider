@@ -19,7 +19,7 @@ func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:               "fpd",
 		Short:             "fpd - Finality Provider Daemon (fpd).",
-		Long:              `fpd is the daemon to handle finality provider submission of randomness from BTC to proof of stake chains`,
+		Long:              `fpd is the daemon to create and manage finality providers.`,
 		SilenceErrors:     false,
 		PersistentPreRunE: fpcmd.PersistClientCtx(client.Context{}),
 	}
