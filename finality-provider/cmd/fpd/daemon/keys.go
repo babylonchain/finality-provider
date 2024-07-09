@@ -3,7 +3,7 @@ package daemon
 import (
 	"strings"
 
-	"github.com/babylonchain/finality-provider/finality-provider/cmd"
+	helper "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/cosmos/cosmos-sdk/client"
 	sdkflags "github.com/cosmos/cosmos-sdk/client/flags"
@@ -21,7 +21,7 @@ func CommandKeys() *cobra.Command {
 		panic("failed to find keys add command")
 	}
 
-	keyAddCmd.PostRunE = cmd.RunEWithClientCtx(func(ctx client.Context, cmd *cobra.Command, args []string) error {
+	keyAddCmd.PostRunE = helper.RunEWithClientCtx(func(ctx client.Context, cmd *cobra.Command, args []string) error {
 		// check the config file exists
 		cfg, err := fpcfg.LoadConfig(ctx.HomeDir)
 		if err != nil {
