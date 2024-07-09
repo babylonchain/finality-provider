@@ -39,7 +39,7 @@ func (cfg *OPStackL2Config) Validate() error {
 		return fmt.Errorf("op-finality-gadget: invalid bech32 address: %w", err)
 	}
 	if !strings.HasPrefix(cfg.OPFinalityGadgetAddress, cfg.AccountPrefix) {
-		return fmt.Errorf("op-finality-gadget: invalid address prefix")
+		return fmt.Errorf("op-finality-gadget: invalid address prefix: %w", err)
 	}
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("rpc-addr is not correctly formatted: %w", err)
