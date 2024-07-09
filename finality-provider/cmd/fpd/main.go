@@ -6,7 +6,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/spf13/cobra"
 
 	appparams "github.com/babylonchain/babylon/app/params"
@@ -47,7 +46,7 @@ func NewRootCmd() *cobra.Command {
 
 func main() {
 	cmd := NewRootCmd()
-	cmd.AddCommand(keys.Commands(), daemon.CommandStart(), daemon.CommandInit())
+	cmd.AddCommand(daemon.CommandKeys(), daemon.CommandStart(), daemon.CommandInit())
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your fpd CLI '%s'", err)
