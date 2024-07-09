@@ -272,9 +272,9 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 
 	// create batch requests
 	blockHeaders := make([]*ethtypes.Header, count)
-	reqs := make([]ethrpc.BatchElem, count)
-	for i := range reqs {
-		reqs[i] = ethrpc.BatchElem{
+	batchElemList := make([]ethrpc.BatchElem, count)
+	for i := range batchElemList {
+		batchElemList[i] = ethrpc.BatchElem{
 			Method: "eth_getBlockByNumber",
 			Args:   []interface{}{hexutil.EncodeUint64(startHeight + uint64(i)), false},
 			Result: &blockHeaders[i],
@@ -282,12 +282,12 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 	}
 
 	// batch call
-	if err := cc.opl2Client.Client().BatchCallContext(context.Background(), reqs); err != nil {
+	if err := cc.opl2Client.Client().BatchCallContext(context.Background(), batchElemList); err != nil {
 		return nil, err
 	}
-	for i := range reqs {
-		if reqs[i].Error != nil {
-			return nil, reqs[i].Error
+	for i := range batchElemList {
+		if batchElemList[i].Error != nil {
+			return nil, batchElemList[i].Error
 		}
 		if blockHeaders[i] == nil {
 			return nil, fmt.Errorf("got null header for block %d", startHeight+uint64(i))
@@ -303,6 +303,17 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 		}
 		blocks = append(blocks, block)
 	}
+
+	if len(blocks) != int(count) {
+		cc.logger.Error(
+			"Batch query blocks",
+			zap.Uint64("start_height", startHeight),
+			zap.Uint64("end_height", endHeight),
+			zap.Uint64("limit", limit),
+		)
+		return nil, fmt.Errorf("the number of blocks %v should match the number of blocks to query %v", len(blocks), count)
+	}
+
 	cc.logger.Debug(
 		"Successfully batch query blocks",
 		zap.Uint64("start_height", startHeight),
