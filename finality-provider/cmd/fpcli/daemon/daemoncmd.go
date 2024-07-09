@@ -26,6 +26,7 @@ var (
 func CommandGetDaemonInfo() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "get-info",
+		Aliases: []string{"gi"},
 		Short:   "Get information of the running fpd daemon.",
 		Example: fmt.Sprintf(`fpcli get-info --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
@@ -54,6 +55,20 @@ func runCommandGetDaemonInfo(cmd *cobra.Command, args []string) error {
 
 	printRespJSON(info)
 	return nil
+}
+
+// CommandCreateFP returns the create-finality-provider command by connecting to the fpd daemon.
+func CommandCreateFP() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "create-finality-provider",
+		Aliases: []string{"cfp"},
+		Short:   "Create a finality provider object and save it in database.",
+		Example: fmt.Sprintf(`fpcli create-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
+		Args:    cobra.NoArgs,
+		RunE:    runCommandCreateFP,
+	}
+	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	return cmd
 }
 
 var CreateFpDaemonCmd = cli.Command{
