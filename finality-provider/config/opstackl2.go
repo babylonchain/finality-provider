@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	cwcfg "github.com/babylonchain/finality-provider/cosmwasmclient/config"
@@ -36,6 +37,9 @@ func (cfg *OPStackL2Config) Validate() error {
 	_, _, err := bech32.Decode(cfg.OPFinalityGadgetAddress, len(cfg.OPFinalityGadgetAddress))
 	if err != nil {
 		return fmt.Errorf("op-finality-gadget: invalid bech32 address: %w", err)
+	}
+	if !strings.HasPrefix(cfg.OPFinalityGadgetAddress, cfg.AccountPrefix) {
+		return fmt.Errorf("op-finality-gadget: invalid address prefix")
 	}
 	if _, err := url.Parse(cfg.RPCAddr); err != nil {
 		return fmt.Errorf("rpc-addr is not correctly formatted: %w", err)

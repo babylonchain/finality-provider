@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
@@ -44,7 +45,9 @@ func (cfg *CosmwasmConfig) Validate() error {
 	if err != nil {
 		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
 	}
-
+	if !strings.HasPrefix(cfg.BtcStakingContractAddress, cfg.AccountPrefix) {
+		return fmt.Errorf("babylon-contract-address: invalid address prefix")
+	}
 	return nil
 }
 
