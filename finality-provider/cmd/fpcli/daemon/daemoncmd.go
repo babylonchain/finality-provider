@@ -215,44 +215,42 @@ func runCommandLsFP(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var FpInfoDaemonCmd = cli.Command{
-	Name:      "finality-provider-info",
-	ShortName: "fpi",
-	Usage:     "Show the information of the finality provider.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
-			Name:     fpBTCPkFlag,
-			Usage:    "The hex string of the BTC public key",
-			Required: true,
-		},
-	},
-	Action: fpInfoDaemon,
+// CommandInfoFP returns the finality-provider-info command by connecting to the fpd daemon.
+func CommandInfoFP() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "finality-provider-info [fp-pk-btc-hex]",
+		Aliases: []string{"fpi"},
+		Short:   "List finality providers stored in the database.",
+		Example: fmt.Sprintf(`fpcli finality-provider-info --daemon-address %s`, defaultFpdDaemonAddress),
+		Args:    cobra.ExactArgs(1),
+		RunE:    runCommandInfoFP,
+	}
+	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	return cmd
 }
 
-func fpInfoDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
+func runCommandInfoFP(cmd *cobra.Command, args []string) error {
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(args[0])
+	if err != nil {
+		return err
+	}
+
+	daemonAddress, err := cmd.Flags().GetString(fpdDaemonAddressFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpdDaemonAddressFlag, err)
+	}
+
+	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
 	defer cleanUp()
 
-	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(ctx.String(fpBTCPkFlag))
+	resp, err := client.QueryFinalityProviderInfo(context.Background(), fpPk)
 	if err != nil {
 		return err
 	}
-
-	resp, err := rpcClient.QueryFinalityProviderInfo(context.Background(), fpPk)
-	if err != nil {
-		return err
-	}
-
-	printRespJSON(resp.FinalityProvider)
+	printRespJSON(resp)
 
 	return nil
 }
