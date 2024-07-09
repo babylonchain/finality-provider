@@ -30,7 +30,12 @@ func NewRootCmd() *cobra.Command {
 
 func main() {
 	cmd := NewRootCmd()
-	cmd.AddCommand(keys.Commands(), daemon.CommandStart(), daemon.CommandInit())
+	cmd.AddCommand(
+		daemon.CommandInit(), daemon.CommandStart(), keys.Commands(),
+		daemon.CommandGetDaemonInfo(), daemon.CommandCreateFP(), daemon.CommandLsFP(),
+		daemon.CommandInfoFP(), daemon.CommandRegisterFP(), daemon.CommandAddFinalitySig(),
+		daemon.CommandExportFP(),
+	)
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your fpd CLI '%s'", err)

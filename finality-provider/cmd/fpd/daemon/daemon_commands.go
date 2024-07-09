@@ -31,7 +31,7 @@ func CommandGetDaemonInfo() *cobra.Command {
 		Use:     "get-info",
 		Aliases: []string{"gi"},
 		Short:   "Get information of the running fpd daemon.",
-		Example: fmt.Sprintf(`fpcli get-info --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd get-info --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
 		RunE:    runCommandGetDaemonInfo,
 	}
@@ -66,7 +66,7 @@ func CommandCreateFP() *cobra.Command {
 		Use:     "create-finality-provider",
 		Aliases: []string{"cfp"},
 		Short:   "Create a finality provider object and save it in database.",
-		Example: fmt.Sprintf(`fpcli create-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd create-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
 		RunE:    fpcmd.RunEWithClientCtx(runCommandCreateFP),
 	}
@@ -185,7 +185,7 @@ func CommandLsFP() *cobra.Command {
 		Use:     "list-finality-providers",
 		Aliases: []string{"ls"},
 		Short:   "List finality providers stored in the database.",
-		Example: fmt.Sprintf(`fpcli list-finality-providers --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd list-finality-providers --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
 		RunE:    runCommandLsFP,
 	}
@@ -220,7 +220,7 @@ func CommandInfoFP() *cobra.Command {
 		Use:     "finality-provider-info [fp-pk-btc-hex]",
 		Aliases: []string{"fpi"},
 		Short:   "List finality providers stored in the database.",
-		Example: fmt.Sprintf(`fpcli finality-provider-info --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd finality-provider-info --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.ExactArgs(1),
 		RunE:    runCommandInfoFP,
 	}
@@ -260,7 +260,7 @@ func CommandRegisterFP() *cobra.Command {
 		Use:     "register-finality-provider [fp-pk-btc-hex]",
 		Aliases: []string{"rfp"},
 		Short:   "Register a created finality provider to Babylon.",
-		Example: fmt.Sprintf(`fpcli register-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd register-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.ExactArgs(1),
 		RunE:    runCommandRegisterFP,
 	}
@@ -305,7 +305,7 @@ func CommandAddFinalitySig() *cobra.Command {
 		Use:     "add-finality-sig [fp-pk-btc-hex] [block-height]",
 		Aliases: []string{"afs"},
 		Short:   "Send a finality signature to the consumer chain. This command should only be used for presentation/testing purposes",
-		Example: fmt.Sprintf(`fpcli add-finality-sig --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd add-finality-sig --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.ExactArgs(2),
 		RunE:    runCommandAddFinalitySig,
 	}

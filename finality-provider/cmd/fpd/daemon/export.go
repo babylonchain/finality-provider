@@ -33,7 +33,7 @@ func CommandExportFP() *cobra.Command {
 		Use:     "export-finality-provider [fp-btc-pk-hex]",
 		Aliases: []string{"exfp"},
 		Short:   "It exports the finality provider by the given BTC public key.",
-		Example: fmt.Sprintf(`fpcli export-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd export-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
 		RunE:    fpcmd.RunEWithClientCtx(runCommandExportFP),
 	}
