@@ -264,7 +264,9 @@ func CommandRegisterFP() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE:    runCommandRegisterFP,
 	}
-	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	f := cmd.Flags()
+	f.String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	f.String(passphraseFlag, "", "The pass phrase used to encrypt the keys")
 	return cmd
 }
 
