@@ -264,19 +264,14 @@ func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.Block
 }
 
 func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
-	var blocks []*types.BlockInfo
-	var blockHeaders []*ethtypes.Header
-	cc.logger.Debug(
-		"QueryBlocks",
-		zap.Uint64("start_height", startHeight),
-		zap.Uint64("end_height", endHeight),
-		zap.Uint64("limit", limit),
-	)
+	// limit the number of blocks to query
 	count := endHeight - startHeight + 1
 	if limit > 0 && count >= limit {
 		count = limit
 	}
-	blockHeaders = make([]*ethtypes.Header, count)
+
+	// create batch requests
+	blockHeaders := make([]*ethtypes.Header, count)
 	reqs := make([]ethrpc.BatchElem, count)
 	for i := range reqs {
 		reqs[i] = ethrpc.BatchElem{
@@ -285,6 +280,8 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 			Result: &blockHeaders[i],
 		}
 	}
+
+	// batch call
 	if err := cc.opl2Client.Client().BatchCallContext(context.Background(), reqs); err != nil {
 		return nil, err
 	}
@@ -296,18 +293,23 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 			return nil, fmt.Errorf("got null header for block %d", startHeight+uint64(i))
 		}
 	}
+
+	// convert to types.BlockInfo
+	var blocks []*types.BlockInfo
 	for _, header := range blockHeaders {
 		block := &types.BlockInfo{
 			Height: header.Number.Uint64(),
 			Hash:   header.Hash().Bytes(),
 		}
-		cc.logger.Debug(
-			"QueryBlocks",
-			zap.Uint64("height", block.Height),
-			zap.String("block_hash", hex.EncodeToString(block.Hash)),
-		)
 		blocks = append(blocks, block)
 	}
+	cc.logger.Debug(
+		"Successfully batch query blocks",
+		zap.Uint64("start_height", startHeight),
+		zap.Uint64("end_height", endHeight),
+		zap.Uint64("limit", limit),
+		zap.String("last_block_hash", hex.EncodeToString(blocks[len(blocks)-1].Hash)),
+	)
 	return blocks, nil
 }
 
