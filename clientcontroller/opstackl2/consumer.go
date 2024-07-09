@@ -295,7 +295,7 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 	}
 
 	// convert to types.BlockInfo
-	var blocks []*types.BlockInfo
+	blocks := make([]*types.BlockInfo, count)
 	for _, header := range blockHeaders {
 		block := &types.BlockInfo{
 			Height: header.Number.Uint64(),
@@ -303,17 +303,6 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 		}
 		blocks = append(blocks, block)
 	}
-
-	if len(blocks) != int(count) {
-		cc.logger.Error(
-			"Batch query blocks",
-			zap.Uint64("start_height", startHeight),
-			zap.Uint64("end_height", endHeight),
-			zap.Uint64("limit", limit),
-		)
-		return nil, fmt.Errorf("the number of blocks %v should match the number of blocks to query %v", len(blocks), count)
-	}
-
 	cc.logger.Debug(
 		"Successfully batch query blocks",
 		zap.Uint64("start_height", startHeight),
