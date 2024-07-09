@@ -180,33 +180,36 @@ func getDescriptionFromFlags(f *pflag.FlagSet) (desc stakingtypes.Description, e
 	return description.EnsureLength()
 }
 
-var LsFpDaemonCmd = cli.Command{
-	Name:      "list-finality-providers",
-	ShortName: "ls",
-	Usage:     "List finality providers stored in the database.",
-	Action:    lsFpDaemon,
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-	},
+// CommandLsFP returns the list-finality-providers command by connecting to the fpd daemon.
+func CommandLsFP() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "list-finality-providers",
+		Aliases: []string{"ls"},
+		Short:   "List finality providers stored in the database.",
+		Example: fmt.Sprintf(`fpcli list-finality-providers --daemon-address %s`, defaultFpdDaemonAddress),
+		Args:    cobra.NoArgs,
+		RunE:    runCommandLsFP,
+	}
+	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	return cmd
 }
 
-func lsFpDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
+func runCommandLsFP(cmd *cobra.Command, args []string) error {
+	daemonAddress, err := cmd.Flags().GetString(fpdDaemonAddressFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpdDaemonAddressFlag, err)
+	}
+
+	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
 	defer cleanUp()
 
-	resp, err := rpcClient.QueryFinalityProviderList(context.Background())
+	resp, err := client.QueryFinalityProviderList(context.Background())
 	if err != nil {
 		return err
 	}
-
 	printRespJSON(resp)
 
 	return nil

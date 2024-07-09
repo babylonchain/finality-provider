@@ -25,7 +25,13 @@ func NewRootCmd() *cobra.Command {
 
 func main() {
 	cmd := NewRootCmd()
-	cmd.AddCommand(daemon.CommandGetDaemonInfo())
+	cmd.AddCommand(
+		daemon.CommandGetDaemonInfo(),
+		daemon.CommandCreateFP(),
+		daemon.CommandLsFP(),
+
+		daemon.CommandExportFP(),
+	)
 	// 	app.Commands = append(app.Commands,
 	// 		dcli.GetDaemonInfoCmd,
 	// 		dcli.CreateFpDaemonCmd,
