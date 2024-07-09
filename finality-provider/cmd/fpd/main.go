@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/config"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/spf13/cobra"
@@ -25,25 +24,15 @@ func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:           "fpd",
 		Short:         "fpd - Finality Provider Daemon (fpd).",
-		Long:          `fpd is the daemon to handle finality provider submission of randomness from BTC to proof of stake chains`,
+		Long:          `fpd is the daemon to create and manage finality providers.`,
 		SilenceErrors: false,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// set the default command outputs
 			cmd.SetOut(cmd.OutOrStdout())
 			cmd.SetErr(cmd.ErrOrStderr())
 
-			clientCtx = clientCtx.WithCmdContext(cmd.Context()).WithViper("")
+			clientCtx = clientCtx.WithCmdContext(cmd.Context())
 			clientCtx.Codec = encCfg.Codec
-			clientCtx, err := client.ReadPersistentCommandFlags(clientCtx, cmd.Flags())
-			if err != nil {
-				return err
-			}
-
-			clientCtx, err = config.ReadFromClientConfig(clientCtx)
-			if err != nil {
-				return err
-			}
-
 			if err := client.SetCmdClientContextHandler(clientCtx, cmd); err != nil {
 				return err
 			}
