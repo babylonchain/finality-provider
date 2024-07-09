@@ -296,6 +296,7 @@ func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit
 			return nil, fmt.Errorf("got null header for block %d", startHeight+uint64(i))
 		}
 	}
+
 	// convert to types.BlockInfo
 	blocks := make([]*types.BlockInfo, len(blockHeaders))
 	for i, header := range blockHeaders {
