@@ -14,7 +14,6 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/urfave/cli"
 
 	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -300,62 +299,57 @@ func runCommandRegisterFP(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// AddFinalitySigDaemonCmd allows manual submission of finality signatures
-// NOTE: should only be used for presentation/testing purposes
-var AddFinalitySigDaemonCmd = cli.Command{
-	Name:      "add-finality-sig",
-	ShortName: "afs",
-	Usage:     "Send a finality signature to the consumer chain. This command should only be used for presentation/testing purposes",
-	UsageText: fmt.Sprintf("add-finality-sig --%s [btc_pk_hex]", fpBTCPkFlag),
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
-			Name:     fpBTCPkFlag,
-			Usage:    "The hex string of the BTC public key",
-			Required: true,
-		},
-		cli.Uint64Flag{
-			Name:     blockHeightFlag,
-			Usage:    "The height of the chain block",
-			Required: true,
-		},
-		cli.StringFlag{
-			Name:  appHashFlag,
-			Usage: "The last commit hash of the chain block",
-			Value: defaultAppHashStr,
-		},
-	},
-	Action: addFinalitySig,
+// CommandAddFinalitySig returns the add-finality-sig command by connecting to the fpd daemon.
+func CommandAddFinalitySig() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "add-finality-sig [fp-pk-btc-hex] [block-height]",
+		Aliases: []string{"afs"},
+		Short:   "Send a finality signature to the consumer chain. This command should only be used for presentation/testing purposes",
+		Example: fmt.Sprintf(`fpcli add-finality-sig --daemon-address %s`, defaultFpdDaemonAddress),
+		Args:    cobra.ExactArgs(2),
+		RunE:    runCommandAddFinalitySig,
+	}
+	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	cmd.Flags().String(appHashFlag, defaultAppHashStr, "The last commit hash of the chain block")
+	return cmd
 }
 
-func addFinalitySig(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
+func runCommandAddFinalitySig(cmd *cobra.Command, args []string) error {
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(args[0])
+	if err != nil {
+		return err
+	}
+	blkHeight, err := strconv.ParseUint(args[1], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	flags := cmd.Flags()
+	daemonAddress, err := flags.GetString(fpdDaemonAddressFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpdDaemonAddressFlag, err)
+	}
+
+	appHashHex, err := flags.GetString(appHashFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", appHashFlag, err)
+	}
+
+	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
 	defer cleanUp()
 
-	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(ctx.String(fpBTCPkFlag))
+	appHash, err := hex.DecodeString(appHashHex)
 	if err != nil {
 		return err
 	}
 
-	appHash, err := hex.DecodeString(ctx.String(appHashFlag))
+	res, err := client.AddFinalitySignature(context.Background(), fpPk.MarshalHex(), blkHeight, appHash)
 	if err != nil {
 		return err
 	}
-
-	res, err := rpcClient.AddFinalitySignature(
-		context.Background(), fpPk.MarshalHex(), ctx.Uint64(blockHeightFlag), appHash)
-	if err != nil {
-		return err
-	}
-
 	printRespJSON(res)
 
 	return nil

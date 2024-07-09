@@ -31,7 +31,7 @@ func main() {
 		daemon.CommandLsFP(),
 		daemon.CommandInfoFP(),
 		daemon.CommandRegisterFP(),
-
+		daemon.CommandAddFinalitySig(),
 		daemon.CommandExportFP(),
 	)
 	// 	app.Commands = append(app.Commands,
