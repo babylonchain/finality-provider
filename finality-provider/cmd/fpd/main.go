@@ -6,7 +6,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/spf13/cobra"
 
 	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
@@ -31,7 +30,7 @@ func NewRootCmd() *cobra.Command {
 func main() {
 	cmd := NewRootCmd()
 	cmd.AddCommand(
-		daemon.CommandInit(), daemon.CommandStart(), keys.Commands(),
+		daemon.CommandInit(), daemon.CommandStart(), daemon.CommandKeys(),
 		daemon.CommandGetDaemonInfo(), daemon.CommandCreateFP(), daemon.CommandLsFP(),
 		daemon.CommandInfoFP(), daemon.CommandRegisterFP(), daemon.CommandAddFinalitySig(),
 		daemon.CommandExportFP(),
