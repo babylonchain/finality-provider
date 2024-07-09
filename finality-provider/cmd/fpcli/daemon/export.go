@@ -116,7 +116,7 @@ func exportFp(ctx *cli.Context) error {
 		return nil
 	}
 
-	keyName, err := loadKeyName(ctx)
+	keyName, err := loadKeyNameFromCtx(ctx)
 	if err != nil {
 		return fmt.Errorf("not able to load key name: %w", err)
 	}

@@ -9,10 +9,14 @@ import (
 
 	"cosmossdk.io/math"
 	bbntypes "github.com/babylonchain/babylon/types"
+	"github.com/cosmos/cosmos-sdk/client"
+	sdkflags "github.com/cosmos/cosmos-sdk/client/flags"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/urfave/cli"
 
+	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	dc "github.com/babylonchain/finality-provider/finality-provider/service/client"
 )
@@ -65,98 +69,48 @@ func CommandCreateFP() *cobra.Command {
 		Short:   "Create a finality provider object and save it in database.",
 		Example: fmt.Sprintf(`fpcli create-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
-		RunE:    runCommandCreateFP,
+		RunE:    fpcmd.RunEWithClientCtx(runCommandCreateFP),
 	}
-	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+
+	f := cmd.Flags()
+	f.String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	f.String(keyNameFlag, "", "The unique name of the finality provider key")
+	f.String(sdkflags.FlagHome, fpcfg.DefaultFpdDir, "The application home directory")
+	f.String(chainIdFlag, "", "The identifier of the consumer chain")
+	f.String(passphraseFlag, "", "The pass phrase used to encrypt the keys")
+	f.String(hdPathFlag, "", "The hd path used to derive the private key")
+	f.String(commissionRateFlag, "0.05", "The commission rate for the finality provider, e.g., 0.05")
+	f.String(monikerFlag, "", "A human-readable name for the finality provider")
+	f.String(identityFlag, "", "An optional identity signature (ex. UPort or Keybase)")
+	f.String(websiteFlag, "", "An optional website link")
+	f.String(securityContactFlag, "", "An email for security contact")
+	f.String(detailsFlag, "", "Other optional details")
+
 	return cmd
 }
 
-func runCommandCreateFP(cmd *cobra.Command, args []string) error {
-	return nil
-}
+func runCommandCreateFP(ctx client.Context, cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+	daemonAddress, err := flags.GetString(fpdDaemonAddressFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpdDaemonAddressFlag, err)
+	}
 
-var CreateFpDaemonCmd = cli.Command{
-	Name:      "create-finality-provider",
-	ShortName: "cfp",
-	Usage:     "Create a finality provider object and save it in database.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
-			Name:  keyNameFlag,
-			Usage: "The unique name of the finality provider key",
-		},
-		cli.StringFlag{
-			Name:  homeFlag,
-			Usage: "The home path of the finality provider daemon (fpd)",
-			Value: fpcfg.DefaultFpdDir,
-		},
-		cli.StringFlag{
-			Name:     chainIdFlag,
-			Usage:    "The identifier of the consumer chain",
-			Required: true,
-		},
-		cli.StringFlag{
-			Name:  passphraseFlag,
-			Usage: "The pass phrase used to encrypt the keys",
-			Value: defaultPassphrase,
-		},
-		cli.StringFlag{
-			Name:  hdPathFlag,
-			Usage: "The hd path used to derive the private key",
-			Value: defaultHdPath,
-		},
-		cli.StringFlag{
-			Name:  commissionRateFlag,
-			Usage: "The commission rate for the finality provider, e.g., 0.05",
-			Value: "0.05",
-		},
-		cli.StringFlag{
-			Name:  monikerFlag,
-			Usage: "A human-readable name for the finality provider",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  identityFlag,
-			Usage: "An optional identity signature (ex. UPort or Keybase)",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  websiteFlag,
-			Usage: "An optional website link",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  securityContactFlag,
-			Usage: "An optional email for security contact",
-			Value: "",
-		},
-		cli.StringFlag{
-			Name:  detailsFlag,
-			Usage: "Other optional details",
-			Value: "",
-		},
-	},
-	Action: createFpDaemon,
-}
-
-func createFpDaemon(ctx *cli.Context) error {
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
-
-	commissionRate, err := math.LegacyNewDecFromStr(ctx.String(commissionRateFlag))
+	commissionRateStr, err := flags.GetString(commissionRateFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", commissionRateFlag, err)
+	}
+	commissionRate, err := math.LegacyNewDecFromStr(commissionRateStr)
 	if err != nil {
 		return fmt.Errorf("invalid commission rate: %w", err)
 	}
 
-	description, err := getDescriptionFromContext(ctx)
+	description, err := getDescriptionFromFlags(flags)
 	if err != nil {
 		return fmt.Errorf("invalid description: %w", err)
 	}
 
-	keyName, err := loadKeyName(ctx)
+	keyName, err := loadKeyName(ctx, cmd)
 	if err != nil {
 		return fmt.Errorf("not able to load key name: %w", err)
 	}
@@ -167,35 +121,62 @@ func createFpDaemon(ctx *cli.Context) error {
 	}
 	defer cleanUp()
 
+	chainId, err := flags.GetString(chainIdFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", chainIdFlag, err)
+	}
+
+	passphrase, err := flags.GetString(passphraseFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", passphraseFlag, err)
+	}
+
+	hdPath, err := flags.GetString(hdPathFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", hdPathFlag, err)
+	}
+
 	info, err := client.CreateFinalityProvider(
 		context.Background(),
 		keyName,
-		ctx.String(chainIdFlag),
-		ctx.String(passphraseFlag),
-		ctx.String(hdPathFlag),
+		chainId,
+		passphrase,
+		hdPath,
 		description,
 		&commissionRate,
 	)
-
 	if err != nil {
 		return err
 	}
 
 	printRespJSON(info.FinalityProvider)
-
 	return nil
 }
 
-func getDescriptionFromContext(ctx *cli.Context) (stakingtypes.Description, error) {
+func getDescriptionFromFlags(f *pflag.FlagSet) (desc stakingtypes.Description, err error) {
 	// get information for description
-	monikerStr := ctx.String(monikerFlag)
-	identityStr := ctx.String(identityFlag)
-	websiteStr := ctx.String(websiteFlag)
-	securityContactStr := ctx.String(securityContactFlag)
-	detailsStr := ctx.String(detailsFlag)
+	monikerStr, err := f.GetString(monikerFlag)
+	if err != nil {
+		return desc, fmt.Errorf("failed to read flag %s: %w", monikerFlag, err)
+	}
+	identityStr, err := f.GetString(identityFlag)
+	if err != nil {
+		return desc, fmt.Errorf("failed to read flag %s: %w", identityFlag, err)
+	}
+	websiteStr, err := f.GetString(websiteFlag)
+	if err != nil {
+		return desc, fmt.Errorf("failed to read flag %s: %w", websiteFlag, err)
+	}
+	securityContactStr, err := f.GetString(securityContactFlag)
+	if err != nil {
+		return desc, fmt.Errorf("failed to read flag %s: %w", securityContactFlag, err)
+	}
+	detailsStr, err := f.GetString(detailsFlag)
+	if err != nil {
+		return desc, fmt.Errorf("failed to read flag %s: %w", detailsFlag, err)
+	}
 
 	description := stakingtypes.NewDescription(monikerStr, identityStr, websiteStr, securityContactStr, detailsStr)
-
 	return description.EnsureLength()
 }
 
@@ -393,8 +374,11 @@ func printRespJSON(resp interface{}) {
 	fmt.Printf("%s\n", jsonBytes)
 }
 
-func loadKeyName(ctx *cli.Context) (string, error) {
-	keyName := ctx.String(keyNameFlag)
+func loadKeyName(ctx client.Context, cmd *cobra.Command) (string, error) {
+	keyName, err := cmd.Flags().GetString(keyNameFlag)
+	if err != nil {
+		return "", fmt.Errorf("failed to read flag %s: %w", keyNameFlag, err)
+	}
 	// if key name is not specified, we use the key of the config
 	if keyName != "" {
 		return keyName, nil
@@ -402,9 +386,9 @@ func loadKeyName(ctx *cli.Context) (string, error) {
 
 	// we add the following check to ensure that the chain key is created
 	// beforehand
-	cfg, err := fpcfg.LoadConfig(ctx.String(homeFlag))
+	cfg, err := fpcfg.LoadConfig(ctx.HomeDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.String(homeFlag)), err)
+		return "", fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.HomeDir), err)
 	}
 
 	keyName = cfg.BabylonConfig.Key
