@@ -3,10 +3,11 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/babylonchain/finality-provider/cosmwasmclient/config"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/btcutil/bech32"
 )
 
 type CosmwasmConfig struct {
@@ -40,11 +41,13 @@ func (cfg *CosmwasmConfig) Validate() error {
 		return fmt.Errorf("block-timeout can't be negative")
 	}
 
-	_, err := sdk.AccAddressFromBech32(cfg.BtcStakingContractAddress)
+	_, _, err := bech32.Decode(cfg.BtcStakingContractAddress, len(cfg.BtcStakingContractAddress))
 	if err != nil {
 		return fmt.Errorf("babylon-contract-address: invalid bech32 address: %w", err)
 	}
-
+	if !strings.HasPrefix(cfg.BtcStakingContractAddress, cfg.AccountPrefix) {
+		return fmt.Errorf("babylon-contract-address: invalid address prefix: %w", err)
+	}
 	return nil
 }
 
