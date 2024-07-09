@@ -66,7 +66,7 @@ func CommandCreateFP() *cobra.Command {
 		Use:     "create-finality-provider",
 		Aliases: []string{"cfp"},
 		Short:   "Create a finality provider object and save it in database.",
-		Example: fmt.Sprintf(`fpd create-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
+		Example: fmt.Sprintf(`fpd create-finality-provider --daemon-address %s ...`, defaultFpdDaemonAddress),
 		Args:    cobra.NoArgs,
 		RunE:    fpcmd.RunEWithClientCtx(runCommandCreateFP),
 	}
@@ -275,6 +275,7 @@ func runCommandRegisterFP(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	flags := cmd.Flags()
 	daemonAddress, err := flags.GetString(fpdDaemonAddressFlag)
 	if err != nil {
