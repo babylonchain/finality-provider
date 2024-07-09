@@ -30,6 +30,7 @@ func main() {
 		daemon.CommandCreateFP(),
 		daemon.CommandLsFP(),
 		daemon.CommandInfoFP(),
+		daemon.CommandRegisterFP(),
 
 		daemon.CommandExportFP(),
 	)

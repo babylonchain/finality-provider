@@ -255,50 +255,46 @@ func runCommandInfoFP(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var RegisterFpDaemonCmd = cli.Command{
-	Name:      "register-finality-provider",
-	ShortName: "rfp",
-	Usage:     "Register a created finality provider to Babylon.",
-	UsageText: fmt.Sprintf("register-finality-provider --%s [btc-pk]", fpBTCPkFlag),
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  fpdDaemonAddressFlag,
-			Usage: "The RPC server address of fpd",
-			Value: defaultFpdDaemonAddress,
-		},
-		cli.StringFlag{
-			Name:     fpBTCPkFlag,
-			Usage:    "The hex string of the finality provider BTC public key",
-			Required: true,
-		},
-		cli.StringFlag{
-			Name:  passphraseFlag,
-			Usage: "The pass phrase used to encrypt the keys",
-			Value: defaultPassphrase,
-		},
-	},
-	Action: registerFp,
+// CommandRegisterFP returns the register-finality-provider command by connecting to the fpd daemon.
+func CommandRegisterFP() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "register-finality-provider [fp-pk-btc-hex]",
+		Aliases: []string{"rfp"},
+		Short:   "Register a created finality provider to Babylon.",
+		Example: fmt.Sprintf(`fpcli register-finality-provider --daemon-address %s`, defaultFpdDaemonAddress),
+		Args:    cobra.ExactArgs(1),
+		RunE:    runCommandRegisterFP,
+	}
+	cmd.Flags().String(fpdDaemonAddressFlag, defaultFpdDaemonAddress, "The RPC server address of fpd")
+	return cmd
 }
 
-func registerFp(ctx *cli.Context) error {
-	fpPkStr := ctx.String(fpBTCPkFlag)
-	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(fpPkStr)
+func runCommandRegisterFP(cmd *cobra.Command, args []string) error {
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid BTC public key: %w", err)
+		return err
+	}
+	flags := cmd.Flags()
+	daemonAddress, err := flags.GetString(fpdDaemonAddressFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpdDaemonAddressFlag, err)
 	}
 
-	daemonAddress := ctx.String(fpdDaemonAddressFlag)
-	rpcClient, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
+	client, cleanUp, err := dc.NewFinalityProviderServiceGRpcClient(daemonAddress)
 	if err != nil {
 		return err
 	}
 	defer cleanUp()
 
-	res, err := rpcClient.RegisterFinalityProvider(context.Background(), fpPk, ctx.String(passphraseFlag))
+	passphrase, err := flags.GetString(passphraseFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", passphraseFlag, err)
+	}
+
+	res, err := client.RegisterFinalityProvider(context.Background(), fpPk, passphrase)
 	if err != nil {
 		return err
 	}
-
 	printRespJSON(res)
 
 	return nil
