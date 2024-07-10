@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/babylonchain/babylon-finality-gadget/sdk"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
@@ -171,10 +172,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 
 	// wait for the first block to be finalized
-	ctm.WaitForFinalizedBlock(t, uint64(1))
-
-	// wait until non fast sync
-	ctm.WaitForNonFastSync(t, fpInstance)
+	ctm.WaitForNextFinalizedBlock(t, uint64(1))
 
 	// stop the FP instance
 	fpStopErr := fpInstance.Stop()
@@ -185,8 +183,15 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Stopped the FP instance")
 
-	// wait until the finality is stuck
-	stuckHeight := ctm.WaitForFinalityStuck(t)
+	// get the last processed height
+	lastProcessedHeight := fpInstance.GetLastProcessedHeight()
+	t.Logf("last processed height %d", lastProcessedHeight)
+	time.Sleep(5 * L2BlockTime)
+	// check the finality is stuck
+	checkFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+	require.NoError(t, err)
+	stuckHeight := checkFinalizedBlock.Height
+	require.Equal(t, lastProcessedHeight, stuckHeight)
 	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
 
 	// restart the FP instance
@@ -198,8 +203,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Restarted the FP instance")
 
-	// wait for the stuck block is finalized
-	latestFinalizedHeight := ctm.WaitForFinalizedBlock(t, stuckHeight)
-	require.Less(t, stuckHeight, latestFinalizedHeight)
-	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", latestFinalizedHeight)
+	// wait for next finalized block > stuckHeight
+	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
+	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", nextFinalizedHeight)
 }

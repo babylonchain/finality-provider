@@ -68,7 +68,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.ErrorLevel)
+	logger := createLogger(t, zapcore.DebugLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -87,7 +87,6 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.NumPubRand = 64
 	cfg.MinRandHeightGap = 1000
-	cfg.FastSyncGap = 30
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -397,7 +396,7 @@ func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(t *testing.T
 	return babylonFpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForFinalizedBlock(t *testing.T, checkedHeight uint64) uint64 {
+func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(t *testing.T, checkedHeight uint64) uint64 {
 	finalizedBlockHeight := uint64(0)
 	require.Eventually(t, func() bool {
 		nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
@@ -406,36 +405,6 @@ func (ctm *OpL2ConsumerTestManager) WaitForFinalizedBlock(t *testing.T, checkedH
 		return finalizedBlockHeight > checkedHeight
 	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
 	return finalizedBlockHeight
-}
-
-func (ctm *OpL2ConsumerTestManager) WaitForFinalityStuck(t *testing.T) uint64 {
-	finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
-	require.NoError(t, err)
-	stuckHeight := finalizedBlock.Height
-	require.Eventually(t, func() bool {
-		checkFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
-		require.NoError(t, err)
-		checkFinalizedBlockHeight := checkFinalizedBlock.Height
-		if checkFinalizedBlockHeight > stuckHeight {
-			stuckHeight = checkFinalizedBlock.Height
-			return false
-		}
-		return stuckHeight == checkFinalizedBlockHeight
-	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
-	return stuckHeight
-}
-
-func (ctm *OpL2ConsumerTestManager) WaitForNonFastSync(t *testing.T, fpInstance *service.FinalityProviderInstance) {
-	require.Eventually(t, func() bool {
-		latestBlockHeight, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
-		require.NoError(t, err)
-		lastProcessedHeight := fpInstance.GetLastProcessedHeight()
-		if latestBlockHeight < lastProcessedHeight+ctm.FpConfig.FastSyncGap {
-			t.Logf("Non fast sync, latest block height %d and last processed height %d", latestBlockHeight, lastProcessedHeight)
-			return true
-		}
-		return false
-	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
 }
 
 func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {
