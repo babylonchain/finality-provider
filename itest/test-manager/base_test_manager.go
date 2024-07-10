@@ -229,6 +229,25 @@ func (tm *BaseTestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BT
 	return dels
 }
 
+// check the BTC delegations are pending
+// send covenant sigs to each of the delegations
+// check the BTC delegations are active
+func (tm *BaseTestManager) WaitForDel(t *testing.T, n int) {
+	delsResp := tm.WaitForNPendingDels(t, n)
+	require.Equal(t, n, len(delsResp))
+
+	for _, delResp := range delsResp {
+		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
+		require.NoError(t, err)
+
+		// send covenant sigs
+		tm.InsertCovenantSigForDelegation(t, d)
+	}
+
+	// check the BTC delegations are active
+	tm.WaitForNActiveDels(t, n)
+}
+
 func (tm *BaseTestManager) InsertCovenantSigForDelegation(t *testing.T, btcDel *bstypes.BTCDelegation) {
 	slashingTx := btcDel.SlashingTx
 	stakingTx := btcDel.StakingTx

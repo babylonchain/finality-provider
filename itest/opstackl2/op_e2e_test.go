@@ -124,23 +124,6 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
 }
 
-// check the BTC delegations are pending
-// send covenant sigs to each of the delegations
-// check the BTC delegations are active
-func (ctm *OpL2ConsumerTestManager) WaitForDel(t *testing.T, n int) {
-	delsResp := ctm.WaitForNPendingDels(t, n)
-	require.Equal(t, n, len(delsResp))
-
-	for _, delResp := range delsResp {
-		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
-		require.NoError(t, err)
-
-		ctm.InsertCovenantSigForDelegation(t, d)
-	}
-
-	ctm.WaitForNActiveDels(t, n)
-}
-
 func TestOpchainStuckAndRecover(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
