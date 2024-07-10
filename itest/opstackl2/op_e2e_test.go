@@ -135,3 +135,62 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	require.Equal(t, false, nextFinalized)
 	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
 }
+
+func TestOpchainStuckAndRecover(t *testing.T) {
+	ctm := StartOpL2ConsumerManager(t)
+	defer ctm.Stop(t)
+
+	// register Babylon finality provider
+	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
+
+	// register consumer finality providers
+	n := 1
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
+
+	// send a BTC delegation to consumer and Babylon finality providers
+	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+
+	// check the BTC delegations are pending
+	delsResp := ctm.WaitForNPendingDels(t, n)
+	require.Equal(t, n, len(delsResp))
+
+	// send covenant sigs to each of the delegations
+	for _, delResp := range delsResp {
+		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
+		require.NoError(t, err)
+		// send covenant sigs
+		ctm.InsertCovenantSigForDelegation(t, d)
+	}
+
+	// check the BTC delegations are active
+	ctm.WaitForNActiveDels(t, n)
+
+	ctm.WaitForOpchainStuck(t)
+	log.Logf(t, "Test case 1: OP chain is stuck")
+
+	// ===  another test case: recover op chain ===
+	// start consumer chain FP
+	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
+	fpInstance := fpList[0]
+
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
+	// query the first committed pub rand
+	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
+	require.NoError(t, err)
+	committedStartHeight := committedPubRand.StartHeight
+	log.Logf(t, "First committed pubrandList startHeight %d", committedStartHeight)
+	testBlocks := ctm.WaitForNBlocksAndReturn(t, committedStartHeight, 1)
+	testBlock := testBlocks[0]
+
+	// wait for the fp sign
+	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
+	queryParams := &sdk.L2Block{
+		BlockHeight:    testBlock.Height,
+		BlockHash:      hex.EncodeToString(testBlock.Hash),
+		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
+	}
+	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
+	require.NoError(t, err)
+	require.Equal(t, true, finalized)
+	log.Logf(t, "Test case 2: block %d is finalized", testBlock.Height)
+}
