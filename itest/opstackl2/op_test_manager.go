@@ -328,10 +328,10 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 }
 
 // can be used for both the Babylon and Consumer FPs
-func (ctm *OpL2ConsumerTestManager) RegisterFinalityProvider(t *testing.T, chainId string, n int) []*bbntypes.BIP340PubKey {
+func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(t *testing.T, consumerID string, n int) []*bbntypes.BIP340PubKey {
 	app := ctm.FpApp
-	baseFpName := fmt.Sprintf("%s-%s", chainId, e2eutils.FpNamePrefix)
-	baseMoniker := fmt.Sprintf("%s-%s", chainId, e2eutils.MonikerPrefix)
+	baseFpName := fmt.Sprintf("%s-%s", consumerID, e2eutils.FpNamePrefix)
+	baseMoniker := fmt.Sprintf("%s-%s", consumerID, e2eutils.MonikerPrefix)
 	fpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
 
 	for i := 0; i < n; i++ {
@@ -343,20 +343,20 @@ func (ctm *OpL2ConsumerTestManager) RegisterFinalityProvider(t *testing.T, chain
 		cfg := app.GetConfig()
 		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
 		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, chainId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(fpName, consumerID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
 		fpPkList = append(fpPkList, fpPk)
-		log.Logf(t, "Registered Finality Provider %s for %s", fpPk.MarshalHex(), chainId)
+		log.Logf(t, "Registered Finality Provider %s for %s", fpPk.MarshalHex(), consumerID)
 	}
 
 	return fpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForConsumerFPRegistration(t *testing.T, n int) {
+func (ctm *OpL2ConsumerTestManager) waitForConsumerFPRegistration(t *testing.T, n int) {
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.getConsumerChainId())
 		if err != nil {
@@ -371,12 +371,12 @@ func (ctm *OpL2ConsumerTestManager) WaitForConsumerFPRegistration(t *testing.T, 
 }
 
 func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(t *testing.T, n int) []*bbntypes.BIP340PubKey {
-	consumerFpPkList := ctm.RegisterFinalityProvider(t, ctm.getConsumerChainId(), n)
-	ctm.WaitForConsumerFPRegistration(t, n)
+	consumerFpPkList := ctm.registerFinalityProvider(t, ctm.getConsumerChainId(), n)
+	ctm.waitForConsumerFPRegistration(t, n)
 	return consumerFpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForBabylonFPRegistration(t *testing.T, n int) {
+func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T, n int) {
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryFinalityProviders()
 		if err != nil {
@@ -391,8 +391,8 @@ func (ctm *OpL2ConsumerTestManager) WaitForBabylonFPRegistration(t *testing.T, n
 }
 
 func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(t *testing.T, n int) []*bbntypes.BIP340PubKey {
-	babylonFpPkList := ctm.RegisterFinalityProvider(t, e2eutils.ChainID, n)
-	ctm.WaitForBabylonFPRegistration(t, n)
+	babylonFpPkList := ctm.registerFinalityProvider(t, e2eutils.ChainID, n)
+	ctm.waitForBabylonFPRegistration(t, n)
 	return babylonFpPkList
 }
 
