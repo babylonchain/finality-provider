@@ -73,20 +73,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, 3*e2eutils.StakingAmount)
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
-	// check the BTC delegations are pending
-	delsResp := ctm.WaitForNPendingDels(t, n)
-	require.Equal(t, n, len(delsResp))
-
-	// send covenant sigs to each of the delegations
-	for _, delResp := range delsResp {
-		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
-		require.NoError(t, err)
-		// send covenant sigs
-		ctm.InsertCovenantSigForDelegation(t, d)
-	}
-
-	// check the BTC delegations are active
-	ctm.WaitForNActiveDels(t, n)
+	// wait until all delegations are active
+	ctm.WaitForDel(t, n)
 
 	// the first block both FP will sign
 	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
@@ -136,6 +124,23 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
 }
 
+// check the BTC delegations are pending
+// send covenant sigs to each of the delegations
+// check the BTC delegations are active
+func (ctm *OpL2ConsumerTestManager) WaitForDel(t *testing.T, n int) {
+	delsResp := ctm.WaitForNPendingDels(t, n)
+	require.Equal(t, n, len(delsResp))
+
+	for _, delResp := range delsResp {
+		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
+		require.NoError(t, err)
+
+		ctm.InsertCovenantSigForDelegation(t, d)
+	}
+
+	ctm.WaitForNActiveDels(t, n)
+}
+
 func TestOpchainStuckAndRecover(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
@@ -150,20 +155,8 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	// send a BTC delegation to consumer and Babylon finality providers
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
-	// check the BTC delegations are pending
-	delsResp := ctm.WaitForNPendingDels(t, n)
-	require.Equal(t, n, len(delsResp))
-
-	// send covenant sigs to each of the delegations
-	for _, delResp := range delsResp {
-		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
-		require.NoError(t, err)
-		// send covenant sigs
-		ctm.InsertCovenantSigForDelegation(t, d)
-	}
-
-	// check the BTC delegations are active
-	ctm.WaitForNActiveDels(t, n)
+	// wait until all delegations are active
+	ctm.WaitForDel(t, n)
 
 	blockHeight := ctm.WaitForOpchainStuck(t)
 	log.Logf(t, "Test case 1: OP chain is stuck at block %d", blockHeight)
