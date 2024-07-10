@@ -262,17 +262,9 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	//if endHeight < startHeight {
-	//	return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
-	//}
-	//count := endHeight - startHeight + 1
-	//if count > limit {
-	//	count = limit
-	//}
-	//
-	//return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
-
-	// TODO: temporary hack get the block from comet
+	// NOTE: Query blocks directly from CometBFT instead of indexed blocks
+	// because it's possible the consumer has not integrated with the Babylon SDK
+	// and may be performing off-chain verification.
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
@@ -349,18 +341,9 @@ func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*Indexed
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	//// Use the helper function to get the IndexedBlock
-	//resp, err := wc.QueryIndexedBlock(height)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Convert to BlockInfo and return
-	//return &fptypes.BlockInfo{
-	//	Height: resp.Height,
-	//	Hash:   resp.AppHash,
-	//}, nil
-
-	// TODO: temporary hack get the block from comet
+	// NOTE: Query blocks directly from CometBFT instead of indexed blocks
+	// because it's possible the consumer has not integrated with the Babylon SDK
+	// and may be performing off-chain verification.
 	block, err := wc.cwClient.GetBlock(int64(height))
 	if err != nil {
 		return nil, err
@@ -477,20 +460,9 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	//reverse := true
-	//count := uint64(1)
-	//blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//if len(blocks) == 0 {
-	//	return 0, fmt.Errorf("no blocks found")
-	//}
-	//
-	//return blocks[0].Height, nil
-
-	// TODO: temporary hack get the block from comet
+	// NOTE: Query blocks directly from CometBFT instead of indexed blocks
+	// because it's possible the consumer has not integrated with the Babylon SDK
+	// and may be performing off-chain verification.
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
