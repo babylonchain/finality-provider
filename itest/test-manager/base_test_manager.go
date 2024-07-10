@@ -232,7 +232,7 @@ func (tm *BaseTestManager) WaitForNActiveDels(t *testing.T, n int) []*bstypes.BT
 // check the BTC delegations are pending
 // send covenant sigs to each of the delegations
 // check the BTC delegations are active
-func (tm *BaseTestManager) WaitForDel(t *testing.T, n int) {
+func (tm *BaseTestManager) WaitForDelegations(t *testing.T, n int) {
 	delsResp := tm.WaitForNPendingDels(t, n)
 	require.Equal(t, n, len(delsResp))
 

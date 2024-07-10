@@ -74,7 +74,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
 	// wait until all delegations are active
-	ctm.WaitForDel(t, n)
+	ctm.WaitForDelegations(t, n)
 
 	// the first block both FP will sign
 	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
@@ -139,7 +139,7 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
 	// wait until all delegations are active
-	ctm.WaitForDel(t, n)
+	ctm.WaitForDelegations(t, n)
 
 	blockHeight := ctm.WaitForOpChainStuck(t)
 	t.Logf(log.Prefix("Test case 1: OP chain is stuck at block %d"), blockHeight)
