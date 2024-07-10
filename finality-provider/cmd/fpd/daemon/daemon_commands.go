@@ -88,7 +88,7 @@ func CommandCreateFP() *cobra.Command {
 	return cmd
 }
 
-func runCommandCreateFP(ctx client.Context, cmd *cobra.Command, args []string) error {
+func runCommandCreateFP(ctx client.Context, cmd *cobra.Command, _ []string) error {
 	flags := cmd.Flags()
 	daemonAddress, err := flags.GetString(fpdDaemonAddressFlag)
 	if err != nil {
