@@ -29,7 +29,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	committedStartHeight := committedPubRand.StartHeight
-	log.Logf(t, "First committed pubrandList startHeight %d", committedStartHeight)
+	t.Logf(log.Prefix("First committed pubrandList startHeight %d"), committedStartHeight)
 	testBlocks := ctm.WaitForNBlocksAndReturn(t, committedStartHeight, 1)
 	testBlock := testBlocks[0]
 
@@ -96,18 +96,18 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.NoError(t, err)
 	require.Equal(t, true, finalized)
-	log.Logf(t, "Test case 1: block %d is finalized", testBlock.Height)
+	t.Logf(log.Prefix("Test case 1: block %d is finalized"), testBlock.Height)
 
 	// ===  another test case only for the last FP instance sign ===
 	// first make sure the first FP is stopped
 	require.Eventually(t, func() bool {
 		return !fpList[0].IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	log.Logf(t, "Stopped the first FP instance")
+	t.Logf(log.Prefix("Stopped the first FP instance"))
 
 	// select a block that the first FP has not processed yet to give to the second FP to sign
 	testNextBlockHeight := fpList[0].GetLastProcessedHeight() + 1
-	log.Logf(t, "Test next block height %d", testNextBlockHeight)
+	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
 	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
@@ -121,7 +121,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	nextFinalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryNextParams)
 	require.NoError(t, err)
 	require.Equal(t, false, nextFinalized)
-	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
+	t.Logf(log.Prefix("Test case 2: block %d is not finalized"), testNextBlock.Height)
 }
 
 func TestOpchainStuckAndRecover(t *testing.T) {
@@ -142,7 +142,7 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	ctm.WaitForDel(t, n)
 
 	blockHeight := ctm.WaitForOpChainStuck(t)
-	log.Logf(t, "Test case 1: OP chain is stuck at block %d", blockHeight)
+	t.Logf(log.Prefix("Test case 1: OP chain is stuck at block %d"), blockHeight)
 
 	// ===  another test case: recover op chain ===
 	// start consumer chain FP
@@ -157,5 +157,5 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	t.Logf("Test case 2: latest finalized block %d", finalizedBlock.Height)
 	latestBlockHeight, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
 	require.NoError(t, err)
-	log.Logf(t, "Test case 2: OP chain is running at block %d", latestBlockHeight)
+	t.Logf(log.Prefix("Test case 2: OP chain is running at block %d"), latestBlockHeight)
 }
