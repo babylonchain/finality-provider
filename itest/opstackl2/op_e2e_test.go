@@ -137,7 +137,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
 }
 
-func TestOpchainStuckAndRecover(t *testing.T) {
+func TestFinalityStuckAndRecover(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
@@ -173,8 +173,9 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 
 	// wait for the first block to be finalized
 	ctm.WaitForFianlizedBlock(t, uint64(1))
-	finalizedInterval := ctm.WaitForGetFianlizedInterval(t, fpInstance)
-	t.Logf("Test case 1: OP chain block finalized interval %f", finalizedInterval)
+
+	// wait until non fast sync
+	ctm.WaitForNonFastSync(t, fpInstance)
 
 	// stop the FP instance
 	fpStopErr := fpInstance.Stop()
@@ -185,15 +186,13 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Stopped the FP instance")
 
-	// check finalized stuck
 	finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
-	// wait for 10x finalized interval
-	duration := time.Duration(int64(finalizedInterval * 1e9))
-	time.Sleep(10 * duration)
-	nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+	// wait for 5x L2 block time to make sure the finalized block is stuck
+	time.Sleep(5 * L2BlockTime)
+	checkFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
-	stuckHeight := nextFinalizedBlock.Height
+	stuckHeight := checkFinalizedBlock.Height
 	require.Equal(t, finalizedBlock.Height, stuckHeight)
 	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
 
