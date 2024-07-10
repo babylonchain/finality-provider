@@ -6,6 +6,7 @@ package e2etest_op
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/babylonchain/babylon-finality-gadget/sdk"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
@@ -165,21 +166,49 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	// check the BTC delegations are active
 	ctm.WaitForNActiveDels(t, n)
 
-	blockHeight := ctm.WaitForOpChainStuck(t)
-	log.Logf(t, "Test case 1: OP chain is stuck at block %d", blockHeight)
-
-	// ===  another test case: recover op chain ===
 	// start consumer chain FP
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 	fpInstance := fpList[0]
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
-	// wait for the fp sign
-	ctm.WaitForFpVoteAtHeight(t, fpInstance, blockHeight)
 
+	// wait for the first block to be finalized
+	ctm.WaitForFianlizedBlock(t, uint64(1))
+	finalizedInterval := ctm.WaitForGetFianlizedInterval(t, fpInstance)
+	t.Logf("Test case 1: OP chain block finalized interval %f", finalizedInterval)
+
+	// stop the FP instance
+	fpStopErr := fpInstance.Stop()
+	require.NoError(t, fpStopErr)
+	// make sure the FP is stopped
+	require.Eventually(t, func() bool {
+		return !fpInstance.IsRunning()
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("Stopped the FP instance")
+
+	// check finalized stuck
 	finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
-	t.Logf("Test case 2: latest finalized block %d", finalizedBlock.Height)
-	latestBlockHeight, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
+	// wait for 10x finalized interval
+	duration := time.Duration(int64(finalizedInterval * 1e9))
+	time.Sleep(10 * duration)
+	nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
-	log.Logf(t, "Test case 2: OP chain is running at block %d", latestBlockHeight)
+	stuckHeight := nextFinalizedBlock.Height
+	require.Equal(t, finalizedBlock.Height, stuckHeight)
+	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
+
+	// restart the FP instance
+	fpStartErr := fpInstance.Start()
+	require.NoError(t, fpStartErr)
+	// make sure the FP is running
+	require.Eventually(t, func() bool {
+		return fpInstance.IsRunning()
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf("Restarted the FP instance")
+
+	// wait for the stuck block is finalized
+	latestFinalizedHeight := ctm.WaitForFianlizedBlock(t, stuckHeight)
+	require.NoError(t, err)
+	require.Less(t, stuckHeight, latestFinalizedHeight)
+	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", latestFinalizedHeight)
 }

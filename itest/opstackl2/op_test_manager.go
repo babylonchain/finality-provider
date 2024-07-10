@@ -68,7 +68,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.DebugLevel)
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -87,6 +87,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cfg.RandomnessCommitInterval = 2 * time.Second
 	cfg.NumPubRand = 64
 	cfg.MinRandHeightGap = 1000
+	cfg.FastSyncGap = 30
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
@@ -396,20 +397,59 @@ func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(t *testing.T
 	return babylonFpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForOpChainStuck(t *testing.T) uint64 {
-	blockHeight := uint64(0)
+func (ctm *OpL2ConsumerTestManager) WaitForFianlizedBlock(t *testing.T, checkedHeight uint64) uint64 {
+	finalizedBlockHeight := uint64(0)
 	require.Eventually(t, func() bool {
-		finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 		require.NoError(t, err)
-		latestBlockHeight, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
-		require.NoError(t, err)
-		if finalizedBlock.Height == 0 && blockHeight == latestBlockHeight {
+		finalizedBlockHeight = nextFinalizedBlock.Height
+		if finalizedBlockHeight > checkedHeight {
 			return true
 		}
-		blockHeight = latestBlockHeight
 		return false
 	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
-	return blockHeight
+	return finalizedBlockHeight
+}
+
+func (ctm *OpL2ConsumerTestManager) getFianlizedInterval(t *testing.T) float64 {
+	averageTime := float64(0)
+	finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+	require.NoError(t, err)
+	currentTime := time.Now().Unix()
+	t.Logf("Test case 1: current finalized block height %d, %d", finalizedBlock.Height, currentTime)
+	require.Eventually(t, func() bool {
+		nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		require.NoError(t, err)
+		nextTime := time.Now().Unix()
+		t.Logf("Test case 1: next finalized block height %d, %d", nextFinalizedBlock.Height, nextTime)
+		blockAmount := nextFinalizedBlock.Height - finalizedBlock.Height
+		require.NotEqual(t, 0, blockAmount, "finalized block amount should not be 0")
+		if blockAmount > 0 {
+			t.Logf("Test case 1: block amount %d", blockAmount)
+			averageTime = float64(nextTime-currentTime) / float64(blockAmount)
+			return true
+		}
+		return false
+	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
+	t.Logf("Test case 1: finalized block average time %f", averageTime)
+	return averageTime
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForGetFianlizedInterval(t *testing.T, fpInstance *service.FinalityProviderInstance) float64 {
+	finalizedInterval := float64(0)
+	require.Eventually(t, func() bool {
+		latestBlockHeight, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
+		require.NoError(t, err)
+		lastProcessedHeight := fpInstance.GetLastProcessedHeight()
+		// wait until non fast sync
+		if latestBlockHeight < lastProcessedHeight+ctm.FpConfig.FastSyncGap {
+			t.Logf("Test case 1: latestBlockHeight %d and lastProcessedHeight %d", latestBlockHeight, lastProcessedHeight)
+			finalizedInterval = ctm.getFianlizedInterval(t)
+			return true
+		}
+		return false
+	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
+	return finalizedInterval
 }
 
 func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {
