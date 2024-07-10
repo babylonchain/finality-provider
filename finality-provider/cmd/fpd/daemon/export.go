@@ -107,7 +107,7 @@ func runCommandExportFP(ctx client.Context, cmd *cobra.Command, args []string) e
 		return nil
 	}
 
-	keyName, err := loadKeyName(ctx, cmd)
+	keyName, err := loadKeyName(ctx.HomeDir, cmd)
 	if err != nil {
 		return fmt.Errorf("not able to load key name: %w", err)
 	}
