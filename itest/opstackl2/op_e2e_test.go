@@ -6,7 +6,6 @@ package e2etest_op
 import (
 	"encoding/hex"
 	"testing"
-	"time"
 
 	"github.com/babylonchain/babylon-finality-gadget/sdk"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
@@ -172,7 +171,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 
 	// wait for the first block to be finalized
-	ctm.WaitForFianlizedBlock(t, uint64(1))
+	ctm.WaitForFinalizedBlock(t, uint64(1))
 
 	// wait until non fast sync
 	ctm.WaitForNonFastSync(t, fpInstance)
@@ -186,14 +185,8 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Stopped the FP instance")
 
-	finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
-	require.NoError(t, err)
-	// wait for 5x L2 block time to make sure the finalized block is stuck
-	time.Sleep(5 * L2BlockTime)
-	checkFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
-	require.NoError(t, err)
-	stuckHeight := checkFinalizedBlock.Height
-	require.Equal(t, finalizedBlock.Height, stuckHeight)
+	// wait until the finality is stuck
+	stuckHeight := ctm.WaitForFinalityStuck(t)
 	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
 
 	// restart the FP instance
@@ -206,8 +199,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf("Restarted the FP instance")
 
 	// wait for the stuck block is finalized
-	latestFinalizedHeight := ctm.WaitForFianlizedBlock(t, stuckHeight)
-	require.NoError(t, err)
+	latestFinalizedHeight := ctm.WaitForFinalizedBlock(t, stuckHeight)
 	require.Less(t, stuckHeight, latestFinalizedHeight)
 	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", latestFinalizedHeight)
 }
