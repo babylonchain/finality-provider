@@ -327,6 +327,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 	return targetBlockHeight
 }
 
+// can be used for both the Babylon and Consumer FPs
 func (ctm *OpL2ConsumerTestManager) RegisterFinalityProvider(t *testing.T, chainId string, n int) []*bbntypes.BIP340PubKey {
 	app := ctm.FpApp
 	baseFpName := fmt.Sprintf("%s-%s", chainId, e2eutils.FpNamePrefix)
@@ -351,9 +352,28 @@ func (ctm *OpL2ConsumerTestManager) RegisterFinalityProvider(t *testing.T, chain
 		fpPkList = append(fpPkList, fpPk)
 		log.Logf(t, "Registered Finality Provider %s for %s", fpPk.MarshalHex(), chainId)
 	}
-	require.Equal(t, n, len(fpPkList))
 
 	return fpPkList
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForConsumerFPRegistration(t *testing.T, chainId string, n int) {
+	require.Eventually(t, func() bool {
+		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(chainId)
+		if err != nil {
+			log.Logf(t, "failed to query consumer FP(s) from Babylon %s", err.Error())
+			return false
+		}
+		if len(fps) != n {
+			return false
+		}
+		return true
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+}
+
+func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(t *testing.T, chainId string, n int) []*bbntypes.BIP340PubKey {
+	consumerFpPkList := ctm.RegisterFinalityProvider(t, ctm.getConsumerChainId(), n)
+	ctm.WaitForConsumerFPRegistration(t, ctm.getConsumerChainId(), n)
+	return consumerFpPkList
 }
 
 func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {
@@ -372,23 +392,6 @@ func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(t *testing.T, 
 		require.NoError(t, err)
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(chainId)
-			if err != nil {
-				log.Logf(t, "failed to query finality providers from Babylon %s", err.Error())
-				return false
-			}
-			if len(fps) != i+1 {
-				return false
-			}
-			for _, fp := range fps {
-				if !strings.Contains(fp.Description.Moniker, e2eutils.MonikerPrefix) {
-					return false
-				}
-			}
-			return true
-		}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()

@@ -19,7 +19,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	consumerFpPkList := ctm.RegisterFinalityProvider(t, ctm.getConsumerChainId(), 1)
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, ctm.getConsumerChainId(), 1)
 	// start consumer chain FP
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 	fpInstance := fpList[0]
@@ -61,7 +61,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	// start consumer chain FP
 	n := 2
-	consumerFpPkList := ctm.RegisterFinalityProvider(t, ctm.getConsumerChainId(), n)
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, ctm.getConsumerChainId(), n)
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 
 	// check the public randomness is committed
