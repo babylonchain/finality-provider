@@ -31,6 +31,9 @@ func (c *Client) SendMsgToMempool(ctx context.Context, msg sdk.Msg) error {
 // SendMsgsToMempool sends a set of messages to the mempool.
 // It does not wait for the messages to be included.
 func (c *Client) SendMsgsToMempool(ctx context.Context, msgs []sdk.Msg) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	relayerMsgs := ToProviderMsgs(msgs)
 	if err := retry.Do(func() error {
 		var sendMsgErr error
@@ -62,6 +65,9 @@ func (c *Client) ReliablySendMsg(ctx context.Context, msg sdk.Msg, expectedError
 // It utilizes a file lock as well as a keyring lock to ensure atomic access.
 // TODO: needs tests
 func (c *Client) ReliablySendMsgs(ctx context.Context, msgs []sdk.Msg, expectedErrors []*errors.Error, unrecoverableErrors []*errors.Error) (*pv.RelayerTxResponse, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	var (
 		rlyResp     *pv.RelayerTxResponse
 		callbackErr error
