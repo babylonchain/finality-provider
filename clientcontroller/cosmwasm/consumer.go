@@ -257,78 +257,6 @@ func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit 
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
-//nolint:unused
-func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
-	// Construct the query message
-	queryMsg := QueryMsgBlocks{
-		Blocks: BlocksQuery{
-			StartAfter: startAfter,
-			Limit:      limit,
-			Finalized:  finalized,
-			Reverse:    reverse,
-		},
-	}
-
-	// Marshal the query message to JSON
-	queryMsgBytes, err := json.Marshal(queryMsg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query message: %w", err)
-	}
-
-	// Query the smart contract state
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
-	}
-
-	// Unmarshal the response
-	var resp BlocksResponse
-	err = json.Unmarshal(dataFromContract.Data, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	// Process the blocks and convert them to BlockInfo
-	var blocks []*fptypes.BlockInfo
-	for _, b := range resp.Blocks {
-		block := &fptypes.BlockInfo{
-			Height: b.Height,
-			Hash:   b.AppHash,
-		}
-		blocks = append(blocks, block)
-	}
-
-	return blocks, nil
-}
-
-func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*IndexedBlock, error) {
-	// Construct the query message
-	queryMsgStruct := QueryMsgBlock{
-		Block: BlockQuery{
-			Height: height,
-		},
-	}
-	queryMsgBytes, err := json.Marshal(queryMsgStruct)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query message: %v", err)
-	}
-
-	// Query the smart contract state
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
-	}
-
-	// Unmarshal the response
-	var resp IndexedBlock
-	err = json.Unmarshal(dataFromContract.Data, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	return &resp, nil
-}
-
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
 	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
 	//  query block directly from CometBFT for now
@@ -646,6 +574,36 @@ func (wc *CosmwasmConsumerController) MustGetValidatorAddress() string {
 // NOTE: this function is only meant to be used in tests.
 func (wc *CosmwasmConsumerController) GetCometNodeStatus() (*coretypes.ResultStatus, error) {
 	return wc.cwClient.GetStatus()
+}
+
+// QueryIndexedBlock queries the indexed block at a given height
+// NOTE: this function is only meant to be used in tests.
+func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*IndexedBlock, error) {
+	// Construct the query message
+	queryMsgStruct := QueryMsgBlock{
+		Block: BlockQuery{
+			Height: height,
+		},
+	}
+	queryMsgBytes, err := json.Marshal(queryMsgStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %v", err)
+	}
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Unmarshal the response
+	var resp IndexedBlock
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return &resp, nil
 }
 
 func fromCosmosEventsToBytes(events []provider.RelayerEvent) []byte {
