@@ -41,7 +41,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
 	}
 
-	// note: QueryFinalityProviderVotingPower is hardcode to return 1 so FPs can still submit finality sigs even if they
+	// note: QueryFinalityProviderHasPower is hardcode to return true so FPs can still submit finality sigs even if they
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)

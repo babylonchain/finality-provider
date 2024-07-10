@@ -447,11 +447,11 @@ func (fp *FinalityProviderInstance) hasProcessed(blockHeight uint64) bool {
 
 // hasVotingPower checks whether the finality provider has voting power for the given block
 func (fp *FinalityProviderInstance) hasVotingPower(blockHeight uint64) (bool, error) {
-	power, err := fp.GetVotingPowerWithRetry(blockHeight)
+	hasPower, err := fp.GetVotingPowerWithRetry(blockHeight)
 	if err != nil {
 		return false, err
 	}
-	if power == 0 {
+	if !hasPower {
 		fp.logger.Debug(
 			"the finality-provider does not have voting power",
 			zap.String("pk", fp.GetBtcPkHex()),
@@ -1061,14 +1061,14 @@ func (fp *FinalityProviderInstance) getLatestBlockHeightWithRetry() (uint64, err
 	return latestBlockHeight, nil
 }
 
-func (fp *FinalityProviderInstance) GetVotingPowerWithRetry(height uint64) (uint64, error) {
+func (fp *FinalityProviderInstance) GetVotingPowerWithRetry(height uint64) (bool, error) {
 	var (
-		power uint64
-		err   error
+		hasPower bool
+		err      error
 	)
 
 	if err := retry.Do(func() error {
-		power, err = fp.consumerCon.QueryFinalityProviderVotingPower(fp.GetBtcPk(), height)
+		hasPower, err = fp.consumerCon.QueryFinalityProviderHasPower(fp.GetBtcPk(), height)
 		if err != nil {
 			return err
 		}
@@ -1081,10 +1081,10 @@ func (fp *FinalityProviderInstance) GetVotingPowerWithRetry(height uint64) (uint
 			zap.Error(err),
 		)
 	})); err != nil {
-		return 0, err
+		return false, err
 	}
 
-	return power, nil
+	return hasPower, nil
 }
 
 func (fp *FinalityProviderInstance) GetFinalityProviderSlashedWithRetry() (bool, error) {

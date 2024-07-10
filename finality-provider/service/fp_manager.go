@@ -144,25 +144,24 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			fpis := fpm.ListFinalityProviderInstances()
 			for _, fpi := range fpis {
 				oldStatus := fpi.GetStatus()
-				power, err := fpi.GetVotingPowerWithRetry(latestBlockHeight)
+				hasPower, err := fpi.GetVotingPowerWithRetry(latestBlockHeight)
 				if err != nil {
 					fpm.logger.Debug(
-						"failed to get the voting power",
+						"failed to query the voting power",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
 						zap.Uint64("height", latestBlockHeight),
 						zap.Error(err),
 					)
 					continue
 				}
-				// power > 0 (slashed_height must > 0), set status to ACTIVE
-				if power > 0 {
+				// hasPower == true (slashed_height must > 0), set status to ACTIVE
+				if hasPower {
 					if oldStatus != proto.FinalityProviderStatus_ACTIVE {
 						fpi.MustSetStatus(proto.FinalityProviderStatus_ACTIVE)
 						fpm.logger.Debug(
 							"the finality-provider status is changed to ACTIVE",
 							zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
 							zap.String("old_status", oldStatus.String()),
-							zap.Uint64("power", power),
 						)
 					}
 					continue
@@ -176,7 +175,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 					continue
 				}
-				// power == 0 and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
+				// hasPower == false and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
 				if slashed {
 					fpm.setFinalityProviderSlashed(fpi)
 					fpm.logger.Debug(
@@ -186,7 +185,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 					continue
 				}
-				// power == 0 and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
+				// hasPower == false and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
 				if oldStatus == proto.FinalityProviderStatus_ACTIVE {
 					fpi.MustSetStatus(proto.FinalityProviderStatus_INACTIVE)
 					fpm.logger.Debug(

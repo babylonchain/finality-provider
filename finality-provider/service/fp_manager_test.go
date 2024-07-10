@@ -55,11 +55,11 @@ func FuzzStatusUpdate(f *testing.F) {
 		mockConsumerController.EXPECT().QueryBlock(gomock.Any()).Return(currentBlockRes, nil).AnyTimes()
 		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).AnyTimes()
 
-		votingPower := uint64(r.Intn(2))
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), currentHeight).Return(votingPower, nil).AnyTimes()
+		hasPower := r.Intn(2) != 0
+		mockConsumerController.EXPECT().QueryFinalityProviderHasPower(gomock.Any(), currentHeight).Return(hasPower, nil).AnyTimes()
 		mockConsumerController.EXPECT().SubmitFinalitySig(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.TxResponse{TxHash: ""}, nil).AnyTimes()
 		var slashedHeight uint64
-		if votingPower == 0 {
+		if !hasPower {
 			mockClientController.EXPECT().QueryFinalityProviderSlashed(gomock.Any()).Return(true, nil).AnyTimes()
 		}
 
@@ -70,7 +70,7 @@ func FuzzStatusUpdate(f *testing.F) {
 		err = fpIns.Stop()
 		require.NoError(t, err)
 
-		if votingPower > 0 {
+		if hasPower {
 			waitForStatus(t, fpIns, proto.FinalityProviderStatus_ACTIVE)
 		} else {
 			if slashedHeight == 0 && fpIns.GetStatus() == proto.FinalityProviderStatus_ACTIVE {

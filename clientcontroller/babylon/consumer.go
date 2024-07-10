@@ -215,17 +215,20 @@ func (bc *BabylonConsumerController) SubmitBatchFinalitySigs(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-func (bc *BabylonConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+// QueryFinalityProviderHasPower queries whether the finality provider has voting power at a given height
+func (bc *BabylonConsumerController) QueryFinalityProviderHasPower(
+	fpPk *btcec.PublicKey,
+	blockHeight uint64,
+) (bool, error) {
 	res, err := bc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
 		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 		blockHeight,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query the finality provider's voting power at height %d: %w", blockHeight, err)
+		return false, fmt.Errorf("failed to query the finality provider's voting power at height %d: %w", blockHeight, err)
 	}
 
-	return res.VotingPower, nil
+	return res.VotingPower > 0, nil
 }
 
 func (bc *BabylonConsumerController) QueryLatestFinalizedBlock() (*types.BlockInfo, error) {
