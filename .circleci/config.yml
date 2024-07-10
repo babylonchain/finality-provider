@@ -43,6 +43,7 @@ jobs:
           command: "go env"
       - go/load-cache:
           key: go-mod-v6-{{ checksum "go.sum" }}
+      - add_ssh_keys
       - go/mod-download
       - go/save-cache:
           key: go-mod-v6-{{ checksum "go.sum" }}
@@ -59,10 +60,102 @@ jobs:
           name: Run tests
           command: |
             make test
+
+  test_e2e_babylon:
+    machine:
+      image: ubuntu-2204:2024.01.1
+    resource_class: large
+    steps:
+      - go/install:
+          version: "1.21.4"
+      - checkout
+      - run:
+          name: Print Go environment
+          command: "go env"
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - add_ssh_keys
+      - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
       - run:
           name: Run integration tests
           command: |
-            make test-e2e
+            make test-e2e-babylon
+
+  test_e2e_bcd:
+    machine:
+      image: ubuntu-2204:2024.01.1
+    resource_class: large
+    steps:
+      - go/install:
+          version: "1.21.4"
+      - checkout
+      - run:
+          name: Print Go environment
+          command: "go env"
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - add_ssh_keys
+      - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
+      - run:
+          name: Run integration tests
+          command: |
+            make test-e2e-bcd
+
+  test_e2e_wasmd:
+    machine:
+      image: ubuntu-2204:2024.01.1
+    resource_class: large
+    steps:
+      - go/install:
+          version: "1.21.4"
+      - checkout
+      - run:
+          name: Print Go environment
+          command: "go env"
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - add_ssh_keys
+      - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
+      - run:
+          name: Run integration tests
+          command: |
+            make test-e2e-wasmd
+
+  test_e2e_op:
+    machine:
+      image: ubuntu-2204:2024.01.1
+    resource_class: large
+    steps:
+      - go/install:
+          version: "1.21.4"
+      - checkout
+      - run:
+          name: Print Go environment
+          command: "go env"
+      - go/load-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+      - add_ssh_keys
+      - go/mod-download
+      - go/save-cache:
+          key: go-mod-v6-{{ checksum "go.sum" }}
+          path: "/home/circleci/.go_workspace/pkg/mod"
+      - run:
+          name: Download OP e2e devnet test data
+          command: |
+            make op-e2e-devnet
+      - run:
+          name: Run integration tests
+          command: |
+            make test-e2e-op
 
   build_docker:
     machine:
@@ -70,6 +163,7 @@ jobs:
       resource_class: large
     steps:
       - checkout
+      - add_ssh_keys
       - aws-ecr/build-image:
           push-image: false
           dockerfile: Dockerfile
@@ -77,6 +171,7 @@ jobs:
           build-path: ./
           tag: "$CIRCLE_SHA1,$CIRCLE_TAG"
           repo: "$CIRCLE_PROJECT_REPONAME"
+          extra-build-args: "--secret id=sshKey,src=/home/circleci/.ssh/$DEPLOY_KEY_NAME"
       - run:
           name: Save Docker image to export it to workspace
           command: |
@@ -112,6 +207,10 @@ workflows:
     jobs:
       - check-mock-gen
       - build_lint_test
+      - test_e2e_babylon
+      - test_e2e_bcd
+      - test_e2e_wasmd
+      - test_e2e_op
       - build_docker:
           filters:
             tags:
@@ -126,3 +225,4 @@ workflows:
               only:
                 - main
                 - dev
+                - base/consumer-chain-support

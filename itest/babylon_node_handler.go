@@ -1,4 +1,4 @@
-package e2etest
+package e2e_utils
 
 import (
 	"bytes"
@@ -105,7 +105,7 @@ type BabylonNodeHandler struct {
 }
 
 func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*types.BIP340PubKey) *BabylonNodeHandler {
-	testDir, err := baseDir("zBabylonTest")
+	testDir, err := BaseDir("zBabylonTest")
 	require.NoError(t, err)
 	defer func() {
 		if err != nil {
@@ -148,6 +148,7 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 	require.NoError(t, err)
 
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
+	t.Logf("babylon log file: %s", f.Name())
 	require.NoError(t, err)
 	t.Logf("babylon log file: %s", f.Name())
 
@@ -155,8 +156,11 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 		"babylond",
 		"start",
 		fmt.Sprintf("--home=%s", nodeDataDir),
-		"--log_level=debug",
+		"--log_level=trace",
+		"--trace",
 	)
+
+	fmt.Println("Starting babylond with command: ", startCmd.String())
 
 	startCmd.Stdout = f
 
