@@ -356,9 +356,9 @@ func (ctm *OpL2ConsumerTestManager) RegisterFinalityProvider(t *testing.T, chain
 	return fpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForConsumerFPRegistration(t *testing.T, chainId string, n int) {
+func (ctm *OpL2ConsumerTestManager) WaitForConsumerFPRegistration(t *testing.T, n int) {
 	require.Eventually(t, func() bool {
-		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(chainId)
+		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.getConsumerChainId())
 		if err != nil {
 			log.Logf(t, "failed to query consumer FP(s) from Babylon %s", err.Error())
 			return false
@@ -370,10 +370,30 @@ func (ctm *OpL2ConsumerTestManager) WaitForConsumerFPRegistration(t *testing.T, 
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 }
 
-func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(t *testing.T, chainId string, n int) []*bbntypes.BIP340PubKey {
+func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(t *testing.T, n int) []*bbntypes.BIP340PubKey {
 	consumerFpPkList := ctm.RegisterFinalityProvider(t, ctm.getConsumerChainId(), n)
-	ctm.WaitForConsumerFPRegistration(t, ctm.getConsumerChainId(), n)
+	ctm.WaitForConsumerFPRegistration(t, n)
 	return consumerFpPkList
+}
+
+func (ctm *OpL2ConsumerTestManager) WaitForBabylonFPRegistration(t *testing.T, n int) {
+	require.Eventually(t, func() bool {
+		fps, err := ctm.BBNClient.QueryFinalityProviders()
+		if err != nil {
+			log.Logf(t, "failed to query Babylon FP(s) from Babylon %s", err.Error())
+			return false
+		}
+		if len(fps) != n {
+			return false
+		}
+		return true
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+}
+
+func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(t *testing.T, n int) []*bbntypes.BIP340PubKey {
+	babylonFpPkList := ctm.RegisterFinalityProvider(t, e2eutils.ChainID, n)
+	ctm.WaitForBabylonFPRegistration(t, n)
+	return babylonFpPkList
 }
 
 func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {

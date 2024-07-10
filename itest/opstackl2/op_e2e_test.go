@@ -19,7 +19,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, ctm.getConsumerChainId(), 1)
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, 1)
 	// start consumer chain FP
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 	fpInstance := fpList[0]
@@ -57,11 +57,11 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// A BTC delegation has to stake to at least one Babylon finality provider
 	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
 	// So we have to start Babylon chain FP
-	bbnFpPk := ctm.RegisterFinalityProvider(t, e2eutils.ChainID, 1)
+	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
 
 	// start consumer chain FP
 	n := 2
-	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, ctm.getConsumerChainId(), n)
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 
 	// check the public randomness is committed
