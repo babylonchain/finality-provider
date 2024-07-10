@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -328,39 +327,16 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 	return targetBlockHeight
 }
 
-func (ctm *OpL2ConsumerTestManager) RegisterBBNFinalityProvider(t *testing.T) *btcec.PublicKey {
+func (ctm *OpL2ConsumerTestManager) RegisterFinalityProvider(t *testing.T, chainId string, n int) []*bbntypes.BIP340PubKey {
 	app := ctm.FpApp
-	chainId := e2eutils.ChainID
-	fpName := chainId + "-" + e2eutils.FpNamePrefix
-	moniker := chainId + "-" + e2eutils.MonikerPrefix
-	commission := sdkmath.LegacyZeroDec()
-	desc := e2eutils.NewDescription(moniker)
-	cfg := app.GetConfig()
-	_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
-	require.NoError(t, err)
-	res, err := app.CreateFinalityProvider(fpName, chainId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
-	require.NoError(t, err)
-	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
-	require.NoError(t, err)
-	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
-	require.NoError(t, err)
-	log.Logf(t, "Registered Finality Provider %s for %s", fpPk.MarshalHex(), chainId)
-	return fpPk.MustToBTCPK()
-}
-
-func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {
-	l2ChainId := ctm.OpSystem.Cfg.DeployConfig.L2ChainID
-	return fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainId)
-}
-
-func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) []*service.FinalityProviderInstance {
-	app := ctm.FpApp
-
-	chainId := ctm.getConsumerChainId()
+	baseFpName := fmt.Sprintf("%s-%s", chainId, e2eutils.FpNamePrefix)
+	baseMoniker := fmt.Sprintf("%s-%s", chainId, e2eutils.MonikerPrefix)
+	fpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
 
 	for i := 0; i < n; i++ {
-		fpName := chainId + "-" + e2eutils.FpNamePrefix + strconv.Itoa(i)
-		moniker := chainId + "-" + e2eutils.MonikerPrefix + strconv.Itoa(i)
+		fpName := fmt.Sprintf("%s%d", baseFpName, i)
+		moniker := fmt.Sprintf("%s%d", baseMoniker, i)
+
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 		cfg := app.GetConfig()
@@ -371,11 +347,28 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+		require.NoError(t, err)
+		fpPkList = append(fpPkList, fpPk)
 		log.Logf(t, "Registered Finality Provider %s for %s", fpPk.MarshalHex(), chainId)
+	}
+	require.Equal(t, n, len(fpPkList))
+
+	return fpPkList
+}
+
+func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {
+	l2ChainId := ctm.OpSystem.Cfg.DeployConfig.L2ChainID
+	return fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainId)
+}
+
+func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(t *testing.T, fpPkList []*bbntypes.BIP340PubKey) []*service.FinalityProviderInstance {
+	app := ctm.FpApp
+	chainId := ctm.getConsumerChainId()
+
+	for i := 0; i < len(fpPkList); i++ {
+		err := app.StartHandlingFinalityProvider(fpPkList[i], e2eutils.Passphrase)
 		require.NoError(t, err)
-		err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
-		require.NoError(t, err)
-		fpIns, err := app.GetFinalityProviderInstance(fpPk)
+		fpIns, err := app.GetFinalityProviderInstance(fpPkList[i])
 		require.NoError(t, err)
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
@@ -407,7 +400,7 @@ func (ctm *OpL2ConsumerTestManager) StartFinalityProvider(t *testing.T, n int) [
 			resFpList = append(resFpList, fp)
 		}
 	}
-	require.Equal(t, n, len(resFpList))
+	require.Equal(t, len(fpPkList), len(resFpList))
 
 	return resFpList
 }
