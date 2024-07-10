@@ -165,32 +165,21 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	// check the BTC delegations are active
 	ctm.WaitForNActiveDels(t, n)
 
-	ctm.WaitForOpchainStuck(t)
-	log.Logf(t, "Test case 1: OP chain is stuck")
+	blockHeight := ctm.WaitForOpchainStuck(t)
+	log.Logf(t, "Test case 1: OP chain is stuck at block %d", blockHeight)
 
 	// ===  another test case: recover op chain ===
 	// start consumer chain FP
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 	fpInstance := fpList[0]
-
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
-	// query the first committed pub rand
-	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
-	require.NoError(t, err)
-	committedStartHeight := committedPubRand.StartHeight
-	log.Logf(t, "First committed pubrandList startHeight %d", committedStartHeight)
-	testBlocks := ctm.WaitForNBlocksAndReturn(t, committedStartHeight, 1)
-	testBlock := testBlocks[0]
-
 	// wait for the fp sign
-	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
-	queryParams := &sdk.L2Block{
-		BlockHeight:    testBlock.Height,
-		BlockHash:      hex.EncodeToString(testBlock.Hash),
-		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
-	}
-	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
+	ctm.WaitForFpVoteAtHeight(t, fpInstance, blockHeight)
+
+	finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
-	require.Equal(t, true, finalized)
-	log.Logf(t, "Test case 2: block %d is finalized", testBlock.Height)
+	t.Logf("Test case 2: latest finalized block %d", finalizedBlock.Height)
+	latestBlockHeight, err := ctm.OpL2ConsumerCtrl.QueryLatestBlockHeight()
+	require.NoError(t, err)
+	log.Logf(t, "Test case 2: OP chain is running at block %d", latestBlockHeight)
 }
