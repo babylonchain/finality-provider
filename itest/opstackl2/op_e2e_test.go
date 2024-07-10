@@ -165,7 +165,7 @@ func TestOpchainStuckAndRecover(t *testing.T) {
 	// check the BTC delegations are active
 	ctm.WaitForNActiveDels(t, n)
 
-	blockHeight := ctm.WaitForOpchainStuck(t)
+	blockHeight := ctm.WaitForOpChainStuck(t)
 	log.Logf(t, "Test case 1: OP chain is stuck at block %d", blockHeight)
 
 	// ===  another test case: recover op chain ===
