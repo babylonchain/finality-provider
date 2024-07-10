@@ -246,25 +246,13 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	isFinalized := true
-	limit := uint64(1)
-	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
-	if err != nil {
-		return nil, err
-	}
-	if len(blocks) == 0 {
-		// do not return error here as FP handles this situation by
-		// not running fast sync
-		return nil, nil
-	}
-
-	return blocks[0], nil
+	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	return nil, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	// NOTE: Query blocks directly from CometBFT instead of indexed blocks
-	// because it's possible the consumer has not integrated with the Babylon SDK
-	// and may be performing off-chain verification.
+	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	// query blocks directly from CometBFT
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
@@ -341,9 +329,8 @@ func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*Indexed
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	// NOTE: Query blocks directly from CometBFT instead of indexed blocks
-	// because it's possible the consumer has not integrated with the Babylon SDK
-	// and may be performing off-chain verification.
+	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	// query blocks directly from CometBFT
 	block, err := wc.cwClient.GetBlock(int64(height))
 	if err != nil {
 		return nil, err
@@ -460,9 +447,8 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	// NOTE: Query blocks directly from CometBFT instead of indexed blocks
-	// because it's possible the consumer has not integrated with the Babylon SDK
-	// and may be performing off-chain verification.
+	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	// query blocks directly from CometBFT
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
