@@ -22,6 +22,8 @@ import (
 	cmtcrypto "github.com/cometbft/cometbft/proto/tendermint/crypto"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	"go.uber.org/zap"
@@ -262,18 +264,54 @@ func (cc *OPStackL2ConsumerController) QueryLatestFinalizedBlock() (*types.Block
 }
 
 func (cc *OPStackL2ConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*types.BlockInfo, error) {
-	var blocks []*types.BlockInfo
-	var count uint64 = 0
-
-	// TODO(lester): add test
-	for height := startHeight; height <= endHeight && count < limit; height++ {
-		block, err := cc.QueryBlock(height)
-		if err != nil {
-			return nil, err
-		}
-		blocks = append(blocks, block)
-		count++
+	if startHeight > endHeight {
+		return nil, fmt.Errorf("the start height %v should not be higher than the end height %v", startHeight, endHeight)
 	}
+	// limit the number of blocks to query
+	count := endHeight - startHeight + 1
+	if limit > 0 && count >= limit {
+		count = limit
+	}
+
+	// create batch requests
+	blockHeaders := make([]*ethtypes.Header, count)
+	batchElemList := make([]ethrpc.BatchElem, count)
+	for i := range batchElemList {
+		batchElemList[i] = ethrpc.BatchElem{
+			Method: "eth_getBlockByNumber",
+			Args:   []interface{}{hexutil.EncodeUint64(startHeight + uint64(i)), false},
+			Result: &blockHeaders[i],
+		}
+	}
+
+	// batch call
+	if err := cc.opl2Client.Client().BatchCallContext(context.Background(), batchElemList); err != nil {
+		return nil, err
+	}
+	for i := range batchElemList {
+		if batchElemList[i].Error != nil {
+			return nil, batchElemList[i].Error
+		}
+		if blockHeaders[i] == nil {
+			return nil, fmt.Errorf("got null header for block %d", startHeight+uint64(i))
+		}
+	}
+
+	// convert to types.BlockInfo
+	blocks := make([]*types.BlockInfo, len(blockHeaders))
+	for i, header := range blockHeaders {
+		blocks[i] = &types.BlockInfo{
+			Height: header.Number.Uint64(),
+			Hash:   header.Hash().Bytes(),
+		}
+	}
+	cc.logger.Debug(
+		"Successfully batch query blocks",
+		zap.Uint64("start_height", startHeight),
+		zap.Uint64("end_height", endHeight),
+		zap.Uint64("limit", limit),
+		zap.String("last_block_hash", hex.EncodeToString(blocks[len(blocks)-1].Hash)),
+	)
 	return blocks, nil
 }
 
