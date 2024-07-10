@@ -246,13 +246,14 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	//  return nil for now
 	return nil, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	// query blocks directly from CometBFT
+	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	//  query blocks directly from CometBFT for now
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
@@ -329,8 +330,8 @@ func (wc *CosmwasmConsumerController) QueryIndexedBlock(height uint64) (*Indexed
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	// query blocks directly from CometBFT
+	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	//  query block directly from CometBFT for now
 	block, err := wc.cwClient.GetBlock(int64(height))
 	if err != nil {
 		return nil, err
@@ -402,14 +403,9 @@ func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publ
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	// Use the helper function to get the IndexedBlock
-	resp, err := wc.QueryIndexedBlock(height)
-	if err != nil {
-		return false, err
-	}
-
-	// Return the finalized status
-	return resp.Finalized, nil
+	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	//  return false for now
+	return false, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
@@ -447,8 +443,8 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	// NOTE: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	// query blocks directly from CometBFT
+	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
+	//  query blocks directly from CometBFT for now
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
