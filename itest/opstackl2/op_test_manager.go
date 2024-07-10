@@ -403,10 +403,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForFianlizedBlock(t *testing.T, checkedH
 		nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		finalizedBlockHeight = nextFinalizedBlock.Height
-		if finalizedBlockHeight > checkedHeight {
-			return true
-		}
-		return false
+		return finalizedBlockHeight > checkedHeight
 	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
 	return finalizedBlockHeight
 }
