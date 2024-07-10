@@ -396,7 +396,7 @@ func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(t *testing.T
 	return babylonFpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForOpchainStuck(t *testing.T) uint64 {
+func (ctm *OpL2ConsumerTestManager) WaitForOpChainStuck(t *testing.T) uint64 {
 	blockHeight := uint64(0)
 	require.Eventually(t, func() bool {
 		finalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
@@ -408,7 +408,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForOpchainStuck(t *testing.T) uint64 {
 		}
 		blockHeight = latestBlockHeight
 		return false
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
 	return blockHeight
 }
 
