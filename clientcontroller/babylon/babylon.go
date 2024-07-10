@@ -158,17 +158,17 @@ func (bc *BabylonController) QueryFinalityProviderSlashed(fpPk *btcec.PublicKey)
 	return slashed, nil
 }
 
-// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-func (bc *BabylonController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+// QueryFinalityProviderHasPower queries whether the finality provider has voting power at a given height
+func (bc *BabylonController) QueryFinalityProviderHasPower(fpPk *btcec.PublicKey, blockHeight uint64) (bool, error) {
 	res, err := bc.bbnClient.QueryClient.FinalityProviderPowerAtHeight(
 		bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex(),
 		blockHeight,
 	)
 	if err != nil {
-		return 0, fmt.Errorf("failed to query BTC delegations: %w", err)
+		return false, fmt.Errorf("failed to query BTC delegations: %w", err)
 	}
 
-	return res.VotingPower, nil
+	return res.VotingPower > 0, nil
 }
 
 func (bc *BabylonController) QueryLatestFinalizedBlocks(count uint64) ([]*types.BlockInfo, error) {

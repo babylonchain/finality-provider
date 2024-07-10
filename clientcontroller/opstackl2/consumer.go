@@ -241,12 +241,12 @@ func (cc *OPStackL2ConsumerController) SubmitBatchFinalitySigs(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height.
+// QueryFinalityProviderHasPower queries whether the finality provider has voting power at a given height
 // This interface function only used for checking if the FP is eligible for submitting sigs.
-// Now we can simply hardcode the voting power to a positive value.
+// Now we can simply hardcode the voting power to true
 // TODO: see this issue https://github.com/babylonchain/finality-provider/issues/390 for more details
-func (cc *OPStackL2ConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
-	return 1, nil
+func (cc *OPStackL2ConsumerController) QueryFinalityProviderHasPower(fpPk *btcec.PublicKey, blockHeight uint64) (bool, error) {
+	return true, nil
 }
 
 // QueryLatestFinalizedBlock returns the finalized L2 block from a RPC call
