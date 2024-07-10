@@ -19,8 +19,9 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, 1)
 	// start consumer chain FP
-	fpList := ctm.StartFinalityProvider(t, 1)
+	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 	fpInstance := fpList[0]
 
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
@@ -56,11 +57,12 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// A BTC delegation has to stake to at least one Babylon finality provider
 	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
 	// So we have to start Babylon chain FP
-	bbnFpPk := ctm.RegisterBBNFinalityProvider(t)
+	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
 
 	// start consumer chain FP
 	n := 2
-	fpList := ctm.StartFinalityProvider(t, n)
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
+	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 
 	// check the public randomness is committed
 	e2eutils.WaitForFpPubRandCommitted(t, fpList[0])
@@ -68,8 +70,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	// send a BTC delegation to consumer and Babylon finality providers
 	// for the first FP, we give it more power b/c it will be used later
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk, fpList[0].GetBtcPk()}, e2eutils.StakingTime, 3*e2eutils.StakingAmount)
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk, fpList[1].GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, 3*e2eutils.StakingAmount)
+	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
 	// check the BTC delegations are pending
 	delsResp := ctm.WaitForNPendingDels(t, n)
