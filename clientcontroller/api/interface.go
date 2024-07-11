@@ -44,8 +44,8 @@ type ConsumerController interface {
 
 	// Note: the following queries are only for PoC
 
-	// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-	QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error)
+	// QueryFinalityProviderHasPower queries whether the finality provider has voting power at a given height
+	QueryFinalityProviderHasPower(fpPk *btcec.PublicKey, blockHeight uint64) (bool, error)
 
 	// QueryLatestFinalizedBlock returns the latest finalized block
 	// Note: nil will be returned if the finalized block does not exist

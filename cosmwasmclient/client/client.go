@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	wasmdparams "github.com/CosmWasm/wasmd/app/params"
@@ -13,6 +14,7 @@ import (
 )
 
 type Client struct {
+	mu sync.Mutex
 	*query.QueryClient
 
 	provider *cosmos.CosmosProvider
@@ -83,11 +85,11 @@ func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.E
 	}
 
 	return &Client{
-		queryClient,
-		cp,
-		cfg.Timeout,
-		zapLogger,
-		cfg,
+		QueryClient: queryClient,
+		provider:    cp,
+		timeout:     cfg.Timeout,
+		logger:      zapLogger,
+		cfg:         cfg,
 	}, nil
 }
 

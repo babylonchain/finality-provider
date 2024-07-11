@@ -178,19 +178,19 @@ func (mr *MockConsumerControllerMockRecorder) QueryBlocks(startHeight, endHeight
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryBlocks", reflect.TypeOf((*MockConsumerController)(nil).QueryBlocks), startHeight, endHeight, limit)
 }
 
-// QueryFinalityProviderVotingPower mocks base method.
-func (m *MockConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+// QueryFinalityProviderHasPower mocks base method.
+func (m *MockConsumerController) QueryFinalityProviderHasPower(fpPk *btcec.PublicKey, blockHeight uint64) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryFinalityProviderVotingPower", fpPk, blockHeight)
-	ret0, _ := ret[0].(uint64)
+	ret := m.ctrl.Call(m, "QueryFinalityProviderHasPower", fpPk, blockHeight)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryFinalityProviderVotingPower indicates an expected call of QueryFinalityProviderVotingPower.
-func (mr *MockConsumerControllerMockRecorder) QueryFinalityProviderVotingPower(fpPk, blockHeight interface{}) *gomock.Call {
+// QueryFinalityProviderHasPower indicates an expected call of QueryFinalityProviderHasPower.
+func (mr *MockConsumerControllerMockRecorder) QueryFinalityProviderHasPower(fpPk, blockHeight interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryFinalityProviderVotingPower", reflect.TypeOf((*MockConsumerController)(nil).QueryFinalityProviderVotingPower), fpPk, blockHeight)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryFinalityProviderHasPower", reflect.TypeOf((*MockConsumerController)(nil).QueryFinalityProviderHasPower), fpPk, blockHeight)
 }
 
 // QueryIsBlockFinalized mocks base method.

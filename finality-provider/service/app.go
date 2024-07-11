@@ -257,20 +257,20 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	}
 
 	for _, fp := range fps {
-		vp, err := app.consumerCon.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlockHeight)
+		hasPower, err := app.consumerCon.QueryFinalityProviderHasPower(fp.BtcPk, latestBlockHeight)
 		if err != nil {
 			// if error occured then the finality-provider is not registered in the Babylon chain yet
 			continue
 		}
 
-		if vp > 0 {
-			// voting power > 0 then set the status to ACTIVE
+		if hasPower {
+			// set the status to ACTIVE
 			err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_ACTIVE)
 			if err != nil {
 				return err
 			}
-		} else if vp == 0 {
-			// voting power == 0 then set status depending on previous status
+		} else {
+			// set status depending on previous status
 			switch fp.Status {
 			case proto.FinalityProviderStatus_CREATED:
 				// previous status is CREATED then set to REGISTERED
