@@ -65,7 +65,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.ErrorLevel)
+	logger := createLogger(t, zapcore.DebugLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -394,7 +394,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(t *testing.T, chec
 		require.NoError(t, err)
 		finalizedBlockHeight = nextFinalizedBlock.Height
 		return finalizedBlockHeight > checkedHeight
-	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
+	}, e2eutils.EventuallyWaitTimeOut, 5*time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime)*time.Second)
 	return finalizedBlockHeight
 }
 

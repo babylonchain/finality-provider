@@ -186,7 +186,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	// get the last processed height
 	lastProcessedHeight := fpInstance.GetLastProcessedHeight()
 	t.Logf("last processed height %d", lastProcessedHeight)
-	time.Sleep(5 * L2BlockTime)
+	time.Sleep(5 * time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime) * time.Second)
 	// check the finality is stuck
 	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
