@@ -35,7 +35,6 @@ import (
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	opgenesis "github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
-	opservice "github.com/ethereum-optimism/optimism/op-service"
 	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
@@ -46,7 +45,6 @@ import (
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_42eb9bf.wasm"
 	devnetL1JsonPath             = "./devnet-data/devnetL1.json"
-	L2BlockTime                  = 2 * time.Second
 	consumerChainIdPrefix        = "op-stack-l2-"
 )
 
@@ -113,7 +111,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
 	// get op deploy config from devnetL1.json
-	opDeployConfig := newOpDeployConfigFromJson(t)
+	opDeployConfig, err := opgenesis.NewDeployConfig(devnetL1JsonPath)
+	require.NoError(t, err)
 	l2ChainID := opDeployConfig.L2ChainID
 	opConsumerId := fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainID)
 	// instantiate op contract
@@ -139,6 +138,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = opDeployConfig.BabylonFinalityGadgetChainType
 	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
 	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc = opDeployConfig.BabylonFinalityGadgetBitcoinRpc
+	opSysCfg.DeployConfig.L2BlockTime = opDeployConfig.L2BlockTime
 	// supress OP system logs
 	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
 	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
@@ -204,16 +204,6 @@ func createLogger(t *testing.T, level zapcore.Level) *zap.Logger {
 	return logger
 }
 
-func newOpDeployConfigFromJson(t *testing.T) *opgenesis.DeployConfig {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	root, err := opservice.FindMonorepoRoot(cwd)
-	deployConfigPath := filepath.Join(root, "itest", "opstackl2", "devnet-data", "devnetL1.json")
-	deployConfig, err := opgenesis.NewDeployConfig(deployConfigPath)
-	require.NoError(t, err)
-	return deployConfig
-}
-
 func mockOpL2ConsumerCtrlConfig(nodeDataDir string) *fpcfg.OPStackL2Config {
 	dc := bbncfg.DefaultBabylonConfig()
 
@@ -258,14 +248,13 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
 	var blocks []*types.BlockInfo
 	var err error
-
 	require.Eventually(t, func() bool {
 		blocks, err = ctm.OpL2ConsumerCtrl.QueryBlocks(startHeight, startHeight+uint64(n-1), uint64(n))
 		if err != nil || blocks == nil {
 			return false
 		}
 		return len(blocks) == n
-	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
+	}, e2eutils.EventuallyWaitTimeOut, time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime)*time.Second)
 	require.Equal(t, n, len(blocks))
 	log.Logf(t, "Successfully waited for %d block(s). The last block's hash at height %d: %s",
 		n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
