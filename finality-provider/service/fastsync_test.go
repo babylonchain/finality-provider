@@ -35,8 +35,8 @@ func FuzzFastSync_SufficientRandomness(f *testing.F) {
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
 
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryFinalityProviderHasPower(fpIns.GetBtcPk(), gomock.Any()).
+			Return(true, nil).AnyTimes()
 		// the last committed height is higher than the current height
 		// to make sure the randomness is sufficient
 		lastCommittedHeight := randomStartingHeight + testutil.TestPubRandNum
@@ -87,8 +87,8 @@ func FuzzFastSync_NoRandomness(f *testing.F) {
 		_, err := fpIns.CommitPubRand(randomStartingHeight)
 		require.NoError(t, err)
 
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryFinalityProviderHasPower(fpIns.GetBtcPk(), gomock.Any()).
+			Return(true, nil).AnyTimes()
 		// the last height with pub rand is a random value inside [finalizedHeight+1, currentHeight]
 		lastHeightWithPubRand := uint64(rand.Intn(int(currentHeight)-int(finalizedHeight))) + finalizedHeight + 1
 		lastCommittedPubRand := &types.PubRandCommit{

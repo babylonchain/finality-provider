@@ -33,8 +33,8 @@ func FuzzCommitPubRandList(f *testing.F) {
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockBabylonController := testutil.PrepareMockedBabylonController(t)
 		mockConsumerController := testutil.PrepareMockedConsumerControllerWithTxHash(t, r, randomStartingHeight, currentHeight, expectedTxHash)
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(), gomock.Any()).
-			Return(uint64(0), nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryFinalityProviderHasPower(gomock.Any(), gomock.Any()).
+			Return(false, nil).AnyTimes()
 		_, fpIns, cleanUp := startFinalityProviderAppWithRegisteredFp(t, r, mockBabylonController, mockConsumerController, randomStartingHeight)
 		defer cleanUp()
 
@@ -77,8 +77,8 @@ func FuzzSubmitFinalitySig(f *testing.F) {
 		}
 		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(lastCommittedPubRand, nil).AnyTimes()
 		// mock voting power and commit pub rand
-		mockConsumerController.EXPECT().QueryFinalityProviderVotingPower(fpIns.GetBtcPk(), gomock.Any()).
-			Return(uint64(1), nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryFinalityProviderHasPower(fpIns.GetBtcPk(), gomock.Any()).
+			Return(true, nil).AnyTimes()
 
 		// submit finality sig
 		nextBlock := &types.BlockInfo{

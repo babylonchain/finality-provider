@@ -193,8 +193,11 @@ func (wc *CosmwasmConsumerController) SubmitBatchFinalitySigs(
 	return &fptypes.TxResponse{TxHash: res.TxHash}, nil
 }
 
-// QueryFinalityProviderVotingPower queries the voting power of the finality provider at a given height
-func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btcec.PublicKey, blockHeight uint64) (uint64, error) {
+// QueryFinalityProviderHasPower queries whether the finality provider has voting power at a given height
+func (wc *CosmwasmConsumerController) QueryFinalityProviderHasPower(
+	fpPk *btcec.PublicKey,
+	blockHeight uint64,
+) (bool, error) {
 	fpBtcPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk).MarshalHex()
 
 	queryMsgStruct := QueryMsgFinalityProviderInfo{
@@ -205,20 +208,20 @@ func (wc *CosmwasmConsumerController) QueryFinalityProviderVotingPower(fpPk *btc
 	}
 	queryMsgBytes, err := json.Marshal(queryMsgStruct)
 	if err != nil {
-		return 0, fmt.Errorf("failed to marshal query message: %v", err)
+		return false, fmt.Errorf("failed to marshal query message: %v", err)
 	}
 	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
 	var resp ConsumerFpInfoResponse
 	err = json.Unmarshal(dataFromContract.Data, &resp)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
-	return resp.Power, nil
+	return resp.Power > 0, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*ConsumerFpsByPowerResponse, error) {
