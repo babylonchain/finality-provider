@@ -113,6 +113,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// get op deploy config from devnetL1.json
 	opDeployConfig, err := opgenesis.NewDeployConfig(devnetL1JsonPath)
 	require.NoError(t, err)
+	require.Equal(t, -1, opDeployConfig.BabylonFinalityGadgetChainType, "the value of babylonFinalityGadgetChainType should be -1 in devnetL1.json")
 	l2ChainID := opDeployConfig.L2ChainID
 	opConsumerId := fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainID)
 	// instantiate op contract
