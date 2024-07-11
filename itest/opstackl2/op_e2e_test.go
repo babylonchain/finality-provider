@@ -139,65 +139,6 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	// send a BTC delegation to consumer and Babylon finality providers
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
-	// wait until all delegations are active
-	ctm.WaitForDelegations(t, n)
-
-	// start consumer chain FP
-	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
-	fpInstance := fpList[0]
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
-
-	// wait for the first block to be finalized
-	ctm.WaitForNextFinalizedBlock(t, uint64(1))
-
-	// stop the FP instance
-	fpStopErr := fpInstance.Stop()
-	require.NoError(t, fpStopErr)
-	// make sure the FP is stopped
-	require.Eventually(t, func() bool {
-		return !fpInstance.IsRunning()
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Stopped the FP instance")
-
-	// get the last processed height
-	lastProcessedHeight := fpInstance.GetLastProcessedHeight()
-	t.Logf("last processed height %d", lastProcessedHeight)
-	time.Sleep(5 * L2BlockTime)
-	// check the finality is stuck
-	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
-	require.NoError(t, err)
-	stuckHeight := latestFinalizedBlock.Height
-	require.Equal(t, lastProcessedHeight, stuckHeight)
-	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
-
-	// restart the FP instance
-	fpStartErr := fpInstance.Start()
-	require.NoError(t, fpStartErr)
-	// make sure the FP is running
-	require.Eventually(t, func() bool {
-		return fpInstance.IsRunning()
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Restarted the FP instance")
-
-	// wait for next finalized block > stuckHeight
-	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
-	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", nextFinalizedHeight)
-}
-
-func TestFinalityStuckAndRecover(t *testing.T) {
-	ctm := StartOpL2ConsumerManager(t)
-	defer ctm.Stop(t)
-
-	// register Babylon finality provider
-	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
-
-	// register consumer finality providers
-	n := 1
-	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
-
-	// send a BTC delegation to consumer and Babylon finality providers
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
-
 	// check the BTC delegations are pending
 	delsResp := ctm.WaitForNPendingDels(t, n)
 	require.Equal(t, n, len(delsResp))
