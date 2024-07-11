@@ -249,20 +249,93 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	//  return nil for now
+	//isFinalized := true
+	//limit := uint64(1)
+	//blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if len(blocks) == 0 {
+	//	// do not return error here as FP handles this situation by
+	//	// not running fast sync
+	//	return nil, nil
+	//}
+	//
+	//return blocks[0], nil
+
 	return nil, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	//  query blocks directly from CometBFT for now
+	//if endHeight < startHeight {
+	//	return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
+	//}
+	//count := endHeight - startHeight + 1
+	//if count > limit {
+	//	count = limit
+	//}
+	//
+	//return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
+
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
+//nolint:unused
+func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
+	// Construct the query message
+	queryMsg := QueryMsgBlocks{
+		Blocks: BlocksQuery{
+			StartAfter: startAfter,
+			Limit:      limit,
+			Finalized:  finalized,
+			Reverse:    reverse,
+		},
+	}
+
+	// Marshal the query message to JSON
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %w", err)
+	}
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Unmarshal the response
+	var resp BlocksResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Process the blocks and convert them to BlockInfo
+	var blocks []*fptypes.BlockInfo
+	for _, b := range resp.Blocks {
+		block := &fptypes.BlockInfo{
+			Height: b.Height,
+			Hash:   b.AppHash,
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks, nil
+}
+
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	//  query block directly from CometBFT for now
+	//// Use the helper function to get the IndexedBlock
+	//resp, err := wc.QueryIndexedBlock(height)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//// Convert to BlockInfo and return
+	//return &fptypes.BlockInfo{
+	//	Height: resp.Height,
+	//	Hash:   resp.AppHash,
+	//}, nil
+
 	block, err := wc.cwClient.GetBlock(int64(height))
 	if err != nil {
 		return nil, err
@@ -334,8 +407,15 @@ func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publ
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	//  return false for now
+	//// Use the helper function to get the IndexedBlock
+	//resp, err := wc.QueryIndexedBlock(height)
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//// Return the finalized status
+	//return resp.Finalized, nil
+
 	return false, nil
 }
 
@@ -374,8 +454,19 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	// TODO: the consumer has not integrated with babylon-sdk and will be performing off-chain verification
-	//  query blocks directly from CometBFT for now
+	//reverse := true
+	//count := uint64(1)
+	//blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
+	//if err != nil {
+	//	return 0, err
+	//}
+	//
+	//if len(blocks) == 0 {
+	//	return 0, fmt.Errorf("no blocks found")
+	//}
+	//
+	//return blocks[0].Height, nil
+
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
