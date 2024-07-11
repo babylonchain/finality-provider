@@ -124,6 +124,8 @@ func (fp *FinalityProviderInstance) GetStatus() proto.FinalityProviderStatus {
 }
 
 func (fp *FinalityProviderInstance) GetLastVotedHeight() uint64 {
+	fp.mu.Lock()
+	defer fp.mu.Unlock()
 	return fp.fpState.getStoreFinalityProvider().LastVotedHeight
 }
 
