@@ -124,11 +124,17 @@ func (fp *FinalityProviderInstance) GetStatus() proto.FinalityProviderStatus {
 }
 
 func (fp *FinalityProviderInstance) GetLastVotedHeight() uint64 {
-	return fp.fpState.getStoreFinalityProvider().LastVotedHeight
+	fp.fpState.mu.Lock()
+	lastVotedHeight := fp.fpState.fp.LastVotedHeight
+	fp.fpState.mu.Unlock()
+	return lastVotedHeight
 }
 
 func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
-	return fp.fpState.getStoreFinalityProvider().LastProcessedHeight
+	fp.fpState.mu.Lock()
+	lastProcessedHeight := fp.fpState.fp.LastProcessedHeight
+	fp.fpState.mu.Unlock()
+	return lastProcessedHeight
 }
 
 func (fp *FinalityProviderInstance) GetChainID() []byte {
