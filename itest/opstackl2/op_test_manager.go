@@ -130,6 +130,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	require.Len(t, listContractsResponse.Contracts, 1)
 	cwContractAddress := listContractsResponse.Contracts[0]
+	t.Logf("op-finality-gadget contract address: %s", cwContractAddress)
 
 	// start op stack system
 	// TODO: this doesn't read from the devnetL1.json file. we should find a way to make it read from the file to avoid
@@ -175,7 +176,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
 	sdkClient, err := sdk.NewClient(&sdk.Config{
 		ChainType:    opSysCfg.DeployConfig.BabylonFinalityGadgetChainType,
-		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
+		ContractAddr: cwContractAddress,
 		BTCConfig:    btcConfig,
 	})
 	require.NoError(t, err)
