@@ -33,7 +33,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
-	opgenesis "github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -44,7 +43,6 @@ import (
 
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_42eb9bf.wasm"
-	devnetL1JsonPath             = "./devnet-data/devnetL1.json"
 	consumerChainIdPrefix        = "op-stack-l2-"
 )
 
@@ -67,7 +65,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.DebugLevel)
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -110,11 +108,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), opFinalityGadgetContractWasmId, "first deployed contract code_id should be 1")
 
-	// get op deploy config from devnetL1.json
-	opDeployConfig, err := opgenesis.NewDeployConfig(devnetL1JsonPath)
-	require.NoError(t, err)
-	require.Equal(t, -1, opDeployConfig.BabylonFinalityGadgetChainType, "the value of babylonFinalityGadgetChainType should be -1 in devnetL1.json")
-	l2ChainID := opDeployConfig.L2ChainID
+	// DefaultSystemConfig load the op deploy config from devnet-data folder
+	opSysCfg := ope2e.DefaultSystemConfig(t)
+	require.Equal(t, -1, opSysCfg.DeployConfig.BabylonFinalityGadgetChainType, "should be -1 in devnetL1.json that means to connect with the Babylon localnet")
+	l2ChainID := opSysCfg.DeployConfig.L2ChainID
 	opConsumerId := fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainID)
 	// instantiate op contract
 	opFinalityGadgetInitMsg := map[string]interface{}{
@@ -133,20 +130,14 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	cwContractAddress := listContractsResponse.Contracts[0]
 	t.Logf("op-finality-gadget contract address: %s", cwContractAddress)
 
-	// start op stack system
-	// TODO: this doesn't read from the devnetL1.json file. we should find a way to make it read from the file to avoid
-	// inconsistency.
-	opSysCfg := ope2e.DefaultSystemConfig(t)
-	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = opDeployConfig.BabylonFinalityGadgetChainType
+	// replace the contract address
 	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
-	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc = opDeployConfig.BabylonFinalityGadgetBitcoinRpc
-	opSysCfg.DeployConfig.L2BlockTime = opDeployConfig.L2BlockTime
 	// supress OP system logs
 	opSysCfg.Loggers["verifier"] = optestlog.Logger(t, gethlog.LevelError).New("role", "verifier")
 	opSysCfg.Loggers["sequencer"] = optestlog.Logger(t, gethlog.LevelError).New("role", "sequencer")
 	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
 	require.NoError(t, err)
-
+	// start op stack system
 	opSys, err := opSysCfg.Start(t)
 	require.Nil(t, err, "Error starting up op stack system")
 
