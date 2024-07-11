@@ -31,7 +31,6 @@ import (
 )
 
 type FinalityProviderInstance struct {
-	mu      sync.Mutex
 	chainPk *secp256k1.PubKey
 	btcPk   *bbntypes.BIP340PubKey
 
