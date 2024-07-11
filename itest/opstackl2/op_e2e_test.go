@@ -171,15 +171,15 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	t.Logf("Stopped the FP instance")
 
-	// get the last processed height
-	lastProcessedHeight := fpInstance.GetLastProcessedHeight()
-	t.Logf("last processed height %d", lastProcessedHeight)
+	// get the last voted height
+	lastVotedHeight := fpInstance.GetLastVotedHeight()
+	t.Logf("last processed height %d", lastVotedHeight)
 	time.Sleep(5 * L2BlockTime)
 	// check the finality is stuck
 	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
 	stuckHeight := latestFinalizedBlock.Height
-	require.Equal(t, lastProcessedHeight, stuckHeight)
+	require.Equal(t, lastVotedHeight, stuckHeight)
 	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
 
 	// restart the FP instance
