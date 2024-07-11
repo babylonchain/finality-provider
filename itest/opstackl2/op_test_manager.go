@@ -396,6 +396,17 @@ func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(t *testing.T
 	return babylonFpPkList
 }
 
+func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(t *testing.T, checkedHeight uint64) uint64 {
+	finalizedBlockHeight := uint64(0)
+	require.Eventually(t, func() bool {
+		nextFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		require.NoError(t, err)
+		finalizedBlockHeight = nextFinalizedBlock.Height
+		return finalizedBlockHeight > checkedHeight
+	}, e2eutils.EventuallyWaitTimeOut, 5*L2BlockTime)
+	return finalizedBlockHeight
+}
+
 func (ctm *OpL2ConsumerTestManager) getConsumerChainId() string {
 	l2ChainId := ctm.OpSystem.Cfg.DeployConfig.L2ChainID
 	return fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainId)
