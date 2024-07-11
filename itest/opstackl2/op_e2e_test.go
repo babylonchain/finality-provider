@@ -188,9 +188,9 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf("last processed height %d", lastProcessedHeight)
 	time.Sleep(5 * L2BlockTime)
 	// check the finality is stuck
-	checkFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
-	stuckHeight := checkFinalizedBlock.Height
+	stuckHeight := latestFinalizedBlock.Height
 	require.Equal(t, lastProcessedHeight, stuckHeight)
 	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
 
