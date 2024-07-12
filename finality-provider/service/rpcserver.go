@@ -110,7 +110,6 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 	return &proto.CreateFinalityProviderResponse{
 		FinalityProvider: result.FpInfo,
 	}, nil
-
 }
 
 // RegisterFinalityProvider sends a transactions to Babylon to register a BTC finality-provider
