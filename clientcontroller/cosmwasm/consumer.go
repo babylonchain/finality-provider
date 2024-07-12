@@ -267,16 +267,6 @@ func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.Bloc
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
-	//if endHeight < startHeight {
-	//	return nil, fmt.Errorf("the startHeight %v should not be higher than the endHeight %v", startHeight, endHeight)
-	//}
-	//count := endHeight - startHeight + 1
-	//if count > limit {
-	//	count = limit
-	//}
-	//
-	//return wc.queryLatestBlocks(&startHeight, &count, nil, nil)
-
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
@@ -325,17 +315,6 @@ func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint6
 }
 
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
-	//// Use the helper function to get the IndexedBlock
-	//resp, err := wc.QueryIndexedBlock(height)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Convert to BlockInfo and return
-	//return &fptypes.BlockInfo{
-	//	Height: resp.Height,
-	//	Hash:   resp.AppHash,
-	//}, nil
-
 	block, err := wc.cwClient.GetBlock(int64(height))
 	if err != nil {
 		return nil, err
