@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -111,7 +110,6 @@ func (r *rpcServer) CreateFinalityProvider(ctx context.Context, req *proto.Creat
 	return &proto.CreateFinalityProviderResponse{
 		FinalityProvider: result.FpInfo,
 	}, nil
-
 }
 
 // RegisterFinalityProvider sends a transactions to Babylon to register a BTC finality-provider
@@ -125,7 +123,7 @@ func (r *rpcServer) RegisterFinalityProvider(ctx context.Context, req *proto.Reg
 
 	// the finality-provider instance should be started right after registration
 	if err := r.app.StartHandlingFinalityProvider(txRes.btcPubKey, req.Passphrase); err != nil {
-		return nil, fmt.Errorf("failed to start the registered finality-provider %s: %w", hex.EncodeToString(txRes.bbnPubKey.Key), err)
+		return nil, fmt.Errorf("failed to start the registered finality-provider %s: %w", txRes.bbnAddress.String(), err)
 	}
 
 	return &proto.RegisterFinalityProviderResponse{TxHash: txRes.TxHash}, nil

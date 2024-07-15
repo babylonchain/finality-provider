@@ -46,7 +46,6 @@ RUN addgroup --gid 1138 -S finality-provider && adduser --uid 1138 -S finality-p
 RUN apk add bash curl jq
 
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpd /bin/fpd
-COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpcli /bin/fpcli
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/eotsd /bin/eotsd
 
 WORKDIR /home/finality-provider

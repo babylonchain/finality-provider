@@ -13,11 +13,10 @@ import (
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
+	"github.com/babylonchain/finality-provider/clientcontroller"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -116,15 +115,29 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
 	tm := StartManager(t)
 	app := tm.Fpa
+	cfg := app.GetConfig()
+	oldKey := cfg.BabylonConfig.Key
 
 	for i := 0; i < n; i++ {
 		fpName := e2eutils.FpNamePrefix + strconv.Itoa(i)
 		moniker := e2eutils.MonikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
-		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
+
+		// needs to update key in config to be able to register and sign the creation of the finality provider with the
+		// same address.
+		cfg.BabylonConfig.Key = fpName
+		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, e2eutils.Passphrase, e2eutils.HdPath, "")
 		require.NoError(t, err)
+
+		cc, err := clientcontroller.NewClientController(cfg, zap.NewNop())
+		require.NoError(t, err)
+		app.UpdateClientController(cc)
+
+		// add some funds for new fp pay for fees '-'
+		err = tm.BabylonHandler.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
+		require.NoError(t, err)
+
 		res, err := app.CreateFinalityProvider(fpName, e2eutils.ChainID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
@@ -163,6 +176,12 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 	}
 
+	// goes back to old key in app
+	cfg.BabylonConfig.Key = oldKey
+	cc, err := clientcontroller.NewClientController(cfg, zap.NewNop())
+	require.NoError(t, err)
+	app.UpdateClientController(cc)
+
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
 
@@ -179,18 +198,6 @@ func (tm *TestManager) Stop(t *testing.T) {
 	err = os.RemoveAll(tm.baseDir)
 	require.NoError(t, err)
 	tm.EOTSServerHandler.Stop()
-}
-
-func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
-	require.Eventually(t, func() bool {
-		queriedFps, err := tm.BBNClient.QueryFinalityProviders()
-		if err != nil {
-			return false
-		}
-		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-
-	t.Logf("the finality-provider is successfully registered")
 }
 
 func (tm *TestManager) CheckBlockFinalization(t *testing.T, height uint64, num int) {

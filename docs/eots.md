@@ -9,7 +9,7 @@ using them to produce EOTS signatures.
 in
 the [Babylon BTC Staking Litepaper](https://docs.babylonchain.io/assets/files/btc_staking_litepaper-32bfea0c243773f0bfac63e148387aef.pdf).
 In short, the EOTS manager produces EOTS public/private randomness pairs. The
-finality provider commits the public part of this pairs to Babylon for every future
+finality provider commits the public part of these pairs to Babylon for every future
 block height that they intend to provide a finality signature for. If the finality
 provider votes for two different blocks on the same height, they will have to reuse
 the same private randomness which will lead to their underlying private key being
@@ -68,7 +68,7 @@ Handles the keys for EOTS.
 The binary `eotsd` has the option to add a new key to the keyring for
 later usage with signing EOTS and Schnorr signatures. Keep in mind
 that new keys can be created on demand by the GRPC call from `fpd`.
-But, if you would like to add a new EOTS keys manually, run `eotsd keys add`.
+But, if you would like to add a new EOTS key manually, run `eotsd keys add`.
 
 This command has several flag options:
 

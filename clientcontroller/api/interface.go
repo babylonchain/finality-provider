@@ -9,12 +9,11 @@ import (
 )
 
 type ClientController interface {
-
 	// RegisterFinalityProvider registers a finality provider to the consumer chain
-	// it returns tx hash and error
+	// it returns tx hash and error. The address of the finality provider will be
+	// the signer of the msg.
 	RegisterFinalityProvider(
 		chainID string,
-		chainPk []byte,
 		fpPk *btcec.PublicKey,
 		pop []byte,
 		commission *math.LegacyDec,
