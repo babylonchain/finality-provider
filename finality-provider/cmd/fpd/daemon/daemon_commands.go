@@ -88,7 +88,7 @@ func CommandCreateFP() *cobra.Command {
 	return cmd
 }
 
-func runCommandCreateFP(ctx client.Context, cmd *cobra.Command, args []string) error {
+func runCommandCreateFP(ctx client.Context, cmd *cobra.Command, _ []string) error {
 	flags := cmd.Flags()
 	daemonAddress, err := flags.GetString(fpdDaemonAddressFlag)
 	if err != nil {
@@ -109,7 +109,7 @@ func runCommandCreateFP(ctx client.Context, cmd *cobra.Command, args []string) e
 		return fmt.Errorf("invalid description: %w", err)
 	}
 
-	keyName, err := loadKeyName(ctx, cmd)
+	keyName, err := loadKeyName(ctx.HomeDir, cmd)
 	if err != nil {
 		return fmt.Errorf("not able to load key name: %w", err)
 	}
@@ -368,7 +368,7 @@ func printRespJSON(resp interface{}) {
 	fmt.Printf("%s\n", jsonBytes)
 }
 
-func loadKeyName(ctx client.Context, cmd *cobra.Command) (string, error) {
+func loadKeyName(homeDir string, cmd *cobra.Command) (string, error) {
 	keyName, err := cmd.Flags().GetString(keyNameFlag)
 	if err != nil {
 		return "", fmt.Errorf("failed to read flag %s: %w", keyNameFlag, err)
@@ -380,9 +380,9 @@ func loadKeyName(ctx client.Context, cmd *cobra.Command) (string, error) {
 
 	// we add the following check to ensure that the chain key is created
 	// beforehand
-	cfg, err := fpcfg.LoadConfig(ctx.HomeDir)
+	cfg, err := fpcfg.LoadConfig(homeDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(ctx.HomeDir), err)
+		return "", fmt.Errorf("failed to load config from %s: %w", fpcfg.ConfigFile(homeDir), err)
 	}
 
 	keyName = cfg.BabylonConfig.Key

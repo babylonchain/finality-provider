@@ -20,8 +20,8 @@ providers:
    finality votes for each block each maintained finality provider has committed to
    vote for.
 
-The daemon is controlled by the `fpd` tool and overall commands for interacting
-with the running daemon.
+The daemon is controlled by the `fpd` tool, which has overall commands for
+interacting with the running daemon.
 
 ## 2. Configuration
 
