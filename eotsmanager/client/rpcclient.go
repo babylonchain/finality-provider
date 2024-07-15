@@ -3,10 +3,12 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/babylonchain/finality-provider/eotsmanager"
@@ -21,10 +23,33 @@ type EOTSManagerGRpcClient struct {
 	conn   *grpc.ClientConn
 }
 
+func waitForConnReady(conn *grpc.ClientConn, timeout time.Duration) error {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	timeoutChan := time.After(timeout)
+
+	for {
+		select {
+		case <-ticker.C:
+			if conn.GetState() == connectivity.Ready {
+				return nil // Connection is ready
+			}
+		case <-timeoutChan:
+			return fmt.Errorf("connection is not ready after %v", timeout)
+		}
+	}
+}
+
 func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error) {
 	conn, err := grpc.NewClient(remoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build gRPC connection to %s: %w", remoteAddr, err)
+	}
+
+	err = waitForConnReady(conn, 5*time.Second)
+	if err != nil {
+		return nil, err
 	}
 
 	gClient := &EOTSManagerGRpcClient{
