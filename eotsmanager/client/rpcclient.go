@@ -32,7 +32,7 @@ func waitForConnReady(conn *grpc.ClientConn, timeout time.Duration) error {
 	for {
 		select {
 		case <-ticker.C:
-			if conn.GetState() == connectivity.Ready {
+			if conn.GetState() == connectivity.Ready || conn.GetState() == connectivity.Idle {
 				return nil // Connection is ready
 			}
 		case <-timeoutChan:
@@ -58,7 +58,8 @@ func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error)
 	}
 
 	if err := gClient.Ping(); err != nil {
-		return nil, fmt.Errorf("the EOTS manager server is not responding: %w", err)
+		return nil, fmt.Errorf(
+			"the EOTS manager server is not responding: %w. Client connection current state: %s", err, conn.GetState())
 	}
 
 	return gClient, nil
