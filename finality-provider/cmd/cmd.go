@@ -12,7 +12,9 @@ import (
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 )
 
-// PersistClientCtx persist some vars from the cmd to the client context.
+// PersistClientCtx persist some vars from the cmd or config to the client context.
+// It gives preferences to flags over the values in the config. If the flag is not set
+// and exists a value in the config that could be used, it will be set in the ctx.
 func PersistClientCtx(ctx client.Context) func(cmd *cobra.Command, _ []string) error {
 	return func(cmd *cobra.Command, _ []string) error {
 		// TODO(verify): if it uses the default encoding config it fails to list keys! output:
