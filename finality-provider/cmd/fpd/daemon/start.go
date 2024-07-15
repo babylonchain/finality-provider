@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/log"
@@ -26,21 +27,12 @@ func CommandStart() *cobra.Command {
 		Long:    `Start the finality-provider app. Note that eotsd should be started beforehand`,
 		Example: `fpd start --home /home/user/.fpd`,
 		Args:    cobra.NoArgs,
-		RunE:    runStartCmdPrepare,
+		RunE:    fpcmd.RunEWithClientCtx(runStartCmd),
 	}
 	cmd.Flags().String(fpPkFlag, "", "The public key of the finality-provider to start")
 	cmd.Flags().String(passphraseFlag, "", "The pass phrase used to decrypt the private key")
 	cmd.Flags().String(rpcListenerFlag, "", "The address that the RPC server listens to")
 	return cmd
-}
-
-func runStartCmdPrepare(cmd *cobra.Command, args []string) error {
-	clientCtx, err := client.GetClientQueryContext(cmd)
-	if err != nil {
-		return err
-	}
-
-	return runStartCmd(clientCtx, cmd, args)
 }
 
 func runStartCmd(ctx client.Context, cmd *cobra.Command, args []string) error {

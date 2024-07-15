@@ -8,6 +8,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/spf13/cobra"
 
+	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/util"
 )
@@ -20,19 +21,10 @@ func CommandInit() *cobra.Command {
 		Long:    `Creates a new finality-provider home directory with default config`,
 		Example: `fpd init --home /home/user/.fpd --force`,
 		Args:    cobra.NoArgs,
-		RunE:    runInitCmdPrepare,
+		RunE:    fpcmd.RunEWithClientCtx(runInitCmd),
 	}
 	cmd.Flags().Bool(forceFlag, false, "Override existing configuration")
 	return cmd
-}
-
-func runInitCmdPrepare(cmd *cobra.Command, args []string) error {
-	clientCtx, err := client.GetClientQueryContext(cmd)
-	if err != nil {
-		return err
-	}
-
-	return runInitCmd(clientCtx, cmd, args)
 }
 
 func runInitCmd(ctx client.Context, cmd *cobra.Command, args []string) error {

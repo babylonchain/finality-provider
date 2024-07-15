@@ -17,13 +17,14 @@ type FinalityProviderServiceGRpcClient struct {
 	client proto.FinalityProvidersClient
 }
 
-func NewFinalityProviderServiceGRpcClient(remoteAddr string) (*FinalityProviderServiceGRpcClient, func(), error) {
+// NewFinalityProviderServiceGRpcClient creates a new GRPC connection with finality provider daemon.
+func NewFinalityProviderServiceGRpcClient(remoteAddr string) (client *FinalityProviderServiceGRpcClient, cleanUp func(), err error) {
 	conn, err := grpc.Dial(remoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to build gRPC connection to %s: %w", remoteAddr, err)
 	}
 
-	cleanUp := func() {
+	cleanUp = func() {
 		conn.Close()
 	}
 

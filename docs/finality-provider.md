@@ -20,8 +20,8 @@ providers:
    finality votes for each block each maintained finality provider has committed to
    vote for.
 
-The daemon is controlled by the `fpd` tool. The `fpcli` tool implements commands for
-interacting with the daemon.
+The daemon is controlled by the `fpd` tool, which has overall commands for
+interacting with the running daemon.
 
 ## 2. Configuration
 
@@ -150,14 +150,14 @@ can also be set in the configuration file.
 ## 5. Create and Register a Finality Provider
 
 We create a finality provider instance through the
-`fpcli create-finality-provider` or `fpcli cfp` command. The created instance is
+`fpd create-finality-provider` or `fpd cfp` command. The created instance is
 associated with a BTC public key which serves as its unique identifier and a Babylon
 account to which staking rewards will be directed. Note that if the `--key-name` flag
 is not specified, the `Key` field of config specified
 in [step](#3-add-key-for-the-consumer-chain) will be used.
 
 ```bash
-fpcli create-finality-provider --key-name my-finality-provider \
+fpd create-finality-provider --key-name my-finality-provider \
                 --chain-id bbn-test-3 --moniker my-name
 {
   "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
@@ -170,11 +170,11 @@ fpcli create-finality-provider --key-name my-finality-provider \
 ```
 
 We register a created finality provider in Babylon through
-the `fpcli register-finality-provider` or `fpcli rfp` command. The output contains
+the `fpd register-finality-provider` or `fpd rfp` command. The output contains
 the hash of the Babylon finality provider registration transaction.
 
 ```bash
-fpcli register-finality-provider \
+fpd register-finality-provider \
   --btc-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
 {
   "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
@@ -186,7 +186,7 @@ A finality provider instance will be initiated and start running right after the
 finality provider is successfully registered in Babylon.
 
 We can view the status of all the running finality providers through
-the `fpcli list-finality-providers` or `fpcli ls` command. The `status` field can
+the `fpd list-finality-providers` or `fpd ls` command. The `status` field can
 receive the following values:
 
 - `CREATED`: The finality provider is created but not registered yet
@@ -199,7 +199,7 @@ receive the following values:
 - `SLASHED`: The finality provider is slashed due to malicious behavior
 
 ```bash
-fpcli list-finality-providers
+fpd list-finality-providers
 {
     "finality-providers": [
         ...
@@ -217,7 +217,7 @@ fpcli list-finality-providers
 ```
 
 After the creation of the finality provider in the local db, it is possible
-to export the finality provider information through the `fpcli export-finality-provider` command.
+to export the finality provider information through the `fpd export-finality-provider` command.
 This command connects with the `fpd` daemon to retrieve the finality
 provider previously created using the flag `--btc-pk` as key.
 
@@ -235,7 +235,7 @@ passphrase is required.
 - `--hd-path` the hd derivation path of the private key.
 
 ```shell
-$ fpcli export-finality-provider --btc-pk 02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077 \
+$ fpd export-finality-provider --btc-pk 02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077 \
 --home ./export-fp/fpd --key-name finality-provider --signed
 ```
 

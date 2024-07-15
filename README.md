@@ -69,8 +69,7 @@ The above command will build and install the following binaries to
 `$GOPATH/bin`:
 
 - `eotsd`: The daemon program for the EOTS manager.
-- `fpd`: The daemon program for the finality-provider.
-- `fpcli`: The CLI tool for interacting with the finality-provider daemon.
+- `fpd`: The daemon program for the finality-provider with overall commands.
 
 If your shell cannot find the installed binaries, make sure `$GOPATH/bin` is in
 the `$PATH` of your shell. Usually these commands will do the job

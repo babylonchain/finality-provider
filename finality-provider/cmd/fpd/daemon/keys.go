@@ -3,6 +3,7 @@ package daemon
 import (
 	"strings"
 
+	helper "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/cosmos/cosmos-sdk/client"
 	sdkflags "github.com/cosmos/cosmos-sdk/client/flags"
@@ -20,15 +21,9 @@ func CommandKeys() *cobra.Command {
 		panic("failed to find keys add command")
 	}
 
-	// add command
-	keyAddCmd.PostRunE = func(cmd *cobra.Command, args []string) error {
-		clientCtx, err := client.GetClientQueryContext(cmd)
-		if err != nil {
-			return err
-		}
-
+	keyAddCmd.PostRunE = helper.RunEWithClientCtx(func(ctx client.Context, cmd *cobra.Command, args []string) error {
 		// check the config file exists
-		cfg, err := fpcfg.LoadConfig(clientCtx.HomeDir)
+		cfg, err := fpcfg.LoadConfig(ctx.HomeDir)
 		if err != nil {
 			return nil // config does not exist, so does not update it
 		}
@@ -43,8 +38,8 @@ func CommandKeys() *cobra.Command {
 		cfg.BabylonConfig.KeyringBackend = keyringBackend
 		fileParser := goflags.NewParser(cfg, goflags.Default)
 
-		return goflags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(clientCtx.HomeDir), goflags.IniIncludeComments|goflags.IniIncludeDefaults)
-	}
+		return goflags.NewIniParser(fileParser).WriteFile(fpcfg.ConfigFile(ctx.HomeDir), goflags.IniIncludeComments|goflags.IniIncludeDefaults)
+	})
 
 	return keysCmd
 }
