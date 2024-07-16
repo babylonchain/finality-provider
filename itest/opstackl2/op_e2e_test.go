@@ -72,8 +72,18 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	// send a BTC delegation to consumer and Babylon finality providers
 	// for the first FP, we give it more power b/c it will be used later
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, 3*e2eutils.StakingAmount)
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	ctm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
+		e2eutils.StakingTime,
+		3*e2eutils.StakingAmount,
+	)
+	ctm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()},
+		e2eutils.StakingTime,
+		e2eutils.StakingAmount,
+	)
 
 	// wait until all delegations are active
 	ctm.WaitForDelegations(t, n)
@@ -138,7 +148,12 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
 
 	// send a BTC delegation to consumer and Babylon finality providers
-	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
+	ctm.InsertBTCDelegation(
+		t,
+		[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
+		e2eutils.StakingTime,
+		e2eutils.StakingAmount,
+	)
 
 	// check the BTC delegations are pending
 	delsResp := ctm.WaitForNPendingDels(t, n)
@@ -201,5 +216,6 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	// wait for next finalized block > stuckHeight
 	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
 	t.Logf(log.Prefix(
-		"Test case 2: OP chain fianlity is recovered, the latest finalized block height %d"), nextFinalizedHeight)
+		"Test case 2: OP chain fianlity is recovered, the latest finalized block height %d",
+	), nextFinalizedHeight)
 }
