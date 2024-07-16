@@ -15,8 +15,9 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon-finality-gadget/btcclient"
-	"github.com/babylonchain/babylon-finality-gadget/sdk"
+	"github.com/babylonchain/babylon-finality-gadget/sdk/btcclient"
+	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
+	sdkcfg "github.com/babylonchain/babylon-finality-gadget/sdk/config"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -59,7 +60,7 @@ type OpL2ConsumerTestManager struct {
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
-	SdkClient         *sdk.BabylonFinalityGadgetClient
+	SdkClient         *sdkclient.SdkClient
 	OpSystem          *ope2e.System
 }
 
@@ -135,8 +136,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// TODO: this doesn't read from the devnetL1.json file. we should find a way to make it read from the file to avoid
 	// inconsistency.
 	opSysCfg := ope2e.DefaultSystemConfig(t)
-	sdkCfgChainType := -1 // only for the e2e test
-	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = sdkCfgChainType
+	sdkCfgChainId := "chain-test" // only for the e2e test
+	opSysCfg.DeployConfig.BabylonFinalityGadgetChainID = sdkCfgChainId
 	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
 	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc, err = jsonutil.ReadJSONValueToString(
 		devnetL1JsonPath, "babylonFinalityGadgetBitcoinRpc")
@@ -174,8 +175,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// The RPC url must be trimmed to remove the http:// or https:// prefix.
 	btcConfig := btcclient.DefaultBTCConfig()
 	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
-	sdkClient, err := sdk.NewClient(&sdk.Config{
-		ChainType:    sdkCfgChainType,
+	sdkClient, err := sdkclient.NewClient(&sdkcfg.Config{
+		ChainID:      sdkCfgChainId,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
 		BTCConfig:    btcConfig,
 	})

@@ -6,9 +6,9 @@ package e2etest_op
 import (
 	"encoding/hex"
 	"testing"
-	"time"
 
-	"github.com/babylonchain/babylon-finality-gadget/sdk"
+	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
+	"github.com/babylonchain/babylon-finality-gadget/sdk/cwclient"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/testutil/log"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -36,7 +36,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 
 	// wait for the fp sign
 	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
-	queryParams := &sdk.L2Block{
+	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -45,7 +45,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// note: QueryFinalityProviderHasPower is hardcode to return true so FPs can still submit finality sigs even if they
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)
+	require.ErrorIs(t, err, sdkclient.ErrNoFpHasVotingPower)
 }
 
 // This test has two test cases:
@@ -89,7 +89,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
-	queryParams := &sdk.L2Block{
+	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -113,7 +113,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)
-	queryNextParams := &sdk.L2Block{
+	queryNextParams := cwclient.L2Block{
 		BlockHeight:    testNextBlock.Height,
 		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -169,18 +169,24 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return !fpInstance.IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Stopped the FP instance")
+	t.Logf(log.Prefix("Stopped the FP instance"))
 
 	// get the last voted height
 	lastVotedHeight := fpInstance.GetLastVotedHeight()
-	t.Logf("last processed height %d", lastVotedHeight)
-	time.Sleep(5 * L2BlockTime)
-	// check the finality is stuck
+	t.Logf(log.Prefix("last processed height %d"), lastVotedHeight)
+	// check the finality gets stuck
+	require.Eventually(t, func() bool {
+		latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		require.NoError(t, err)
+		stuckHeight := latestFinalizedBlock.Height
+		return lastVotedHeight == stuckHeight
+	}, 30*L2BlockTime, e2eutils.EventuallyPollTime)
+
 	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
 	stuckHeight := latestFinalizedBlock.Height
 	require.Equal(t, lastVotedHeight, stuckHeight)
-	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
+	t.Logf(log.Prefix("Test case 1: OP chain block finalized stuck at height %d"), stuckHeight)
 
 	// restart the FP instance
 	fpStartErr := fpInstance.Start()
@@ -189,9 +195,10 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return fpInstance.IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Restarted the FP instance")
+	t.Logf(log.Prefix("Restarted the FP instance"))
 
 	// wait for next finalized block > stuckHeight
 	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
-	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", nextFinalizedHeight)
+	t.Logf(log.Prefix(
+		"Test case 2: OP chain fianlity is recovered, the latest finalized block height %d"), nextFinalizedHeight)
 }
