@@ -20,6 +20,8 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
+	ctm.BBNClient.GetKeyAddress()
+
 	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, 1)
 	// start consumer chain FP
 	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)

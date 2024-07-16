@@ -8,7 +8,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/babylonchain/finality-provider/eotsmanager"
@@ -18,38 +17,20 @@ import (
 
 var _ eotsmanager.EOTSManager = &EOTSManagerGRpcClient{}
 
+const (
+	retryInterval = 500 * time.Millisecond
+	retryTimeout  = 5 * time.Second
+)
+
 type EOTSManagerGRpcClient struct {
 	client proto.EOTSManagerClient
 	conn   *grpc.ClientConn
-}
-
-func waitForConnReady(conn *grpc.ClientConn, timeout time.Duration) error {
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	timeoutChan := time.After(timeout)
-
-	for {
-		select {
-		case <-ticker.C:
-			if conn.GetState() == connectivity.Ready || conn.GetState() == connectivity.Idle {
-				return nil // Connection is ready
-			}
-		case <-timeoutChan:
-			return fmt.Errorf("connection is not ready after %v", timeout)
-		}
-	}
 }
 
 func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error) {
 	conn, err := grpc.NewClient(remoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to build gRPC connection to %s: %w", remoteAddr, err)
-	}
-
-	err = waitForConnReady(conn, 5*time.Second)
-	if err != nil {
-		return nil, err
 	}
 
 	gClient := &EOTSManagerGRpcClient{
@@ -67,13 +48,26 @@ func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error)
 
 func (c *EOTSManagerGRpcClient) Ping() error {
 	req := &proto.PingRequest{}
+	retryTicker := time.NewTicker(retryInterval)
+	defer retryTicker.Stop()
+	timeout := time.After(retryTimeout)
 
-	_, err := c.client.Ping(context.Background(), req)
-	if err != nil {
-		return err
+	for {
+		_, err := c.client.Ping(context.Background(), req)
+		if err == nil {
+			return nil // Success, return nil error
+		}
+
+		// Retry logic
+		select {
+		case <-retryTicker.C:
+			// Continue to retry
+			continue
+		case <-timeout:
+			// Max duration reached, return last error
+			return err
+		}
 	}
-
-	return nil
 }
 
 func (c *EOTSManagerGRpcClient) CreateKey(name, passphrase, hdPath string) ([]byte, error) {
