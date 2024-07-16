@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/babylonchain/babylon-finality-gadget/sdk"
+	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
+	"github.com/babylonchain/babylon-finality-gadget/sdk/cwclient"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/testutil/log"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -36,7 +37,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 
 	// wait for the fp sign
 	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
-	queryParams := &sdk.L2Block{
+	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -45,7 +46,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// note: QueryFinalityProviderHasPower is hardcode to return true so FPs can still submit finality sigs even if they
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)
+	require.ErrorIs(t, err, sdkclient.ErrNoFpHasVotingPower)
 }
 
 // This test has two test cases:
@@ -101,7 +102,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
-	queryParams := &sdk.L2Block{
+	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -125,7 +126,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)
-	queryNextParams := &sdk.L2Block{
+	queryNextParams := cwclient.L2Block{
 		BlockHeight:    testNextBlock.Height,
 		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked

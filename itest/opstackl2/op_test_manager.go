@@ -15,8 +15,9 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon-finality-gadget/btcclient"
-	"github.com/babylonchain/babylon-finality-gadget/sdk"
+	"github.com/babylonchain/babylon-finality-gadget/sdk/btcclient"
+	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
+	sdkcfg "github.com/babylonchain/babylon-finality-gadget/sdk/config"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -56,7 +57,7 @@ type OpL2ConsumerTestManager struct {
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
-	SdkClient         *sdk.BabylonFinalityGadgetClient
+	SdkClient         *sdkclient.SdkClient
 	OpSystem          *ope2e.System
 }
 
@@ -110,7 +111,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 
 	// DefaultSystemConfig load the op deploy config from devnet-data folder
 	opSysCfg := ope2e.DefaultSystemConfig(t)
-	require.Equal(t, -1, opSysCfg.DeployConfig.BabylonFinalityGadgetChainType, "should be -1 in devnetL1.json that means to connect with the Babylon localnet")
+	require.Equal(t, e2eutils.ChainID, opSysCfg.DeployConfig.BabylonFinalityGadgetChainID, "should be chain-test in devnetL1.json that means to connect with the Babylon localnet")
 	l2ChainID := opSysCfg.DeployConfig.L2ChainID
 	opConsumerId := fmt.Sprintf("%s%d", consumerChainIdPrefix, l2ChainID)
 	// instantiate op contract
@@ -166,8 +167,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// The RPC url must be trimmed to remove the http:// or https:// prefix.
 	btcConfig := btcclient.DefaultBTCConfig()
 	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
-	sdkClient, err := sdk.NewClient(&sdk.Config{
-		ChainType:    opSysCfg.DeployConfig.BabylonFinalityGadgetChainType,
+	sdkClient, err := sdkclient.NewClient(&sdkcfg.Config{
+		ChainID:      opSysCfg.DeployConfig.BabylonFinalityGadgetChainID,
 		ContractAddr: cwContractAddress,
 		BTCConfig:    btcConfig,
 	})
