@@ -107,7 +107,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	t.Logf(log.Prefix("Stopped the first FP instance"))
 
 	// select a block that the first FP has not processed yet to give to the second FP to sign
-	testNextBlockHeight := fpList[0].GetLastProcessedHeight() + 1
+	testNextBlockHeight := fpList[0].GetLastVotedHeight() + 1
 	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 

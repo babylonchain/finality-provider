@@ -101,7 +101,7 @@ test-e2e-babylon: clean-e2e install-babylond
 	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon
 
 test-e2e-bcd: clean-e2e install-babylond install-bcd
-	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_BCD) -count=1 --tags=e2e_bcd
+	@go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_BCD) -count=1 --tags=e2e_bcd
 
 test-e2e-wasmd: clean-e2e install-babylond install-wasmd
 	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_wasmd
