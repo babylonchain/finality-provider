@@ -1,0 +1,24 @@
+name: docker_publish
+
+on:
+  push:
+    branches:
+    - 'hiep/add-github-actions'
+    tags:
+    - 'hiep/add-github-actions'
+
+jobs:
+  lint_test:
+    uses: babylonchain/.github/.github/workflows/reusable_go_lint_test.yml@hiep/add-reusable-workflows
+    with:
+     run-unit-tests: true
+     run-integration-tests: true
+     run-lint: true
+     run-check-mock-gen: true
+     
+  docker_pipeline:
+    needs: ["lint_test"]
+    uses: babylonchain/.github/.github/workflows/reusable_docker_pipeline.yml@hiep/add-reusable-workflows
+    secrets: inherit
+    with:
+     publish: true
