@@ -249,16 +249,22 @@ func (wc *CosmwasmConsumerController) QueryFinalityProvidersByPower() (*Consumer
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestFinalizedBlock() (*fptypes.BlockInfo, error) {
-	// expected to return nil if no finalized block
-	// poller will start from activated height
-	return nil, nil
+	isFinalized := true
+	limit := uint64(1)
+	blocks, err := wc.queryLatestBlocks(nil, &limit, &isFinalized, nil)
+	if err != nil || len(blocks) == 0 {
+		// do not return error here as FP handles this situation by
+		// not running fast sync
+		return nil, nil
+	}
+
+	return blocks[0], nil
 }
 
 func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit uint64) ([]*fptypes.BlockInfo, error) {
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
-//nolint:unused
 func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
 	// Construct the query message
 	queryMsg := QueryMsgBlocks{
@@ -374,9 +380,12 @@ func (wc *CosmwasmConsumerController) QueryLastPublicRandCommit(fpPk *btcec.Publ
 }
 
 func (wc *CosmwasmConsumerController) QueryIsBlockFinalized(height uint64) (bool, error) {
-	// TODO: there could be a potential bug if we hardcode false here
-	//  investigate https://github.com/babylonchain/finality-provider/issues/515
-	return false, nil
+	resp, err := wc.QueryIndexedBlock(height)
+	if err != nil || resp == nil {
+		return false, nil
+	}
+
+	return resp.Finalized, nil
 }
 
 func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
