@@ -265,49 +265,6 @@ func (wc *CosmwasmConsumerController) QueryBlocks(startHeight, endHeight, limit 
 	return wc.queryCometBlocksInRange(startHeight, endHeight)
 }
 
-func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
-	// Construct the query message
-	queryMsg := QueryMsgBlocks{
-		Blocks: BlocksQuery{
-			StartAfter: startAfter,
-			Limit:      limit,
-			Finalized:  finalized,
-			Reverse:    reverse,
-		},
-	}
-
-	// Marshal the query message to JSON
-	queryMsgBytes, err := json.Marshal(queryMsg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query message: %w", err)
-	}
-
-	// Query the smart contract state
-	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
-	}
-
-	// Unmarshal the response
-	var resp BlocksResponse
-	err = json.Unmarshal(dataFromContract.Data, &resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	// Process the blocks and convert them to BlockInfo
-	var blocks []*fptypes.BlockInfo
-	for _, b := range resp.Blocks {
-		block := &fptypes.BlockInfo{
-			Height: b.Height,
-			Hash:   b.AppHash,
-		}
-		blocks = append(blocks, block)
-	}
-
-	return blocks, nil
-}
-
 func (wc *CosmwasmConsumerController) QueryBlock(height uint64) (*fptypes.BlockInfo, error) {
 	block, err := wc.cwClient.GetBlock(int64(height))
 	if err != nil {
@@ -423,19 +380,6 @@ func (wc *CosmwasmConsumerController) QueryActivatedHeight() (uint64, error) {
 }
 
 func (wc *CosmwasmConsumerController) QueryLatestBlockHeight() (uint64, error) {
-	//reverse := true
-	//count := uint64(1)
-	//blocks, err := wc.queryLatestBlocks(nil, &count, nil, &reverse)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//if len(blocks) == 0 {
-	//	return 0, fmt.Errorf("no blocks found")
-	//}
-	//
-	//return blocks[0].Height, nil
-
 	block, err := wc.queryCometBestBlock()
 	if err != nil {
 		return 0, err
@@ -515,6 +459,49 @@ func (wc *CosmwasmConsumerController) QueryDelegations() (*ConsumerDelegationsRe
 	}
 
 	return &resp, nil
+}
+
+func (wc *CosmwasmConsumerController) queryLatestBlocks(startAfter, limit *uint64, finalized, reverse *bool) ([]*fptypes.BlockInfo, error) {
+	// Construct the query message
+	queryMsg := QueryMsgBlocks{
+		Blocks: BlocksQuery{
+			StartAfter: startAfter,
+			Limit:      limit,
+			Finalized:  finalized,
+			Reverse:    reverse,
+		},
+	}
+
+	// Marshal the query message to JSON
+	queryMsgBytes, err := json.Marshal(queryMsg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query message: %w", err)
+	}
+
+	// Query the smart contract state
+	dataFromContract, err := wc.QuerySmartContractState(wc.cfg.BtcStakingContractAddress, string(queryMsgBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to query smart contract state: %w", err)
+	}
+
+	// Unmarshal the response
+	var resp BlocksResponse
+	err = json.Unmarshal(dataFromContract.Data, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	// Process the blocks and convert them to BlockInfo
+	var blocks []*fptypes.BlockInfo
+	for _, b := range resp.Blocks {
+		block := &fptypes.BlockInfo{
+			Height: b.Height,
+			Hash:   b.AppHash,
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks, nil
 }
 
 func (wc *CosmwasmConsumerController) queryCometBestBlock() (*fptypes.BlockInfo, error) {
