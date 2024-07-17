@@ -86,6 +86,10 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 			}
 
 			msgs := stdTx.GetMsgs()
+			if len(msgs) == 0 {
+				return fmt.Errorf("invalid msg, there is no msg inside %s file", args[0])
+			}
+
 			for i, sdkMsg := range msgs {
 				msgV2 := msgsV2[i]
 				msg, ok := sdkMsg.(*btcstakingtypes.MsgCreateFinalityProvider)
@@ -121,7 +125,8 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 				}
 			}
 
-			return nil
+			_, err = cmd.OutOrStdout().Write([]byte("The signed msgs are valid"))
+			return err
 		},
 	}
 
