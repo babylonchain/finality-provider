@@ -150,7 +150,6 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 	f, err := os.Create(filepath.Join(testDir, "babylon.log"))
 	t.Logf("babylon log file: %s", f.Name())
 	require.NoError(t, err)
-	t.Logf("babylon log file: %s", f.Name())
 
 	startCmd := exec.Command(
 		"babylond",
