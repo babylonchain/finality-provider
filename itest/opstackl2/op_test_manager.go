@@ -273,7 +273,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
 			return false
 		}
 		return len(blocks) == n
-	}, e2eutils.EventuallyWaitTimeOut, time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime)*time.Second)
+	}, e2eutils.EventuallyWaitTimeOut, ctm.getL2BlockTime())
 	require.Equal(t, n, len(blocks))
 	t.Logf(
 		log.Prefix("Successfully waited for %d block(s). The last block's hash at height %d: %s"),
@@ -282,6 +282,14 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
 		hex.EncodeToString(blocks[n-1].Hash),
 	)
 	return blocks
+}
+
+func (ctm *OpL2ConsumerTestManager) getL1BlockTime() time.Duration {
+	return time.Duration(ctm.OpSystem.Cfg.DeployConfig.L1BlockTime) * time.Second
+}
+
+func (ctm *OpL2ConsumerTestManager) getL2BlockTime() time.Duration {
+	return time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime) * time.Second
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(
@@ -423,6 +431,46 @@ func (ctm *OpL2ConsumerTestManager) waitForConsumerFPRegistration(t *testing.T, 
 		}
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+}
+
+type stakingParam struct {
+	stakingTime   uint16
+	stakingAmount int64
+}
+
+// - register a Babylon finality provider
+// - register and start consumer finality providers
+// - insert BTC delegations
+// - wait until all delegations are active
+// - return the list of finality providers
+func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
+	t *testing.T,
+	n int,
+	stakingParams []stakingParam,
+) []*service.FinalityProviderInstance {
+	// A BTC delegation has to stake to at least one Babylon finality provider
+	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
+	// So we have to register a Babylon chain FP
+	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
+
+	// register and start consumer chain FPs
+	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
+	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
+
+	// insert BTC delegations
+	for i := 0; i < n; i++ {
+		ctm.InsertBTCDelegation(
+			t,
+			[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
+			stakingParams[i].stakingTime,
+			stakingParams[i].stakingAmount,
+		)
+	}
+
+	// wait until all delegations are active
+	ctm.WaitForDelegations(t, n)
+
+	return fpList
 }
 
 func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(

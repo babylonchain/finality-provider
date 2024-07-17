@@ -12,7 +12,6 @@ import (
 	"github.com/babylonchain/babylon-finality-gadget/sdk/cwclient"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/testutil/log"
-	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,39 +55,20 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	// A BTC delegation has to stake to at least one Babylon finality provider
-	// https://github.com/babylonchain/babylon-private/blob/base/consumer-chain-support/x/btcstaking/keeper/msg_server.go#L169-L213
-	// So we have to start Babylon chain FP
-	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
-
-	// start consumer chain FP
+	// register, get BTC delegations, and start FPs
 	n := 2
-	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
-	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
+	fpList := ctm.SetupFinalityProviders(t, n, []stakingParam{
+		// for the first FP, we give it more power b/c it will be used later
+		{e2eutils.StakingTime, 3 * e2eutils.StakingAmount},
+		{e2eutils.StakingTime, e2eutils.StakingAmount},
+	})
 
 	// check the public randomness is committed
-	e2eutils.WaitForFpPubRandCommitted(t, fpList[0])
-	e2eutils.WaitForFpPubRandCommitted(t, fpList[1])
+	for i := 0; i < n; i++ {
+		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
+	}
 
-	// send a BTC delegation to consumer and Babylon finality providers
-	// for the first FP, we give it more power b/c it will be used later
-	ctm.InsertBTCDelegation(
-		t,
-		[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
-		e2eutils.StakingTime,
-		3*e2eutils.StakingAmount,
-	)
-	ctm.InsertBTCDelegation(
-		t,
-		[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()},
-		e2eutils.StakingTime,
-		e2eutils.StakingAmount,
-	)
-
-	// wait until all delegations are active
-	ctm.WaitForDelegations(t, n)
-
-	// the first block both FP will sign
+	// both FP will sign the first block
 	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
 
 	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
@@ -140,42 +120,15 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	ctm := StartOpL2ConsumerManager(t)
 	defer ctm.Stop(t)
 
-	// register Babylon finality provider
-	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t, 1)
-
-	// register consumer finality providers
+	// register, get BTC delegations, and start FPs
 	n := 1
-	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
-
-	// send a BTC delegation to consumer and Babylon finality providers
-	ctm.InsertBTCDelegation(
-		t,
-		[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
-		e2eutils.StakingTime,
-		e2eutils.StakingAmount,
-	)
-
-	// check the BTC delegations are pending
-	delsResp := ctm.WaitForNPendingDels(t, n)
-	require.Equal(t, n, len(delsResp))
-
-	// send covenant sigs to each of the delegations
-	for _, delResp := range delsResp {
-		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
-		require.NoError(t, err)
-		// send covenant sigs
-		ctm.InsertCovenantSigForDelegation(t, d)
-	}
-
-	// check the BTC delegations are active
-	ctm.WaitForNActiveDels(t, n)
-
-	// start consumer chain FP
-	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
+	fpList := ctm.SetupFinalityProviders(t, n, []stakingParam{
+		{e2eutils.StakingTime, e2eutils.StakingAmount},
+	})
 	fpInstance := fpList[0]
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 
 	// wait for the first block to be finalized
+	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 	ctm.WaitForNextFinalizedBlock(t, uint64(1))
 
 	// stop the FP instance
@@ -190,19 +143,21 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	// get the last voted height
 	lastVotedHeight := fpInstance.GetLastVotedHeight()
 	t.Logf(log.Prefix("last voted height %d"), lastVotedHeight)
-	// check the finality gets stuck
+	// wait until the block finalized
 	require.Eventually(t, func() bool {
 		latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		stuckHeight := latestFinalizedBlock.Height
 		return lastVotedHeight == stuckHeight
-	}, 30*time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime)*time.Second, e2eutils.EventuallyPollTime)
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
+	// check the finality gets stuck
+	time.Sleep(5 * ctm.getL1BlockTime())
 	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
 	stuckHeight := latestFinalizedBlock.Height
 	require.Equal(t, lastVotedHeight, stuckHeight)
-	t.Logf(log.Prefix("Test case 1: OP chain block finalized stuck at height %d"), stuckHeight)
+	t.Logf(log.Prefix("OP chain block finalized head stuck at height %d"), stuckHeight)
 
 	// restart the FP instance
 	fpStartErr := fpInstance.Start()
@@ -216,6 +171,6 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	// wait for next finalized block > stuckHeight
 	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
 	t.Logf(log.Prefix(
-		"Test case 2: OP chain fianlity is recovered, the latest finalized block height %d",
+		"OP chain fianlity is recovered, the latest finalized block height %d",
 	), nextFinalizedHeight)
 }
