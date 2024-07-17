@@ -15,8 +15,9 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/babylonchain/babylon-finality-gadget/btcclient"
-	"github.com/babylonchain/babylon-finality-gadget/sdk"
+	"github.com/babylonchain/babylon-finality-gadget/sdk/btcclient"
+	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
+	sdkcfg "github.com/babylonchain/babylon-finality-gadget/sdk/config"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -58,7 +59,7 @@ type OpL2ConsumerTestManager struct {
 	FpConfig          *fpcfg.Config
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
-	SdkClient         *sdk.BabylonFinalityGadgetClient
+	SdkClient         *sdkclient.SdkClient
 	OpSystem          *ope2e.System
 }
 
@@ -67,7 +68,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.DebugLevel)
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -79,7 +80,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	err = bh.Start()
 	require.NoError(t, err)
 	fpHomeDir := filepath.Join(testDir, "fp-home")
-	log.Logf(t, "Fp home dir: %s", fpHomeDir)
+	t.Logf(log.Prefix("Fp home dir: %s"), fpHomeDir)
 	cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
 	cfg.LogLevel = logger.Level().String()
 	cfg.StatusUpdateInterval = 2 * time.Second
@@ -134,8 +135,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// TODO: this doesn't read from the devnetL1.json file. we should find a way to make it read from the file to avoid
 	// inconsistency.
 	opSysCfg := ope2e.DefaultSystemConfig(t)
-	sdkCfgChainType := -1 // only for the e2e test
-	opSysCfg.DeployConfig.BabylonFinalityGadgetChainType = sdkCfgChainType
+	sdkCfgChainId := "chain-test" // only for the e2e test
+	opSysCfg.DeployConfig.BabylonFinalityGadgetChainID = sdkCfgChainId
 	opSysCfg.DeployConfig.BabylonFinalityGadgetContractAddress = cwContractAddress
 	opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc, err = jsonutil.ReadJSONValueToString(
 		devnetL1JsonPath, "babylonFinalityGadgetBitcoinRpc")
@@ -151,7 +152,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// register consumer to Babylon
 	_, err = bc.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
 	require.NoError(t, err)
-	log.Logf(t, "Register consumer %s to Babylon", opConsumerId)
+	t.Logf(log.Prefix("Register consumer %s to Babylon"), opConsumerId)
 
 	// new op consumer controller
 	opL2ConsumerConfig.OPStackL2RPCAddress = opSys.EthInstances["sequencer"].HTTPEndpoint()
@@ -173,8 +174,8 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	// The RPC url must be trimmed to remove the http:// or https:// prefix.
 	btcConfig := btcclient.DefaultBTCConfig()
 	btcConfig.RPCHost = trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc)
-	sdkClient, err := sdk.NewClient(&sdk.Config{
-		ChainType:    sdkCfgChainType,
+	sdkClient, err := sdkclient.NewClient(&sdkcfg.Config{
+		ChainID:      sdkCfgChainId,
 		ContractAddr: opcc.Cfg.OPFinalityGadgetAddress,
 		BTCConfig:    btcConfig,
 	})
@@ -242,7 +243,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 		ctm.StakingParams = params
 		return true
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	log.Logf(t, "Babylon node has started")
+	t.Logf(log.Prefix("Babylon node has started"))
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startHeight uint64, n int) []*types.BlockInfo {
@@ -257,7 +258,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(t *testing.T, startH
 		return len(blocks) == n
 	}, e2eutils.EventuallyWaitTimeOut, L2BlockTime)
 	require.Equal(t, n, len(blocks))
-	log.Logf(t, "Successfully waited for %d block(s). The last block's hash at height %d: %s",
+	t.Logf(log.Prefix("Successfully waited for %d block(s). The last block's hash at height %d: %s"),
 		n, blocks[n-1].Height, hex.EncodeToString(blocks[n-1].Hash))
 	return blocks
 }
@@ -267,7 +268,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(t *testing.T, fpIns *s
 		lastVotedHeight := fpIns.GetLastVotedHeight()
 		return lastVotedHeight >= height
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	log.Logf(t, "Fp %s voted at height %d", fpIns.GetBtcPkHex(), height)
+	t.Logf(log.Prefix("Fp %s voted at height %d"), fpIns.GetBtcPkHex(), height)
 }
 
 /* wait for the target block height that the two FPs both have PubRand commitments
@@ -322,7 +323,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 		return committedPubRand.StartHeight+committedPubRand.NumPubRand-1 >= targetBlockHeight
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	log.Logf(t, "The target block height is %d", targetBlockHeight)
+	t.Logf(log.Prefix("The target block height is %d"), targetBlockHeight)
 	return targetBlockHeight
 }
 
@@ -348,7 +349,7 @@ func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(t *testing.T, consu
 		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
 		fpPkList = append(fpPkList, fpPk)
-		log.Logf(t, "Registered Finality Provider %s for %s", fpPk.MarshalHex(), consumerID)
+		t.Logf(log.Prefix("Registered Finality Provider %s for %s"), fpPk.MarshalHex(), consumerID)
 	}
 
 	return fpPkList
@@ -358,7 +359,7 @@ func (ctm *OpL2ConsumerTestManager) waitForConsumerFPRegistration(t *testing.T, 
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryConsumerFinalityProviders(ctm.getConsumerChainId())
 		if err != nil {
-			log.Logf(t, "failed to query consumer FP(s) from Babylon %s", err.Error())
+			t.Logf(log.Prefix("failed to query consumer FP(s) from Babylon %s"), err.Error())
 			return false
 		}
 		if len(fps) != n {
@@ -378,7 +379,7 @@ func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T, n
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryFinalityProviders()
 		if err != nil {
-			log.Logf(t, "failed to query Babylon FP(s) from Babylon %s", err.Error())
+			t.Logf(log.Prefix("failed to query Babylon FP(s) from Babylon %s"), err.Error())
 			return false
 		}
 		if len(fps) != n {
@@ -424,7 +425,7 @@ func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(t *testing.T, 
 	}
 
 	fpInsList := app.ListFinalityProviderInstances()
-	log.Logf(t, "The test manager is running with %v finality-provider(s)", len(fpInsList))
+	t.Logf(log.Prefix("The test manager is running with %v finality-provider(s)"), len(fpInsList))
 
 	var resFpList []*service.FinalityProviderInstance
 	for _, fp := range fpInsList {
