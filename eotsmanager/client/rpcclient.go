@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -16,11 +15,6 @@ import (
 )
 
 var _ eotsmanager.EOTSManager = &EOTSManagerGRpcClient{}
-
-const (
-	retryInterval = 500 * time.Millisecond
-	retryTimeout  = 5 * time.Second
-)
 
 type EOTSManagerGRpcClient struct {
 	client proto.EOTSManagerClient
@@ -39,8 +33,7 @@ func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error)
 	}
 
 	if err := gClient.Ping(); err != nil {
-		return nil, fmt.Errorf(
-			"the EOTS manager server is not responding: %w. Client connection current state: %s", err, conn.GetState())
+		return nil, types.ErrEOTSManagerServerNoRespond
 	}
 
 	return gClient, nil
@@ -48,26 +41,13 @@ func NewEOTSManagerGRpcClient(remoteAddr string) (*EOTSManagerGRpcClient, error)
 
 func (c *EOTSManagerGRpcClient) Ping() error {
 	req := &proto.PingRequest{}
-	retryTicker := time.NewTicker(retryInterval)
-	defer retryTicker.Stop()
-	timeout := time.After(retryTimeout)
 
-	for {
-		_, err := c.client.Ping(context.Background(), req)
-		if err == nil {
-			return nil // Success, return nil error
-		}
-
-		// Retry logic
-		select {
-		case <-retryTicker.C:
-			// Continue to retry
-			continue
-		case <-timeout:
-			// Max duration reached, return last error
-			return err
-		}
+	_, err := c.client.Ping(context.Background(), req)
+	if err != nil {
+		return err
 	}
+
+	return nil
 }
 
 func (c *EOTSManagerGRpcClient) CreateKey(name, passphrase, hdPath string) ([]byte, error) {

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/avast/retry-go/v4"
 	"github.com/babylonchain/babylon-finality-gadget/btcclient"
 	"github.com/babylonchain/babylon-finality-gadget/sdk"
 	bbncfg "github.com/babylonchain/babylon/client/config"
@@ -24,6 +26,7 @@ import (
 	opconsumer "github.com/babylonchain/finality-provider/clientcontroller/opstackl2"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	eotsconfig "github.com/babylonchain/finality-provider/eotsmanager/config"
+	eotstypes "github.com/babylonchain/finality-provider/eotsmanager/types"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
@@ -96,7 +99,10 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
 	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
-	require.NoError(t, err)
+	if err != nil && errors.Is(err, eotstypes.ErrEOTSManagerServerNoRespond) {
+		err := eotsGRpcClientPingWithRetry(t, eotsCli)
+		require.NoError(t, err)
+	}
 
 	// create cw client
 	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
@@ -473,6 +479,21 @@ func queryFirstPublicRandCommit(opcc *opstackl2.OPStackL2ConsumerController, fpP
 	}
 
 	return resp, nil
+}
+
+func eotsGRpcClientPingWithRetry(t *testing.T, eotsCli *client.EOTSManagerGRpcClient) error {
+	if err := retry.Do(func() error {
+		err := eotsCli.Ping()
+		if err != nil {
+			return err
+		}
+		return nil
+	}, service.RtyAtt, service.RtyDel, service.RtyErr, retry.OnRetry(func(n uint, err error) {
+		log.Logf(t, "failed to ping EOTS manager server %d times: %s", n+1, err)
+	})); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
