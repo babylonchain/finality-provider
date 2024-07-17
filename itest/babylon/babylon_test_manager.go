@@ -124,8 +124,7 @@ func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*ser
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 
-		// needs to update key in config to be able to register and sign the creation of the finality provider with the
-		// same address.
+		// needs to update key in config to be able to register and sign the creation of the finality provider with the same address.
 		cfg.BabylonConfig.Key = fpName
 		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, e2eutils.Passphrase, e2eutils.HdPath, "")
 		require.NoError(t, err)

@@ -9,10 +9,7 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
-	bbntypes "github.com/babylonchain/babylon/types"
-	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/stretchr/testify/require"
@@ -85,23 +82,12 @@ func TestConsumerFpLifecycle(t *testing.T) {
 
 	// register consumer fps to babylon
 	// this will be submitted to babylon once fp daemon starts
-	app := ctm.Fpa
-	cfg := app.GetConfig()
-	fpName := e2eutils.FpNamePrefix + bcdChainID
-	moniker := e2eutils.MonikerPrefix + bcdChainID
-	commission := sdkmath.LegacyZeroDec()
-	desc := e2eutils.NewDescription(moniker)
-	_, err = service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, bcdChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
-	require.NoError(t, err)
-	res, err := app.CreateFinalityProvider(fpName, bcdChainID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
-	require.NoError(t, err)
-	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
-	require.NoError(t, err)
-	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
-	require.NoError(t, err)
+	fps := ctm.CreateConsumerFinalityProviders(t, bcdChainID, 1)
+	fpPk := fps[0].GetBtcPkBIP340()
+	fpPkHex := fpPk.MarshalHex()
 
 	// inject fp in smart contract using admin
-	fpMsg := e2eutils.GenBtcStakingFpExecMsg(fpPk.MarshalHex())
+	fpMsg := e2eutils.GenBtcStakingFpExecMsg(fpPkHex)
 	fpMsgBytes, err := json.Marshal(fpMsg)
 	require.NoError(t, err)
 	_, err = ctm.BcdConsumerClient.ExecuteContract(fpMsgBytes)
@@ -114,14 +100,6 @@ func TestConsumerFpLifecycle(t *testing.T) {
 	require.Len(t, consumerFpsResp.Fps, 1)
 	require.Equal(t, fpMsg.BtcStaking.NewFP[0].ConsumerID, consumerFpsResp.Fps[0].ConsumerId)
 	require.Equal(t, fpMsg.BtcStaking.NewFP[0].BTCPKHex, consumerFpsResp.Fps[0].BtcPkHex)
-
-	// start finality provider daemon
-	err = app.StartHandlingFinalityProvider(fpPk, e2eutils.Passphrase)
-	require.NoError(t, err)
-	fpIns, err := app.GetFinalityProviderInstance(fpPk)
-	require.NoError(t, err)
-	require.True(t, fpIns.IsRunning())
-	require.NoError(t, err)
 
 	// ensure consumer finality providers are stored in Babylon
 	// this will happen after the finality provider daemon has started

@@ -32,7 +32,6 @@ import (
 	"github.com/babylonchain/finality-provider/testutil/log"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -330,20 +329,19 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(t *testing.T, fpLi
 // can be used for both the Babylon and Consumer FPs
 func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(t *testing.T, consumerID string, n int) []*bbntypes.BIP340PubKey {
 	app := ctm.FpApp
-	baseFpName := fmt.Sprintf("%s-%s", consumerID, e2eutils.FpNamePrefix)
+	cfg := app.GetConfig()
+	keyName := cfg.BabylonConfig.Key
+
+	// baseFpName := fmt.Sprintf("%s-%s", consumerID, e2eutils.FpNamePrefix)
 	baseMoniker := fmt.Sprintf("%s-%s", consumerID, e2eutils.MonikerPrefix)
 	fpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
 
 	for i := 0; i < n; i++ {
-		fpName := fmt.Sprintf("%s%d", baseFpName, i)
 		moniker := fmt.Sprintf("%s%d", baseMoniker, i)
-
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
-		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
-		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, consumerID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+
+		res, err := app.CreateFinalityProvider(keyName, consumerID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
