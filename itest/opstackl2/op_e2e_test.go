@@ -6,9 +6,9 @@ package e2etest_op
 import (
 	"encoding/hex"
 	"testing"
-	"time"
 
-	"github.com/babylonchain/babylon-finality-gadget/sdk"
+	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
+	"github.com/babylonchain/babylon-finality-gadget/sdk/cwclient"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/babylonchain/finality-provider/testutil/log"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -30,13 +30,13 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	committedStartHeight := committedPubRand.StartHeight
-	log.Logf(t, "First committed pubrandList startHeight %d", committedStartHeight)
+	t.Logf(log.Prefix("First committed pubrandList startHeight %d"), committedStartHeight)
 	testBlocks := ctm.WaitForNBlocksAndReturn(t, committedStartHeight, 1)
 	testBlock := testBlocks[0]
 
 	// wait for the fp sign
 	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
-	queryParams := &sdk.L2Block{
+	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -45,7 +45,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// note: QueryFinalityProviderHasPower is hardcode to return true so FPs can still submit finality sigs even if they
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.ErrorIs(t, err, sdk.ErrNoFpHasVotingPower)
+	require.ErrorIs(t, err, sdkclient.ErrNoFpHasVotingPower)
 }
 
 // This test has two test cases:
@@ -74,20 +74,8 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()}, e2eutils.StakingTime, 3*e2eutils.StakingAmount)
 	ctm.InsertBTCDelegation(t, []*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[1].MustToBTCPK()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
-	// check the BTC delegations are pending
-	delsResp := ctm.WaitForNPendingDels(t, n)
-	require.Equal(t, n, len(delsResp))
-
-	// send covenant sigs to each of the delegations
-	for _, delResp := range delsResp {
-		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
-		require.NoError(t, err)
-		// send covenant sigs
-		ctm.InsertCovenantSigForDelegation(t, d)
-	}
-
-	// check the BTC delegations are active
-	ctm.WaitForNActiveDels(t, n)
+	// wait until all delegations are active
+	ctm.WaitForDelegations(t, n)
 
 	// the first block both FP will sign
 	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
@@ -101,7 +89,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
-	queryParams := &sdk.L2Block{
+	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -109,23 +97,23 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.NoError(t, err)
 	require.Equal(t, true, finalized)
-	log.Logf(t, "Test case 1: block %d is finalized", testBlock.Height)
+	t.Logf(log.Prefix("Test case 1: block %d is finalized"), testBlock.Height)
 
 	// ===  another test case only for the last FP instance sign ===
 	// first make sure the first FP is stopped
 	require.Eventually(t, func() bool {
 		return !fpList[0].IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	log.Logf(t, "Stopped the first FP instance")
+	t.Logf(log.Prefix("Stopped the first FP instance"))
 
 	// select a block that the first FP has not processed yet to give to the second FP to sign
-	testNextBlockHeight := fpList[0].GetLastProcessedHeight() + 1
-	log.Logf(t, "Test next block height %d", testNextBlockHeight)
+	testNextBlockHeight := fpList[0].GetLastVotedHeight() + 1
+	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
 	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)
-	queryNextParams := &sdk.L2Block{
+	queryNextParams := cwclient.L2Block{
 		BlockHeight:    testNextBlock.Height,
 		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
@@ -134,7 +122,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	nextFinalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryNextParams)
 	require.NoError(t, err)
 	require.Equal(t, false, nextFinalized)
-	log.Logf(t, "Test case 2: block %d is not finalized", testNextBlock.Height)
+	t.Logf(log.Prefix("Test case 2: block %d is not finalized"), testNextBlock.Height)
 }
 
 func TestFinalityStuckAndRecover(t *testing.T) {
@@ -181,18 +169,24 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return !fpInstance.IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Stopped the FP instance")
+	t.Logf(log.Prefix("Stopped the FP instance"))
 
-	// get the last processed height
-	lastProcessedHeight := fpInstance.GetLastProcessedHeight()
-	t.Logf("last processed height %d", lastProcessedHeight)
-	time.Sleep(5 * L2BlockTime)
-	// check the finality is stuck
+	// get the last voted height
+	lastVotedHeight := fpInstance.GetLastVotedHeight()
+	t.Logf(log.Prefix("last processed height %d"), lastVotedHeight)
+	// check the finality gets stuck
+	require.Eventually(t, func() bool {
+		latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		require.NoError(t, err)
+		stuckHeight := latestFinalizedBlock.Height
+		return lastVotedHeight == stuckHeight
+	}, 30*L2BlockTime, e2eutils.EventuallyPollTime)
+
 	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
 	require.NoError(t, err)
 	stuckHeight := latestFinalizedBlock.Height
-	require.Equal(t, lastProcessedHeight, stuckHeight)
-	t.Logf("Test case 1: OP chain block finalized stuck at height %d", stuckHeight)
+	require.Equal(t, lastVotedHeight, stuckHeight)
+	t.Logf(log.Prefix("Test case 1: OP chain block finalized stuck at height %d"), stuckHeight)
 
 	// restart the FP instance
 	fpStartErr := fpInstance.Start()
@@ -201,9 +195,10 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return fpInstance.IsRunning()
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf("Restarted the FP instance")
+	t.Logf(log.Prefix("Restarted the FP instance"))
 
 	// wait for next finalized block > stuckHeight
 	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
-	t.Logf("Test case 2: OP chain fianlity is recover, the latest finalized block height %d", nextFinalizedHeight)
+	t.Logf(log.Prefix(
+		"Test case 2: OP chain fianlity is recovered, the latest finalized block height %d"), nextFinalizedHeight)
 }
