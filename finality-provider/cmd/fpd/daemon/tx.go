@@ -41,11 +41,11 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate-signed-finality-provider [file_path_signed_msg]",
 		Args:  cobra.ExactArgs(1),
-		Short: "Validates if the signed finality provider is valid",
+		Short: "Validates the signed MsgCreateFinalityProvider",
 		Long: strings.TrimSpace(`
-			Loads the signed msg MsgCreateFinalityProvider and checks if the basic
-			information is satisfied and the Proof of Possession is in valid by the
-			signer of the msg and the finality provider address
+			Loads the signed MsgCreateFinalityProvider and checks if the basic
+			information is satisfied and the Proof of Possession is valid against the
+			signer of the msg and the finality provider's BTC public key
 		`),
 		Example: strings.TrimSpace(
 			`fdp tx validate-signed-finality-provider ./path/to/signed-msg.json`,
@@ -103,29 +103,33 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 
 				signers, err := ctx.Codec.GetMsgV2Signers(msgV2)
 				if err != nil {
-					return fmt.Errorf("error %w failed to get signers from msg: %+v", err, msg)
+					return fmt.Errorf("failed to get signers from msg %+v: %w", msg, err)
 				}
 
 				if len(signers) == 0 {
 					return fmt.Errorf("no signer at msg %+v", msgV2)
 				}
 
-				addrStr, err := ctx.Codec.InterfaceRegistry().SigningContext().AddressCodec().BytesToString(signers[0])
+				signerAddrStr, err := ctx.Codec.InterfaceRegistry().SigningContext().AddressCodec().BytesToString(signers[0])
 				if err != nil {
 					return err
 				}
 
-				bbnAddr, err := sdk.AccAddressFromBech32(addrStr)
+				signerBbnAddr, err := sdk.AccAddressFromBech32(signerAddrStr)
 				if err != nil {
-					return fmt.Errorf("invalid signer address %s, please sign with a valid bbn address, err: %w", addrStr, err)
+					return fmt.Errorf("invalid signer address %s, please sign with a valid bbn address, err: %w", signerAddrStr, err)
 				}
 
-				if err := msg.Pop.Verify(bbnAddr, msg.BtcPk, &btcNetCfg); err != nil {
-					return fmt.Errorf("invalid verification of Proof of Possession %w, signer %s", err, bbnAddr.String())
+				if !strings.EqualFold(msg.Addr, signerAddrStr) {
+					return fmt.Errorf("signer address: %s is different from finality provider address: %s", signerAddrStr, msg.Addr)
+				}
+
+				if err := msg.Pop.Verify(signerBbnAddr, msg.BtcPk, &btcNetCfg); err != nil {
+					return fmt.Errorf("invalid verification of Proof of Possession %w, signer %s", err, signerBbnAddr.String())
 				}
 			}
 
-			_, err = cmd.OutOrStdout().Write([]byte("The signed msgs are valid"))
+			_, err = cmd.OutOrStdout().Write([]byte("The signed MsgCreateFinalityProvider is valid"))
 			return err
 		},
 	}
