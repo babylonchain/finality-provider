@@ -8,7 +8,7 @@ import (
 
 	"github.com/babylonchain/babylon/crypto/eots"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/babylonchain/finality-provider/finality-provider/store"
@@ -64,26 +64,24 @@ func GenRandomFinalityProvider(r *rand.Rand, t *testing.T) *store.StoredFinality
 	require.NoError(t, err)
 	bip340PK := bbn.NewBIP340PubKeyFromBTCPK(btcPK)
 
-	// generate Babylon key pair
-	babylonSK, chainPk, err := datagen.GenRandomSecp256k1KeyPair(r)
+	fpAddr, err := sdk.AccAddressFromBech32(datagen.GenRandomAccount().Address)
 	require.NoError(t, err)
 
 	// generate and verify PoP, correct case
-	pop, err := bstypes.NewPoP(babylonSK, btcSK)
+	pop, err := bstypes.NewPoPBTC(fpAddr, btcSK)
 	require.NoError(t, err)
-	err = pop.Verify(chainPk, bip340PK, &chaincfg.SimNetParams)
+	err = pop.Verify(fpAddr, bip340PK, &chaincfg.SimNetParams)
 	require.NoError(t, err)
 
 	return &store.StoredFinalityProvider{
+		FPAddr:      fpAddr.String(),
 		KeyName:     GenRandomHexStr(r, 4),
 		ChainID:     "chain-test",
-		ChainPk:     &secp256k1.PubKey{Key: chainPk.Bytes()},
 		BtcPk:       bip340PK.MustToBTCPK(),
 		Description: RandomDescription(r),
 		Commission:  ZeroCommissionRate(),
 		Pop: &proto.ProofOfPossession{
-			ChainSig: pop.BabylonSig,
-			BtcSig:   pop.BtcSig,
+			BtcSig: pop.BtcSig,
 		},
 	}
 }

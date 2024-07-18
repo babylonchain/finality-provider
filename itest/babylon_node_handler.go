@@ -16,15 +16,17 @@ import (
 )
 
 type babylonNode struct {
-	cmd     *exec.Cmd
-	pidFile string
-	dataDir string
+	cmd        *exec.Cmd
+	pidFile    string
+	dataDir    string
+	walletName string
 }
 
-func newBabylonNode(dataDir string, cmd *exec.Cmd) *babylonNode {
+func newBabylonNode(dataDir, walletName string, cmd *exec.Cmd) *babylonNode {
 	return &babylonNode{
-		dataDir: dataDir,
-		cmd:     cmd,
+		dataDir:    dataDir,
+		cmd:        cmd,
+		walletName: walletName,
 	}
 }
 
@@ -99,7 +101,7 @@ func (n *babylonNode) shutdown() error {
 }
 
 type BabylonNodeHandler struct {
-	babylonNode *babylonNode
+	BabylonNode *babylonNode
 }
 
 func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*types.BIP340PubKey) *BabylonNodeHandler {
@@ -112,7 +114,8 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 		}
 	}()
 
-	nodeDataDir := filepath.Join(testDir, "node0", "babylond")
+	walletName := "node0"
+	nodeDataDir := filepath.Join(testDir, walletName, "babylond")
 
 	slashingAddr := "SZtRT4BySL3o4efdGLh3k7Kny8GAnsBrSW"
 
@@ -161,21 +164,21 @@ func NewBabylonNodeHandler(t *testing.T, covenantQuorum int, covenantPks []*type
 	startCmd.Stdout = f
 
 	return &BabylonNodeHandler{
-		babylonNode: newBabylonNode(testDir, startCmd),
+		BabylonNode: newBabylonNode(testDir, walletName, startCmd),
 	}
 }
 
 func (w *BabylonNodeHandler) Start() error {
-	if err := w.babylonNode.start(); err != nil {
+	if err := w.BabylonNode.start(); err != nil {
 		// try to cleanup after start error, but return original error
-		_ = w.babylonNode.cleanup()
+		_ = w.BabylonNode.cleanup()
 		return err
 	}
 	return nil
 }
 
 func (w *BabylonNodeHandler) Stop() error {
-	if err := w.babylonNode.shutdown(); err != nil {
+	if err := w.BabylonNode.shutdown(); err != nil {
 		return err
 	}
 
@@ -183,6 +186,34 @@ func (w *BabylonNodeHandler) Stop() error {
 }
 
 func (w *BabylonNodeHandler) GetNodeDataDir() string {
-	dir := filepath.Join(w.babylonNode.dataDir, "node0", "babylond")
+	return w.BabylonNode.getNodeDataDir()
+}
+
+// getNodeDataDir returns the home path of the babylon node.
+func (n *babylonNode) getNodeDataDir() string {
+	dir := filepath.Join(n.dataDir, n.walletName, "babylond")
 	return dir
+}
+
+// TxBankSend send transaction to a address from the node address.
+func (n *babylonNode) TxBankSend(addr, coins string) error {
+	flags := []string{
+		"tx",
+		"bank",
+		"send",
+		n.walletName,
+		addr, coins,
+		"--keyring-backend=test",
+		fmt.Sprintf("--home=%s", n.getNodeDataDir()),
+		"--log_level=debug",
+		"--chain-id=chain-test",
+		"-b=sync", "--yes", "--gas-prices=10ubbn",
+	}
+
+	cmd := exec.Command("babylond", flags...)
+	_, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	return nil
 }

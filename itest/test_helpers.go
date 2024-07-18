@@ -42,12 +42,12 @@ func GenBtcStakingExecMsg(fpHex string) cosmwasm.ExecMsg {
 	return executeMessage
 }
 
-func GenBtcStakingFpExecMsg(fpHex string) cosmwasm.ExecMsg {
+func GenBtcStakingFpExecMsg(fpPKHex string) cosmwasm.ExecMsg {
 	// generate random finality provider
 	newFp := genRandomFinalityProvider()
 
 	// replace field so finality provider is linked
-	newFp.BTCPKHex = fpHex
+	newFp.BTCPKHex = fpPKHex
 
 	// create the ExecMsg instance with BtcStaking set for NewFP
 	executeMessage := cosmwasm.ExecMsg{

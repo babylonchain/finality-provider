@@ -6,7 +6,7 @@ toolchain go1.21.4
 
 require (
 	github.com/CosmWasm/wasmd v0.51.0
-	github.com/babylonchain/babylon v0.8.6-0.20240527005816-ae2182029020
+	github.com/babylonchain/babylon v0.9.0-rc.2
 	github.com/babylonchain/babylon-sdk/demo v0.0.0-20240705194516-4e2c5650cde8
 )
 
@@ -45,7 +45,7 @@ require (
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/boljen/go-bitmap v0.0.0-20151001105940-23cd2fb0ce7d // indirect
-	github.com/btcsuite/btcd v0.24.0 // indirect
+	github.com/btcsuite/btcd v0.24.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.5 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
@@ -180,6 +180,7 @@ require (
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
@@ -225,6 +226,6 @@ require (
 replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.8.6-0.20240705135310-e91ff7f60ead
+	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.9.0-rc.2.0.20240717044248-3d8f190c9b0c
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )

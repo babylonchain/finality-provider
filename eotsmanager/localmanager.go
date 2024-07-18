@@ -166,7 +166,7 @@ func loadBIP340PubKeyFromKeyringRecord(record *keyring.Record) (*bbntypes.BIP340
 // TODO the current implementation is a PoC, which does not contain any anti-slasher mechanism
 //
 //	a simple anti-slasher mechanism could be that the manager remembers the tuple (fpPk, chainID, height) or
-//	the hash of each generated randomness and return error if the same randomness is requested tweice
+//	the hash of each generated randomness and return error if the same randomness is requested twice
 func (lm *LocalEOTSManager) CreateRandomnessPairList(fpPk []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
 	prList := make([]*btcec.FieldVal, 0, num)
 

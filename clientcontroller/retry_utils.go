@@ -9,7 +9,7 @@ import (
 	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 )
 
-// these errors are considered unrecoverable because these indicate
+// these errors are considered unrecoverable because they indicate
 // something critical in the finality provider program or the consumer chain
 var unrecoverableErrors = []*sdkErr.Error{
 	finalitytypes.ErrBlockNotFound,

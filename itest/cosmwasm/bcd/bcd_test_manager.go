@@ -31,7 +31,6 @@ import (
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
 	dbm "github.com/cosmos/cosmos-db"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
@@ -83,7 +82,7 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
 	require.NoError(t, err)
 
-	// 3. setup wasmd node
+	// 3. setup bcd node
 	wh := NewBcdNodeHandler(t)
 	err = wh.Start()
 	require.NoError(t, err)
@@ -179,17 +178,16 @@ func (ctm *BcdTestManager) Stop(t *testing.T) {
 func (ctm *BcdTestManager) CreateConsumerFinalityProviders(t *testing.T, consumerId string, n int) []*service.FinalityProviderInstance {
 	app := ctm.Fpa
 	cfg := app.GetConfig()
+	keyName := cfg.BabylonConfig.Key
 
 	// register all finality providers
 	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
 	for i := 0; i < n; i++ {
-		fpName := e2eutils.FpNamePrefix + consumerId + "-" + strconv.Itoa(i)
 		moniker := e2eutils.MonikerPrefix + consumerId + "-" + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, consumerId, fpName, keyring.BackendTest, e2eutils.Passphrase, e2eutils.HdPath, "")
-		require.NoError(t, err)
-		res, err := app.CreateFinalityProvider(fpName, consumerId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+
+		res, err := app.CreateFinalityProvider(keyName, consumerId, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)

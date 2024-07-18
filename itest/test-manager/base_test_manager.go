@@ -16,7 +16,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/require"
 
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -30,15 +30,14 @@ type BaseTestManager struct {
 }
 
 type TestDelegationData struct {
-	DelegatorPrivKey        *btcec.PrivateKey
-	DelegatorKey            *btcec.PublicKey
-	DelegatorBabylonPrivKey *secp256k1.PrivKey
-	DelegatorBabylonKey     *secp256k1.PubKey
-	SlashingTx              *bstypes.BTCSlashingTx
-	StakingTx               *wire.MsgTx
-	StakingTxInfo           *btcctypes.TransactionInfo
-	DelegatorSig            *bbntypes.BIP340Signature
-	FpPks                   []*btcec.PublicKey
+	FPAddr           sdk.AccAddress
+	DelegatorPrivKey *btcec.PrivateKey
+	DelegatorKey     *btcec.PublicKey
+	SlashingTx       *bstypes.BTCSlashingTx
+	StakingTx        *wire.MsgTx
+	StakingTxInfo    *btcctypes.TransactionInfo
+	DelegatorSig     *bbntypes.BIP340Signature
+	FpPks            []*btcec.PublicKey
 
 	SlashingAddr  string
 	ChangeAddr    string
@@ -70,12 +69,10 @@ func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.Publ
 		unbondingTime,
 	)
 
-	// delegator Babylon key pairs
-	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
-	require.NoError(t, err)
+	stakerAddr := tm.BBNClient.GetKeyAddress()
 
 	// proof-of-possession
-	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
+	pop, err := bstypes.NewPoPBTC(stakerAddr, delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
@@ -155,7 +152,6 @@ func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.Publ
 
 	// submit the BTC delegation to Babylon
 	_, err = tm.BBNClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
 		fpPks,
 		pop,
@@ -174,18 +170,16 @@ func (tm *BaseTestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.Publ
 	t.Log("successfully submitted a BTC delegation")
 
 	return &TestDelegationData{
-		DelegatorPrivKey:        delBtcPrivKey,
-		DelegatorKey:            delBtcPubKey,
-		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
-		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		FpPks:                   fpPks,
-		StakingTx:               testStakingInfo.StakingTx,
-		SlashingTx:              testStakingInfo.SlashingTx,
-		StakingTxInfo:           txInfo,
-		DelegatorSig:            delegatorSig,
-		SlashingAddr:            params.SlashingAddress.String(),
-		StakingTime:             stakingTime,
-		StakingAmount:           stakingAmount,
+		DelegatorPrivKey: delBtcPrivKey,
+		DelegatorKey:     delBtcPubKey,
+		FpPks:            fpPks,
+		StakingTx:        testStakingInfo.StakingTx,
+		SlashingTx:       testStakingInfo.SlashingTx,
+		StakingTxInfo:    txInfo,
+		DelegatorSig:     delegatorSig,
+		SlashingAddr:     params.SlashingAddress.String(),
+		StakingTime:      stakingTime,
+		StakingAmount:    stakingAmount,
 	}
 }
 

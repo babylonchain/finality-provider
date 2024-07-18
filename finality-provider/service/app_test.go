@@ -82,8 +82,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		btcSig := new(bbntypes.BIP340Signature)
 		err = btcSig.Unmarshal(fp.Pop.BtcSig)
 		require.NoError(t, err)
-		pop := &bstypes.ProofOfPossession{
-			BabylonSig: fp.Pop.ChainSig,
+		pop := &bstypes.ProofOfPossessionBTC{
 			BtcSig:     btcSig.MustMarshal(),
 			BtcSigType: bstypes.BTCSigType_BIP340,
 		}
@@ -101,7 +100,6 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		mockBabylonController.EXPECT().
 			RegisterFinalityProvider(
 				fp.ChainID,
-				fp.ChainPk.Key,
 				fp.BtcPk,
 				popBytes,
 				testutil.ZeroCommissionRate(),

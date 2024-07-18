@@ -26,7 +26,7 @@ type EOTSManager interface {
 	KeyRecord(uid []byte, passphrase string) (*types.KeyRecord, error)
 
 	// SignEOTS signs an EOTS using the private key of the finality provider and the corresponding
-	// secret randomness of the give chain at the given height
+	// secret randomness of the given chain at the given height
 	// It fails if the finality provider does not exist or there's no randomness committed to the given height
 	// or passPhrase is incorrect
 	SignEOTS(uid []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error)
