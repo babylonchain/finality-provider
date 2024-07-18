@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/spf13/cobra"
 
 	btcstakingcli "github.com/babylonchain/babylon/x/btcstaking/client/cli"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 	authcli "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
@@ -54,25 +52,6 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 			ctx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
-			}
-
-			networkBTC, err := cmd.Flags().GetString(btcNetworkFlag)
-			if err != nil {
-				return err
-			}
-
-			var btcNetCfg chaincfg.Params
-			if len(networkBTC) == 0 { // not set in flag, load from config
-				cfg, err := fpcfg.LoadConfig(ctx.HomeDir)
-				if err != nil {
-					return fmt.Errorf("failed to load configuration at %s: %w", ctx.HomeDir, err)
-				}
-				btcNetCfg = cfg.BTCNetParams
-			} else {
-				btcNetCfg, err = fpcfg.NetParamsBTC(networkBTC)
-				if err != nil {
-					return err
-				}
 			}
 
 			stdTx, err := authclient.ReadTxFromFile(ctx, args[0])
@@ -124,8 +103,8 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 					return fmt.Errorf("signer address: %s is different from finality provider address: %s", signerAddrStr, msg.Addr)
 				}
 
-				if err := msg.Pop.Verify(signerBbnAddr, msg.BtcPk, &btcNetCfg); err != nil {
-					return fmt.Errorf("invalid verification of Proof of Possession %w, signer %s", err, signerBbnAddr.String())
+				if err := msg.Pop.VerifyBIP340(signerBbnAddr, msg.BtcPk); err != nil {
+					return fmt.Errorf("invalid Proof of Possession with signer %s: %w", signerBbnAddr.String(), err)
 				}
 			}
 
@@ -133,8 +112,6 @@ func NewValidateSignedFinalityProviderCmd() *cobra.Command {
 			return err
 		},
 	}
-
-	cmd.Flags().String(btcNetworkFlag, "", "The BTC network to use, one of ['mainnet', 'testnet', 'regtest', 'simnet', 'signet'] (it loads the one set in config if is found)")
 
 	return cmd
 }

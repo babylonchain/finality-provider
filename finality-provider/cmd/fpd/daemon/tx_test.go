@@ -100,7 +100,7 @@ func FuzzNewValidateSignedFinalityProviderCmd(f *testing.F) {
 
 		// executes the verification.
 		_, outputValidate := exec(t, root, rootCmdBuff, "tx", "validate-signed-finality-provider", signedMsgFilePath, homeFlag)
-		require.Equal(t, "The signed msgs are valid", outputValidate)
+		require.Equal(t, "The signed MsgCreateFinalityProvider is valid", outputValidate)
 	})
 }
 

@@ -11,7 +11,6 @@ const (
 	hdPathFlag           = "hd-path"
 	chainIdFlag          = "chain-id"
 	signedFlag           = "signed"
-	btcNetworkFlag       = "network"
 
 	// flags for description
 	monikerFlag         = "moniker"
