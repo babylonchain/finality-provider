@@ -21,12 +21,12 @@ RUN go mod download
 COPY ./ /go/src/github.com/babylonchain/finality-provider/
 
 # Cosmwasm - Download correct libwasmvm version
-RUN WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | cut -d ' ' -f 2) && \
+RUN WASMVM_VERSION=$(grep github.com/CosmWasm/wasmvm go.mod | cut -d' ' -f2) && \
     wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm_muslc.$(uname -m).a \
-        -O /lib/libwasmvm_muslc.a && \
+        -O /lib/libwasmvm_muslc.$(uname -m).a && \
     # verify checksum
     wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
-    sha256sum /lib/libwasmvm_muslc.a | grep $(cat /tmp/checksums.txt | grep libwasmvm_muslc.$(uname -m) | cut -d ' ' -f 1)
+    sha256sum /lib/libwasmvm_muslc.$(uname -m).a | grep $(cat /tmp/checksums.txt | grep libwasmvm_muslc.$(uname -m) | cut -d ' ' -f 1)
 
 RUN CGO_LDFLAGS="$CGO_LDFLAGS -lstdc++ -lm -lsodium" \
     CGO_ENABLED=1 \
@@ -42,7 +42,6 @@ RUN addgroup --gid 1138 -S finality-provider && adduser --uid 1138 -S finality-p
 RUN apk add bash curl jq
 
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpd /bin/fpd
-COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/fpcli /bin/fpcli
 COPY --from=builder /go/src/github.com/babylonchain/finality-provider/build/eotsd /bin/eotsd
 
 WORKDIR /home/finality-provider

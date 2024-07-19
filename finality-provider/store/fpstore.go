@@ -2,13 +2,12 @@ package store
 
 import (
 	"fmt"
-	"math"
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcwallet/walletdb"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/lightningnetwork/lnd/kvdb"
 	pm "google.golang.org/protobuf/proto"
@@ -43,32 +42,28 @@ func (s *FinalityProviderStore) initBuckets() error {
 }
 
 func (s *FinalityProviderStore) CreateFinalityProvider(
-	chainPk *secp256k1.PubKey,
+	fpAddr sdk.AccAddress,
 	btcPk *btcec.PublicKey,
 	description *stakingtypes.Description,
 	commission *sdkmath.LegacyDec,
-	masterPubRand string,
 	keyName, chainId string,
-	chainSig, btcSig []byte,
+	btcSig []byte,
 ) error {
 	desBytes, err := description.Marshal()
 	if err != nil {
 		return fmt.Errorf("invalid description: %w", err)
 	}
 	fp := &proto.FinalityProvider{
-		ChainPk:     chainPk.Key,
+		FpAddr:      fpAddr.String(),
 		BtcPk:       schnorr.SerializePubKey(btcPk),
 		Description: desBytes,
 		Commission:  commission.String(),
 		Pop: &proto.ProofOfPossession{
-			ChainSig: chainSig,
-			BtcSig:   btcSig,
+			BtcSig: btcSig,
 		},
-		RegisteredEpoch: math.MaxUint64,
-		MasterPubRand:   masterPubRand,
-		KeyName:         keyName,
-		ChainId:         chainId,
-		Status:          proto.FinalityProviderStatus_CREATED,
+		KeyName: keyName,
+		ChainId: chainId,
+		Status:  proto.FinalityProviderStatus_CREATED,
 	}
 
 	return s.createFinalityProviderInternal(fp)
@@ -111,15 +106,6 @@ func saveFinalityProvider(
 func (s *FinalityProviderStore) SetFpStatus(btcPk *btcec.PublicKey, status proto.FinalityProviderStatus) error {
 	setFpStatus := func(fp *proto.FinalityProvider) error {
 		fp.Status = status
-		return nil
-	}
-
-	return s.setFinalityProviderState(btcPk, setFpStatus)
-}
-
-func (s *FinalityProviderStore) SetFpRegisteredEpoch(btcPk *btcec.PublicKey, registeredEpoch uint64) error {
-	setFpStatus := func(fp *proto.FinalityProvider) error {
-		fp.RegisteredEpoch = registeredEpoch
 		return nil
 	}
 

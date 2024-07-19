@@ -13,17 +13,20 @@ type EOTSManager interface {
 	// It fails if there is an existing key Info with the same name or public key.
 	CreateKey(name, passphrase, hdPath string) ([]byte, error)
 
-	// CreateMasterRandPair generates a pair of master secret/public randomness
-	// It fails if the finality provider does not exist or passPhrase is incorrect
-	// NOTE: the master randomness pair is deterministically generated based on the EOTS key and chainID
-	CreateMasterRandPair(uid []byte, chainID []byte, passphrase string) (string, error)
+	// CreateRandomnessPairList generates a list of Schnorr randomness pairs from
+	// startHeight to startHeight+(num-1) where num means the number of public randomness
+	// It fails if the finality provider does not exist or a randomness pair has been created before
+	// or passPhrase is incorrect
+	// NOTE: the randomness is deterministically generated based on the EOTS key, chainID and
+	// block height
+	CreateRandomnessPairList(uid []byte, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error)
 
 	// KeyRecord returns the finality provider record
 	// It fails if the finality provider does not exist or passPhrase is incorrect
 	KeyRecord(uid []byte, passphrase string) (*types.KeyRecord, error)
 
 	// SignEOTS signs an EOTS using the private key of the finality provider and the corresponding
-	// secret randomness of the give chain at the given height
+	// secret randomness of the given chain at the given height
 	// It fails if the finality provider does not exist or there's no randomness committed to the given height
 	// or passPhrase is incorrect
 	SignEOTS(uid []byte, chainID []byte, msg []byte, height uint64, passphrase string) (*btcec.ModNScalar, error)

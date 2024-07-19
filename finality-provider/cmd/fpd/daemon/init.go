@@ -4,39 +4,40 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/jessevdk/go-flags"
-	"github.com/urfave/cli"
+	"github.com/spf13/cobra"
 
+	fpcmd "github.com/babylonchain/finality-provider/finality-provider/cmd"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/util"
 )
 
-var InitCommand = cli.Command{
-	Name:  "init",
-	Usage: "Initialize a finality-provider home directory.",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  homeFlag,
-			Usage: "Path to where the home directory will be initialized",
-			Value: fpcfg.DefaultFpdDir,
-		},
-		cli.BoolFlag{
-			Name:     forceFlag,
-			Usage:    "Override existing configuration",
-			Required: false,
-		},
-	},
-	Action: initHome,
+// CommandInit returns the init command of fpd daemon that starts the config dir.
+func CommandInit() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:     "init",
+		Short:   "Initialize a finality-provider home directory.",
+		Long:    `Creates a new finality-provider home directory with default config`,
+		Example: `fpd init --home /home/user/.fpd --force`,
+		Args:    cobra.NoArgs,
+		RunE:    fpcmd.RunEWithClientCtx(runInitCmd),
+	}
+	cmd.Flags().Bool(forceFlag, false, "Override existing configuration")
+	return cmd
 }
 
-func initHome(c *cli.Context) error {
-	homePath, err := filepath.Abs(c.String(homeFlag))
+func runInitCmd(ctx client.Context, cmd *cobra.Command, args []string) error {
+	homePath, err := filepath.Abs(ctx.HomeDir)
 	if err != nil {
 		return err
 	}
-	// Create home directory
+
 	homePath = util.CleanAndExpandPath(homePath)
-	force := c.Bool(forceFlag)
+	force, err := cmd.Flags().GetBool(forceFlag)
+	if err != nil {
+		return fmt.Errorf("failed to read flag %s: %w", fpEotsPkFlag, err)
+	}
 
 	if util.FileExists(homePath) && !force {
 		return fmt.Errorf("home path %s already exists", homePath)

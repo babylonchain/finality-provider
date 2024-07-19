@@ -11,6 +11,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/config"
 	fpstore "github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/testutil"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // FuzzFinalityProvidersStore tests save and list finality providers properly
@@ -35,16 +36,17 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		}()
 
 		fp := testutil.GenRandomFinalityProvider(r, t)
+		fpAddr, err := sdk.AccAddressFromBech32(fp.FPAddr)
+		require.NoError(t, err)
+
 		// create the fp for the first time
 		err = vs.CreateFinalityProvider(
-			fp.ChainPk,
+			fpAddr,
 			fp.BtcPk,
 			fp.Description,
 			fp.Commission,
-			fp.MasterPubRand,
 			fp.KeyName,
 			fp.ChainID,
-			fp.Pop.ChainSig,
 			fp.Pop.BtcSig,
 		)
 		require.NoError(t, err)
@@ -52,14 +54,12 @@ func FuzzFinalityProvidersStore(f *testing.F) {
 		// create same finality provider again
 		// and expect duplicate error
 		err = vs.CreateFinalityProvider(
-			fp.ChainPk,
+			fpAddr,
 			fp.BtcPk,
 			fp.Description,
 			fp.Commission,
 			fp.KeyName,
-			fp.MasterPubRand,
 			fp.ChainID,
-			fp.Pop.ChainSig,
 			fp.Pop.BtcSig,
 		)
 		require.ErrorIs(t, err, fpstore.ErrDuplicateFinalityProvider)

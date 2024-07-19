@@ -60,18 +60,27 @@ func (c *EOTSManagerGRpcClient) CreateKey(name, passphrase, hdPath string) ([]by
 	return res.Pk, nil
 }
 
-func (c *EOTSManagerGRpcClient) CreateMasterRandPair(uid, chainID []byte, passphrase string) (string, error) {
-	req := &proto.CreateMasterRandPairRequest{
-		Uid:        uid,
-		ChainId:    chainID,
-		Passphrase: passphrase,
+func (c *EOTSManagerGRpcClient) CreateRandomnessPairList(uid, chainID []byte, startHeight uint64, num uint32, passphrase string) ([]*btcec.FieldVal, error) {
+	req := &proto.CreateRandomnessPairListRequest{
+		Uid:         uid,
+		ChainId:     chainID,
+		StartHeight: startHeight,
+		Num:         num,
+		Passphrase:  passphrase,
 	}
-	res, err := c.client.CreateMasterRandPair(context.Background(), req)
+	res, err := c.client.CreateRandomnessPairList(context.Background(), req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return res.MasterPubRand, nil
+	pubRandFieldValList := make([]*btcec.FieldVal, 0, len(res.PubRandList))
+	for _, r := range res.PubRandList {
+		var fieldVal btcec.FieldVal
+		fieldVal.SetByteSlice(r)
+		pubRandFieldValList = append(pubRandFieldValList, &fieldVal)
+	}
+
+	return pubRandFieldValList, nil
 }
 
 func (c *EOTSManagerGRpcClient) KeyRecord(uid []byte, passphrase string) (*types.KeyRecord, error) {

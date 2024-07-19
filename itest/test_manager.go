@@ -13,21 +13,18 @@ import (
 
 	sdkmath "cosmossdk.io/math"
 	"github.com/babylonchain/babylon/btcstaking"
-	txformat "github.com/babylonchain/babylon/btctxformatter"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	ckpttypes "github.com/babylonchain/babylon/x/checkpointing/types"
+	"github.com/babylonchain/finality-provider/clientcontroller"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -68,15 +65,14 @@ type TestManager struct {
 }
 
 type TestDelegationData struct {
-	DelegatorPrivKey        *btcec.PrivateKey
-	DelegatorKey            *btcec.PublicKey
-	DelegatorBabylonPrivKey *secp256k1.PrivKey
-	DelegatorBabylonKey     *secp256k1.PubKey
-	SlashingTx              *bstypes.BTCSlashingTx
-	StakingTx               *wire.MsgTx
-	StakingTxInfo           *btcctypes.TransactionInfo
-	DelegatorSig            *bbntypes.BIP340Signature
-	FpPks                   []*btcec.PublicKey
+	FPAddr           sdk.AccAddress
+	DelegatorPrivKey *btcec.PrivateKey
+	DelegatorKey     *btcec.PublicKey
+	SlashingTx       *bstypes.BTCSlashingTx
+	StakingTx        *wire.MsgTx
+	StakingTxInfo    *btcctypes.TransactionInfo
+	DelegatorSig     *bbntypes.BIP340Signature
+	FpPks            []*btcec.PublicKey
 
 	SlashingAddr  string
 	ChangeAddr    string
@@ -151,74 +147,83 @@ func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf("Babylon node is started")
 }
 
-func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance, uint64) {
+func StartManagerWithFinalityProvider(t *testing.T, n int) (*TestManager, []*service.FinalityProviderInstance) {
 	tm := StartManager(t)
 	app := tm.Fpa
+	cfg := app.GetConfig()
+	oldKey := cfg.BabylonConfig.Key
 
-	// register all finality providers
-	registeredEpoch := uint64(0)
-	fpPKs := make([]*bbntypes.BIP340PubKey, 0, n)
 	for i := 0; i < n; i++ {
 		fpName := fpNamePrefix + strconv.Itoa(i)
 		moniker := monikerPrefix + strconv.Itoa(i)
 		commission := sdkmath.LegacyZeroDec()
 		desc := newDescription(moniker)
-		cfg := app.GetConfig()
-		_, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, fpName, keyring.BackendTest, passphrase, hdPath, "")
+
+		// needs to update key in config to be able to register and sign the creation of the finality provider with the
+		// same address.
+		cfg.BabylonConfig.Key = fpName
+		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, passphrase, hdPath, "")
 		require.NoError(t, err)
+
+		cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
+		require.NoError(t, err)
+		app.UpdateClientController(cc)
+
+		// add some funds for new fp pay for fees '-'
+		err = tm.BabylonHandler.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
+		require.NoError(t, err)
+
 		res, err := app.CreateFinalityProvider(fpName, chainID, passphrase, hdPath, desc, &commission)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
-		fpPKs = append(fpPKs, fpPk)
-		resp, err := app.RegisterFinalityProvider(fpPk.MarshalHex())
-		require.NoError(t, err)
-		registeredEpoch = resp.RegisteredEpoch // last registered epoch
-	}
 
-	// wait until the last registered epoch is finalised
-	tm.FinalizeUntilEpoch(t, registeredEpoch)
-
-	for i := 0; i < n; i++ {
-		// start
-		err := app.StartHandlingFinalityProvider(fpPKs[i], passphrase)
+		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
 		require.NoError(t, err)
-		fpIns, err := app.GetFinalityProviderInstance(fpPKs[i])
+		err = app.StartHandlingFinalityProvider(fpPk, passphrase)
+		require.NoError(t, err)
+		fpIns, err := app.GetFinalityProviderInstance(fpPk)
 		require.NoError(t, err)
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
+
+		// check finality providers on Babylon side
+		require.Eventually(t, func() bool {
+			fps, err := tm.BBNClient.QueryFinalityProviders()
+			if err != nil {
+				t.Logf("failed to query finality providers from Babylon %s", err.Error())
+				return false
+			}
+
+			if len(fps) != i+1 {
+				return false
+			}
+
+			for _, fp := range fps {
+				if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
+					return false
+				}
+				if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
+					return false
+				}
+			}
+
+			return true
+		}, eventuallyWaitTimeOut, eventuallyPollTime)
 	}
 
-	// check finality providers on Babylon side
-	require.Eventually(t, func() bool {
-		fps, err := tm.BBNClient.QueryFinalityProviders()
-		if err != nil {
-			t.Logf("failed to query finality providers from Babylon %s", err.Error())
-			return false
-		}
-
-		if len(fps) != n {
-			return false
-		}
-
-		for _, fp := range fps {
-			if !strings.Contains(fp.Description.Moniker, monikerPrefix) {
-				return false
-			}
-			if !fp.Commission.Equal(sdkmath.LegacyZeroDec()) {
-				return false
-			}
-		}
-
-		return true
-	}, eventuallyWaitTimeOut, eventuallyPollTime)
+	// goes back to old key in app
+	cfg.BabylonConfig.Key = oldKey
+	cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, zap.NewNop())
+	require.NoError(t, err)
+	app.UpdateClientController(cc)
 
 	fpInsList := app.ListFinalityProviderInstances()
 	require.Equal(t, n, len(fpInsList))
 
 	t.Logf("the test manager is running with %v finality-provider(s)", len(fpInsList))
 
-	return tm, fpInsList, registeredEpoch
+	return tm, fpInsList
 }
 
 func (tm *TestManager) Stop(t *testing.T) {
@@ -231,16 +236,16 @@ func (tm *TestManager) Stop(t *testing.T) {
 	tm.EOTSServerHandler.Stop()
 }
 
-func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey) {
+func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		queriedFps, err := tm.BBNClient.QueryFinalityProviders()
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
 		if err != nil {
 			return false
 		}
-		return len(queriedFps) == 1 && queriedFps[0].BabylonPk.Equals(bbnPk)
+		return lastCommittedHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
-	t.Logf("the finality-provider is successfully registered")
+	t.Logf("public randomness is successfully committed")
 }
 
 func (tm *TestManager) WaitForNPendingDels(t *testing.T, n int) []*bstypes.BTCDelegationResponse {
@@ -537,12 +542,10 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 	)
 
-	// delegator Babylon key pairs
-	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
-	require.NoError(t, err)
+	stakerAddr := tm.BBNClient.GetKeyAddress()
 
 	// proof-of-possession
-	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
+	pop, err := bstypes.NewPoPBTC(stakerAddr, delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
@@ -622,7 +625,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 
 	// submit the BTC delegation to Babylon
 	_, err = tm.BBNClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
 		fpPks,
 		pop,
@@ -635,24 +637,23 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		uint32(unbondingTime),
 		unbondingValue,
 		testUnbondingInfo.SlashingTx,
-		unbondingSig)
+		unbondingSig,
+	)
 	require.NoError(t, err)
 
 	t.Log("successfully submitted a BTC delegation")
 
 	return &TestDelegationData{
-		DelegatorPrivKey:        delBtcPrivKey,
-		DelegatorKey:            delBtcPubKey,
-		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
-		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		FpPks:                   fpPks,
-		StakingTx:               testStakingInfo.StakingTx,
-		SlashingTx:              testStakingInfo.SlashingTx,
-		StakingTxInfo:           txInfo,
-		DelegatorSig:            delegatorSig,
-		SlashingAddr:            params.SlashingAddress.String(),
-		StakingTime:             stakingTime,
-		StakingAmount:           stakingAmount,
+		DelegatorPrivKey: delBtcPrivKey,
+		DelegatorKey:     delBtcPubKey,
+		FpPks:            fpPks,
+		StakingTx:        testStakingInfo.StakingTx,
+		SlashingTx:       testStakingInfo.SlashingTx,
+		StakingTxInfo:    txInfo,
+		DelegatorSig:     delegatorSig,
+		SlashingAddr:     params.SlashingAddress.String(),
+		StakingTime:      stakingTime,
+		StakingAmount:    stakingAmount,
 	}
 }
 
@@ -766,113 +767,4 @@ func ParseRespBTCDelToBTCDel(resp *bstypes.BTCDelegationResponse) (btcDel *bstyp
 	}
 
 	return btcDel, nil
-}
-
-func (tm *TestManager) InsertWBTCHeaders(t *testing.T, r *rand.Rand) {
-	params, err := tm.BBNClient.QueryStakingParams()
-	require.NoError(t, err)
-	btcTipResp, err := tm.BBNClient.QueryBtcLightClientTip()
-	require.NoError(t, err)
-	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(btcTipResp.HeaderHex)
-	require.NoError(t, err)
-	kHeaders := datagen.NewBTCHeaderChainFromParentInfo(r, &btclctypes.BTCHeaderInfo{
-		Header: &tipHeader,
-		Hash:   tipHeader.Hash(),
-		Height: btcTipResp.Height,
-		Work:   &btcTipResp.Work,
-	}, uint32(params.FinalizationTimeoutBlocks))
-	_, err = tm.BBNClient.InsertBtcBlockHeaders(kHeaders.ChainToBytes())
-	require.NoError(t, err)
-}
-
-func (tm *TestManager) FinalizeUntilEpoch(t *testing.T, epoch uint64) {
-	bbnClient := tm.BBNClient.GetBBNClient()
-
-	// wait until the checkpoint of this epoch is sealed
-	require.Eventually(t, func() bool {
-		lastSealedCkpt, err := bbnClient.LatestEpochFromStatus(ckpttypes.Sealed)
-		if err != nil {
-			return false
-		}
-		return epoch <= lastSealedCkpt.RawCheckpoint.EpochNum
-	}, eventuallyWaitTimeOut, 1*time.Second)
-
-	t.Logf("start finalizing epochs till %d", epoch)
-	// Random source for the generation of BTC data
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-
-	// get all checkpoints of these epochs
-	pagination := &sdkquerytypes.PageRequest{
-		Key:   ckpttypes.CkptsObjectKey(1),
-		Limit: epoch,
-	}
-	resp, err := bbnClient.RawCheckpoints(pagination)
-	require.NoError(t, err)
-	require.Equal(t, int(epoch), len(resp.RawCheckpoints))
-
-	submitter := tm.BBNClient.GetKeyAddress()
-
-	for _, checkpoint := range resp.RawCheckpoints {
-		currentBtcTipResp, err := tm.BBNClient.QueryBtcLightClientTip()
-		require.NoError(t, err)
-		tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
-		require.NoError(t, err)
-
-		rawCheckpoint, err := checkpoint.Ckpt.ToRawCheckpoint()
-		require.NoError(t, err)
-
-		btcCheckpoint, err := ckpttypes.FromRawCkptToBTCCkpt(rawCheckpoint, submitter)
-		require.NoError(t, err)
-
-		babylonTagBytes, err := hex.DecodeString("01020304")
-		require.NoError(t, err)
-
-		p1, p2, err := txformat.EncodeCheckpointData(
-			babylonTagBytes,
-			txformat.CurrentVersion,
-			btcCheckpoint,
-		)
-		require.NoError(t, err)
-
-		tx1 := datagen.CreatOpReturnTransaction(r, p1)
-
-		opReturn1 := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), tx1)
-		tx2 := datagen.CreatOpReturnTransaction(r, p2)
-		opReturn2 := datagen.CreateBlockWithTransaction(r, opReturn1.HeaderBytes.ToBlockHeader(), tx2)
-
-		// insert headers and proofs
-		_, err = tm.BBNClient.InsertBtcBlockHeaders([]bbntypes.BTCHeaderBytes{
-			opReturn1.HeaderBytes,
-			opReturn2.HeaderBytes,
-		})
-		require.NoError(t, err)
-
-		_, err = tm.BBNClient.InsertSpvProofs(submitter.String(), []*btcctypes.BTCSpvProof{
-			opReturn1.SpvProof,
-			opReturn2.SpvProof,
-		})
-		require.NoError(t, err)
-
-		// wait until this checkpoint is submitted
-		require.Eventually(t, func() bool {
-			ckpt, err := bbnClient.RawCheckpoint(checkpoint.Ckpt.EpochNum)
-			require.NoError(t, err)
-			return ckpt.RawCheckpoint.Status == ckpttypes.Submitted
-		}, eventuallyWaitTimeOut, eventuallyPollTime)
-	}
-
-	// insert w BTC headers
-	tm.InsertWBTCHeaders(t, r)
-
-	// wait until the checkpoint of this epoch is finalised
-	require.Eventually(t, func() bool {
-		lastFinalizedCkpt, err := bbnClient.LatestEpochFromStatus(ckpttypes.Finalized)
-		if err != nil {
-			t.Logf("failed to get last finalized epoch: %v", err)
-			return false
-		}
-		return epoch <= lastFinalizedCkpt.RawCheckpoint.EpochNum
-	}, eventuallyWaitTimeOut, 1*time.Second)
-
-	t.Logf("epoch %d is finalised", epoch)
 }

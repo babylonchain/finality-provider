@@ -37,7 +37,7 @@ func DefaultBBNConfig() BBNConfig {
 		GasPrices:      "0.002ubbn",
 		Debug:          dc.Debug,
 		Timeout:        dc.Timeout,
-		// Setting this to relatively low value, out currnet babylon client (lens) will
+		// Setting this to relatively low value, out current babylon client (lens) will
 		// block for this amout of time to wait for transaction inclusion in block
 		BlockTimeout: 1 * time.Minute,
 		OutputFormat: dc.OutputFormat,

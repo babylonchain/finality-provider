@@ -7,13 +7,12 @@ import (
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
-	"github.com/babylonchain/finality-provider/types"
 )
 
 type createFinalityProviderResponse struct {
@@ -32,30 +31,26 @@ type createFinalityProviderRequest struct {
 }
 
 type registerFinalityProviderRequest struct {
-	bbnPubKey *secp256k1.PubKey
-	btcPubKey *bbntypes.BIP340PubKey
-	// TODO we should have our own representation of PoP
-	pop             *btcstakingtypes.ProofOfPossession
+	fpAddr          sdk.AccAddress
+	btcPubKey       *bbntypes.BIP340PubKey
+	pop             *btcstakingtypes.ProofOfPossessionBTC
 	description     *stakingtypes.Description
 	commission      *sdkmath.LegacyDec
-	masterPubRand   string
 	errResponse     chan error
 	successResponse chan *RegisterFinalityProviderResponse
 }
 
 type finalityProviderRegisteredEvent struct {
-	bbnPubKey       *secp256k1.PubKey
+	bbnAddress      sdk.AccAddress
 	btcPubKey       *bbntypes.BIP340PubKey
 	txHash          string
-	registeredEpoch uint64
 	successResponse chan *RegisterFinalityProviderResponse
 }
 
 type RegisterFinalityProviderResponse struct {
-	bbnPubKey       *secp256k1.PubKey
-	btcPubKey       *bbntypes.BIP340PubKey
-	TxHash          string
-	RegisteredEpoch uint64
+	bbnAddress sdk.AccAddress
+	btcPubKey  *bbntypes.BIP340PubKey
+	TxHash     string
 }
 
 type CreateFinalityProviderResult struct {
@@ -66,6 +61,16 @@ type fpState struct {
 	mu sync.Mutex
 	fp *store.StoredFinalityProvider
 	s  *store.FinalityProviderStore
+}
+
+func NewFpState(
+	fp *store.StoredFinalityProvider,
+	s *store.FinalityProviderStore,
+) *fpState {
+	return &fpState{
+		fp: fp,
+		s:  s,
+	}
 }
 
 func (fps *fpState) getStoreFinalityProvider() *store.StoredFinalityProvider {
@@ -97,15 +102,15 @@ func (fps *fpState) setLastProcessedAndVotedHeight(height uint64) error {
 }
 
 func (fp *FinalityProviderInstance) GetStoreFinalityProvider() *store.StoredFinalityProvider {
-	return fp.state.getStoreFinalityProvider()
+	return fp.fpState.getStoreFinalityProvider()
 }
 
 func (fp *FinalityProviderInstance) GetBtcPkBIP340() *bbntypes.BIP340PubKey {
-	return fp.state.getStoreFinalityProvider().GetBIP340BTCPK()
+	return fp.fpState.getStoreFinalityProvider().GetBIP340BTCPK()
 }
 
 func (fp *FinalityProviderInstance) GetBtcPk() *btcec.PublicKey {
-	return fp.state.getStoreFinalityProvider().BtcPk
+	return fp.fpState.getStoreFinalityProvider().BtcPk
 }
 
 func (fp *FinalityProviderInstance) GetBtcPkHex() string {
@@ -113,23 +118,23 @@ func (fp *FinalityProviderInstance) GetBtcPkHex() string {
 }
 
 func (fp *FinalityProviderInstance) GetStatus() proto.FinalityProviderStatus {
-	return fp.state.getStoreFinalityProvider().Status
+	return fp.fpState.getStoreFinalityProvider().Status
 }
 
 func (fp *FinalityProviderInstance) GetLastVotedHeight() uint64 {
-	return fp.state.getStoreFinalityProvider().LastVotedHeight
+	return fp.fpState.getStoreFinalityProvider().LastVotedHeight
 }
 
 func (fp *FinalityProviderInstance) GetLastProcessedHeight() uint64 {
-	return fp.state.getStoreFinalityProvider().LastProcessedHeight
+	return fp.fpState.getStoreFinalityProvider().LastProcessedHeight
 }
 
 func (fp *FinalityProviderInstance) GetChainID() []byte {
-	return types.MarshalChainID(fp.state.getStoreFinalityProvider().ChainID)
+	return []byte(fp.fpState.getStoreFinalityProvider().ChainID)
 }
 
 func (fp *FinalityProviderInstance) SetStatus(s proto.FinalityProviderStatus) error {
-	return fp.state.setStatus(s)
+	return fp.fpState.setStatus(s)
 }
 
 func (fp *FinalityProviderInstance) MustSetStatus(s proto.FinalityProviderStatus) {
@@ -140,7 +145,7 @@ func (fp *FinalityProviderInstance) MustSetStatus(s proto.FinalityProviderStatus
 }
 
 func (fp *FinalityProviderInstance) SetLastProcessedHeight(height uint64) error {
-	return fp.state.setLastProcessedHeight(height)
+	return fp.fpState.setLastProcessedHeight(height)
 }
 
 func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
@@ -152,7 +157,7 @@ func (fp *FinalityProviderInstance) MustSetLastProcessedHeight(height uint64) {
 }
 
 func (fp *FinalityProviderInstance) updateStateAfterFinalitySigSubmission(height uint64) error {
-	return fp.state.setLastProcessedAndVotedHeight(height)
+	return fp.fpState.setLastProcessedAndVotedHeight(height)
 }
 
 func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(height uint64) {
@@ -162,23 +167,4 @@ func (fp *FinalityProviderInstance) MustUpdateStateAfterFinalitySigSubmission(he
 	}
 	fp.metrics.RecordFpLastVotedHeight(fp.GetBtcPkHex(), height)
 	fp.metrics.RecordFpLastProcessedHeight(fp.GetBtcPkHex(), height)
-}
-
-func (fp *FinalityProviderInstance) getEOTSPrivKey() (*btcec.PrivateKey, error) {
-	record, err := fp.em.KeyRecord(fp.btcPk.MustMarshal(), fp.passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	return record.PrivKey, nil
-}
-
-// only used for testing purposes
-func (fp *FinalityProviderInstance) BtcPrivKey() (*btcec.PrivateKey, error) {
-	return fp.getEOTSPrivKey()
-}
-
-// only used for testing purposes
-func (fp *FinalityProviderInstance) RegisteredEpoch() uint64 {
-	return fp.state.fp.RegisteredEpoch
 }

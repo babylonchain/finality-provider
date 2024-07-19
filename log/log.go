@@ -63,7 +63,7 @@ func NewRootLoggerWithFile(logFile string, level string) (*zap.Logger, error) {
 	if err := util.MakeDirectory(filepath.Dir(logFile)); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0660)
 	if err != nil {
 		return nil, err
 	}

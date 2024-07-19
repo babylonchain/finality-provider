@@ -20,8 +20,8 @@ providers:
    finality votes for each block each maintained finality provider has committed to
    vote for.
 
-The daemon is controlled by the `fpd` tool. The `fpcli` tool implements commands for
-interacting with the daemon.
+The daemon is controlled by the `fpd` tool, which has overall commands for
+interacting with the running daemon.
 
 ## 2. Configuration
 
@@ -51,11 +51,13 @@ For different operating systems, those are:
 Below are some important parameters of the `fpd.conf` file.
 
 **Note**:
-The configuration below requires to point to the path where this keyring is
-stored `KeyDirectory`. This `Key` field stores the key name used for interacting with
-the consumer chain and will be specified along with the
-`KeyringBackend` field in the next [step](#3-add-key-for-the-consumer-chain). So we
-can ignore the setting of the two fields in this step.
+The configuration below requires pointing to the path where this keyring is
+stored `KeyDirectory`. This `Key` field stores the key name of the finality
+provider wallet that is going to be used for interacting with the consumer
+chain and to sign the messages of your finality provider. It will be specified
+along with the `KeyringBackend` field in the next
+[step](#3-add-key-for-the-consumer-chain). So we can ignore the setting of the
+two fields in this step.
 
 ```bash
 [Application Options]
@@ -66,8 +68,8 @@ EOTSManagerAddress = 127.0.0.1:12582
 RpcListener = 127.0.0.1:12581
 
 [babylon]
-# Name of the key to sign transactions with
-Key = <finality-provider-key-name>
+# Name of the key of the finality provider to sign transactions with
+Key = <finality-provider-key-name-signer>
 
 # Chain id of the chain to connect to
 # Please verify the `ChainID` from the Babylon RPC node https://rpc.testnet3.babylonchain.io/status
@@ -98,17 +100,15 @@ GasPrices = 0.002ubbn
 ## 3. Add key for the consumer chain
 
 The finality provider daemon requires the existence of a keyring that contains an
-account with Babylon token funds to pay for transactions. This key will be also used
+account for the finality provider with Babylon token funds to pay and sign
+transactions. This key identifies the finality provider and will be also used
 to pay for fees of transactions to the consumer chain.
 
 Use the following command to add the key:
 
 ```bash
-fpd keys add --key-name my-finality-provider --chain-id bbn-test-3
+fpd keys add my-finality-provider
 ```
-
-**Note**: Please verify the `chain-id` from the Babylon RPC
-node https://rpc.testnet3.babylonchain.io/status
 
 After executing the above command, the key name will be saved in the config file
 created in [step](#2-configuration).
@@ -131,7 +131,7 @@ this value and specify a custom address using the `--rpc-listener` flag.
 This will also start all the registered finality provider instances except for
 slashed ones added in [step](#5-create-and-register-a-finality-provider). To start
 the daemon with a specific finality provider instance, use the
-`--btc-pk` flag followed by the hex string of the BTC public key of the finality
+`--eots-pk` flag followed by the hex string of the BTC public key of the finality
 provider (`btc_pk_hex`) obtained
 in [step](#5-create-and-register-a-finality-provider).
 
@@ -150,32 +150,32 @@ can also be set in the configuration file.
 ## 5. Create and Register a Finality Provider
 
 We create a finality provider instance through the
-`fpcli create-finality-provider` or `fpcli cfp` command. The created instance is
+`fpd create-finality-provider` or `fpd cfp` command. The created instance is
 associated with a BTC public key which serves as its unique identifier and a Babylon
 account to which staking rewards will be directed. Note that if the `--key-name` flag
 is not specified, the `Key` field of config specified
 in [step](#3-add-key-for-the-consumer-chain) will be used.
 
 ```bash
-fpcli create-finality-provider --key-name my-finality-provider \
+fpd create-finality-provider --key-name my-finality-provider \
                 --chain-id bbn-test-3 --moniker my-name
 {
-    "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
-    "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
-    "description": {
-        "moniker": "my-name"
-    },
-    "status": "CREATED"
+  "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
+  "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
+  "description": {
+    "moniker": "my-name"
+  },
+  "status": "CREATED"
 }
 ```
 
 We register a created finality provider in Babylon through
-the `fpcli register-finality-provider` or `fpcli rfp` command. The output contains
+the `fpd register-finality-provider` or `fpd rfp` command. The output contains
 the hash of the Babylon finality provider registration transaction.
 
 ```bash
-fpcli register-finality-provider \
-  --btc-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
+fpd register-finality-provider \
+  --eots-pk d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63
 {
   "tx_hash": "800AE5BBDADE974C5FA5BD44336C7F1A952FAB9F5F9B43F7D4850BA449319BAA"
 }
@@ -186,7 +186,7 @@ A finality provider instance will be initiated and start running right after the
 finality provider is successfully registered in Babylon.
 
 We can view the status of all the running finality providers through
-the `fpcli list-finality-providers` or `fpcli ls` command. The `status` field can
+the `fpd list-finality-providers` or `fpd ls` command. The `status` field can
 receive the following values:
 
 - `CREATED`: The finality provider is created but not registered yet
@@ -199,12 +199,12 @@ receive the following values:
 - `SLASHED`: The finality provider is slashed due to malicious behavior
 
 ```bash
-fpcli list-finality-providers
+fpd list-finality-providers
 {
     "finality-providers": [
         ...
         {
-            "babylon_pk_hex": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
+            "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
             "btc_pk_hex": "d0fc4db48643fbb4339dc4bbf15f272411716b0d60f18bdfeb3861544bf5ef63",
             "description": {
                 "moniker": "my-name"
@@ -217,13 +217,13 @@ fpcli list-finality-providers
 ```
 
 After the creation of the finality provider in the local db, it is possible
-to export the finality provider information through the `fpcli export-finality-provider` command.
+to export the finality provider information through the `fpd export-finality-provider` command.
 This command connects with the `fpd` daemon to retrieve the finality
-provider previously created using the flag `--btc-pk` as key.
+provider previously created using the flag `--eots-pk` as key.
 
 This command also has several flag options:
 
-- `--btc-pk` the hex string of the BTC public key.
+- `--eots-pk` the hex string of the BTC public key.
 - `--daemon-address` the RPC server address of `fpd` daemon.
 - `--signed` signs the finality provider with the chain key of the PoS
 chain secured as a proof of untempered exported data.
@@ -235,7 +235,7 @@ passphrase is required.
 - `--hd-path` the hd derivation path of the private key.
 
 ```shell
-$ fpcli export-finality-provider --btc-pk 02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077 \
+$ fpd export-finality-provider --eots-pk 02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077 \
 --home ./export-fp/fpd --key-name finality-provider --signed
 ```
 
@@ -251,12 +251,9 @@ The expected result is a JSON object corresponding to the finality provider info
     "details": "other overall info"
   },
   "commission": "0.050000000000000000",
-  "babylon_pk": {
-    "key": "AtPEagBqVQUL6og0qH+H44pFf9p3WcHAva+zC2+74X8p"
-  },
+  "fp_addr": "bbn19khdh5vf8zv9x49f84cfuxx5t45m7klwq827mp",
   "btc_pk": "02face5996b2792114677604ec9dfad4fe66eeace3df92dab834754add5bdd7077",
   "pop": {
-    "babylon_sig": "sAg34vImQTFVlZYsziw9PCCKDuRyZv38V2MX8Ij9fQhyOdpxCUZ1VEgpSlwV/dbnpDs1UOez8Ni9EcbADkmnBA==",
     "btc_sig": "sHLpEHVTyTp9K55oeHxnPlkV4unc/r1obqzKn5S1gq95oXA3AgL1jyCzd/mGb23RfKbEyABjYUdcIBtZ02l5jg=="
   },
   "master_pub_rand": "xpub661MyMwAqRbcFLhUq9uPM7GncSytVZvoNg4w7LLx1Y74GeeAZerkpV1amvGBTcw4ECmrwFsTNMNf1LFBKkA2pmd8aJ5Jmp8uKD5xgVSezBq",

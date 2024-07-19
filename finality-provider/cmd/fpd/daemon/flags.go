@@ -1,20 +1,22 @@
 package daemon
 
-import "github.com/cosmos/cosmos-sdk/crypto/keyring"
-
 const (
-	homeFlag           = "home"
-	forceFlag          = "force"
-	passphraseFlag     = "passphrase"
-	fpPkFlag           = "btc-pk"
-	keyNameFlag        = "key-name"
-	hdPathFlag         = "hd-path"
-	chainIdFlag        = "chain-id"
-	keyringBackendFlag = "keyring-backend"
-	rpcListenerFlag    = "rpc-listener"
-	recoverFlag        = "recover"
+	forceFlag            = "force"
+	fpEotsPkFlag         = "eots-pk"
+	rpcListenerFlag      = "rpc-listener"
+	fpdDaemonAddressFlag = "daemon-address"
+	keyNameFlag          = "key-name"
+	appHashFlag          = "app-hash"
+	passphraseFlag       = "passphrase"
+	hdPathFlag           = "hd-path"
+	chainIdFlag          = "chain-id"
+	signedFlag           = "signed"
 
-	defaultKeyringBackend = keyring.BackendTest
-	defaultHdPath         = ""
-	defaultPassphrase     = ""
+	// flags for description
+	monikerFlag         = "moniker"
+	identityFlag        = "identity"
+	websiteFlag         = "website"
+	securityContactFlag = "security-contact"
+	detailsFlag         = "details"
+	commissionRateFlag  = "commission"
 )

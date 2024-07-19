@@ -19,12 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	EOTSManager_Ping_FullMethodName                 = "/proto.EOTSManager/Ping"
-	EOTSManager_CreateKey_FullMethodName            = "/proto.EOTSManager/CreateKey"
-	EOTSManager_CreateMasterRandPair_FullMethodName = "/proto.EOTSManager/CreateMasterRandPair"
-	EOTSManager_KeyRecord_FullMethodName            = "/proto.EOTSManager/KeyRecord"
-	EOTSManager_SignEOTS_FullMethodName             = "/proto.EOTSManager/SignEOTS"
-	EOTSManager_SignSchnorrSig_FullMethodName       = "/proto.EOTSManager/SignSchnorrSig"
+	EOTSManager_Ping_FullMethodName                     = "/proto.EOTSManager/Ping"
+	EOTSManager_CreateKey_FullMethodName                = "/proto.EOTSManager/CreateKey"
+	EOTSManager_CreateRandomnessPairList_FullMethodName = "/proto.EOTSManager/CreateRandomnessPairList"
+	EOTSManager_KeyRecord_FullMethodName                = "/proto.EOTSManager/KeyRecord"
+	EOTSManager_SignEOTS_FullMethodName                 = "/proto.EOTSManager/SignEOTS"
+	EOTSManager_SignSchnorrSig_FullMethodName           = "/proto.EOTSManager/SignSchnorrSig"
 )
 
 // EOTSManagerClient is the client API for EOTSManager service.
@@ -34,8 +34,8 @@ type EOTSManagerClient interface {
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
 	// CreateKey generates and saves an EOTS key
 	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error)
-	// CreateMasterRandPair creates a pair of master secret/public randomness
-	CreateMasterRandPair(ctx context.Context, in *CreateMasterRandPairRequest, opts ...grpc.CallOption) (*CreateMasterRandPairResponse, error)
+	// CreateRandomnessPairList returns a list of Schnorr randomness pairs
+	CreateRandomnessPairList(ctx context.Context, in *CreateRandomnessPairListRequest, opts ...grpc.CallOption) (*CreateRandomnessPairListResponse, error)
 	// KeyRecord returns the key record
 	KeyRecord(ctx context.Context, in *KeyRecordRequest, opts ...grpc.CallOption) (*KeyRecordResponse, error)
 	// SignEOTS signs an EOTS with the EOTS private key and the relevant randomness
@@ -70,9 +70,9 @@ func (c *eOTSManagerClient) CreateKey(ctx context.Context, in *CreateKeyRequest,
 	return out, nil
 }
 
-func (c *eOTSManagerClient) CreateMasterRandPair(ctx context.Context, in *CreateMasterRandPairRequest, opts ...grpc.CallOption) (*CreateMasterRandPairResponse, error) {
-	out := new(CreateMasterRandPairResponse)
-	err := c.cc.Invoke(ctx, EOTSManager_CreateMasterRandPair_FullMethodName, in, out, opts...)
+func (c *eOTSManagerClient) CreateRandomnessPairList(ctx context.Context, in *CreateRandomnessPairListRequest, opts ...grpc.CallOption) (*CreateRandomnessPairListResponse, error) {
+	out := new(CreateRandomnessPairListResponse)
+	err := c.cc.Invoke(ctx, EOTSManager_CreateRandomnessPairList_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +113,8 @@ type EOTSManagerServer interface {
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
 	// CreateKey generates and saves an EOTS key
 	CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error)
-	// CreateMasterRandPair creates a pair of master secret/public randomness
-	CreateMasterRandPair(context.Context, *CreateMasterRandPairRequest) (*CreateMasterRandPairResponse, error)
+	// CreateRandomnessPairList returns a list of Schnorr randomness pairs
+	CreateRandomnessPairList(context.Context, *CreateRandomnessPairListRequest) (*CreateRandomnessPairListResponse, error)
 	// KeyRecord returns the key record
 	KeyRecord(context.Context, *KeyRecordRequest) (*KeyRecordResponse, error)
 	// SignEOTS signs an EOTS with the EOTS private key and the relevant randomness
@@ -134,8 +134,8 @@ func (UnimplementedEOTSManagerServer) Ping(context.Context, *PingRequest) (*Ping
 func (UnimplementedEOTSManagerServer) CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateKey not implemented")
 }
-func (UnimplementedEOTSManagerServer) CreateMasterRandPair(context.Context, *CreateMasterRandPairRequest) (*CreateMasterRandPairResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateMasterRandPair not implemented")
+func (UnimplementedEOTSManagerServer) CreateRandomnessPairList(context.Context, *CreateRandomnessPairListRequest) (*CreateRandomnessPairListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateRandomnessPairList not implemented")
 }
 func (UnimplementedEOTSManagerServer) KeyRecord(context.Context, *KeyRecordRequest) (*KeyRecordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method KeyRecord not implemented")
@@ -195,20 +195,20 @@ func _EOTSManager_CreateKey_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EOTSManager_CreateMasterRandPair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateMasterRandPairRequest)
+func _EOTSManager_CreateRandomnessPairList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRandomnessPairListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EOTSManagerServer).CreateMasterRandPair(ctx, in)
+		return srv.(EOTSManagerServer).CreateRandomnessPairList(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: EOTSManager_CreateMasterRandPair_FullMethodName,
+		FullMethod: EOTSManager_CreateRandomnessPairList_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EOTSManagerServer).CreateMasterRandPair(ctx, req.(*CreateMasterRandPairRequest))
+		return srv.(EOTSManagerServer).CreateRandomnessPairList(ctx, req.(*CreateRandomnessPairListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -283,8 +283,8 @@ var EOTSManager_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EOTSManager_CreateKey_Handler,
 		},
 		{
-			MethodName: "CreateMasterRandPair",
-			Handler:    _EOTSManager_CreateMasterRandPair_Handler,
+			MethodName: "CreateRandomnessPairList",
+			Handler:    _EOTSManager_CreateRandomnessPairList_Handler,
 		},
 		{
 			MethodName: "KeyRecord",

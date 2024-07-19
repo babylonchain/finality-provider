@@ -54,6 +54,7 @@ build-docker:
 
 .PHONY: build build-docker
 
+.PHONY: test
 test:
 	go test ./...
 
