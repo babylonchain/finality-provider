@@ -47,6 +47,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
 	require.ErrorIs(t, err, sdkclient.ErrNoFpHasVotingPower)
+	t.Logf(log.Prefix("Expected no voting power"))
 }
 
 // This test has two test cases:
@@ -64,8 +65,10 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 		{e2eutils.StakingTime, e2eutils.StakingAmount},
 	})
 
-	// check the public randomness is committed
+	// check both FPs have committed their first public randomness
+	// TODO: we might use go routine to do this in parallel
 	for i := 0; i < n; i++ {
+		t.Logf(log.Prefix("fList[i] pub key %s"), fpList[i].GetBtcPkHex())
 		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
 	}
 

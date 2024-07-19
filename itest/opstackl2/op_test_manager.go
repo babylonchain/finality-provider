@@ -29,6 +29,7 @@ import (
 	"github.com/babylonchain/finality-provider/finality-provider/service"
 	e2eutils "github.com/babylonchain/finality-provider/itest"
 	base_test_manager "github.com/babylonchain/finality-provider/itest/test-manager"
+	"github.com/babylonchain/finality-provider/metrics"
 	"github.com/babylonchain/finality-provider/testutil/log"
 	"github.com/babylonchain/finality-provider/types"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -53,7 +54,7 @@ type OpL2ConsumerTestManager struct {
 	BabylonHandler *e2eutils.BabylonNodeHandler
 	FpApp          []*service.FinalityProviderApp
 	// TODO: need to figure out if FP and EOTS ports are fixed. if so, we need more refactor
-	EOTSServerHandler []*e2eutils.EOTSServerHandler
+	EOTSServerHandler *e2eutils.EOTSServerHandler
 	BaseDir           string
 	SdkClient         *sdkclient.SdkClient
 	OpSystem          *ope2e.System
@@ -64,7 +65,7 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.ErrorLevel)
+	logger := createLogger(t, zapcore.DebugLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -84,19 +85,33 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 
 	// start multiple FPs. each FP has its own EOTS manager and finality provider app
 	// there is one Babylon FP and multiple Consumer FPs
-	fpApps, eotsHandlers := createMultiFps(testDir, bh, opL2ConsumerConfig, numOfConsumerFPs+1, logger, t)
+	fpApps, eotsHandler := createMultiFps(
+		testDir,
+		bh,
+		opL2ConsumerConfig,
+		numOfConsumerFPs+1,
+		logger,
+		t,
+	)
 
 	// register consumer to Babylon (only one of the FPs needs to do it)
 	opConsumerId := getConsumerChainId(&opSys.Cfg)
 	babylonClient := fpApps[0].GetBabylonController().(*bbncc.BabylonController)
-	_, err = babylonClient.RegisterConsumerChain(opConsumerId, "OP consumer chain (test)", "some description about the chain")
+	_, err = babylonClient.RegisterConsumerChain(
+		opConsumerId,
+		"OP consumer chain (test)",
+		"some description about the chain",
+	)
 	require.NoError(t, err)
 	t.Logf(log.Prefix("Register consumer %s to Babylon"), opConsumerId)
 
 	ctm := &OpL2ConsumerTestManager{
-		BaseTestManager:   BaseTestManager{BBNClient: babylonClient, CovenantPrivKeys: covenantPrivKeys},
+		BaseTestManager: BaseTestManager{
+			BBNClient:        babylonClient,
+			CovenantPrivKeys: covenantPrivKeys,
+		},
 		BabylonHandler:    bh,
-		EOTSServerHandler: eotsHandlers,
+		EOTSServerHandler: eotsHandler,
 		FpApp:             fpApps,
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
@@ -108,22 +123,31 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 }
 
 func createMultiFps(
-	testDir string, bh *e2eutils.BabylonNodeHandler, opL2ConsumerConfig *fpcfg.OPStackL2Config, numOfFPs uint8, logger *zap.Logger, t *testing.T,
-) ([]*service.FinalityProviderApp, []*e2eutils.EOTSServerHandler) {
+	testDir string,
+	bh *e2eutils.BabylonNodeHandler,
+	opL2ConsumerConfig *fpcfg.OPStackL2Config,
+	numOfFPs uint8,
+	logger *zap.Logger,
+	t *testing.T,
+) ([]*service.FinalityProviderApp, *e2eutils.EOTSServerHandler) {
 	// prepare FPs configs
 	fpConfigs := createFpConfigs(testDir, bh, opL2ConsumerConfig, numOfFPs, logger, t)
 
 	// prepare EOTS managers
-	eotsHandlers, eotsClients := startEotsManagers(testDir, t, fpConfigs, numOfFPs)
+	eotsHandler, eotsClients := startEotsManagers(testDir, t, fpConfigs, numOfFPs, logger)
 
 	// prepare fpApps
 	fpApps := createFpApps(numOfFPs, fpConfigs, eotsClients, logger, t)
 
-	return fpApps, eotsHandlers
+	return fpApps, eotsHandler
 }
 
 func createFpApps(
-	numOfFPs uint8, fpConfigs []*fpcfg.Config, eotsClients []*client.EOTSManagerGRpcClient, logger *zap.Logger, t *testing.T,
+	numOfFPs uint8,
+	fpConfigs []*fpcfg.Config,
+	eotsClients []*client.EOTSManagerGRpcClient,
+	logger *zap.Logger,
+	t *testing.T,
 ) []*service.FinalityProviderApp {
 	fpApps := make([]*service.FinalityProviderApp, 0, numOfFPs)
 
@@ -134,7 +158,11 @@ func createFpApps(
 		var cc api.ConsumerController
 		var err error
 		if i == 0 {
-			cc, err = bbncc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+			cc, err = bbncc.NewBabylonConsumerController(
+				cfg.BabylonConfig,
+				&cfg.BTCNetParams,
+				logger,
+			)
 		} else {
 			cc, err = opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
 		}
@@ -149,6 +177,7 @@ func createFpApps(
 		require.NoError(t, err)
 		err = fpApp.Start()
 		require.NoError(t, err)
+		t.Logf(log.Prefix("Started FP App %d"), i)
 
 		fpApps = append(fpApps, fpApp)
 	}
@@ -156,14 +185,29 @@ func createFpApps(
 }
 
 // create configs for multiple FPs. the first config is for a Babylon FP
-func createFpConfigs(testDir string, bh *e2eutils.BabylonNodeHandler, opL2ConsumerConfig *fpcfg.OPStackL2Config, numOfFPs uint8, logger *zap.Logger, t *testing.T) []*fpcfg.Config {
+func createFpConfigs(
+	testDir string,
+	bh *e2eutils.BabylonNodeHandler,
+	opL2ConsumerConfig *fpcfg.OPStackL2Config,
+	numOfFPs uint8,
+	logger *zap.Logger,
+	t *testing.T,
+) []*fpcfg.Config {
 	fpConfigs := make([]*fpcfg.Config, 0, numOfFPs)
 
 	for i := 0; i < int(numOfFPs); i++ {
 		fpHomeDir := filepath.Join(testDir, fmt.Sprintf("fp-home-%d", i))
 		t.Logf(log.Prefix("Fp home dir: %s"), fpHomeDir)
 
-		cfg := e2eutils.DefaultFpConfig(bh.GetNodeDataDir(), fpHomeDir)
+		// customize ports
+		// FP default RPC port is 12581, EOTS default RPC port i is 12582
+		// FP default metrics port is 2112, EOTS default metrics port is 2113
+		cfg := e2eutils.DefaultFpConfigWithPorts(
+			bh.GetNodeDataDir(), fpHomeDir,
+			fpcfg.DefaultRPCPort-i,
+			metrics.DefaultFpConfig().Port-i,
+			eotsconfig.DefaultRPCPort+i,
+		)
 		cfg.LogLevel = logger.Level().String()
 		cfg.StatusUpdateInterval = 2 * time.Second
 		cfg.RandomnessCommitInterval = 2 * time.Second
@@ -179,25 +223,53 @@ func createFpConfigs(testDir string, bh *e2eutils.BabylonNodeHandler, opL2Consum
 	return fpConfigs
 }
 
-func startEotsManagers(testDir string, t *testing.T, cfgs []*fpcfg.Config, numOfFPs uint8) ([]*e2eutils.EOTSServerHandler, []*client.EOTSManagerGRpcClient) {
-	eotsHandlers := make([]*e2eutils.EOTSServerHandler, 0, numOfFPs)
+func startEotsManagers(
+	testDir string,
+	t *testing.T,
+	cfgs []*fpcfg.Config,
+	numOfFPs uint8,
+	logger *zap.Logger,
+) (*e2eutils.EOTSServerHandler, []*client.EOTSManagerGRpcClient) {
 	eotsClients := make([]*client.EOTSManagerGRpcClient, 0, numOfFPs)
+	eotsHomeDirs := make([]string, 0, numOfFPs)
+	eotsConfigs := make([]*eotsconfig.Config, 0, numOfFPs)
 
+	// start EOTS servers
 	for i := 0; i < int(numOfFPs); i++ {
 		eotsHomeDir := filepath.Join(testDir, fmt.Sprintf("eots-home-%d", i))
-		eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
-		eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
-		eh.Start()
+		eotsHomeDirs = append(eotsHomeDirs, eotsHomeDir)
+
+		// customize ports
+		// FP default RPC port is 12581, EOTS default RPC port i is 12582
+		// FP default metrics port is 2112, EOTS default metrics port is 2113
+		eotsCfg := eotsconfig.DefaultConfigWithHomePathAndPorts(
+			eotsHomeDir,
+			eotsconfig.DefaultRPCPort+i,
+			metrics.DefaultEotsConfig().Port+i,
+		)
+		eotsConfigs = append(eotsConfigs, eotsCfg)
+	}
+	eh := e2eutils.NewEOTSServerHandlerMultiFP(t, eotsConfigs, eotsHomeDirs, logger)
+	eh.Start()
+
+	// wait for EOTS servers to start
+	// see https://github.com/babylonchain/finality-provider/pull/517
+	time.Sleep(5 * time.Second)
+
+	// create EOTS clients
+	for i := 0; i < int(numOfFPs); i++ {
 		eotsCli, err := client.NewEOTSManagerGRpcClient(cfgs[i].EOTSManagerAddress)
 		require.NoError(t, err)
-
-		eotsHandlers = append(eotsHandlers, eh)
 		eotsClients = append(eotsClients, eotsCli)
 	}
-	return eotsHandlers, eotsClients
+	return eh, eotsClients
 }
 
-func initSdkClient(opSys *ope2e.System, opL2ConsumerConfig *fpcfg.OPStackL2Config, t *testing.T) *sdkclient.SdkClient {
+func initSdkClient(
+	opSys *ope2e.System,
+	opL2ConsumerConfig *fpcfg.OPStackL2Config,
+	t *testing.T,
+) *sdkclient.SdkClient {
 	// We pass in an external Bitcoin RPC address but otherwise use the default configs.
 	btcConfig := btcclient.DefaultBTCConfig()
 	// The RPC url must be trimmed to remove the http:// or https:// prefix.
@@ -211,7 +283,12 @@ func initSdkClient(opSys *ope2e.System, opL2ConsumerConfig *fpcfg.OPStackL2Confi
 	return sdkClient
 }
 
-func deployCwContract(t *testing.T, logger *zap.Logger, opL2ConsumerConfig *fpcfg.OPStackL2Config, opConsumerId string) string {
+func deployCwContract(
+	t *testing.T,
+	logger *zap.Logger,
+	opL2ConsumerConfig *fpcfg.OPStackL2Config,
+	opConsumerId string,
+) string {
 	cwConfig := opL2ConsumerConfig.ToCosmwasmConfig()
 	cwClient, err := opcc.NewCwClient(&cwConfig, logger)
 	require.NoError(t, err)
@@ -439,7 +516,14 @@ func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(
 		commission := sdkmath.LegacyZeroDec()
 		desc := e2eutils.NewDescription(moniker)
 
-		res, err := app.CreateFinalityProvider(keyName, consumerID, e2eutils.Passphrase, e2eutils.HdPath, desc, &commission)
+		res, err := app.CreateFinalityProvider(
+			keyName,
+			consumerID,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			desc,
+			&commission,
+		)
 		require.NoError(t, err)
 		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
 		require.NoError(t, err)
@@ -456,7 +540,11 @@ func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(
 // - start op stack system
 // - populate the consumer config
 // - return the consumer config and the op system
-func startExtSystemsAndCreateConsumerCfg(t *testing.T, logger *zap.Logger, bh *e2eutils.BabylonNodeHandler) (*fpcfg.OPStackL2Config, *ope2e.System) {
+func startExtSystemsAndCreateConsumerCfg(
+	t *testing.T,
+	logger *zap.Logger,
+	bh *e2eutils.BabylonNodeHandler,
+) (*fpcfg.OPStackL2Config, *ope2e.System) {
 	// create consumer config
 	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
 
@@ -525,9 +613,8 @@ func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
 	// So we have to register a Babylon chain FP
 	bbnFpPk := ctm.RegisterBabylonFinalityProvider(t)
 
-	// register and start consumer chain FPs
+	// register consumer chain FPs
 	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, n)
-	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 
 	// insert BTC delegations
 	for i := 0; i < n; i++ {
@@ -541,6 +628,9 @@ func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
 
 	// wait until all delegations are active
 	ctm.WaitForDelegations(t, n)
+
+	// start consumer chain FPs (has to wait until all delegations are active)
+	fpList := ctm.StartConsumerFinalityProvider(t, consumerFpPkList)
 
 	return fpList
 }
@@ -606,9 +696,9 @@ func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(
 ) []*service.FinalityProviderInstance {
 	var resFpList []*service.FinalityProviderInstance
 
-	// consumer chain FPs stars from index 1
-	for i := 1; i < len(fpPkList)+1; i++ {
-		app := ctm.FpApp[i]
+	for i := 0; i < len(fpPkList); i++ {
+		// consumer chain FPs stars from index 1. so i+1 is the index of the FP app
+		app := ctm.FpApp[i+1]
 		err := app.StartHandlingFinalityProvider(fpPkList[i], e2eutils.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPkList[i])
@@ -669,17 +759,18 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	var err error
 	// FpApp has to stop first or you will get "rpc error: desc = account xxx not found: key not found" error
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
-	for i := 0; i < len(ctm.FpApp); i++ {
+	// Note: we never called StartHandlingFinalityProvider for Babylon FP, so we don't need to stop it
+	// that's why we start from index 1
+	for i := 1; i < len(ctm.FpApp); i++ {
 		err = ctm.FpApp[i].Stop()
 		require.NoError(t, err)
+		t.Logf(log.Prefix("Stopped FP App %d"), i)
 	}
 	require.NoError(t, err)
 	ctm.OpSystem.Close()
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
-	for i := 0; i < len(ctm.EOTSServerHandler); i++ {
-		ctm.EOTSServerHandler[i].Stop()
-	}
+	ctm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(ctm.BaseDir)
 	require.NoError(t, err)
 }
