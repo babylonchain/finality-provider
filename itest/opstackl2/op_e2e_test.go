@@ -17,7 +17,7 @@ import (
 
 // tests the finality signature submission to the op-finality-gadget contract
 func TestOpSubmitFinalitySignature(t *testing.T) {
-	ctm := StartOpL2ConsumerManager(t)
+	ctm := StartOpL2ConsumerManager(t, 1)
 	defer ctm.Stop(t)
 
 	consumerFpPkList := ctm.RegisterConsumerFinalityProvider(t, 1)
@@ -27,7 +27,8 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 	// query the first committed pub rand
-	committedPubRand, err := queryFirstPublicRandCommit(ctm.OpL2ConsumerCtrl, fpInstance.GetBtcPk())
+	opcc := ctm.getFirstOpCC()
+	committedPubRand, err := queryFirstPublicRandCommit(opcc, fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	committedStartHeight := committedPubRand.StartHeight
 	t.Logf(log.Prefix("First committed pubrandList startHeight %d"), committedStartHeight)
@@ -52,7 +53,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 // 1. block has both two FP signs, so it would be finalized
 // 2. block has only one FP with smaller power (1/4) signs, so it would not be considered as finalized
 func TestOpMultipleFinalityProviders(t *testing.T) {
-	ctm := StartOpL2ConsumerManager(t)
+	ctm := StartOpL2ConsumerManager(t, 2)
 	defer ctm.Stop(t)
 
 	// register, get BTC delegations, and start FPs
@@ -78,7 +79,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
 
-	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
+	testBlock, err := ctm.getFirstOpCC().QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
 	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
@@ -102,7 +103,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
-	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
+	testNextBlock, err := ctm.getFirstOpCC().QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)
 	queryNextParams := cwclient.L2Block{
 		BlockHeight:    testNextBlock.Height,
@@ -117,7 +118,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 }
 
 func TestFinalityStuckAndRecover(t *testing.T) {
-	ctm := StartOpL2ConsumerManager(t)
+	ctm := StartOpL2ConsumerManager(t, 1)
 	defer ctm.Stop(t)
 
 	// register, get BTC delegations, and start FPs
@@ -145,7 +146,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf(log.Prefix("last voted height %d"), lastVotedHeight)
 	// wait until the block finalized
 	require.Eventually(t, func() bool {
-		latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+		latestFinalizedBlock, err := ctm.getFirstOpCC().QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		stuckHeight := latestFinalizedBlock.Height
 		return lastVotedHeight == stuckHeight
@@ -153,7 +154,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 
 	// check the finality gets stuck
 	time.Sleep(5 * ctm.getL1BlockTime())
-	latestFinalizedBlock, err := ctm.OpL2ConsumerCtrl.QueryLatestFinalizedBlock()
+	latestFinalizedBlock, err := ctm.getFirstOpCC().QueryLatestFinalizedBlock()
 	require.NoError(t, err)
 	stuckHeight := latestFinalizedBlock.Height
 	require.Equal(t, lastVotedHeight, stuckHeight)

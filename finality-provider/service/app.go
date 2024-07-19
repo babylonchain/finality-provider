@@ -138,6 +138,14 @@ func (app *FinalityProviderApp) GetConfig() *fpcfg.Config {
 	return app.config
 }
 
+func (app *FinalityProviderApp) GetBabylonController() ccapi.ClientController {
+	return app.cc
+}
+
+func (app *FinalityProviderApp) GetConsumerController() ccapi.ConsumerController {
+	return app.consumerCon
+}
+
 func (app *FinalityProviderApp) GetFinalityProviderStore() *store.FinalityProviderStore {
 	return app.fps
 }
