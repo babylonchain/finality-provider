@@ -215,11 +215,10 @@ func createFpConfigs(
 		cfg.NumPubRand = 64
 		cfg.MinRandHeightGap = 1000
 
-		t.Logf(log.Prefix("current keyring dir: %s"), cfg.BabylonConfig.KeyDirectory)
-
 		// customize key
 		cfg.BabylonConfig.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("fp-home-keydir%d", i))
 		t.Logf(log.Prefix("updated keyring dir: %s"), cfg.BabylonConfig.KeyDirectory)
+		t.Logf(log.Prefix("updated key name: %s"), cfg.BabylonConfig.Key)
 		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, e2eutils.Passphrase, e2eutils.HdPath, "")
 		require.NoError(t, err)
 
@@ -234,6 +233,7 @@ func createFpConfigs(
 		if i != 0 { // the first FP is Babylon FP, skip
 			opcc := *opL2ConsumerConfig
 			opcc.KeyDirectory = cfg.BabylonConfig.KeyDirectory
+			opcc.Key = cfg.BabylonConfig.Key
 			cfg.OPStackL2Config = &opcc
 		}
 
@@ -782,7 +782,7 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
 	// Note: we never called StartHandlingFinalityProvider for Babylon FP, so we don't need to stop it
 	// that's why we start from index 1
-	for i := 1; i < len(ctm.FpApp); i++ {
+	for i := 0; i < len(ctm.FpApp); i++ {
 		err = ctm.FpApp[i].Stop()
 		require.NoError(t, err)
 		t.Logf(log.Prefix("Stopped FP App %d"), i)
