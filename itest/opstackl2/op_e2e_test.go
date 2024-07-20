@@ -27,7 +27,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 
 	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
 	// query the first committed pub rand
-	opcc := ctm.getFirstOpCC()
+	opcc := ctm.getOpCCAtIndex(1)
 	committedPubRand, err := queryFirstPublicRandCommit(opcc, fpInstance.GetBtcPk())
 	require.NoError(t, err)
 	committedStartHeight := committedPubRand.StartHeight
@@ -81,7 +81,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
 
-	testBlock, err := ctm.getFirstOpCC().QueryBlock(targetBlockHeight)
+	testBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
 	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
@@ -105,7 +105,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
-	testNextBlock, err := ctm.getFirstOpCC().QueryBlock(testNextBlockHeight)
+	testNextBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)
 	queryNextParams := cwclient.L2Block{
 		BlockHeight:    testNextBlock.Height,
@@ -148,7 +148,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf(log.Prefix("last voted height %d"), lastVotedHeight)
 	// wait until the block finalized
 	require.Eventually(t, func() bool {
-		latestFinalizedBlock, err := ctm.getFirstOpCC().QueryLatestFinalizedBlock()
+		latestFinalizedBlock, err := ctm.getOpCCAtIndex(1).QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		stuckHeight := latestFinalizedBlock.Height
 		return lastVotedHeight == stuckHeight
@@ -156,7 +156,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 
 	// check the finality gets stuck. wait for a while to make sure it is stuck
 	time.Sleep(5 * ctm.getL1BlockTime())
-	latestFinalizedBlock, err := ctm.getFirstOpCC().QueryLatestFinalizedBlock()
+	latestFinalizedBlock, err := ctm.getOpCCAtIndex(1).QueryLatestFinalizedBlock()
 	require.NoError(t, err)
 	stuckHeight := latestFinalizedBlock.Height
 	require.Equal(t, lastVotedHeight, stuckHeight)
