@@ -294,16 +294,21 @@ func startEotsManagers(
 	eh := e2eutils.NewEOTSServerHandlerMultiFP(t, eotsConfigs, eotsHomeDirs, logger)
 	eh.Start()
 
-	// wait for EOTS servers to start
-	// see https://github.com/babylonchain/finality-provider/pull/517
-	time.Sleep(5 * time.Second)
-
 	// create EOTS clients
 	for i := 0; i < int(numOfFPs); i++ {
-		eotsCli, err := client.NewEOTSManagerGRpcClient(cfgs[i].EOTSManagerAddress)
-		require.NoError(t, err)
-		eotsClients = append(eotsClients, eotsCli)
+		// wait for EOTS servers to start
+		// see https://github.com/babylonchain/finality-provider/pull/517
+		require.Eventually(t, func() bool {
+			eotsCli, err := client.NewEOTSManagerGRpcClient(cfgs[i].EOTSManagerAddress)
+			if err != nil {
+				t.Logf(log.Prefix("Error creating EOTS client: %v"), err)
+				return false
+			}
+			eotsClients = append(eotsClients, eotsCli)
+			return true
+		}, 5*time.Second, time.Second, "Failed to create EOTS clients")
 	}
+
 	return eh, eotsClients
 }
 

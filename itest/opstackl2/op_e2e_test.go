@@ -155,7 +155,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 		return lastVotedHeight == stuckHeight
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
-	// check the finality gets stuck
+	// check the finality gets stuck. wait for a while to make sure it is stuck
 	time.Sleep(5 * ctm.getL1BlockTime())
 	latestFinalizedBlock, err := ctm.getFirstOpCC().QueryLatestFinalizedBlock()
 	require.NoError(t, err)
