@@ -225,12 +225,15 @@ func createFpConfigs(
 
 		// add some funds for new fp pay for fees '-'
 		err = bh.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
+		// TODO: this is a workaround to wait for the tx to be included in the block
+		// without it, I will get rpc error: code = NotFound desc = account bbnXXX not found: key not found
+		time.Sleep(5 * time.Second)
 		require.NoError(t, err)
 		t.Logf(log.Prefix("Sent 1000000ubbn to %s"), fpBbnKeyInfo.AccAddress.String())
 
 		if i != 0 { // the first FP is Babylon FP, skip
 			opcc := *opL2ConsumerConfig
-			opcc.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("fp-home-keydir%d", i))
+			opcc.KeyDirectory = cfg.BabylonConfig.KeyDirectory
 			cfg.OPStackL2Config = &opcc
 		}
 
