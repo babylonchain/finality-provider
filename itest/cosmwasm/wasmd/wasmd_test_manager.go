@@ -151,7 +151,7 @@ func (ctm *WasmdTestManager) WaitForServicesStart(t *testing.T) {
 
 func (ctm *WasmdTestManager) Stop(t *testing.T) {
 	err := ctm.Fpa.Stop()
-	require.Error(t, err) // TODO: expect error for now as finality daemon is not started in tests
+	require.NoError(t, err)
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
