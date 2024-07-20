@@ -52,9 +52,8 @@ type BaseTestManager = base_test_manager.BaseTestManager
 
 type OpL2ConsumerTestManager struct {
 	BaseTestManager
-	BabylonHandler *e2eutils.BabylonNodeHandler
-	FpApp          []*service.FinalityProviderApp
-	// TODO: need to figure out if FP and EOTS ports are fixed. if so, we need more refactor
+	BabylonHandler    *e2eutils.BabylonNodeHandler
+	FpApp             []*service.FinalityProviderApp
 	EOTSServerHandler *e2eutils.EOTSServerHandler
 	BaseDir           string
 	SdkClient         *sdkclient.SdkClient
@@ -423,8 +422,8 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 	t.Logf(log.Prefix("Babylon node has started"))
 }
 
-func (ctm *OpL2ConsumerTestManager) getFirstOpCC() *opcc.OPStackL2ConsumerController {
-	return ctm.FpApp[1].GetConsumerController().(*opcc.OPStackL2ConsumerController)
+func (ctm *OpL2ConsumerTestManager) getOpCCAtIndex(i int) *opcc.OPStackL2ConsumerController {
+	return ctm.FpApp[i].GetConsumerController().(*opcc.OPStackL2ConsumerController)
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
@@ -436,7 +435,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
 	var err error
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query blocks. so we use the first consumer FP
-		blocks, err = ctm.getFirstOpCC().QueryBlocks(
+		blocks, err = ctm.getOpCCAtIndex(1).QueryBlocks(
 			startHeight,
 			startHeight+uint64(n-1),
 			uint64(n),
@@ -497,7 +496,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 		}
 		if firstFpCommittedPubRand == 0 {
 			firstPRCommit, err := queryFirstPublicRandCommit(
-				ctm.getFirstOpCC(),
+				ctm.getOpCCAtIndex(1),
 				fpList[0].GetBtcPk(),
 			)
 			require.NoError(t, err)
@@ -507,7 +506,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 		}
 		if secondFpCommittedPubRand == 0 {
 			secondPRCommit, err := queryFirstPublicRandCommit(
-				ctm.FpApp[2].GetConsumerController().(*opcc.OPStackL2ConsumerController),
+				ctm.getOpCCAtIndex(2),
 				fpList[1].GetBtcPk(),
 			)
 			require.NoError(t, err)
@@ -528,8 +527,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 
 	// wait until the two FPs have overlap in their PubRand commitments
 	require.Eventually(t, func() bool {
-		opcc := ctm.FpApp[i].GetConsumerController().(*opcc.OPStackL2ConsumerController)
-		committedPubRand, err := opcc.QueryLastPublicRandCommit(
+		committedPubRand, err := ctm.getOpCCAtIndex(i).QueryLastPublicRandCommit(
 			fpList[i].GetBtcPk(),
 		)
 		require.NoError(t, err)
@@ -593,7 +591,7 @@ func startExtSystemsAndCreateConsumerCfg(
 	bh *e2eutils.BabylonNodeHandler,
 ) (*fpcfg.OPStackL2Config, *ope2e.System) {
 	// create consumer config
-	// TODO: shuoldn't use the same node data dir. should use its own key
+	// TODO: using babylon node key dir is a hack. we should fix it
 	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
 
 	// DefaultSystemConfig load the op deploy config from devnet-data folder
@@ -721,7 +719,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(
 	finalizedBlockHeight := uint64(0)
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query. so we use the first consumer FP
-		nextFinalizedBlock, err := ctm.getFirstOpCC().QueryLatestFinalizedBlock()
+		nextFinalizedBlock, err := ctm.getOpCCAtIndex(1).QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		finalizedBlockHeight = nextFinalizedBlock.Height
 		return finalizedBlockHeight > checkedHeight

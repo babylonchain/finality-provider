@@ -68,7 +68,6 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// check both FPs have committed their first public randomness
 	// TODO: we might use go routine to do this in parallel
 	for i := 0; i < n; i++ {
-		t.Logf(log.Prefix("fList[i] pub key %s"), fpList[i].GetBtcPkHex())
 		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
 	}
 
