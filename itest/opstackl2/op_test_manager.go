@@ -45,6 +45,7 @@ import (
 const (
 	opFinalityGadgetContractPath = "../bytecode/op_finality_gadget_42eb9bf.wasm"
 	consumerChainIdPrefix        = "op-stack-l2-"
+	bbnAddrTopUpAmount           = 1000000
 )
 
 type BaseTestManager = base_test_manager.BaseTestManager
@@ -217,18 +218,19 @@ func createFpConfigs(
 
 		// customize key
 		cfg.BabylonConfig.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("fp-home-keydir%d", i))
-		t.Logf(log.Prefix("updated keyring dir: %s"), cfg.BabylonConfig.KeyDirectory)
-		t.Logf(log.Prefix("updated key name: %s"), cfg.BabylonConfig.Key)
-		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, e2eutils.Passphrase, e2eutils.HdPath, "")
+		fpBbnKeyInfo, err := service.CreateChainKey(
+			cfg.BabylonConfig.KeyDirectory,
+			cfg.BabylonConfig.ChainID,
+			cfg.BabylonConfig.Key,
+			cfg.BabylonConfig.KeyringBackend,
+			e2eutils.Passphrase,
+			e2eutils.HdPath,
+			"",
+		)
 		require.NoError(t, err)
 
 		// add some funds for new fp pay for fees '-'
-		err = bh.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
-		// TODO: this is a workaround to wait for the tx to be included in the block
-		// without it, I will get rpc error: code = NotFound desc = account bbnXXX not found: key not found
-		time.Sleep(5 * time.Second)
-		require.NoError(t, err)
-		t.Logf(log.Prefix("Sent 1000000ubbn to %s"), fpBbnKeyInfo.AccAddress.String())
+		fundBBNAddr(bh, fpBbnKeyInfo, t)
 
 		if i != 0 { // the first FP is Babylon FP, skip
 			opcc := *opL2ConsumerConfig
@@ -241,6 +243,26 @@ func createFpConfigs(
 	}
 
 	return fpConfigs
+}
+
+func fundBBNAddr(bh *e2eutils.BabylonNodeHandler, fpBbnKeyInfo *types.ChainKeyInfo, t *testing.T) {
+	err := bh.BabylonNode.TxBankSend(
+		fpBbnKeyInfo.AccAddress.String(),
+		fmt.Sprintf("%dubbn", bbnAddrTopUpAmount),
+	)
+	require.NoError(t, err)
+
+	// check balance
+	require.Eventually(t, func() bool {
+		balance, err := bh.BabylonNode.CheckAddrBalance(fpBbnKeyInfo.AccAddress.String())
+		if err != nil {
+			t.Logf("Error checking balance: %v", err)
+			return false
+		}
+
+		return balance == bbnAddrTopUpAmount
+	}, 30*time.Second, 2*time.Second, fmt.Sprintf("failed to top up %s", fpBbnKeyInfo.AccAddress.String()))
+	t.Logf(log.Prefix("Sent %dubbn to %s"), bbnAddrTopUpAmount, fpBbnKeyInfo.AccAddress.String())
 }
 
 func startEotsManagers(
@@ -780,8 +802,6 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	var err error
 	// FpApp has to stop first or you will get "rpc error: desc = account xxx not found: key not found" error
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
-	// Note: we never called StartHandlingFinalityProvider for Babylon FP, so we don't need to stop it
-	// that's why we start from index 1
 	for i := 0; i < len(ctm.FpApp); i++ {
 		err = ctm.FpApp[i].Stop()
 		require.NoError(t, err)
