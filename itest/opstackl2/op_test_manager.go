@@ -203,7 +203,8 @@ func createFpConfigs(
 		// FP default RPC port is 12581, EOTS default RPC port i is 12582
 		// FP default metrics port is 2112, EOTS default metrics port is 2113
 		cfg := e2eutils.DefaultFpConfigWithPorts(
-			bh.GetNodeDataDir(), fpHomeDir,
+			"this should be the keyring dir", // this will be replaced below
+			fpHomeDir,
 			fpcfg.DefaultRPCPort-i,
 			metrics.DefaultFpConfig().Port-i,
 			eotsconfig.DefaultRPCPort+i,
@@ -213,8 +214,24 @@ func createFpConfigs(
 		cfg.RandomnessCommitInterval = 2 * time.Second
 		cfg.NumPubRand = 64
 		cfg.MinRandHeightGap = 1000
+
+		t.Logf(log.Prefix("current keyring dir: %s"), cfg.BabylonConfig.KeyDirectory)
+
+		// customize key
+		cfg.BabylonConfig.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("fp-home-keydir%d", i))
+		t.Logf(log.Prefix("updated keyring dir: %s"), cfg.BabylonConfig.KeyDirectory)
+		fpBbnKeyInfo, err := service.CreateChainKey(cfg.BabylonConfig.KeyDirectory, cfg.BabylonConfig.ChainID, cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyringBackend, e2eutils.Passphrase, e2eutils.HdPath, "")
+		require.NoError(t, err)
+
+		// add some funds for new fp pay for fees '-'
+		err = bh.BabylonNode.TxBankSend(fpBbnKeyInfo.AccAddress.String(), "1000000ubbn")
+		require.NoError(t, err)
+		t.Logf(log.Prefix("Sent 1000000ubbn to %s"), fpBbnKeyInfo.AccAddress.String())
+
 		if i != 0 { // the first FP is Babylon FP, skip
-			cfg.OPStackL2Config = opL2ConsumerConfig
+			opcc := *opL2ConsumerConfig
+			opcc.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("fp-home-keydir%d", i))
+			cfg.OPStackL2Config = &opcc
 		}
 
 		fpConfigs = append(fpConfigs, cfg)
@@ -546,6 +563,7 @@ func startExtSystemsAndCreateConsumerCfg(
 	bh *e2eutils.BabylonNodeHandler,
 ) (*fpcfg.OPStackL2Config, *ope2e.System) {
 	// create consumer config
+	// TODO: shuoldn't use the same node data dir. should use its own key
 	opL2ConsumerConfig := mockOpL2ConsumerCtrlConfig(bh.GetNodeDataDir())
 
 	// DefaultSystemConfig load the op deploy config from devnet-data folder

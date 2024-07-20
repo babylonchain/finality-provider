@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ func New(cfg *config.CosmwasmConfig, chainName string, encodingCfg wasmdparams.E
 		}
 	}
 
+	fmt.Printf("KeyDirectory: %s\n", cfg.ToCosmosProviderConfig().KeyDirectory)
 	provider, err := cfg.ToCosmosProviderConfig().NewProvider(
 		zapLogger,
 		"", // TODO: set home path
