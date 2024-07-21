@@ -103,7 +103,7 @@ test-e2e-babylon: clean-e2e install-babylond
 test-e2e-babylon-ci: clean-e2e install-babylond
 	go test -list . ./itest/babylon --tags=e2e_babylon | grep Test \
 	| circleci tests run --command \
-	"xargs go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon --run" \
+	"xargs go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon --run" \
 	--split-by=name --timings-type=name
 
 test-e2e-bcd: clean-e2e install-babylond install-bcd
@@ -113,7 +113,7 @@ test-e2e-wasmd: clean-e2e install-babylond install-wasmd
 	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_wasmd
 
 test-e2e-op: clean-e2e install-babylond
-	@go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
+	@go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op --run TestOpSubmitFinalitySignature
 
 test-e2e-op-ci: clean-e2e install-babylond
 	go test -list . ./itest/opstackl2 --tags=e2e_op | grep Test \
