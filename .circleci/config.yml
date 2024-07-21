@@ -133,6 +133,7 @@ jobs:
   test_e2e_op:
     machine:
       image: ubuntu-2204:2024.01.1
+    parallelism: 3
     resource_class: large
     steps:
       - go/install:
@@ -149,13 +150,17 @@ jobs:
           key: go-mod-v6-{{ checksum "go.sum" }}
           path: "/home/circleci/.go_workspace/pkg/mod"
       - run:
+          name: Install gotestsum
+          command: |
+            go install gotest.tools/gotestsum@v1.12.0
+      - run:
           name: Download OP e2e devnet test data
           command: |
             make op-e2e-devnet
       - run:
           name: Run integration tests
           command: |
-            make test-e2e-op
+            make test-e2e-op-ci
 
   build_docker:
     machine:

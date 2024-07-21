@@ -81,7 +81,7 @@ install-bcd:
 	cd $(TOOLS_DIR); \
 	go install -trimpath $(BCD_PKG)
 
-.PHONY: clean-e2e test-e2e test-e2e-babylon test-e2e-wasmd test-e2e-bcd test-e2e-op
+.PHONY: clean-e2e test-e2e test-e2e-babylon test-e2e-wasmd test-e2e-bcd test-e2e-op test-e2e-op-ci
 
 # Clean up environments by stopping processes and removing data directories
 clean-e2e:
@@ -108,6 +108,12 @@ test-e2e-wasmd: clean-e2e install-babylond install-wasmd
 
 test-e2e-op: clean-e2e install-babylond
 	@go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op
+
+test-e2e-op-ci: clean-e2e install-babylond
+	echo "TestOpSubmitFinalitySignature TestOpMultipleFinalityProviders TestFinalityStuckAndRecover" \
+	| circleci tests run --command \
+	"xargs gotestsum --junitfile junit.xml --format testname -- -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op --run" \
+	--split-by=name --timings-type=name
 
 DEVNET_REPO_URL := https://github.com/babylonchain/op-e2e-devnet
 TARGET_DIR := ./itest/opstackl2/devnet-data
