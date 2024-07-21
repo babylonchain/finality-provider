@@ -142,13 +142,21 @@ jobs:
       - run:
           name: Print Go environment
           command: "go env"
-      - go/load-cache:
-          key: go-mod-v6-{{ checksum "go.sum" }}
       - add_ssh_keys
+      - restore_cache:
+          keys:
+            - go-cache-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
+            - go-cache-
       - go/mod-download
-      - go/save-cache:
-          key: go-mod-v6-{{ checksum "go.sum" }}
-          path: "/home/circleci/.go_workspace/pkg/mod"
+      - run:
+          name: Install babylond
+          command: |
+            make install-babylond
+      - save_cache:
+          paths:
+            - $GOMODCACHE
+            - $GOPATH/bin
+          key: go-cache-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
       - run:
           name: Download OP e2e devnet test data
           command: |
