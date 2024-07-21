@@ -76,8 +76,8 @@ jobs:
       - add_ssh_keys
       - restore_cache:
           keys:
-            - debug-1279a-v2-go-mod-cache-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
-            - debug-1279a-v2-go-mod-cache-
+            - go-mod-v7-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
+            - go-mod-v7-
       - go/mod-download
       - run:
           name: Install babylond
@@ -92,7 +92,7 @@ jobs:
             - "/home/circleci/.go_workspace/pkg/mod"
             - "/home/circleci/.go_workspace/bin"
             - "/home/circleci/.cache/go-build"
-          key: debug-1279a-v2-go-mod-cache-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
+          key: go-mod-v7-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
 
   test_e2e_bcd:
     machine:
@@ -155,8 +155,8 @@ jobs:
       - add_ssh_keys
       - restore_cache:
           keys:
-            - debug-1279a-v2-go-mod-cache-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
-            - debug-1279a-v2-go-mod-cache-
+            - go-mod-v7-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
+            - go-mod-v7-
       - go/mod-download
       - run:
           name: Install babylond
@@ -175,7 +175,7 @@ jobs:
             - "/home/circleci/.go_workspace/pkg/mod"
             - "/home/circleci/.go_workspace/bin"
             - "/home/circleci/.cache/go-build"
-          key: debug-1279a-v2-go-mod-cache-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
+          key: go-mod-v7-{{ checksum "go.sum" }}-{{ checksum "tools/go.sum" }}
 
   build_docker:
     machine:
