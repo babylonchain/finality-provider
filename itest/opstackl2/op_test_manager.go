@@ -78,6 +78,7 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 	require.NoError(t, err)
 
 	// deploy op-finality-gadget contract and start op stack system
+	// mark: start op stack system
 	opL2ConsumerConfig, opSys := startExtSystemsAndCreateConsumerCfg(t, logger, bh)
 
 	// init SDK client
@@ -85,6 +86,7 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 
 	// start multiple FPs. each FP has its own EOTS manager and finality provider app
 	// there is one Babylon FP and multiple Consumer FPs
+	// mark: dial to op node. likely where the subscription is created
 	fpApps, eotsHandler := createMultiFps(
 		testDir,
 		bh,
@@ -164,6 +166,7 @@ func createFpApps(
 				logger,
 			)
 		} else {
+			// mark
 			cc, err = opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
 		}
 		require.NoError(t, err)
@@ -212,6 +215,8 @@ func createFpConfigs(
 		cfg.LogLevel = logger.Level().String()
 		cfg.StatusUpdateInterval = 2 * time.Second
 		cfg.RandomnessCommitInterval = 2 * time.Second
+		cfg.FastSyncInterval = 4 * time.Second
+		cfg.FastSyncLimit = 100
 		cfg.NumPubRand = 64
 		cfg.MinRandHeightGap = 1000
 
@@ -615,6 +620,7 @@ func startExtSystemsAndCreateConsumerCfg(
 	opSysCfg.Loggers["batcher"] = optestlog.Logger(t, gethlog.LevelError).New("role", "watcher")
 
 	// start op stack system
+	// mark
 	opSys, err := opSysCfg.Start(t)
 	require.NoError(t, err, "Error starting up op stack system")
 
