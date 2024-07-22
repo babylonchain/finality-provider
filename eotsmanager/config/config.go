@@ -121,17 +121,7 @@ func DefaultConfig() *Config {
 }
 
 func DefaultConfigWithHomePath(homePath string) *Config {
-	cfg := &Config{
-		LogLevel:       defaultLogLevel,
-		KeyringBackend: defaultKeyringBackend,
-		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
-		RpcListener:    defaultRpcListener,
-		Metrics:        metrics.DefaultEotsConfig(),
-	}
-	if err := cfg.Validate(); err != nil {
-		panic(err)
-	}
-	return cfg
+	return DefaultConfigWithHomePathAndPorts(homePath, DefaultRPCPort, metrics.DefaultEotsMetricsPort)
 }
 
 func DefaultConfigWithHomePathAndPorts(homePath string, rpcPort, metricsPort int) *Config {
