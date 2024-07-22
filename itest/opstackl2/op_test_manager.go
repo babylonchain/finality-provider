@@ -354,14 +354,14 @@ func startEotsManagers(
 	logger *zap.Logger,
 ) (*e2eutils.EOTSServerHandler, []*client.EOTSManagerGRpcClient) {
 	allConfigs := append([]*fpcfg.Config{babylonFpCfg}, consumerFpCfgs...)
-	eotsClients := make([]*client.EOTSManagerGRpcClient, 0, len(allConfigs))
-	eotsHomeDirs := make([]string, 0, len(allConfigs))
-	eotsConfigs := make([]*eotsconfig.Config, 0, len(allConfigs))
+	eotsClients := make([]*client.EOTSManagerGRpcClient, len(allConfigs))
+	eotsHomeDirs := make([]string, len(allConfigs))
+	eotsConfigs := make([]*eotsconfig.Config, len(allConfigs))
 
 	// start EOTS servers
 	for i := 0; i < len(allConfigs); i++ {
 		eotsHomeDir := filepath.Join(testDir, fmt.Sprintf("eots-home-%d", i))
-		eotsHomeDirs = append(eotsHomeDirs, eotsHomeDir)
+		eotsHomeDirs[i] = eotsHomeDir
 
 		// customize ports
 		// FP default RPC port is 12581, EOTS default RPC port i is 12582
@@ -371,7 +371,7 @@ func startEotsManagers(
 			eotsconfig.DefaultRPCPort+i,
 			metrics.DefaultEotsConfig().Port+i,
 		)
-		eotsConfigs = append(eotsConfigs, eotsCfg)
+		eotsConfigs[i] = eotsCfg
 	}
 	eh := e2eutils.NewEOTSServerHandlerMultiFP(t, eotsConfigs, eotsHomeDirs, logger)
 	eh.Start()
@@ -386,7 +386,7 @@ func startEotsManagers(
 				t.Logf(log.Prefix("Error creating EOTS client: %v"), err)
 				return false
 			}
-			eotsClients = append(eotsClients, eotsCli)
+			eotsClients[i] = eotsCli
 			return true
 		}, 5*time.Second, time.Second, "Failed to create EOTS clients")
 	}
@@ -756,7 +756,7 @@ func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(
 	t *testing.T,
 	n int,
 ) []*bbntypes.BIP340PubKey {
-	consumerFpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
+	consumerFpPkList := make([]*bbntypes.BIP340PubKey, n)
 
 	for i := 0; i < n; i++ {
 		app := ctm.ConsumerFpApps[i]
@@ -819,14 +819,14 @@ func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(
 	t *testing.T,
 	fpPkList []*bbntypes.BIP340PubKey,
 ) []*service.FinalityProviderInstance {
-	var resFpList []*service.FinalityProviderInstance
+	resFpList := make([]*service.FinalityProviderInstance, len(fpPkList))
 
 	for i := 0; i < len(fpPkList); i++ {
 		app := ctm.ConsumerFpApps[i]
 		err := app.StartHandlingFinalityProvider(fpPkList[i], e2eutils.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPkList[i])
-		resFpList = append(resFpList, fpIns)
+		resFpList[i] = fpIns
 		require.NoError(t, err)
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
