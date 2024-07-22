@@ -139,19 +139,3 @@ func DefaultConfigWithHomePathAndPorts(homePath string, rpcPort, metricsPort int
 	}
 	return cfg
 }
-
-func DefaultConfigWithHomePathAndPorts(homePath string, rpcPort, metricsPort int) *Config {
-	cfg := &Config{
-		LogLevel:       defaultLogLevel,
-		KeyringBackend: defaultKeyringBackend,
-		DatabaseConfig: DefaultDBConfigWithHomePath(homePath),
-		RpcListener:    defaultRpcListener,
-		Metrics:        metrics.DefaultEotsConfig(),
-	}
-	cfg.RpcListener = fmt.Sprintf("%s:%d", DefaultRPCHost, rpcPort)
-	cfg.Metrics.Port = metricsPort
-	if err := cfg.Validate(); err != nil {
-		panic(err)
-	}
-	return cfg
-}
