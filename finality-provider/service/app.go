@@ -138,6 +138,14 @@ func (app *FinalityProviderApp) GetConfig() *fpcfg.Config {
 	return app.config
 }
 
+func (app *FinalityProviderApp) GetBabylonController() ccapi.ClientController {
+	return app.cc
+}
+
+func (app *FinalityProviderApp) GetConsumerController() ccapi.ConsumerController {
+	return app.consumerCon
+}
+
 func (app *FinalityProviderApp) GetFinalityProviderStore() *store.FinalityProviderStore {
 	return app.fps
 }
@@ -321,9 +329,11 @@ func (app *FinalityProviderApp) Stop() error {
 		app.wg.Wait()
 
 		app.logger.Debug("Stopping finality providers")
-		if err := app.fpManager.Stop(); err != nil {
-			stopErr = err
-			return
+		if app.fpManager.isStarted.Swap(true) {
+			if err := app.fpManager.Stop(); err != nil {
+				stopErr = err
+				return
+			}
 		}
 
 		app.logger.Debug("Stopping EOTS manager")

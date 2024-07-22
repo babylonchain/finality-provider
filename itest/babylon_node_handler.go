@@ -2,12 +2,14 @@ package e2e_utils
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -216,4 +218,49 @@ func (n *babylonNode) TxBankSend(addr, coins string) error {
 		return err
 	}
 	return nil
+}
+
+type balanceResponse struct {
+	Balances []struct {
+		Denom  string `json:"denom"`
+		Amount string `json:"amount"`
+	} `json:"balances"`
+	Pagination struct {
+		Total string `json:"total"`
+	} `json:"pagination"`
+}
+
+// CheckAddrBalance retrieves the balance of the specified address.
+func (n *babylonNode) CheckAddrBalance(addr string) (int, error) {
+	flags := []string{
+		"query",
+		"bank",
+		"balances",
+		addr,
+		"--output=json",
+		fmt.Sprintf("--home=%s", n.getNodeDataDir()),
+		"--log_level=debug",
+		"--chain-id=chain-test",
+	}
+
+	cmd := exec.Command("babylond", flags...)
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	var resp balanceResponse
+	if err := json.Unmarshal(output, &resp); err != nil {
+		return 0, err
+	}
+
+	if len(resp.Balances) == 0 {
+		return 0, fmt.Errorf("no balances found for address %s", addr)
+	}
+
+	balance, err := strconv.Atoi(resp.Balances[0].Amount)
+	if err != nil {
+		return 0, err
+	}
+	return balance, nil
 }
