@@ -121,6 +121,10 @@ func DefaultConfig() *Config {
 }
 
 func DefaultConfigWithHomePath(homePath string) *Config {
+	return DefaultConfigWithHomePathAndPorts(homePath, DefaultRPCPort, metrics.DefaultEotsMetricsPort)
+}
+
+func DefaultConfigWithHomePathAndPorts(homePath string, rpcPort, metricsPort int) *Config {
 	cfg := &Config{
 		LogLevel:       defaultLogLevel,
 		KeyringBackend: defaultKeyringBackend,
@@ -128,6 +132,8 @@ func DefaultConfigWithHomePath(homePath string) *Config {
 		RpcListener:    defaultRpcListener,
 		Metrics:        metrics.DefaultEotsConfig(),
 	}
+	cfg.RpcListener = fmt.Sprintf("%s:%d", DefaultRPCHost, rpcPort)
+	cfg.Metrics.Port = metricsPort
 	if err := cfg.Validate(); err != nil {
 		panic(err)
 	}
