@@ -506,7 +506,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (ctm *OpL2ConsumerTestManager) getOpCCAtIndex(i int) *opcc.OPStackL2ConsumerController {
-	return ctm.FpApp[i].GetConsumerController().(*opcc.OPStackL2ConsumerController)
+	return ctm.ConsumerFpApps[i].GetConsumerController().(*opcc.OPStackL2ConsumerController)
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
@@ -518,7 +518,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
 	var err error
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query blocks. so we use the first consumer FP
-		blocks, err = ctm.getOpCCAtIndex(1).QueryBlocks(
+		blocks, err = ctm.getOpCCAtIndex(0).QueryBlocks(
 			startHeight,
 			startHeight+uint64(n-1),
 			uint64(n),
@@ -579,7 +579,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 		}
 		if firstFpCommittedPubRand == 0 {
 			firstPRCommit, err := queryFirstPublicRandCommit(
-				ctm.getOpCCAtIndex(1),
+				ctm.getOpCCAtIndex(0),
 				fpList[0].GetBtcPk(),
 			)
 			require.NoError(t, err)
@@ -589,7 +589,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 		}
 		if secondFpCommittedPubRand == 0 {
 			secondPRCommit, err := queryFirstPublicRandCommit(
-				ctm.getOpCCAtIndex(2),
+				ctm.getOpCCAtIndex(1),
 				fpList[1].GetBtcPk(),
 			)
 			require.NoError(t, err)
@@ -601,10 +601,10 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
 	// find the FP's index with the smaller first committed pubrand index in `fpList`
-	i := 1
+	i := 0
 	targetBlockHeight = secondFpCommittedPubRand // the target block is the one with larger start height
 	if firstFpCommittedPubRand > secondFpCommittedPubRand {
-		i = 2
+		i = 1
 		targetBlockHeight = firstFpCommittedPubRand
 	}
 
@@ -626,42 +626,30 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 	return targetBlockHeight
 }
 
-// can be used for both the Babylon and Consumer FPs
-func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(
-	t *testing.T,
-	consumerID string,
-	n int,
-	offset int,
-) []*bbntypes.BIP340PubKey {
-	fpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
+// this works for both Babylon and OP FPs
+func (ctm *OpL2ConsumerTestManager) registerSingleFinalityProvider(app *service.FinalityProviderApp, consumerID string, monikerIndex int, t *testing.T) *bbntypes.BIP340PubKey {
+	cfg := app.GetConfig()
+	keyName := cfg.BabylonConfig.Key
+	baseMoniker := fmt.Sprintf("%s-%s", consumerID, e2eutils.MonikerPrefix)
+	moniker := fmt.Sprintf("%s%d", baseMoniker, monikerIndex)
+	commission := sdkmath.LegacyZeroDec()
+	desc := e2eutils.NewDescription(moniker)
 
-	for i := offset; i < n+offset; i++ {
-		app := ctm.FpApp[i]
-		cfg := app.GetConfig()
-		keyName := cfg.BabylonConfig.Key
-		baseMoniker := fmt.Sprintf("%s-%s", consumerID, e2eutils.MonikerPrefix)
-		moniker := fmt.Sprintf("%s%d", baseMoniker, i)
-		commission := sdkmath.LegacyZeroDec()
-		desc := e2eutils.NewDescription(moniker)
-
-		res, err := app.CreateFinalityProvider(
-			keyName,
-			consumerID,
-			e2eutils.Passphrase,
-			e2eutils.HdPath,
-			desc,
-			&commission,
-		)
-		require.NoError(t, err)
-		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
-		require.NoError(t, err)
-		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
-		require.NoError(t, err)
-		fpPkList = append(fpPkList, fpPk)
-		t.Logf(log.Prefix("Registered Finality Provider %s for %s"), fpPk.MarshalHex(), consumerID)
-	}
-
-	return fpPkList
+	res, err := app.CreateFinalityProvider(
+		keyName,
+		consumerID,
+		e2eutils.Passphrase,
+		e2eutils.HdPath,
+		desc,
+		&commission,
+	)
+	require.NoError(t, err)
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+	require.NoError(t, err)
+	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+	require.NoError(t, err)
+	t.Logf(log.Prefix("Registered Finality Provider %s for %s"), fpPk.MarshalHex(), consumerID)
+	return fpPk
 }
 
 // - deploy cw contract
@@ -728,10 +716,10 @@ type stakingParam struct {
 }
 
 // - register a Babylon finality provider
-// - register and start consumer finality providers
+// - register and start n consumer finality providers
 // - insert BTC delegations
 // - wait until all delegations are active
-// - return the list of finality providers
+// - return the list of consumer finality providers
 func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
 	t *testing.T,
 	n int, // number of consumer FPs
@@ -749,7 +737,7 @@ func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
 	for i := 0; i < n; i++ {
 		ctm.InsertBTCDelegation(
 			t,
-			[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
+			[]*btcec.PublicKey{bbnFpPk.MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
 			stakingParams[i].stakingTime,
 			stakingParams[i].stakingAmount,
 		)
@@ -768,19 +756,27 @@ func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(
 	t *testing.T,
 	n int,
 ) []*bbntypes.BIP340PubKey {
-	consumerFpPkList := ctm.registerFinalityProvider(t, ctm.getConsumerChainId(), n, 1)
+	consumerFpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
+
+	for i := 0; i < n; i++ {
+		app := ctm.ConsumerFpApps[i]
+		fpPk := ctm.registerSingleFinalityProvider(app, ctm.getConsumerChainId(), i, t)
+		consumerFpPkList[i] = fpPk
+	}
+
 	ctm.waitForConsumerFPRegistration(t, n)
 	return consumerFpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T, n int) {
+func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T) {
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryFinalityProviders()
 		if err != nil {
 			t.Logf(log.Prefix("failed to query Babylon FP(s) from Babylon %s"), err.Error())
 			return false
 		}
-		if len(fps) != n {
+		// only one Babylon FP should be registered
+		if len(fps) != 1 {
 			return false
 		}
 		return true
@@ -789,10 +785,10 @@ func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T, n
 
 func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(
 	t *testing.T,
-) []*bbntypes.BIP340PubKey {
-	babylonFpPkList := ctm.registerFinalityProvider(t, e2eutils.ChainID, 1, 0)
-	ctm.waitForBabylonFPRegistration(t, 1)
-	return babylonFpPkList
+) *bbntypes.BIP340PubKey {
+	babylonFpPk := ctm.registerSingleFinalityProvider(ctm.BabylonFpApp, e2eutils.ChainID, 0, t)
+	ctm.waitForBabylonFPRegistration(t)
+	return babylonFpPk
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(
@@ -802,7 +798,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(
 	finalizedBlockHeight := uint64(0)
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query. so we use the first consumer FP
-		nextFinalizedBlock, err := ctm.getOpCCAtIndex(1).QueryLatestFinalizedBlock()
+		nextFinalizedBlock, err := ctm.getOpCCAtIndex(0).QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		finalizedBlockHeight = nextFinalizedBlock.Height
 		return finalizedBlockHeight > checkedHeight
@@ -826,8 +822,7 @@ func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(
 	var resFpList []*service.FinalityProviderInstance
 
 	for i := 0; i < len(fpPkList); i++ {
-		// consumer chain FPs stars from index 1. so i+1 is the index of the FP app
-		app := ctm.FpApp[i+1]
+		app := ctm.ConsumerFpApps[i]
 		err := app.StartHandlingFinalityProvider(fpPkList[i], e2eutils.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPkList[i])
