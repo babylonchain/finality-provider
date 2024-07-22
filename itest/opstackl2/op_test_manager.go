@@ -80,6 +80,10 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 	// deploy op-finality-gadget contract and start op stack system
 	opL2ConsumerConfig, opSys := startExtSystemsAndCreateConsumerCfg(t, logger, bh)
 
+	// TODO: this is a hack to try to fix a flaky data race
+	// https://github.com/babylonchain/finality-provider/issues/528
+	time.Sleep(5 * time.Second)
+
 	// init SDK client
 	sdkClient := initSdkClient(opSys, opL2ConsumerConfig, t)
 
