@@ -195,7 +195,7 @@ require (
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/aws/aws-sdk-go v1.44.312 // indirect
-	github.com/babylonchain/babylon-finality-gadget v0.1.3-alpha.0.20240716025522-a7f8cd19f44f
+	github.com/babylonchain/babylon-finality-gadget v0.1.3-alpha.0.20240723114738-b3b367f1f9e6
 	github.com/babylonchain/babylon-sdk/x v0.0.0-20240705194516-4e2c5650cde8 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -438,7 +438,7 @@ replace (
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
 	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.9.0-rc.2.0.20240717044248-3d8f190c9b0c
 	github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20231018212520-f6cde3fc2fa4
-	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v1.7.5-0.20240717115935-8fad1ec9aa03
+	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v1.7.5-0.20240723122159-3c6051a0f580
 	github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101315.1-rc.5
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7

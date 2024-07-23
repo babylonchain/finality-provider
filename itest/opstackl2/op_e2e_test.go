@@ -46,8 +46,8 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	// note: QueryFinalityProviderHasPower is hardcode to return true so FPs can still submit finality sigs even if they
 	// don't have voting power. But the finality sigs will not be counted at tally time.
 	_, err = ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.ErrorIs(t, err, sdkclient.ErrNoFpHasVotingPower)
-	t.Logf(log.Prefix("Expected no voting power"))
+	require.ErrorIs(t, err, sdkclient.ErrBtcStakingNotActivated)
+	t.Logf(log.Prefix("Expected BTC staking is not activated"))
 }
 
 // This test has two test cases:
