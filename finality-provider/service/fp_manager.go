@@ -12,13 +12,12 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
+	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
 	"github.com/babylonchain/finality-provider/finality-provider/store"
 	"github.com/babylonchain/finality-provider/metrics"
-	"github.com/babylonchain/finality-provider/types"
 )
 
 const instanceTerminatingMsg = "terminating the finality-provider instance due to critical error"
@@ -45,7 +44,8 @@ type FinalityProviderManager struct {
 	fps          *store.FinalityProviderStore
 	pubRandStore *store.PubRandProofStore
 	config       *fpcfg.Config
-	cc           clientcontroller.ClientController
+	cc           ccapi.ClientController
+	consumerCon  ccapi.ConsumerController
 	em           eotsmanager.EOTSManager
 	logger       *zap.Logger
 
@@ -60,7 +60,8 @@ func NewFinalityProviderManager(
 	fps *store.FinalityProviderStore,
 	pubRandStore *store.PubRandProofStore,
 	config *fpcfg.Config,
-	cc clientcontroller.ClientController,
+	cc ccapi.ClientController,
+	consumerCon ccapi.ConsumerController,
 	em eotsmanager.EOTSManager,
 	metrics *metrics.FpMetrics,
 	logger *zap.Logger,
@@ -73,6 +74,7 @@ func NewFinalityProviderManager(
 		pubRandStore:    pubRandStore,
 		config:          config,
 		cc:              cc,
+		consumerCon:     consumerCon,
 		em:              em,
 		metrics:         metrics,
 		logger:          logger,
@@ -134,7 +136,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 	for {
 		select {
 		case <-statusUpdateTicker.C:
-			latestBlock, err := fpm.getLatestBlockWithRetry()
+			latestBlockHeight, err := fpm.getLatestBlockHeightWithRetry()
 			if err != nil {
 				fpm.logger.Debug("failed to get the latest block", zap.Error(err))
 				continue
@@ -142,25 +144,24 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 			fpis := fpm.ListFinalityProviderInstances()
 			for _, fpi := range fpis {
 				oldStatus := fpi.GetStatus()
-				power, err := fpi.GetVotingPowerWithRetry(latestBlock.Height)
+				hasPower, err := fpi.GetVotingPowerWithRetry(latestBlockHeight)
 				if err != nil {
 					fpm.logger.Debug(
-						"failed to get the voting power",
+						"failed to query the voting power",
 						zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
-						zap.Uint64("height", latestBlock.Height),
+						zap.Uint64("height", latestBlockHeight),
 						zap.Error(err),
 					)
 					continue
 				}
-				// power > 0 (slashed_height must > 0), set status to ACTIVE
-				if power > 0 {
+				// hasPower == true (slashed_height must > 0), set status to ACTIVE
+				if hasPower {
 					if oldStatus != proto.FinalityProviderStatus_ACTIVE {
 						fpi.MustSetStatus(proto.FinalityProviderStatus_ACTIVE)
 						fpm.logger.Debug(
 							"the finality-provider status is changed to ACTIVE",
 							zap.String("fp_btc_pk", fpi.GetBtcPkHex()),
 							zap.String("old_status", oldStatus.String()),
-							zap.Uint64("power", power),
 						)
 					}
 					continue
@@ -174,7 +175,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 					continue
 				}
-				// power == 0 and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
+				// hasPower == false and slashed == true, set status to SLASHED and stop and remove the finality-provider instance
 				if slashed {
 					fpm.setFinalityProviderSlashed(fpi)
 					fpm.logger.Debug(
@@ -184,7 +185,7 @@ func (fpm *FinalityProviderManager) monitorStatusUpdate() {
 					)
 					continue
 				}
-				// power == 0 and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
+				// hasPower == false and slashed_height == 0, change to INACTIVE if the current status is ACTIVE
 				if oldStatus == proto.FinalityProviderStatus_ACTIVE {
 					fpi.MustSetStatus(proto.FinalityProviderStatus_INACTIVE)
 					fpm.logger.Debug(
@@ -296,6 +297,20 @@ func (fpm *FinalityProviderManager) ListFinalityProviderInstances() []*FinalityP
 	return fpisList
 }
 
+func (fpm *FinalityProviderManager) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+	fpm.mu.Lock()
+	defer fpm.mu.Unlock()
+
+	fpisList := make([]*FinalityProviderInstance, 0, len(fpm.fpis))
+	for _, fpi := range fpm.fpis {
+		if string(fpi.GetChainID()) == chainID {
+			fpisList = append(fpisList, fpi)
+		}
+	}
+
+	return fpisList
+}
+
 func (fpm *FinalityProviderManager) AllFinalityProviders() ([]*proto.FinalityProviderInfo, error) {
 	storedFps, err := fpm.fps.GetAllStoredFinalityProviders()
 	if err != nil {
@@ -392,7 +407,7 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 		return fmt.Errorf("finality-provider instance already exists")
 	}
 
-	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.pubRandStore, fpm.cc, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
+	fpIns, err := NewFinalityProviderInstance(pk, fpm.config, fpm.fps, fpm.pubRandStore, fpm.cc, fpm.consumerCon, fpm.em, fpm.metrics, passphrase, fpm.criticalErrChan, fpm.logger)
 	if err != nil {
 		return fmt.Errorf("failed to create finality-provider %s instance: %w", pkHex, err)
 	}
@@ -407,14 +422,14 @@ func (fpm *FinalityProviderManager) addFinalityProviderInstance(
 	return nil
 }
 
-func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo, error) {
+func (fpm *FinalityProviderManager) getLatestBlockHeightWithRetry() (uint64, error) {
 	var (
-		latestBlock *types.BlockInfo
-		err         error
+		latestBlockHeight uint64
+		err               error
 	)
 
 	if err := retry.Do(func() error {
-		latestBlock, err = fpm.cc.QueryBestBlock()
+		latestBlockHeight, err = fpm.consumerCon.QueryLatestBlockHeight()
 		if err != nil {
 			return err
 		}
@@ -427,8 +442,8 @@ func (fpm *FinalityProviderManager) getLatestBlockWithRetry() (*types.BlockInfo,
 			zap.Error(err),
 		)
 	})); err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return latestBlock, nil
+	return latestBlockHeight, nil
 }

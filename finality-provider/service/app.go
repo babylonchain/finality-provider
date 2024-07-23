@@ -17,7 +17,8 @@ import (
 	"github.com/lightningnetwork/lnd/kvdb"
 	"go.uber.org/zap"
 
-	"github.com/babylonchain/finality-provider/clientcontroller"
+	fpcc "github.com/babylonchain/finality-provider/clientcontroller"
+	ccapi "github.com/babylonchain/finality-provider/clientcontroller/api"
 	"github.com/babylonchain/finality-provider/eotsmanager"
 	"github.com/babylonchain/finality-provider/eotsmanager/client"
 	fpcfg "github.com/babylonchain/finality-provider/finality-provider/config"
@@ -35,7 +36,8 @@ type FinalityProviderApp struct {
 	wg   sync.WaitGroup
 	quit chan struct{}
 
-	cc           clientcontroller.ClientController
+	cc           ccapi.ClientController
+	consumerCon  ccapi.ConsumerController
 	kr           keyring.Keyring
 	fps          *store.FinalityProviderStore
 	pubRandStore *store.PubRandProofStore
@@ -58,11 +60,14 @@ func NewFinalityProviderAppFromConfig(
 	db kvdb.Backend,
 	logger *zap.Logger,
 ) (*FinalityProviderApp, error) {
-	cc, err := clientcontroller.NewClientController(cfg.ChainName, cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	cc, err := fpcc.NewClientController(cfg, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rpc client for the Babylon chain: %v", err)
+	}
+	consumerCon, err := fpcc.NewConsumerController(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create rpc client for the consumer chain %s: %v", cfg.ChainName, err)
 	}
-
 	// if the EOTSManagerAddress is empty, run a local EOTS manager;
 	// otherwise connect a remote one with a gRPC client
 	em, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
@@ -72,12 +77,13 @@ func NewFinalityProviderAppFromConfig(
 
 	logger.Info("successfully connected to a remote EOTS manager", zap.String("address", cfg.EOTSManagerAddress))
 
-	return NewFinalityProviderApp(cfg, cc, em, db, logger)
+	return NewFinalityProviderApp(cfg, cc, consumerCon, em, db, logger)
 }
 
 func NewFinalityProviderApp(
 	config *fpcfg.Config,
-	cc clientcontroller.ClientController,
+	cc ccapi.ClientController, // TODO: this should be renamed as client controller is always going to be babylon
+	consumerCon ccapi.ConsumerController,
 	em eotsmanager.EOTSManager,
 	db kvdb.Backend,
 	logger *zap.Logger,
@@ -104,13 +110,14 @@ func NewFinalityProviderApp(
 
 	fpMetrics := metrics.NewFpMetrics()
 
-	fpm, err := NewFinalityProviderManager(fpStore, pubRandStore, config, cc, em, fpMetrics, logger)
+	fpm, err := NewFinalityProviderManager(fpStore, pubRandStore, config, cc, consumerCon, em, fpMetrics, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create finality-provider manager: %w", err)
 	}
 
 	return &FinalityProviderApp{
 		cc:                                  cc,
+		consumerCon:                         consumerCon,
 		fps:                                 fpStore,
 		pubRandStore:                        pubRandStore,
 		kr:                                  kr,
@@ -131,6 +138,14 @@ func (app *FinalityProviderApp) GetConfig() *fpcfg.Config {
 	return app.config
 }
 
+func (app *FinalityProviderApp) GetBabylonController() ccapi.ClientController {
+	return app.cc
+}
+
+func (app *FinalityProviderApp) GetConsumerController() ccapi.ConsumerController {
+	return app.consumerCon
+}
+
 func (app *FinalityProviderApp) GetFinalityProviderStore() *store.FinalityProviderStore {
 	return app.fps
 }
@@ -149,6 +164,10 @@ func (app *FinalityProviderApp) GetInput() *strings.Reader {
 
 func (app *FinalityProviderApp) ListFinalityProviderInstances() []*FinalityProviderInstance {
 	return app.fpManager.ListFinalityProviderInstances()
+}
+
+func (app *FinalityProviderApp) ListFinalityProviderInstancesForChain(chainID string) []*FinalityProviderInstance {
+	return app.fpManager.ListFinalityProviderInstancesForChain(chainID)
 }
 
 func (app *FinalityProviderApp) ListAllFinalityProvidersInfo() ([]*proto.FinalityProviderInfo, error) {
@@ -195,6 +214,7 @@ func (app *FinalityProviderApp) RegisterFinalityProvider(fpPkStr string) (*Regis
 	}
 
 	request := &registerFinalityProviderRequest{
+		chainID:         fp.ChainID,
 		fpAddr:          fpAddr,
 		btcPubKey:       bbntypes.NewBIP340PubKeyFromBTCPK(fp.BtcPk),
 		pop:             pop,
@@ -238,7 +258,7 @@ func (app *FinalityProviderApp) getFpPrivKey(fpPk []byte) (*btcec.PrivateKey, er
 
 // SyncFinalityProviderStatus syncs the status of the finality-providers
 func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
-	latestBlock, err := app.cc.QueryBestBlock()
+	latestBlockHeight, err := app.consumerCon.QueryLatestBlockHeight()
 	if err != nil {
 		return err
 	}
@@ -249,20 +269,20 @@ func (app *FinalityProviderApp) SyncFinalityProviderStatus() error {
 	}
 
 	for _, fp := range fps {
-		vp, err := app.cc.QueryFinalityProviderVotingPower(fp.BtcPk, latestBlock.Height)
+		hasPower, err := app.consumerCon.QueryFinalityProviderHasPower(fp.BtcPk, latestBlockHeight)
 		if err != nil {
 			// if error occured then the finality-provider is not registered in the Babylon chain yet
 			continue
 		}
 
-		if vp > 0 {
-			// voting power > 0 then set the status to ACTIVE
+		if hasPower {
+			// set the status to ACTIVE
 			err = app.fps.SetFpStatus(fp.BtcPk, proto.FinalityProviderStatus_ACTIVE)
 			if err != nil {
 				return err
 			}
-		} else if vp == 0 {
-			// voting power == 0 then set status depending on previous status
+		} else {
+			// set status depending on previous status
 			switch fp.Status {
 			case proto.FinalityProviderStatus_CREATED:
 				// previous status is CREATED then set to REGISTERED
@@ -309,9 +329,11 @@ func (app *FinalityProviderApp) Stop() error {
 		app.wg.Wait()
 
 		app.logger.Debug("Stopping finality providers")
-		if err := app.fpManager.Stop(); err != nil {
-			stopErr = err
-			return
+		if app.fpManager.isStarted.Swap(true) {
+			if err := app.fpManager.Stop(); err != nil {
+				stopErr = err
+				return
+			}
 		}
 
 		app.logger.Debug("Stopping EOTS manager")
@@ -452,7 +474,7 @@ func (app *FinalityProviderApp) loadChainKeyring(
 // UpdateClientController sets a new client controoller in the App.
 // Usefull for testing with multiples PKs with different keys, it needs
 // to update who is the signer
-func (app *FinalityProviderApp) UpdateClientController(cc clientcontroller.ClientController) {
+func (app *FinalityProviderApp) UpdateClientController(cc ccapi.ClientController) {
 	app.cc = cc
 }
 
@@ -591,6 +613,7 @@ func (app *FinalityProviderApp) registrationLoop() {
 				continue
 			}
 			res, err := app.cc.RegisterFinalityProvider(
+				req.chainID,
 				req.btcPubKey.MustToBTCPK(),
 				popBytes,
 				req.commission,

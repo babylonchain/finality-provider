@@ -1,7 +1,7 @@
-//go:build e2e
-// +build e2e
+//go:build e2e_babylon
+// +build e2e_babylon
 
-package e2etest
+package e2etest_babylon
 
 import (
 	"math/rand"
@@ -9,17 +9,12 @@ import (
 	"time"
 
 	"github.com/babylonchain/babylon/testutil/datagen"
+	e2eutils "github.com/babylonchain/finality-provider/itest"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/babylonchain/finality-provider/finality-provider/proto"
-	"github.com/babylonchain/finality-provider/finality-provider/service"
 	"github.com/babylonchain/finality-provider/types"
-)
-
-var (
-	stakingTime   = uint16(100)
-	stakingAmount = int64(20000)
 )
 
 // TestFinalityProviderLifeCycle tests the whole life cycle of a finality-provider
@@ -33,14 +28,14 @@ func TestFinalityProviderLifeCycle(t *testing.T) {
 	fpIns := fpInsList[0]
 
 	// check the public randomness is committed
-	tm.WaitForFpPubRandCommitted(t, fpIns)
+	e2eutils.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	del, err := e2eutils.ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs
@@ -65,14 +60,14 @@ func TestDoubleSigning(t *testing.T) {
 	fpIns := fpInsList[0]
 
 	// check the public randomness is committed
-	tm.WaitForFpPubRandCommitted(t, fpIns)
+	e2eutils.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	del, err := e2eutils.ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs
@@ -86,13 +81,13 @@ func TestDoubleSigning(t *testing.T) {
 	tm.CheckBlockFinalization(t, lastVotedHeight, 1)
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
-	finalizedBlocks := tm.WaitForNFinalizedBlocks(t, 1)
+	finalizedBlockHeight := tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 
 	// attack: manually submit a finality vote over a conflicting block
 	// to trigger the extraction of finality-provider's private key
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := &types.BlockInfo{
-		Height: finalizedBlocks[0].Height,
+		Height: finalizedBlockHeight,
 		Hash:   datagen.GenRandomByteArray(r, 32),
 	}
 	_, extractedKey, err := fpIns.TestSubmitFinalitySignatureAndExtractPrivKey(b)
@@ -122,17 +117,12 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	defer tm.Stop(t)
 
 	// submit BTC delegations for each finality-provider
-	for _, fpIns := range fpInstances {
-		tm.Wg.Add(1)
-		go func(fpi *service.FinalityProviderInstance) {
-			defer tm.Wg.Done()
-			// check the public randomness is committed
-			tm.WaitForFpPubRandCommitted(t, fpi)
-			// send a BTC delegation
-			_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, stakingTime, stakingAmount)
-		}(fpIns)
+	for _, fpi := range fpInstances {
+		// check the public randomness is committed
+		e2eutils.WaitForFpPubRandCommitted(t, fpi)
+		// send a BTC delegation
+		_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpi.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 	}
-	tm.Wg.Wait()
 
 	// check the BTC delegations are pending
 	delsResp := tm.WaitForNPendingDels(t, n)
@@ -140,7 +130,7 @@ func TestMultipleFinalityProviders(t *testing.T) {
 
 	// send covenant sigs to each of the delegations
 	for _, delResp := range delsResp {
-		d, err := ParseRespBTCDelToBTCDel(delResp)
+		d, err := e2eutils.ParseRespBTCDelToBTCDel(delResp)
 		require.NoError(t, err)
 		// send covenant sigs
 		tm.InsertCovenantSigForDelegation(t, d)
@@ -149,8 +139,8 @@ func TestMultipleFinalityProviders(t *testing.T) {
 	// check the BTC delegations are active
 	_ = tm.WaitForNActiveDels(t, n)
 
-	// check if there's a block finalized
-	_ = tm.WaitForNFinalizedBlocks(t, 1)
+	// check there's a block finalized
+	_ = tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 }
 
 // TestFastSync tests the fast sync process where the finality-provider is terminated and restarted with fast sync
@@ -161,14 +151,14 @@ func TestFastSync(t *testing.T) {
 	fpIns := fpInsList[0]
 
 	// check the public randomness is committed
-	tm.WaitForFpPubRandCommitted(t, fpIns)
+	e2eutils.WaitForFpPubRandCommitted(t, fpIns)
 
 	// send a BTC delegation
-	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, stakingTime, stakingAmount)
+	_ = tm.InsertBTCDelegation(t, []*btcec.PublicKey{fpIns.GetBtcPk()}, e2eutils.StakingTime, e2eutils.StakingAmount)
 
 	// check the BTC delegation is pending
 	delsResp := tm.WaitForNPendingDels(t, 1)
-	del, err := ParseRespBTCDelToBTCDel(delsResp[0])
+	del, err := e2eutils.ParseRespBTCDelToBTCDel(delsResp[0])
 	require.NoError(t, err)
 
 	// send covenant sigs
@@ -183,22 +173,19 @@ func TestFastSync(t *testing.T) {
 
 	t.Logf("the block at height %v is finalized", lastVotedHeight)
 
-	var finalizedBlocks []*types.BlockInfo
-	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, 1)
+	tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, 1)
 
-	n := 3
+	var n uint = 3
 	// stop the finality-provider for a few blocks then restart to trigger the fast sync
 	tm.FpConfig.FastSyncGap = uint64(n)
 	tm.StopAndRestartFpAfterNBlocks(t, n, fpIns)
 
 	// check there are n+1 blocks finalized
-	finalizedBlocks = tm.WaitForNFinalizedBlocks(t, n+1)
-	finalizedHeight := finalizedBlocks[0].Height
+	finalizedHeight := tm.WaitForNFinalizedBlocksAndReturnTipHeight(t, n+1)
 	t.Logf("the latest finalized block is at %v", finalizedHeight)
 
 	// check if the fast sync works by checking if the gap is not more than 1
-	currentHeaderRes, err := tm.BBNClient.QueryBestBlock()
-	currentHeight := currentHeaderRes.Height
+	currentHeight, err := tm.BBNConsumerClient.QueryLatestBlockHeight()
 	t.Logf("the current block is at %v", currentHeight)
 	require.NoError(t, err)
 	require.True(t, currentHeight < finalizedHeight+uint64(n))

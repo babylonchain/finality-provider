@@ -48,10 +48,11 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		// Create mocked babylon client
 		randomStartingHeight := uint64(r.Int63n(100) + 1)
 		currentHeight := randomStartingHeight + uint64(r.Int63n(10)+2)
-		mockClientController := testutil.PrepareMockedClientController(t, r, randomStartingHeight, currentHeight)
-		mockClientController.EXPECT().QueryLatestFinalizedBlocks(gomock.Any()).Return(nil, nil).AnyTimes()
-		mockClientController.EXPECT().QueryFinalityProviderVotingPower(gomock.Any(),
-			gomock.Any()).Return(uint64(0), nil).AnyTimes()
+		mockConsumerController := testutil.PrepareMockedConsumerController(t, r, randomStartingHeight, currentHeight)
+		mockConsumerController.EXPECT().QueryLatestFinalizedBlock().Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryFinalityProviderHasPower(gomock.Any(),
+			gomock.Any()).Return(false, nil).AnyTimes()
+		mockBabylonController := testutil.PrepareMockedBabylonController(t)
 
 		// Create randomized config
 		fpHomeDir := filepath.Join(t.TempDir(), "fp-home")
@@ -60,7 +61,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		fpCfg.PollerConfig.StaticChainScanningStartHeight = randomStartingHeight
 		fpdb, err := fpCfg.DatabaseConfig.GetDbBackend()
 		require.NoError(t, err)
-		app, err := service.NewFinalityProviderApp(&fpCfg, mockClientController, em, fpdb, logger)
+		app, err := service.NewFinalityProviderApp(&fpCfg, mockBabylonController, mockConsumerController, em, fpdb, logger)
 		require.NoError(t, err)
 		defer func() {
 			err = fpdb.Close()
@@ -96,8 +97,9 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		require.Equal(t, fpInfo.BtcPkHex, fpListInfo[0].BtcPkHex)
 
 		txHash := testutil.GenRandomHexStr(r, 32)
-		mockClientController.EXPECT().
+		mockBabylonController.EXPECT().
 			RegisterFinalityProvider(
+				fp.ChainID,
 				fp.BtcPk,
 				popBytes,
 				testutil.ZeroCommissionRate(),
@@ -108,7 +110,7 @@ func FuzzRegisterFinalityProvider(f *testing.F) {
 		require.NoError(t, err)
 		require.Equal(t, txHash, res.TxHash)
 
-		mockClientController.EXPECT().QueryLastCommittedPublicRand(gomock.Any(), uint64(1)).Return(nil, nil).AnyTimes()
+		mockConsumerController.EXPECT().QueryLastPublicRandCommit(gomock.Any()).Return(nil, nil).AnyTimes()
 		err = app.StartHandlingFinalityProvider(fp.GetBIP340BTCPK(), passphrase)
 		require.NoError(t, err)
 
