@@ -53,7 +53,8 @@ type BaseTestManager = base_test_manager.BaseTestManager
 type OpL2ConsumerTestManager struct {
 	BaseTestManager
 	BabylonHandler    *e2eutils.BabylonNodeHandler
-	FpApp             []*service.FinalityProviderApp
+	BabylonFpApp      *service.FinalityProviderApp
+	ConsumerFpApps    []*service.FinalityProviderApp
 	EOTSServerHandler *e2eutils.EOTSServerHandler
 	BaseDir           string
 	SdkClient         *sdkclient.SdkClient
@@ -79,13 +80,16 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 
 	// deploy op-finality-gadget contract and start op stack system
 	opL2ConsumerConfig, opSys := startExtSystemsAndCreateConsumerCfg(t, logger, bh)
+	// TODO: this is a hack to try to fix a flaky data race
+	// https://github.com/babylonchain/finality-provider/issues/528
+	time.Sleep(5 * time.Second)
 
 	// init SDK client
 	sdkClient := initSdkClient(opSys, opL2ConsumerConfig, t)
 
 	// start multiple FPs. each FP has its own EOTS manager and finality provider app
 	// there is one Babylon FP and multiple Consumer FPs
-	fpApps, eotsHandler := createMultiFps(
+	babylonFpApp, consumerFpApps, eotsHandler := createMultiFps(
 		testDir,
 		bh,
 		opL2ConsumerConfig,
@@ -96,7 +100,7 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 
 	// register consumer to Babylon (only one of the FPs needs to do it)
 	opConsumerId := getConsumerChainId(&opSys.Cfg)
-	babylonClient := fpApps[0].GetBabylonController().(*bbncc.BabylonController)
+	babylonClient := consumerFpApps[0].GetBabylonController().(*bbncc.BabylonController)
 	_, err = babylonClient.RegisterConsumerChain(
 		opConsumerId,
 		"OP consumer chain (test)",
@@ -112,7 +116,8 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 		},
 		BabylonHandler:    bh,
 		EOTSServerHandler: eotsHandler,
-		FpApp:             fpApps,
+		BabylonFpApp:      babylonFpApp,
+		ConsumerFpApps:    consumerFpApps,
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
 		OpSystem:          opSys,
@@ -126,122 +131,200 @@ func createMultiFps(
 	testDir string,
 	bh *e2eutils.BabylonNodeHandler,
 	opL2ConsumerConfig *fpcfg.OPStackL2Config,
-	numOfFPs uint8,
+	numOfConsumerFPs uint8,
 	logger *zap.Logger,
 	t *testing.T,
-) ([]*service.FinalityProviderApp, *e2eutils.EOTSServerHandler) {
-	// prepare FPs configs
-	fpConfigs := createFpConfigs(testDir, bh, opL2ConsumerConfig, numOfFPs, logger, t)
+) (*service.FinalityProviderApp, []*service.FinalityProviderApp, *e2eutils.EOTSServerHandler) {
+	babylonFpCfg, consumerFpCfgs := createFpConfigs(
+		testDir,
+		bh,
+		opL2ConsumerConfig,
+		numOfConsumerFPs,
+		logger,
+		t,
+	)
 
-	// prepare EOTS managers
-	eotsHandler, eotsClients := startEotsManagers(testDir, t, fpConfigs, numOfFPs, logger)
+	eotsHandler, eotsClients := startEotsManagers(testDir, t, babylonFpCfg, consumerFpCfgs, logger)
 
-	// prepare fpApps
-	fpApps := createFpApps(numOfFPs, fpConfigs, eotsClients, logger, t)
+	babylonFpApp, consumerFpApps := createFpApps(
+		babylonFpCfg,
+		consumerFpCfgs,
+		eotsClients,
+		logger,
+		t,
+	)
 
-	return fpApps, eotsHandler
+	return babylonFpApp, consumerFpApps, eotsHandler
 }
 
 func createFpApps(
-	numOfFPs uint8,
-	fpConfigs []*fpcfg.Config,
+	babylonFpCfg *fpcfg.Config,
+	consumerFpCfgs []*fpcfg.Config,
+	eotsClients []*client.EOTSManagerGRpcClient,
+	logger *zap.Logger,
+	t *testing.T,
+) (*service.FinalityProviderApp, []*service.FinalityProviderApp) {
+	babylonFpApp := createBabylonFpApp(babylonFpCfg, eotsClients[0], logger, t)
+	consumerFpApps := createConsumerFpApps(consumerFpCfgs, eotsClients[1:], logger, t)
+	return babylonFpApp, consumerFpApps
+}
+
+func createBabylonFpApp(
+	cfg *fpcfg.Config,
+	eotsCli *client.EOTSManagerGRpcClient,
+	logger *zap.Logger,
+	t *testing.T,
+) *service.FinalityProviderApp {
+	cc, err := bbncc.NewBabylonConsumerController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	require.NoError(t, err)
+
+	fpApp := createAndStartFpApp(cfg, cc, eotsCli, logger, t)
+	t.Log(log.Prefix("Started Babylon FP App"))
+	return fpApp
+}
+
+func createConsumerFpApps(
+	cfgs []*fpcfg.Config,
 	eotsClients []*client.EOTSManagerGRpcClient,
 	logger *zap.Logger,
 	t *testing.T,
 ) []*service.FinalityProviderApp {
-	fpApps := make([]*service.FinalityProviderApp, 0, numOfFPs)
-
-	for i := 0; i < int(numOfFPs); i++ {
-		cfg := fpConfigs[i]
-		eotsCli := eotsClients[i]
-
-		var cc api.ConsumerController
-		var err error
-		if i == 0 {
-			cc, err = bbncc.NewBabylonConsumerController(
-				cfg.BabylonConfig,
-				&cfg.BTCNetParams,
-				logger,
-			)
-		} else {
-			cc, err = opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
-		}
+	consumerFpApps := make([]*service.FinalityProviderApp, len(cfgs))
+	for i, cfg := range cfgs {
+		cc, err := opstackl2.NewOPStackL2ConsumerController(cfg.OPStackL2Config, logger)
 		require.NoError(t, err)
 
-		bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
-		require.NoError(t, err)
-
-		fpdb, err := cfg.DatabaseConfig.GetDbBackend()
-		require.NoError(t, err)
-		fpApp, err := service.NewFinalityProviderApp(cfg, bc, cc, eotsCli, fpdb, logger)
-		require.NoError(t, err)
-		err = fpApp.Start()
-		require.NoError(t, err)
-		t.Logf(log.Prefix("Started FP App %d"), i)
-
-		fpApps = append(fpApps, fpApp)
+		fpApp := createAndStartFpApp(cfg, cc, eotsClients[i], logger, t)
+		t.Logf(log.Prefix("Started Consumer FP App %d"), i)
+		consumerFpApps[i] = fpApp
 	}
-	return fpApps
+	return consumerFpApps
 }
 
-// create configs for multiple FPs. the first config is for a Babylon FP
+func createAndStartFpApp(
+	cfg *fpcfg.Config,
+	cc api.ConsumerController,
+	eotsCli *client.EOTSManagerGRpcClient,
+	logger *zap.Logger,
+	t *testing.T,
+) *service.FinalityProviderApp {
+	bc, err := bbncc.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
+	require.NoError(t, err)
+
+	fpdb, err := cfg.DatabaseConfig.GetDbBackend()
+	require.NoError(t, err)
+
+	fpApp, err := service.NewFinalityProviderApp(cfg, bc, cc, eotsCli, fpdb, logger)
+	require.NoError(t, err)
+
+	err = fpApp.Start()
+	require.NoError(t, err)
+	t.Logf(log.Prefix("Started FP App"))
+
+	return fpApp
+}
+
+// create configs for multiple FPs. the first config is a Babylon FP, the rest are OP FPs
 func createFpConfigs(
 	testDir string,
 	bh *e2eutils.BabylonNodeHandler,
 	opL2ConsumerConfig *fpcfg.OPStackL2Config,
-	numOfFPs uint8,
+	numOfConsumerFPs uint8,
+	logger *zap.Logger,
+	t *testing.T,
+) (*fpcfg.Config, []*fpcfg.Config) {
+	babylonFpCfg := createBabylonFpConfig(testDir, bh, logger, t)
+	consumerFpCfgs := createConsumerFpConfigs(
+		testDir,
+		bh,
+		opL2ConsumerConfig,
+		numOfConsumerFPs,
+		logger,
+		t,
+	)
+	return babylonFpCfg, consumerFpCfgs
+}
+
+func createBabylonFpConfig(
+	testDir string,
+	bh *e2eutils.BabylonNodeHandler,
+	logger *zap.Logger,
+	t *testing.T,
+) *fpcfg.Config {
+	fpHomeDir := filepath.Join(testDir, "babylon-fp-home")
+	t.Logf(log.Prefix("Babylon FP home dir: %s"), fpHomeDir)
+
+	cfg := createBaseFpConfig(fpHomeDir, 0, logger)
+	cfg.BabylonConfig.KeyDirectory = filepath.Join(testDir, "babylon-fp-home-keydir")
+
+	fpBbnKeyInfo := createChainKey(cfg.BabylonConfig, t)
+	fundBBNAddr(bh, fpBbnKeyInfo, t)
+
+	return cfg
+}
+
+func createConsumerFpConfigs(
+	testDir string,
+	bh *e2eutils.BabylonNodeHandler,
+	opL2ConsumerConfig *fpcfg.OPStackL2Config,
+	numOfConsumerFPs uint8,
 	logger *zap.Logger,
 	t *testing.T,
 ) []*fpcfg.Config {
-	fpConfigs := make([]*fpcfg.Config, 0, numOfFPs)
+	consumerFpConfigs := make([]*fpcfg.Config, numOfConsumerFPs)
 
-	for i := 0; i < int(numOfFPs); i++ {
-		fpHomeDir := filepath.Join(testDir, fmt.Sprintf("fp-home-%d", i))
-		t.Logf(log.Prefix("Fp home dir: %s"), fpHomeDir)
+	for i := 0; i < int(numOfConsumerFPs); i++ {
+		fpHomeDir := filepath.Join(testDir, fmt.Sprintf("consumer-fp-home-%d", i))
+		t.Logf(log.Prefix("Consumer FP home dir: %s"), fpHomeDir)
 
-		// customize ports
-		// FP default RPC port is 12581, EOTS default RPC port i is 12582
-		// FP default metrics port is 2112, EOTS default metrics port is 2113
-		cfg := e2eutils.DefaultFpConfigWithPorts(
-			"this should be the keyring dir", // this will be replaced below
-			fpHomeDir,
-			fpcfg.DefaultRPCPort-i,
-			metrics.DefaultFpConfig().Port-i,
-			eotsconfig.DefaultRPCPort+i,
-		)
-		cfg.LogLevel = logger.Level().String()
-		cfg.StatusUpdateInterval = 2 * time.Second
-		cfg.RandomnessCommitInterval = 2 * time.Second
-		cfg.NumPubRand = 64
-		cfg.MinRandHeightGap = 1000
+		cfg := createBaseFpConfig(fpHomeDir, i+1, logger)
+		cfg.BabylonConfig.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("consumer-fp-home-keydir-%d", i))
 
-		// customize key
-		cfg.BabylonConfig.KeyDirectory = filepath.Join(testDir, fmt.Sprintf("fp-home-keydir%d", i))
-		fpBbnKeyInfo, err := service.CreateChainKey(
-			cfg.BabylonConfig.KeyDirectory,
-			cfg.BabylonConfig.ChainID,
-			cfg.BabylonConfig.Key,
-			cfg.BabylonConfig.KeyringBackend,
-			e2eutils.Passphrase,
-			e2eutils.HdPath,
-			"",
-		)
-		require.NoError(t, err)
-
-		// add some funds for new fp pay for fees '-'
+		fpBbnKeyInfo := createChainKey(cfg.BabylonConfig, t)
 		fundBBNAddr(bh, fpBbnKeyInfo, t)
 
-		if i != 0 { // the first FP is Babylon FP, skip
-			opcc := *opL2ConsumerConfig
-			opcc.KeyDirectory = cfg.BabylonConfig.KeyDirectory
-			opcc.Key = cfg.BabylonConfig.Key
-			cfg.OPStackL2Config = &opcc
-		}
+		opcc := *opL2ConsumerConfig
+		opcc.KeyDirectory = cfg.BabylonConfig.KeyDirectory
+		opcc.Key = cfg.BabylonConfig.Key
+		cfg.OPStackL2Config = &opcc
 
-		fpConfigs = append(fpConfigs, cfg)
+		consumerFpConfigs[i] = cfg
 	}
 
-	return fpConfigs
+	return consumerFpConfigs
+}
+
+func createBaseFpConfig(fpHomeDir string, index int, logger *zap.Logger) *fpcfg.Config {
+	// customize ports
+	// FP default RPC port is 12581, EOTS default RPC port i is 12582
+	// FP default metrics port is 2112, EOTS default metrics port is 2113
+	cfg := e2eutils.DefaultFpConfigWithPorts(
+		"this should be the keyring dir", // this will be replaced later
+		fpHomeDir,
+		fpcfg.DefaultRPCPort-index,
+		metrics.DefaultFpConfig().Port-index,
+		eotsconfig.DefaultRPCPort+index,
+	)
+	cfg.LogLevel = logger.Level().String()
+	cfg.StatusUpdateInterval = 2 * time.Second
+	cfg.RandomnessCommitInterval = 2 * time.Second
+	cfg.NumPubRand = 64
+	cfg.MinRandHeightGap = 1000
+	return cfg
+}
+
+func createChainKey(bbnConfig *fpcfg.BBNConfig, t *testing.T) *types.ChainKeyInfo {
+	fpBbnKeyInfo, err := service.CreateChainKey(
+		bbnConfig.KeyDirectory,
+		bbnConfig.ChainID,
+		bbnConfig.Key,
+		bbnConfig.KeyringBackend,
+		e2eutils.Passphrase,
+		e2eutils.HdPath,
+		"",
+	)
+	require.NoError(t, err)
+	return fpBbnKeyInfo
 }
 
 func fundBBNAddr(bh *e2eutils.BabylonNodeHandler, fpBbnKeyInfo *types.ChainKeyInfo, t *testing.T) {
@@ -258,7 +341,6 @@ func fundBBNAddr(bh *e2eutils.BabylonNodeHandler, fpBbnKeyInfo *types.ChainKeyIn
 			t.Logf("Error checking balance: %v", err)
 			return false
 		}
-
 		return balance == bbnAddrTopUpAmount
 	}, 30*time.Second, 2*time.Second, fmt.Sprintf("failed to top up %s", fpBbnKeyInfo.AccAddress.String()))
 	t.Logf(log.Prefix("Sent %dubbn to %s"), bbnAddrTopUpAmount, fpBbnKeyInfo.AccAddress.String())
@@ -267,18 +349,19 @@ func fundBBNAddr(bh *e2eutils.BabylonNodeHandler, fpBbnKeyInfo *types.ChainKeyIn
 func startEotsManagers(
 	testDir string,
 	t *testing.T,
-	cfgs []*fpcfg.Config,
-	numOfFPs uint8,
+	babylonFpCfg *fpcfg.Config,
+	consumerFpCfgs []*fpcfg.Config,
 	logger *zap.Logger,
 ) (*e2eutils.EOTSServerHandler, []*client.EOTSManagerGRpcClient) {
-	eotsClients := make([]*client.EOTSManagerGRpcClient, 0, numOfFPs)
-	eotsHomeDirs := make([]string, 0, numOfFPs)
-	eotsConfigs := make([]*eotsconfig.Config, 0, numOfFPs)
+	allConfigs := append([]*fpcfg.Config{babylonFpCfg}, consumerFpCfgs...)
+	eotsClients := make([]*client.EOTSManagerGRpcClient, len(allConfigs))
+	eotsHomeDirs := make([]string, len(allConfigs))
+	eotsConfigs := make([]*eotsconfig.Config, len(allConfigs))
 
 	// start EOTS servers
-	for i := 0; i < int(numOfFPs); i++ {
+	for i := 0; i < len(allConfigs); i++ {
 		eotsHomeDir := filepath.Join(testDir, fmt.Sprintf("eots-home-%d", i))
-		eotsHomeDirs = append(eotsHomeDirs, eotsHomeDir)
+		eotsHomeDirs[i] = eotsHomeDir
 
 		// customize ports
 		// FP default RPC port is 12581, EOTS default RPC port i is 12582
@@ -288,22 +371,22 @@ func startEotsManagers(
 			eotsconfig.DefaultRPCPort+i,
 			metrics.DefaultEotsConfig().Port+i,
 		)
-		eotsConfigs = append(eotsConfigs, eotsCfg)
+		eotsConfigs[i] = eotsCfg
 	}
 	eh := e2eutils.NewEOTSServerHandlerMultiFP(t, eotsConfigs, eotsHomeDirs, logger)
 	eh.Start()
 
 	// create EOTS clients
-	for i := 0; i < int(numOfFPs); i++ {
+	for i := 0; i < len(allConfigs); i++ {
 		// wait for EOTS servers to start
 		// see https://github.com/babylonchain/finality-provider/pull/517
 		require.Eventually(t, func() bool {
-			eotsCli, err := client.NewEOTSManagerGRpcClient(cfgs[i].EOTSManagerAddress)
+			eotsCli, err := client.NewEOTSManagerGRpcClient(allConfigs[i].EOTSManagerAddress)
 			if err != nil {
 				t.Logf(log.Prefix("Error creating EOTS client: %v"), err)
 				return false
 			}
-			eotsClients = append(eotsClients, eotsCli)
+			eotsClients[i] = eotsCli
 			return true
 		}, 5*time.Second, time.Second, "Failed to create EOTS clients")
 	}
@@ -423,7 +506,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForServicesStart(t *testing.T) {
 }
 
 func (ctm *OpL2ConsumerTestManager) getOpCCAtIndex(i int) *opcc.OPStackL2ConsumerController {
-	return ctm.FpApp[i].GetConsumerController().(*opcc.OPStackL2ConsumerController)
+	return ctm.ConsumerFpApps[i].GetConsumerController().(*opcc.OPStackL2ConsumerController)
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
@@ -435,7 +518,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNBlocksAndReturn(
 	var err error
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query blocks. so we use the first consumer FP
-		blocks, err = ctm.getOpCCAtIndex(1).QueryBlocks(
+		blocks, err = ctm.getOpCCAtIndex(0).QueryBlocks(
 			startHeight,
 			startHeight+uint64(n-1),
 			uint64(n),
@@ -496,7 +579,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 		}
 		if firstFpCommittedPubRand == 0 {
 			firstPRCommit, err := queryFirstPublicRandCommit(
-				ctm.getOpCCAtIndex(1),
+				ctm.getOpCCAtIndex(0),
 				fpList[0].GetBtcPk(),
 			)
 			require.NoError(t, err)
@@ -506,7 +589,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 		}
 		if secondFpCommittedPubRand == 0 {
 			secondPRCommit, err := queryFirstPublicRandCommit(
-				ctm.getOpCCAtIndex(2),
+				ctm.getOpCCAtIndex(1),
 				fpList[1].GetBtcPk(),
 			)
 			require.NoError(t, err)
@@ -518,10 +601,10 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
 
 	// find the FP's index with the smaller first committed pubrand index in `fpList`
-	i := 1
+	i := 0
 	targetBlockHeight = secondFpCommittedPubRand // the target block is the one with larger start height
 	if firstFpCommittedPubRand > secondFpCommittedPubRand {
-		i = 2
+		i = 1
 		targetBlockHeight = firstFpCommittedPubRand
 	}
 
@@ -543,42 +626,30 @@ func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 	return targetBlockHeight
 }
 
-// can be used for both the Babylon and Consumer FPs
-func (ctm *OpL2ConsumerTestManager) registerFinalityProvider(
-	t *testing.T,
-	consumerID string,
-	n int,
-	offset int,
-) []*bbntypes.BIP340PubKey {
-	fpPkList := make([]*bbntypes.BIP340PubKey, 0, n)
+// this works for both Babylon and OP FPs
+func (ctm *OpL2ConsumerTestManager) registerSingleFinalityProvider(app *service.FinalityProviderApp, consumerID string, monikerIndex int, t *testing.T) *bbntypes.BIP340PubKey {
+	cfg := app.GetConfig()
+	keyName := cfg.BabylonConfig.Key
+	baseMoniker := fmt.Sprintf("%s-%s", consumerID, e2eutils.MonikerPrefix)
+	moniker := fmt.Sprintf("%s%d", baseMoniker, monikerIndex)
+	commission := sdkmath.LegacyZeroDec()
+	desc := e2eutils.NewDescription(moniker)
 
-	for i := offset; i < n+offset; i++ {
-		app := ctm.FpApp[i]
-		cfg := app.GetConfig()
-		keyName := cfg.BabylonConfig.Key
-		baseMoniker := fmt.Sprintf("%s-%s", consumerID, e2eutils.MonikerPrefix)
-		moniker := fmt.Sprintf("%s%d", baseMoniker, i)
-		commission := sdkmath.LegacyZeroDec()
-		desc := e2eutils.NewDescription(moniker)
-
-		res, err := app.CreateFinalityProvider(
-			keyName,
-			consumerID,
-			e2eutils.Passphrase,
-			e2eutils.HdPath,
-			desc,
-			&commission,
-		)
-		require.NoError(t, err)
-		fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
-		require.NoError(t, err)
-		_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
-		require.NoError(t, err)
-		fpPkList = append(fpPkList, fpPk)
-		t.Logf(log.Prefix("Registered Finality Provider %s for %s"), fpPk.MarshalHex(), consumerID)
-	}
-
-	return fpPkList
+	res, err := app.CreateFinalityProvider(
+		keyName,
+		consumerID,
+		e2eutils.Passphrase,
+		e2eutils.HdPath,
+		desc,
+		&commission,
+	)
+	require.NoError(t, err)
+	fpPk, err := bbntypes.NewBIP340PubKeyFromHex(res.FpInfo.BtcPkHex)
+	require.NoError(t, err)
+	_, err = app.RegisterFinalityProvider(fpPk.MarshalHex())
+	require.NoError(t, err)
+	t.Logf(log.Prefix("Registered Finality Provider %s for %s"), fpPk.MarshalHex(), consumerID)
+	return fpPk
 }
 
 // - deploy cw contract
@@ -645,10 +716,10 @@ type stakingParam struct {
 }
 
 // - register a Babylon finality provider
-// - register and start consumer finality providers
+// - register and start n consumer finality providers
 // - insert BTC delegations
 // - wait until all delegations are active
-// - return the list of finality providers
+// - return the list of consumer finality providers
 func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
 	t *testing.T,
 	n int, // number of consumer FPs
@@ -666,7 +737,7 @@ func (ctm *OpL2ConsumerTestManager) SetupFinalityProviders(
 	for i := 0; i < n; i++ {
 		ctm.InsertBTCDelegation(
 			t,
-			[]*btcec.PublicKey{bbnFpPk[0].MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
+			[]*btcec.PublicKey{bbnFpPk.MustToBTCPK(), consumerFpPkList[0].MustToBTCPK()},
 			stakingParams[i].stakingTime,
 			stakingParams[i].stakingAmount,
 		)
@@ -685,19 +756,27 @@ func (ctm *OpL2ConsumerTestManager) RegisterConsumerFinalityProvider(
 	t *testing.T,
 	n int,
 ) []*bbntypes.BIP340PubKey {
-	consumerFpPkList := ctm.registerFinalityProvider(t, ctm.getConsumerChainId(), n, 1)
+	consumerFpPkList := make([]*bbntypes.BIP340PubKey, n)
+
+	for i := 0; i < n; i++ {
+		app := ctm.ConsumerFpApps[i]
+		fpPk := ctm.registerSingleFinalityProvider(app, ctm.getConsumerChainId(), i, t)
+		consumerFpPkList[i] = fpPk
+	}
+
 	ctm.waitForConsumerFPRegistration(t, n)
 	return consumerFpPkList
 }
 
-func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T, n int) {
+func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T) {
 	require.Eventually(t, func() bool {
 		fps, err := ctm.BBNClient.QueryFinalityProviders()
 		if err != nil {
 			t.Logf(log.Prefix("failed to query Babylon FP(s) from Babylon %s"), err.Error())
 			return false
 		}
-		if len(fps) != n {
+		// only one Babylon FP should be registered
+		if len(fps) != 1 {
 			return false
 		}
 		return true
@@ -706,10 +785,10 @@ func (ctm *OpL2ConsumerTestManager) waitForBabylonFPRegistration(t *testing.T, n
 
 func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(
 	t *testing.T,
-) []*bbntypes.BIP340PubKey {
-	babylonFpPkList := ctm.registerFinalityProvider(t, e2eutils.ChainID, 1, 0)
-	ctm.waitForBabylonFPRegistration(t, 1)
-	return babylonFpPkList
+) *bbntypes.BIP340PubKey {
+	babylonFpPk := ctm.registerSingleFinalityProvider(ctm.BabylonFpApp, e2eutils.ChainID, 0, t)
+	ctm.waitForBabylonFPRegistration(t)
+	return babylonFpPk
 }
 
 func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(
@@ -719,7 +798,7 @@ func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(
 	finalizedBlockHeight := uint64(0)
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query. so we use the first consumer FP
-		nextFinalizedBlock, err := ctm.getOpCCAtIndex(1).QueryLatestFinalizedBlock()
+		nextFinalizedBlock, err := ctm.getOpCCAtIndex(0).QueryLatestFinalizedBlock()
 		require.NoError(t, err)
 		finalizedBlockHeight = nextFinalizedBlock.Height
 		return finalizedBlockHeight > checkedHeight
@@ -740,15 +819,14 @@ func (ctm *OpL2ConsumerTestManager) StartConsumerFinalityProvider(
 	t *testing.T,
 	fpPkList []*bbntypes.BIP340PubKey,
 ) []*service.FinalityProviderInstance {
-	var resFpList []*service.FinalityProviderInstance
+	resFpList := make([]*service.FinalityProviderInstance, len(fpPkList))
 
 	for i := 0; i < len(fpPkList); i++ {
-		// consumer chain FPs stars from index 1. so i+1 is the index of the FP app
-		app := ctm.FpApp[i+1]
+		app := ctm.ConsumerFpApps[i]
 		err := app.StartHandlingFinalityProvider(fpPkList[i], e2eutils.Passphrase)
 		require.NoError(t, err)
 		fpIns, err := app.GetFinalityProviderInstance(fpPkList[i])
-		resFpList = append(resFpList, fpIns)
+		resFpList[i] = fpIns
 		require.NoError(t, err)
 		require.True(t, fpIns.IsRunning())
 		require.NoError(t, err)
@@ -805,12 +883,16 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	var err error
 	// FpApp has to stop first or you will get "rpc error: desc = account xxx not found: key not found" error
 	// b/c when Babylon daemon is stopped, FP won't be able to find the keyring backend
-	for i := 0; i < len(ctm.FpApp); i++ {
-		err = ctm.FpApp[i].Stop()
-		require.NoError(t, err)
-		t.Logf(log.Prefix("Stopped FP App %d"), i)
-	}
+	err = ctm.BabylonFpApp.Stop()
 	require.NoError(t, err)
+	t.Log(log.Prefix("Stopped Babylon FP App"))
+
+	for i, app := range ctm.ConsumerFpApps {
+		err = app.Stop()
+		require.NoError(t, err)
+		t.Logf(log.Prefix("Stopped Consumer FP App %d"), i)
+	}
+
 	ctm.OpSystem.Close()
 	err = ctm.BabylonHandler.Stop()
 	require.NoError(t, err)
