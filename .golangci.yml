@@ -4,3 +4,11 @@ run:
     - e2e_babylon
     - e2e_bcd
     - e2e_wasmd
+
+linters-settings:
+  govet:
+      # Disable all analyzers.
+      # Default: false
+      disable-all: true
+      enable:
+        - shadow
