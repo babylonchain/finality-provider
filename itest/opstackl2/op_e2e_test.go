@@ -183,7 +183,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 }
 
 func TestOpVerifierDaemon(t *testing.T) {
-	ctm := StartOpL2ConsumerManager(t)
+	ctm := StartOpL2ConsumerManager(t, 2)
 	defer ctm.Stop(t)
 
 	// register, get BTC delegations, and start FPs
@@ -194,7 +194,8 @@ func TestOpVerifierDaemon(t *testing.T) {
 		{e2eutils.StakingTime, e2eutils.StakingAmount},
 	})
 
-	// check the public randomness is committed
+	// check both FPs have committed their first public randomness
+	// TODO: we might use go routine to do this in parallel
 	for i := 0; i < n; i++ {
 		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
 	}
@@ -209,7 +210,7 @@ func TestOpVerifierDaemon(t *testing.T) {
 
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
 
-	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
+	testBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
 	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
@@ -233,7 +234,7 @@ func TestOpVerifierDaemon(t *testing.T) {
 	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
 
-	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
+	testNextBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)
 	queryNextParams := cwclient.L2Block{
 		BlockHeight:    testNextBlock.Height,
@@ -249,6 +250,9 @@ func TestOpVerifierDaemon(t *testing.T) {
 	// run the verifier daemon
 	err = ctm.verifier.ProcessNBlocks(context.Background(), 1)
 	require.NoError(t, err)
+
+	// fetch latest consecutively finalized block
+	getLatestConsecutivelyFinalizedBlock(t)
 }
 
 func getLatestConsecutivelyFinalizedBlock(t *testing.T) {
@@ -267,5 +271,5 @@ func getLatestConsecutivelyFinalizedBlock(t *testing.T) {
 		return
 	}
 
-	fmt.Printf("Response body: %s\n", body)
+	fmt.Printf("GET /getLatest Response body: %s\n", body)
 }
