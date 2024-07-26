@@ -4,9 +4,12 @@
 package e2etest_op
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +20,8 @@ import (
 	"github.com/babylonchain/babylon-finality-gadget/sdk/btcclient"
 	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
 	sdkcfg "github.com/babylonchain/babylon-finality-gadget/sdk/config"
+	"github.com/babylonchain/babylon-finality-gadget/verifier/db"
+	"github.com/babylonchain/babylon-finality-gadget/verifier/verifier"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	api "github.com/babylonchain/finality-provider/clientcontroller/api"
@@ -37,6 +42,7 @@ import (
 	ope2e "github.com/ethereum-optimism/optimism/op-e2e"
 	optestlog "github.com/ethereum-optimism/optimism/op-service/testlog"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	epg "github.com/fergusstrange/embedded-postgres"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -58,7 +64,9 @@ type OpL2ConsumerTestManager struct {
 	EOTSServerHandler *e2eutils.EOTSServerHandler
 	BaseDir           string
 	SdkClient         *sdkclient.SdkClient
-	OpSystem          *ope2e.System
+	verifier					*verifier.Verifier
+	PostgresDB 			  *epg.EmbeddedPostgres
+	OpSystem          *ope2e.System	
 }
 
 func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2ConsumerTestManager {
@@ -109,6 +117,26 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 	require.NoError(t, err)
 	t.Logf(log.Prefix("Register consumer %s to Babylon"), opConsumerId)
 
+	// Create new embedded postgres db instance for testing verifier daemon
+	postgres := epg.NewDatabase(epg.DefaultConfig().Username("postgres").Password("postgres").Database("babylon").Port(5433))
+	err = postgres.Start()
+	require.NoError(t, err)
+
+	// create verifier daemon
+	vf, err := verifier.NewVerifier(context.Background(), &verifier.Config{
+		L2RPCHost: opL2ConsumerConfig.OPStackL2RPCAddress,
+		BitcoinRPCHost: trimLeadingHttp(opSys.Cfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc),
+		PGConnectionString: "postgresql://postgres:postgres@localhost:5433/babylon",
+		FGContractAddress: opSys.Cfg.DeployConfig.BabylonFinalityGadgetContractAddress, 
+		BBNChainID: opSys.Cfg.DeployConfig.BabylonFinalityGadgetChainID,
+		BBNRPCAddress: opL2ConsumerConfig.RPCAddr,
+		ServerPort: "8080",
+		PollInterval: time.Second * time.Duration(10),
+	})
+	if err != nil {
+		t.Fatalf("failed to create verifier daemon: %v", err)
+	}
+	
 	ctm := &OpL2ConsumerTestManager{
 		BaseTestManager: BaseTestManager{
 			BBNClient:        babylonClient,
@@ -120,6 +148,8 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 		ConsumerFpApps:    consumerFpApps,
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
+		verifier:          vf,
+		PostgresDB: 			 postgres,
 		OpSystem:          opSys,
 	}
 
@@ -878,6 +908,27 @@ func queryFirstPublicRandCommit(
 	return resp, nil
 }
 
+func checkLatestConsecutivelyFinalizedBlock(t *testing.T, exp uint64) {
+	// Make the GET request
+	resp, err := http.Get("http://localhost:8080/getLatest")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	// Unmarshal the response.
+	var block db.Block
+	err = json.Unmarshal(body, &block)
+	require.NoError(t, err)
+
+	// Check the response.
+	require.Equal(t, block.BlockHeight, exp)
+	require.Equal(t, block.IsFinalized, true)
+	t.Logf(log.Prefix("Checked block at height %d is finalized"), block.BlockHeight)
+}
+
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	t.Log("Stopping test manager")
 	var err error
@@ -898,5 +949,7 @@ func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {
 	require.NoError(t, err)
 	ctm.EOTSServerHandler.Stop()
 	err = os.RemoveAll(ctm.BaseDir)
+	require.NoError(t, err)
+	err = ctm.PostgresDB.Stop()	
 	require.NoError(t, err)
 }

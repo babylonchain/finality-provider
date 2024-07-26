@@ -4,7 +4,9 @@
 package e2etest_op
 
 import (
+	"context"
 	"encoding/hex"
+	"fmt"
 	"testing"
 	"time"
 
@@ -176,4 +178,44 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf(log.Prefix(
 		"OP chain fianlity is recovered, the latest finalized block height %d",
 	), nextFinalizedHeight)
+}
+
+func TestOpVerifierDaemon(t *testing.T) {
+	// start the consumer manager
+	ctm := StartOpL2ConsumerManager(t, 2)
+	defer ctm.Stop(t)
+
+	// register, get BTC delegations, and start FPs
+	n := 2
+	fpList := ctm.SetupFinalityProviders(t, n, []stakingParam{
+		// for the first FP, we give it more power b/c it will be used later
+		{e2eutils.StakingTime, 3 * e2eutils.StakingAmount},
+		{e2eutils.StakingTime, e2eutils.StakingAmount},
+	})
+
+	// check both FPs have committed their first public randomness
+	// TODO: we might use go routine to do this in parallel
+	for i := 0; i < n; i++ {
+		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
+	}
+
+	// both FP will sign the first block
+	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
+	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
+	t.Logf(log.Prefix("Both FP instances signed the first block"))
+
+	// both FP will sign the second block
+	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight+1)
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight+1)
+	t.Logf(log.Prefix("Both FP instances signed the second block"))
+
+	// run the verifier daemon and process 2 blocks
+	t.Logf(log.Prefix("Starting verifier daemon"))
+	err := ctm.verifier.ProcessNBlocks(context.Background(), 2)
+	require.NoError(t, err)
+
+	// get latest finalized block via API and check response
+	fmt.Printf("targetBlockHeight: %d\n", targetBlockHeight)
+	checkLatestConsecutivelyFinalizedBlock(t, 2)
 }
