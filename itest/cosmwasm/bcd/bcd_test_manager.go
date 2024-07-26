@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	sdklogs "cosmossdk.io/log"
 	sdkmath "cosmossdk.io/math"
@@ -110,8 +111,13 @@ func StartBcdTestManager(t *testing.T) *BcdTestManager {
 	eotsCfg := eotsconfig.DefaultConfigWithHomePath(eotsHomeDir)
 	eh := e2eutils.NewEOTSServerHandler(t, eotsCfg, eotsHomeDir)
 	eh.Start()
-	eotsCli, err := client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
-	require.NoError(t, err)
+	// wait for EOTS servers to start
+	// see https://github.com/babylonchain/finality-provider/pull/517
+	var eotsCli *client.EOTSManagerGRpcClient
+	require.Eventually(t, func() bool {
+		eotsCli, err = client.NewEOTSManagerGRpcClient(cfg.EOTSManagerAddress)
+		return err == nil
+	}, 5*time.Second, time.Second, "Failed to create EOTS clients")
 
 	// 5. prepare finality-provider
 	fpdb, err := cfg.DatabaseConfig.GetDbBackend()

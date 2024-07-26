@@ -81,7 +81,7 @@ install-bcd:
 	cd $(TOOLS_DIR); \
 	go install -trimpath $(BCD_PKG)
 
-.PHONY: clean-e2e test-e2e test-e2e-babylon test-e2e-wasmd test-e2e-bcd test-e2e-op
+.PHONY: clean-e2e test-e2e test-e2e-babylon test-e2e-babylon-ci test-e2e-wasmd test-e2e-bcd test-e2e-op test-e2e-op-ci
 
 # Clean up environments by stopping processes and removing data directories
 clean-e2e:
@@ -100,6 +100,12 @@ test-e2e: test-e2e-babylon test-e2e-wasmd test-e2e-bcd test-e2e-op
 test-e2e-babylon: clean-e2e install-babylond
 	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon
 
+test-e2e-babylon-ci: clean-e2e install-babylond
+	go test -list . ./itest/babylon --tags=e2e_babylon | grep Test \
+	| circleci tests run --command \
+	"xargs go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E) -count=1 --tags=e2e_babylon --run" \
+	--split-by=name --timings-type=name
+
 test-e2e-bcd: clean-e2e install-babylond install-bcd
 	@go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_BCD) -count=1 --tags=e2e_bcd
 
@@ -112,6 +118,11 @@ test-e2e-op: clean-e2e install-babylond
 TEST_NAME ?= .
 test-e2e-op-single: clean-e2e install-babylond
 	@go test -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op --run ^$(TEST_NAME)$
+test-e2e-op-ci: clean-e2e install-babylond
+	go test -list . ./itest/opstackl2 --tags=e2e_op | grep Test \
+	| circleci tests run --command \
+	"xargs go test -race -mod=readonly -timeout=25m -v $(PACKAGES_E2E_OP) -count=1 --tags=e2e_op --run" \
+	--split-by=name --timings-type=name
 
 DEVNET_REPO_URL := https://github.com/babylonchain/op-e2e-devnet
 TARGET_DIR := ./itest/opstackl2/devnet-data
