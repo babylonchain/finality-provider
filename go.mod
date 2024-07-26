@@ -438,7 +438,7 @@ replace (
 	// use cosmos fork of keyring
 	github.com/99designs/keyring => github.com/cosmos/keyring v1.2.0
 	github.com/babylonchain/babylon => github.com/babylonchain/babylon-private v0.9.0-rc.2.0.20240717044248-3d8f190c9b0c
-	github.com/babylonchain/babylon-finality-gadget => github.com/babylonchain/babylon-finality-gadget v0.1.3-alpha.0.20240726071303-ed98fb9349be
+	github.com/babylonchain/babylon-finality-gadget => github.com/babylonchain/babylon-finality-gadget v0.1.3-alpha.0.20240726073429-afbaa4560ee5
 	github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20231018212520-f6cde3fc2fa4
 	github.com/ethereum-optimism/optimism => github.com/babylonchain/optimism v1.7.5-0.20240717131100-fa941f083b02
 	github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101315.1-rc.5
