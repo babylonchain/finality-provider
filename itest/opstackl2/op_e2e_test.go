@@ -4,7 +4,11 @@
 package e2etest_op
 
 import (
+	"context"
 	"encoding/hex"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"testing"
 	"time"
 
@@ -173,4 +177,92 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf(log.Prefix(
 		"OP chain fianlity is recovered, the latest finalized block height %d",
 	), nextFinalizedHeight)
+}
+
+func TestOpVerifierDaemon(t *testing.T) {
+	ctm := StartOpL2ConsumerManager(t)
+	defer ctm.Stop(t)
+
+	// register, get BTC delegations, and start FPs
+	n := 2
+	fpList := ctm.SetupFinalityProviders(t, n, []stakingParam{
+		// for the first FP, we give it more power b/c it will be used later
+		{e2eutils.StakingTime, 3 * e2eutils.StakingAmount},
+		{e2eutils.StakingTime, e2eutils.StakingAmount},
+	})
+
+	// check the public randomness is committed
+	for i := 0; i < n; i++ {
+		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
+	}
+
+	// both FP will sign the first block
+	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
+
+	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
+	// stop the first FP instance
+	fpStopErr := fpList[0].Stop()
+	require.NoError(t, fpStopErr)
+
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
+
+	testBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(targetBlockHeight)
+	require.NoError(t, err)
+	queryParams := cwclient.L2Block{
+		BlockHeight:    testBlock.Height,
+		BlockHash:      hex.EncodeToString(testBlock.Hash),
+		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
+	}
+	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
+	require.NoError(t, err)
+	require.Equal(t, true, finalized)
+	t.Logf(log.Prefix("Test case 1: block %d is finalized"), testBlock.Height)
+
+	// ===  another test case only for the last FP instance sign ===
+	// first make sure the first FP is stopped
+	require.Eventually(t, func() bool {
+		return !fpList[0].IsRunning()
+	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf(log.Prefix("Stopped the first FP instance"))
+
+	// select a block that the first FP has not processed yet to give to the second FP to sign
+	testNextBlockHeight := fpList[0].GetLastVotedHeight() + 1
+	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
+
+	testNextBlock, err := ctm.OpL2ConsumerCtrl.QueryBlock(testNextBlockHeight)
+	require.NoError(t, err)
+	queryNextParams := cwclient.L2Block{
+		BlockHeight:    testNextBlock.Height,
+		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
+		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
+	}
+	// testNextBlock only have 1/4 total voting power
+	nextFinalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryNextParams)
+	require.NoError(t, err)
+	require.Equal(t, false, nextFinalized)
+	t.Logf(log.Prefix("Test case 2: block %d is not finalized"), testNextBlock.Height)
+
+	// run the verifier daemon
+	err = ctm.verifier.ProcessNBlocks(context.Background(), 1)
+	require.NoError(t, err)
+}
+
+func getLatestConsecutivelyFinalizedBlock(t *testing.T) {
+	// Make the GET request
+	resp, err := http.Get("http://localhost:8080/getLatest")
+	if err != nil {
+		t.Fatalf("GET /getLatest error: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("GET /getLatest error: %v", err)
+		return
+	}
+
+	fmt.Printf("Response body: %s\n", body)
 }

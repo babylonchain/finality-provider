@@ -5,6 +5,7 @@ package e2etest_op
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/babylonchain/babylon-finality-gadget/sdk/btcclient"
 	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
 	sdkcfg "github.com/babylonchain/babylon-finality-gadget/sdk/config"
+	"github.com/babylonchain/babylon-finality-gadget/verifier/verifier"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bbncc "github.com/babylonchain/finality-provider/clientcontroller/babylon"
@@ -57,6 +59,7 @@ type OpL2ConsumerTestManager struct {
 	OpL2ConsumerCtrl  *opstackl2.OPStackL2ConsumerController
 	BaseDir           string
 	SdkClient         *sdkclient.SdkClient
+	verifier					*verifier.Verifier
 	OpSystem          *ope2e.System
 }
 
@@ -190,6 +193,23 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 	})
 	require.NoError(t, err)
 
+	// Create new embedded postgres db instance for testing verifier daemon
+	// epg.NewDatabase(epg.DefaultConfig().Username("postgres").Password("postgres").Database("babylon"))
+
+	// create verifier daemon
+	vf, err := verifier.NewVerifier(context.Background(), &verifier.Config{
+		L2RPCHost: opL2ConsumerConfig.OPStackL2RPCAddress,
+		BitcoinRPCHost: trimLeadingHttp(opSysCfg.DeployConfig.BabylonFinalityGadgetBitcoinRpc),
+		PGConnectionString: "postgresql://parkyeung:parkyeung@localhost:5432/babylon",
+		FGContractAddress: cwContractAddress,
+		BBNChainID: opSysCfg.DeployConfig.BabylonFinalityGadgetChainID,
+		BBNRPCAddress: cwConfig.RPCAddr,
+		PollInterval: time.Second * time.Duration(10),
+	})
+	if err != nil {
+		t.Fatalf("failed to create verifier daemon: %v", err)
+	}
+
 	ctm := &OpL2ConsumerTestManager{
 		BaseTestManager:   BaseTestManager{BBNClient: bc, CovenantPrivKeys: covenantPrivKeys},
 		BabylonHandler:    bh,
@@ -199,6 +219,7 @@ func StartOpL2ConsumerManager(t *testing.T) *OpL2ConsumerTestManager {
 		OpL2ConsumerCtrl:  opcc,
 		BaseDir:           testDir,
 		SdkClient:         sdkClient,
+		verifier:          vf,
 		OpSystem:          opSys,
 	}
 
