@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +20,7 @@ import (
 	"github.com/babylonchain/babylon-finality-gadget/sdk/btcclient"
 	sdkclient "github.com/babylonchain/babylon-finality-gadget/sdk/client"
 	sdkcfg "github.com/babylonchain/babylon-finality-gadget/sdk/config"
+	"github.com/babylonchain/babylon-finality-gadget/verifier/db"
 	"github.com/babylonchain/babylon-finality-gadget/verifier/verifier"
 	bbncfg "github.com/babylonchain/babylon/client/config"
 	bbntypes "github.com/babylonchain/babylon/types"
@@ -903,6 +906,27 @@ func queryFirstPublicRandCommit(
 	}
 
 	return resp, nil
+}
+
+func checkLatestConsecutivelyFinalizedBlock(t *testing.T, exp uint64) {
+	// Make the GET request
+	resp, err := http.Get("http://localhost:8080/getLatest")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	// Unmarshal the response.
+	var block db.Block
+	err = json.Unmarshal(body, &block)
+	require.NoError(t, err)
+
+	// Check the response.
+	require.Equal(t, block.BlockHeight, exp)
+	require.Equal(t, block.IsFinalized, true)
+	t.Logf(log.Prefix("Checked block at height %d is finalized"), block.BlockHeight)
 }
 
 func (ctm *OpL2ConsumerTestManager) Stop(t *testing.T) {

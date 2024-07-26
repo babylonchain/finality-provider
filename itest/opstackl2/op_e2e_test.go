@@ -7,8 +7,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"testing"
 	"time"
 
@@ -183,6 +181,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 }
 
 func TestOpVerifierDaemon(t *testing.T) {
+	// start the consumer manager
 	ctm := StartOpL2ConsumerManager(t, 2)
 	defer ctm.Stop(t)
 
@@ -202,74 +201,21 @@ func TestOpVerifierDaemon(t *testing.T) {
 
 	// both FP will sign the first block
 	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
-
 	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
-	// stop the first FP instance
-	fpStopErr := fpList[0].Stop()
-	require.NoError(t, fpStopErr)
-
 	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
+	t.Logf(log.Prefix("Both FP instances signed the first block"))
 
-	testBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(targetBlockHeight)
-	require.NoError(t, err)
-	queryParams := cwclient.L2Block{
-		BlockHeight:    testBlock.Height,
-		BlockHash:      hex.EncodeToString(testBlock.Hash),
-		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
-	}
-	finalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryParams)
-	require.NoError(t, err)
-	require.Equal(t, true, finalized)
-	t.Logf(log.Prefix("Test case 1: block %d is finalized"), testBlock.Height)
+	// both FP will sign the second block
+	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight+1)
+	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight+1)
+	t.Logf(log.Prefix("Both FP instances signed the second block"))
 
-	// ===  another test case only for the last FP instance sign ===
-	// first make sure the first FP is stopped
-	require.Eventually(t, func() bool {
-		return !fpList[0].IsRunning()
-	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
-	t.Logf(log.Prefix("Stopped the first FP instance"))
-
-	// select a block that the first FP has not processed yet to give to the second FP to sign
-	testNextBlockHeight := fpList[0].GetLastVotedHeight() + 1
-	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
-	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
-
-	testNextBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(testNextBlockHeight)
-	require.NoError(t, err)
-	queryNextParams := cwclient.L2Block{
-		BlockHeight:    testNextBlock.Height,
-		BlockHash:      hex.EncodeToString(testNextBlock.Hash),
-		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
-	}
-	// testNextBlock only have 1/4 total voting power
-	nextFinalized, err := ctm.SdkClient.QueryIsBlockBabylonFinalized(queryNextParams)
-	require.NoError(t, err)
-	require.Equal(t, false, nextFinalized)
-	t.Logf(log.Prefix("Test case 2: block %d is not finalized"), testNextBlock.Height)
-
-	// run the verifier daemon
-	err = ctm.verifier.ProcessNBlocks(context.Background(), 1)
+	// run the verifier daemon and process 2 blocks
+	t.Logf(log.Prefix("Starting verifier daemon"))
+	err := ctm.verifier.ProcessNBlocks(context.Background(), 2)
 	require.NoError(t, err)
 
-	// fetch latest consecutively finalized block
-	getLatestConsecutivelyFinalizedBlock(t)
-}
-
-func getLatestConsecutivelyFinalizedBlock(t *testing.T) {
-	// Make the GET request
-	resp, err := http.Get("http://localhost:8080/getLatest")
-	if err != nil {
-		t.Fatalf("GET /getLatest error: %v", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("GET /getLatest error: %v", err)
-		return
-	}
-
-	fmt.Printf("GET /getLatest Response body: %s\n", body)
+	// get latest finalized block via API and check response
+	fmt.Printf("targetBlockHeight: %d\n", targetBlockHeight)
+	checkLatestConsecutivelyFinalizedBlock(t, 2)
 }
