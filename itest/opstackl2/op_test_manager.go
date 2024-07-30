@@ -438,7 +438,7 @@ func deployCwContract(
 	opFinalityGadgetInitMsg := map[string]interface{}{
 		"admin":            cwClient.MustGetAddr(),
 		"consumer_id":      opConsumerId,
-		"activated_height": 0,
+		"activated_height": 0, // TODO: remove once we get rid of this field
 		"is_enabled":       true,
 	}
 	opFinalityGadgetInitMsgBytes, err := json.Marshal(opFinalityGadgetInitMsg)
@@ -791,18 +791,18 @@ func (ctm *OpL2ConsumerTestManager) RegisterBabylonFinalityProvider(
 	return babylonFpPk
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForNextFinalizedBlock(
+func (ctm *OpL2ConsumerTestManager) WaitForBlockFinalized(
 	t *testing.T,
 	checkedHeight uint64,
 ) uint64 {
 	finalizedBlockHeight := uint64(0)
 	require.Eventually(t, func() bool {
 		// doesn't matter which FP we use to query. so we use the first consumer FP
-		nextFinalizedBlock, err := ctm.getOpCCAtIndex(0).QueryLatestFinalizedBlock()
+		latestFinalizedBlock, err := ctm.getOpCCAtIndex(0).QueryLatestFinalizedBlock()
 		require.NoError(t, err)
-		finalizedBlockHeight = nextFinalizedBlock.Height
-		return finalizedBlockHeight > checkedHeight
-	}, e2eutils.EventuallyWaitTimeOut, 5*time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime)*time.Second)
+		finalizedBlockHeight = latestFinalizedBlock.Height
+		return finalizedBlockHeight >= checkedHeight
+	}, e2eutils.EventuallyWaitTimeOut, 5*ctm.getL2BlockTime())
 	return finalizedBlockHeight
 }
 

@@ -130,9 +130,30 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	})
 	fpInstance := fpList[0]
 
-	// wait for the first block to be finalized
-	e2eutils.WaitForFpPubRandCommitted(t, fpInstance)
-	ctm.WaitForNextFinalizedBlock(t, uint64(1))
+	// wait until the BTC staking is activated
+	activatedL2Block := uint64(0)
+	require.Eventually(t, func() bool {
+		// query latest block
+		latestBlockHeight, err := ctm.getOpCCAtIndex(0).QueryLatestBlockHeight()
+		require.NoError(t, err)
+		latestBlock, err := ctm.getOpCCAtIndex(0).QueryEthBlock(latestBlockHeight)
+		require.NoError(t, err)
+		activatedL2Block = latestBlock.Number.Uint64()
+
+		// query the BTC staking activated timestamp
+		activatedTimestamp, err := ctm.SdkClient.QueryBtcStakingActivatedTimestamp()
+		if err != nil {
+			t.Logf(log.Prefix("Failed to query BTC staking activated timestamp: %v"), err)
+			return false
+		}
+		t.Logf(log.Prefix("Activated timestamp %d"), activatedTimestamp)
+
+		return latestBlock.Time >= activatedTimestamp
+	}, 30*ctm.getL2BlockTime(), ctm.getL2BlockTime())
+
+	// wait for the first block to be finalized since BTC staking is activated
+	e2eutils.WaitForFpPubRandCommittedAtTargetHeight(t, fpInstance, activatedL2Block)
+	ctm.WaitForBlockFinalized(t, activatedL2Block)
 
 	// stop the FP instance
 	fpStopErr := fpInstance.Stop()
@@ -172,7 +193,7 @@ func TestFinalityStuckAndRecover(t *testing.T) {
 	t.Logf(log.Prefix("Restarted the FP instance"))
 
 	// wait for next finalized block > stuckHeight
-	nextFinalizedHeight := ctm.WaitForNextFinalizedBlock(t, stuckHeight)
+	nextFinalizedHeight := ctm.WaitForBlockFinalized(t, stuckHeight+1)
 	t.Logf(log.Prefix(
 		"OP chain fianlity is recovered, the latest finalized block height %d",
 	), nextFinalizedHeight)
