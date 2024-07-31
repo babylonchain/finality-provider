@@ -36,7 +36,7 @@ func TestOpSubmitFinalitySignature(t *testing.T) {
 	testBlock := testBlocks[0]
 
 	// wait for the fp sign
-	ctm.WaitForFpVoteAtHeight(t, fpInstance, testBlock.Height)
+	ctm.WaitForFpVoteReachHeight(t, fpInstance, testBlock.Height)
 	queryParams := cwclient.L2Block{
 		BlockHeight:    testBlock.Height,
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
@@ -65,26 +65,50 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 		{e2eutils.StakingTime, e2eutils.StakingAmount},
 	})
 
+	// wait until the BTC staking is activated
+	l2BlockAfterActivation := uint64(0)
+	require.Eventually(t, func() bool {
+		// query latest block
+		latestBlockHeight, err := ctm.getOpCCAtIndex(0).QueryLatestBlockHeight()
+		require.NoError(t, err)
+		latestBlock, err := ctm.getOpCCAtIndex(0).QueryEthBlock(latestBlockHeight)
+		require.NoError(t, err)
+		l2BlockAfterActivation = latestBlock.Number.Uint64()
+
+		// query the BTC staking activated timestamp
+		activatedTimestamp, err := ctm.SdkClient.QueryBtcStakingActivatedTimestamp()
+		if err != nil {
+			t.Logf(log.Prefix("Failed to query BTC staking activated timestamp: %v"), err)
+			return false
+		}
+		t.Logf(log.Prefix("Activated timestamp %d"), activatedTimestamp)
+
+		return latestBlock.Time >= activatedTimestamp
+	}, 30*ctm.getL2BlockTime(), ctm.getL2BlockTime())
+	t.Logf(log.Prefix("found a L2 block after BTC staking activation: %d"), l2BlockAfterActivation)
+
 	// check both FPs have committed their first public randomness
 	// TODO: we might use go routine to do this in parallel
 	for i := 0; i < n; i++ {
-		e2eutils.WaitForFpPubRandCommitted(t, fpList[i])
+		// wait for the first block to be finalized since BTC staking is activated
+		e2eutils.WaitForFpPubRandCommittedAtTargetHeight(t, fpList[i], l2BlockAfterActivation)
 	}
 
 	// both FP will sign the first block
-	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList)
+	targetBlockHeight := ctm.WaitForTargetBlockPubRand(t, fpList, l2BlockAfterActivation)
+	t.Logf(log.Prefix("targetBlockHeight %d"), targetBlockHeight)
 
-	ctm.WaitForFpVoteAtHeight(t, fpList[0], targetBlockHeight)
+	ctm.WaitForFpVoteReachHeight(t, fpList[0], targetBlockHeight)
 	// stop the first FP instance
 	fpStopErr := fpList[0].Stop()
 	require.NoError(t, fpStopErr)
 
-	ctm.WaitForFpVoteAtHeight(t, fpList[1], targetBlockHeight)
+	ctm.WaitForFpVoteReachHeight(t, fpList[1], targetBlockHeight)
 
 	testBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(targetBlockHeight)
 	require.NoError(t, err)
 	queryParams := cwclient.L2Block{
-		BlockHeight:    testBlock.Height,
+		BlockHeight:    testBlock.Height, // 1
 		BlockHash:      hex.EncodeToString(testBlock.Hash),
 		BlockTimestamp: 12345, // doesn't matter b/c the BTC client is mocked
 	}
@@ -103,7 +127,7 @@ func TestOpMultipleFinalityProviders(t *testing.T) {
 	// select a block that the first FP has not processed yet to give to the second FP to sign
 	testNextBlockHeight := fpList[0].GetLastVotedHeight() + 1
 	t.Logf(log.Prefix("Test next block height %d"), testNextBlockHeight)
-	ctm.WaitForFpVoteAtHeight(t, fpList[1], testNextBlockHeight)
+	ctm.WaitForFpVoteReachHeight(t, fpList[1], testNextBlockHeight)
 
 	testNextBlock, err := ctm.getOpCCAtIndex(1).QueryBlock(testNextBlockHeight)
 	require.NoError(t, err)

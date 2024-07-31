@@ -66,7 +66,7 @@ func StartOpL2ConsumerManager(t *testing.T, numOfConsumerFPs uint8) *OpL2Consume
 	testDir, err := e2eutils.BaseDir("fpe2etest")
 	require.NoError(t, err)
 
-	logger := createLogger(t, zapcore.DebugLevel)
+	logger := createLogger(t, zapcore.ErrorLevel)
 
 	// generate covenant committee
 	covenantQuorum := 2
@@ -546,7 +546,7 @@ func (ctm *OpL2ConsumerTestManager) getL2BlockTime() time.Duration {
 	return time.Duration(ctm.OpSystem.Cfg.DeployConfig.L2BlockTime) * time.Second
 }
 
-func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(
+func (ctm *OpL2ConsumerTestManager) WaitForFpVoteReachHeight(
 	t *testing.T,
 	fpIns *service.FinalityProviderInstance,
 	height uint64,
@@ -560,49 +560,51 @@ func (ctm *OpL2ConsumerTestManager) WaitForFpVoteAtHeight(
 
 /* wait for the target block height that the two FPs both have PubRand commitments
  * the algorithm should be:
- * 1. wait until both FPs have their first PubRand commitments. get the start height of the commitments
- * 2. for the FP that has the smaller start height, wait until it catches up to the other FP's first PubRand commitment
+ * - query LastPubRandCommit for both FPs until both have a commitment that has blockHeight >= l2BlockAfterActivation
+ * - record the two block heights to be A and B. assume A <= B
+ * - wait for FP(A) to catch up to have commitment that covers block B
+ * - return B
  */
 // TODO: there are always two FPs, so we can simplify the logic and data structure. supporting more FPs will require a
 // refactor and more complex algorithm
 func (ctm *OpL2ConsumerTestManager) WaitForTargetBlockPubRand(
 	t *testing.T,
 	fpList []*service.FinalityProviderInstance,
+	l2BlockAfterActivation uint64,
 ) uint64 {
 	require.Equal(t, 2, len(fpList), "The below algorithm only supports two FPs")
 	var firstFpCommittedPubRand, secondFpCommittedPubRand, targetBlockHeight uint64
 
-	// wait until both FPs have their first PubRand commitments
+	// wait until both FPs have a PubRand commitment that covers blocks >= l2BlockAfterActivation
 	require.Eventually(t, func() bool {
-		if firstFpCommittedPubRand != 0 && secondFpCommittedPubRand != 0 {
-			return true
-		}
-		if firstFpCommittedPubRand == 0 {
-			firstPRCommit, err := queryFirstPublicRandCommit(
+		if firstFpCommittedPubRand < l2BlockAfterActivation {
+			firstFpPRCommit, err := queryLastPublicRandCommit(
 				ctm.getOpCCAtIndex(0),
 				fpList[0].GetBtcPk(),
 			)
 			require.NoError(t, err)
-			if firstPRCommit != nil {
-				firstFpCommittedPubRand = firstPRCommit.StartHeight
+			if firstFpPRCommit != nil {
+				firstFpCommittedPubRand = firstFpPRCommit.StartHeight + firstFpPRCommit.NumPubRand - 1
 			}
 		}
-		if secondFpCommittedPubRand == 0 {
-			secondPRCommit, err := queryFirstPublicRandCommit(
+		if secondFpCommittedPubRand < l2BlockAfterActivation {
+			secondFpPRCommit, err := queryLastPublicRandCommit(
 				ctm.getOpCCAtIndex(1),
 				fpList[1].GetBtcPk(),
 			)
 			require.NoError(t, err)
-			if secondPRCommit != nil {
-				secondFpCommittedPubRand = secondPRCommit.StartHeight
+			if secondFpPRCommit != nil {
+				secondFpCommittedPubRand = secondFpPRCommit.StartHeight + secondFpPRCommit.NumPubRand - 1
 			}
 		}
-		return false
+		return firstFpCommittedPubRand >= l2BlockAfterActivation && secondFpCommittedPubRand >= l2BlockAfterActivation
 	}, e2eutils.EventuallyWaitTimeOut, e2eutils.EventuallyPollTime)
+	t.Logf(log.Prefix("firstFpCommittedPubRand %d, secondFpCommittedPubRand %d"),
+		firstFpCommittedPubRand, secondFpCommittedPubRand)
 
-	// find the FP's index with the smaller first committed pubrand index in `fpList`
+	// find the FP's index whose PubRand commitment is for the block with the smaller height
 	i := 0
-	targetBlockHeight = secondFpCommittedPubRand // the target block is the one with larger start height
+	targetBlockHeight = secondFpCommittedPubRand // the target block is the one with larger height
 	if firstFpCommittedPubRand > secondFpCommittedPubRand {
 		i = 1
 		targetBlockHeight = firstFpCommittedPubRand
@@ -840,11 +842,36 @@ func queryFirstPublicRandCommit(
 	opcc *opstackl2.OPStackL2ConsumerController,
 	fpPk *btcec.PublicKey,
 ) (*types.PubRandCommit, error) {
+	return queryFirstOrLastPublicRandCommit(opcc, fpPk, true)
+}
+
+// query the FP has its last PubRand commitment
+func queryLastPublicRandCommit(
+	opcc *opstackl2.OPStackL2ConsumerController,
+	fpPk *btcec.PublicKey,
+) (*types.PubRandCommit, error) {
+	return queryFirstOrLastPublicRandCommit(opcc, fpPk, false)
+}
+
+// query the FP has its first or last PubRand commitment
+func queryFirstOrLastPublicRandCommit(
+	opcc *opstackl2.OPStackL2ConsumerController,
+	fpPk *btcec.PublicKey,
+	first bool,
+) (*types.PubRandCommit, error) {
 	fpPubKey := bbntypes.NewBIP340PubKeyFromBTCPK(fpPk)
-	queryMsg := &opstackl2.QueryMsg{
-		FirstPubRandCommit: &opstackl2.PubRandCommit{
-			BtcPkHex: fpPubKey.MarshalHex(),
-		},
+	var queryMsg *opstackl2.QueryMsg
+	queryMsgInternal := &opstackl2.PubRandCommit{
+		BtcPkHex: fpPubKey.MarshalHex(),
+	}
+	if first {
+		queryMsg = &opstackl2.QueryMsg{
+			FirstPubRandCommit: queryMsgInternal,
+		}
+	} else {
+		queryMsg = &opstackl2.QueryMsg{
+			LastPubRandCommit: queryMsgInternal,
+		}
 	}
 
 	jsonData, err := json.Marshal(queryMsg)
