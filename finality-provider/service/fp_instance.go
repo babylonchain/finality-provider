@@ -461,7 +461,7 @@ func (fp *FinalityProviderInstance) checkLagging(currentBlock *types.BlockInfo) 
 	return currentBlock.Height >= fp.GetLastProcessedHeight()+fp.cfg.FastSyncGap
 }
 
-// retryQueryingRandomnessUntilBlockFinalized periodically checks whether
+// retryCheckRandomnessUntilBlockFinalized periodically checks whether
 // the randomness has been committed to the target block until the block is
 // finalized
 // error will be returned if maximum retries have been reached or the query to
